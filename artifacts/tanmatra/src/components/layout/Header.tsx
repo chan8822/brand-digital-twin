@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   ClipboardList,
-  FlaskConical,
   Home,
   Utensils,
   MapPin,
@@ -13,6 +12,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useCart } from "@/lib/cartContext";
+import Logo from "./Logo";
 
 export default function Header() {
   const location = useLocation();
@@ -31,14 +31,8 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-50 border-b border-clinical-slate/30 bg-[#050505]/80 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2.5 shrink-0">
-          <div className="w-8 h-8 rounded-lg bg-clinical-gold/15 flex items-center justify-center border border-clinical-gold/25">
-            <FlaskConical className="w-4 h-4 text-clinical-gold" />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-sm font-semibold tracking-tight leading-none text-white">Tanmatra</span>
-            <span className="text-[9px] text-clinical-zinc tracking-widest uppercase leading-none mt-0.5">Clinical Nutrition</span>
-          </div>
+        <Link to="/" className="flex items-center shrink-0" aria-label="Tanmatra home">
+          <Logo className="h-7 w-auto text-clinical-gold" />
         </Link>
 
         <nav className="hidden md:flex items-center gap-1">
