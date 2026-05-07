@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,8 +7,18 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { formatPrice } from "@/lib/api/adapter";
+import { useCart, FREE_DELIVERY_THRESHOLD, DELIVERY_FEE } from "@/lib/cartContext";
+import { useOrders, generateOrderId } from "@/lib/ordersContext";
 import {
   MapPin,
   CreditCard,
@@ -16,13 +26,13 @@ import {
   Plus,
   Home,
   Building2,
-  ChevronRight,
   ShieldCheck,
   ClipboardList,
   IndianRupee,
+  Phone,
+  AlertTriangle,
 } from "lucide-react";
 
-/* ── Saved addresses ──────────────────────────────────────────────── */
 interface SavedAddress {
   id: string;
   label: string;
@@ -41,55 +51,84 @@ const SAVED_ADDRESSES: SavedAddress[] = [
 
 const TIP_PRESETS = [0, 2000, 5000, 10000];
 
-interface CheckoutItem {
-  id: number;
-  name: string;
-  image: string;
-  price: number;
-  quantity: number;
-}
-
-const DEMO_ITEMS: CheckoutItem[] = [
-  { id: 1, name: "Grilled Atlantic Salmon", image: "/dishes/salmon-quinoa.jpg", price: 48500, quantity: 2 },
-  { id: 2, name: "Performance Power Bowl", image: "/dishes/buddha-bowl.jpg", price: 39500, quantity: 1 },
-  { id: 3, name: "Keto Prime Ribeye", image: "/dishes/steak-keto.jpg", price: 62500, quantity: 1 },
-];
-
 export default function Checkout() {
   const navigate = useNavigate();
+  const { items, subtotal, clear } = useCart();
+  const { addOrder } = useOrders();
   const [selectedAddress, setSelectedAddress] = useState("addr-1");
   const [showNewAddress, setShowNewAddress] = useState(false);
   const [tipAmount, setTipAmount] = useState(0);
   const [customTip, setCustomTip] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // New address form state
   const [newAddr, setNewAddr] = useState({ label: "", line1: "", line2: "", city: "", pincode: "", phone: "" });
 
   const effectiveTip = tipAmount === -1 ? Math.round((parseFloat(customTip) || 0) * 100) : tipAmount;
-
-  const subtotal = DEMO_ITEMS.reduce((s, item) => s + item.price * item.quantity, 0);
-  const deliveryFee = subtotal > 50000 ? 0 : 5000;
+  const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
   const razorpayTotal = subtotal + deliveryFee + effectiveTip;
-
-  const handlePayment = async () => {
-    setIsProcessing(true);
-    // Simulate Razorpay flow
-    await new Promise((r) => setTimeout(r, 1500));
-    toast.success("Payment successful! Order confirmed.", {
-      description: `Rs.${(razorpayTotal / 100).toFixed(2)} charged · Rider tipped Rs.${(effectiveTip / 100).toFixed(0)}`,
-    });
-    setIsProcessing(false);
-    navigate("/track");
-  };
 
   const activeAddr = SAVED_ADDRESSES.find((a) => a.id === selectedAddress);
 
+  if (items.length === 0) {
+    return (
+      <div className="max-w-2xl mx-auto p-8 text-center space-y-4">
+        <AlertTriangle className="w-10 h-10 text-clinical-gold mx-auto" />
+        <h1 className="text-2xl font-bold text-white">Your plan is empty</h1>
+        <p className="text-sm text-clinical-zinc">Add meals to your plan before checking out.</p>
+        <Button onClick={() => navigate("/menu")} className="bg-clinical-gold text-[#050505]">
+          Browse Menu
+        </Button>
+      </div>
+    );
+  }
+
+  const handleConfirmedPayment = async () => {
+    if (!activeAddr) {
+      toast.error("Please select a delivery address");
+      setConfirmOpen(false);
+      return;
+    }
+    setIsProcessing(true);
+    await new Promise((r) => setTimeout(r, 1500));
+
+    const orderId = generateOrderId();
+    const placedAt = new Date().toISOString();
+    const etaAt = new Date(Date.now() + 25 * 60 * 1000).toISOString();
+
+    addOrder({
+      orderId,
+      placedAt,
+      etaAt,
+      status: "placed",
+      items: [...items],
+      subtotal,
+      deliveryFee,
+      tip: effectiveTip,
+      total: razorpayTotal,
+      address: {
+        label: activeAddr.label,
+        line1: activeAddr.line1,
+        line2: activeAddr.line2,
+        city: activeAddr.city,
+        pincode: activeAddr.pincode,
+        phone: activeAddr.phone,
+      },
+    });
+
+    clear();
+    setIsProcessing(false);
+    setConfirmOpen(false);
+
+    toast.success(`Order ${orderId} confirmed`, {
+      description: `Rider will contact you on ${activeAddr.phone}`,
+    });
+    navigate(`/track?orderId=${encodeURIComponent(orderId)}`);
+  };
+
   return (
     <div className="max-w-4xl mx-auto p-4 grid grid-cols-1 lg:grid-cols-5 gap-6 animate-in fade-in duration-500">
-      {/* LEFT: Address + Tip + Payment */}
       <div className="lg:col-span-3 space-y-5">
-        {/* ── Address Selector ── */}
         <Card className="bg-clinical-surface border-clinical-slate/20">
           <CardContent className="p-5 space-y-4">
             <div className="flex items-center gap-2">
@@ -97,7 +136,13 @@ export default function Checkout() {
               <h2 className="text-sm font-semibold text-white">Delivery Address</h2>
             </div>
 
-            <RadioGroup value={selectedAddress} onValueChange={(v) => { setSelectedAddress(v); setShowNewAddress(false); }}>
+            <RadioGroup
+              value={selectedAddress}
+              onValueChange={(v) => {
+                setSelectedAddress(v);
+                setShowNewAddress(false);
+              }}
+            >
               <div className="space-y-2">
                 {SAVED_ADDRESSES.map((addr) => (
                   <Label
@@ -123,16 +168,21 @@ export default function Checkout() {
                         {addr.line1}
                         {addr.line2 ? ` · ${addr.line2}` : ""} · {addr.city} {addr.pincode}
                       </p>
-                      <p className="text-[10px] text-clinical-zinc">{addr.phone}</p>
+                      <p className="text-[10px] text-clinical-zinc flex items-center gap-1 mt-0.5">
+                        <Phone className="w-2.5 h-2.5" />
+                        Rider will call you on {addr.phone}
+                      </p>
                     </div>
                   </Label>
                 ))}
 
-                {/* Add new address toggle */}
                 <Button
                   variant="ghost"
                   className="w-full justify-start gap-2 text-xs text-clinical-gold hover:bg-clinical-gold/10 h-10"
-                  onClick={() => { setShowNewAddress(true); setSelectedAddress("new"); }}
+                  onClick={() => {
+                    setShowNewAddress(true);
+                    setSelectedAddress("new");
+                  }}
                 >
                   <Plus className="w-3.5 h-3.5" />
                   Add New Address
@@ -140,13 +190,12 @@ export default function Checkout() {
               </div>
             </RadioGroup>
 
-            {/* New address form */}
             {showNewAddress && (
               <div className="space-y-3 p-3 rounded-lg bg-clinical-dark border border-clinical-slate/20">
                 <p className="text-xs font-medium text-white">New Address</p>
                 <div className="grid grid-cols-2 gap-2">
                   <Input placeholder="Label (e.g., Home)" value={newAddr.label} onChange={(e) => setNewAddr({ ...newAddr, label: e.target.value })} className="h-9 text-xs bg-clinical-surface border-clinical-slate/30" />
-                  <Input placeholder="Phone" value={newAddr.phone} onChange={(e) => setNewAddr({ ...newAddr, phone: e.target.value })} className="h-9 text-xs bg-clinical-surface border-clinical-slate/30" />
+                  <Input placeholder="Phone (rider will call this)" value={newAddr.phone} onChange={(e) => setNewAddr({ ...newAddr, phone: e.target.value })} className="h-9 text-xs bg-clinical-surface border-clinical-slate/30" />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <Input placeholder="City" value={newAddr.city} onChange={(e) => setNewAddr({ ...newAddr, city: e.target.value })} className="h-9 text-xs bg-clinical-surface border-clinical-slate/30" />
@@ -159,7 +208,6 @@ export default function Checkout() {
           </CardContent>
         </Card>
 
-        {/* ── Rider Tip ── */}
         <Card className="bg-clinical-surface border-clinical-slate/20">
           <CardContent className="p-5 space-y-4">
             <div className="flex items-center gap-2">
@@ -179,7 +227,10 @@ export default function Checkout() {
                       ? "bg-clinical-gold/15 text-clinical-gold border-clinical-gold/40"
                       : "border-clinical-slate/30 text-clinical-zinc hover:border-clinical-slate/50"
                   }`}
-                  onClick={() => { setTipAmount(tip); setCustomTip(""); }}
+                  onClick={() => {
+                    setTipAmount(tip);
+                    setCustomTip("");
+                  }}
                 >
                   {tip === 0 ? "No Tip" : `+Rs.${(tip / 100).toFixed(0)}`}
                 </Button>
@@ -220,7 +271,6 @@ export default function Checkout() {
           </CardContent>
         </Card>
 
-        {/* ── Payment Method ── */}
         <Card className="bg-clinical-surface border-clinical-slate/20">
           <CardContent className="p-5 space-y-3">
             <div className="flex items-center gap-2">
@@ -241,7 +291,6 @@ export default function Checkout() {
         </Card>
       </div>
 
-      {/* RIGHT: Order Summary */}
       <div className="lg:col-span-2 space-y-4">
         <Card className="bg-clinical-surface border-clinical-slate/20 sticky top-20">
           <CardContent className="p-5 space-y-4">
@@ -250,17 +299,25 @@ export default function Checkout() {
               Order Summary
             </h2>
 
-            {/* Items with thumbnails */}
             <div className="space-y-3">
-              {DEMO_ITEMS.map((item) => (
-                <div key={item.id} className="flex items-center gap-3">
-                  <img src={item.image} alt={item.name} className="w-12 h-12 rounded-lg object-cover border border-clinical-slate/20" loading="lazy" />
+              {items.map((item) => (
+                <div key={item.lineId} className="flex items-start gap-3">
+                  <img src={item.image} alt={item.name} className="w-12 h-12 rounded-lg object-cover border border-clinical-slate/20 shrink-0" loading="lazy" />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium text-white truncate">{item.name}</p>
                     <p className="text-[10px] text-clinical-zinc">Qty: {item.quantity}</p>
+                    {item.customizations.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {item.customizations.map((c) => (
+                          <span key={c} className="text-[9px] px-1 py-0.5 rounded bg-clinical-slate/20 text-clinical-zinc">
+                            {c}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <span className="tabular-nums text-xs text-white font-medium shrink-0">
-                    {formatPrice(item.price * item.quantity)}
+                    {formatPrice(item.unitPrice * item.quantity)}
                   </span>
                 </div>
               ))}
@@ -268,19 +325,23 @@ export default function Checkout() {
 
             <Separator className="bg-clinical-slate/20" />
 
-            {/* Delivery address summary */}
             {activeAddr && (
-              <div className="flex items-start gap-2 text-[10px] text-clinical-zinc">
-                <MapPin className="w-3 h-3 text-clinical-gold shrink-0 mt-0.5" />
-                <span>
-                  {activeAddr.label} · {activeAddr.line1} · {activeAddr.city}
-                </span>
+              <div className="space-y-1 text-[10px] text-clinical-zinc">
+                <div className="flex items-start gap-2">
+                  <MapPin className="w-3 h-3 text-clinical-gold shrink-0 mt-0.5" />
+                  <span>
+                    {activeAddr.label} · {activeAddr.line1} · {activeAddr.city}
+                  </span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Phone className="w-3 h-3 text-clinical-gold shrink-0 mt-0.5" />
+                  <span>Rider will contact you on {activeAddr.phone}</span>
+                </div>
               </div>
             )}
 
             <Separator className="bg-clinical-slate/20" />
 
-            {/* Breakdown */}
             <div className="space-y-2">
               <div className="flex justify-between text-xs">
                 <span className="text-clinical-zinc">Subtotal</span>
@@ -314,18 +375,11 @@ export default function Checkout() {
             </div>
 
             <Button
-              onClick={handlePayment}
-              disabled={isProcessing}
+              onClick={() => setConfirmOpen(true)}
               className="w-full bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold h-11 shadow-clinical gap-2"
             >
-              {isProcessing ? (
-                <>Processing...</>
-              ) : (
-                <>
-                  <CreditCard className="w-4 h-4" />
-                  Pay {formatPrice(razorpayTotal)}
-                </>
-              )}
+              <CreditCard className="w-4 h-4" />
+              Review & Pay {formatPrice(razorpayTotal)}
             </Button>
 
             <p className="text-[9px] text-clinical-zinc text-center flex items-center justify-center gap-1">
@@ -335,6 +389,67 @@ export default function Checkout() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Payment confirmation dialog */}
+      <Dialog open={confirmOpen} onOpenChange={(open) => !isProcessing && setConfirmOpen(open)}>
+        <DialogContent className="bg-clinical-surface border-clinical-slate/30">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-clinical-sage" />
+              Confirm Payment
+            </DialogTitle>
+            <DialogDescription className="text-clinical-zinc">
+              You will be charged <span className="text-clinical-gold font-bold tabular-nums">{formatPrice(razorpayTotal)}</span> via Razorpay.
+              Your rider will contact you on <span className="text-white">{activeAddr?.phone}</span> after pickup.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="bg-clinical-dark/60 border border-clinical-slate/20 rounded-lg p-3 space-y-1.5 text-xs">
+            <div className="flex justify-between">
+              <span className="text-clinical-zinc">Subtotal ({items.length} item{items.length === 1 ? "" : "s"})</span>
+              <span className="tabular-nums text-white">{formatPrice(subtotal)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-clinical-zinc">Delivery</span>
+              <span className={deliveryFee === 0 ? "text-clinical-sage" : "tabular-nums text-white"}>
+                {deliveryFee === 0 ? "FREE" : formatPrice(deliveryFee)}
+              </span>
+            </div>
+            {effectiveTip > 0 && (
+              <div className="flex justify-between">
+                <span className="text-clinical-zinc">Rider Tip</span>
+                <span className="tabular-nums text-clinical-gold">{formatPrice(effectiveTip)}</span>
+              </div>
+            )}
+            <Separator className="bg-clinical-slate/20 my-1" />
+            <div className="flex justify-between font-semibold">
+              <span className="text-white">Total</span>
+              <span className="tabular-nums text-clinical-gold">{formatPrice(razorpayTotal)}</span>
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setConfirmOpen(false)}
+              disabled={isProcessing}
+              className="border-clinical-slate/30 text-clinical-zinc"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmedPayment}
+              disabled={isProcessing}
+              className="bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold gap-2"
+            >
+              {isProcessing ? "Processing…" : (
+                <>
+                  <CreditCard className="w-4 h-4" />
+                  Confirm & Pay {formatPrice(razorpayTotal)}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

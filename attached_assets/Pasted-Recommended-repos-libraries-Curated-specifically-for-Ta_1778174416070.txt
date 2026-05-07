@@ -1,0 +1,62 @@
+Recommended repos & libraries
+Curated specifically for Tanmatra's stack (React 19 + Vite + Hono + tRPC + Drizzle/MySQL + shadcn/ui + Tailwind) and its domain (food delivery, rider tracking, AI ops agent, hospital flavor).
+
+Top 5 picks (highest leverage)
+vercel/ai — https://github.com/vercel/ai — rewrite the support agent on this; biggest immediate win
+satnaing/shadcn-admin — https://github.com/satnaing/shadcn-admin — copy layouts for /admin/ops
+medusajs/nextjs-starter-medusa — https://github.com/medusajs/nextjs-starter-medusa — steal the cart + checkout flow (yours is currently faked: cartCount={3})
+visgl/react-map-gl + socketio/socket.io — make /track actually live with rider markers + websocket push
+taskforcesh/bullmq — https://github.com/taskforcesh/bullmq — kill the setTimeout foot-gun in order-pipeline.service.ts before it bites in production
+UI / shadcn ecosystem (drop-in)
+Repo	Why for Tanmatra
+shadcn-ui/ui — https://github.com/shadcn-ui/ui	Already in use. Watch for Tailwind v4 + React 19 updates.
+origin-space/originui — https://github.com/origin-space/originui	400+ shadcn-compatible blocks (forms, tables, navbars).
+birobirobiro/awesome-shadcn-ui — https://github.com/birobirobiro/awesome-shadcn-ui	Curated index — fastest way to find a missing component.
+aceternity-ui + magicui-design/magic-ui	Motion-heavy hero/landing components. Useful for /, /wellness, /clinical.
+BelkacemYerfa/shadcn-extension — https://github.com/BelkacemYerfa/shadcn-extension	Multi-select, file uploader, OTP, tree, carousel.
+tremorlabs/tremor — https://github.com/tremorlabs/tremor	Dashboard/chart blocks on Tailwind. Better than bare recharts for /admin/ops.
+TanStack/table — https://github.com/TanStack/table	Headless table for orders/riders admin tables.
+Reference apps with the same stack
+Repo	Why
+shadcn-ui/taxonomy — https://github.com/shadcn-ui/taxonomy	Reference shadcn app; patterns for forms/dialogs/server actions.
+satnaing/shadcn-admin — https://github.com/satnaing/shadcn-admin	Polished shadcn admin dashboard.
+dan5py/react-vite-shadcn-ui — https://github.com/dan5py/react-vite-shadcn-ui	Closest to your exact frontend stack.
+honojs/examples — https://github.com/honojs/examples	Hono + tRPC + Vite recipes.
+trpc/trpc examples — https://github.com/trpc/trpc/tree/main/examples	Typed mutations, optimistic updates, infinite queries.
+drizzle-team/drizzle-orm examples — https://github.com/drizzle-team/drizzle-orm/tree/main/examples	MySQL + Drizzle reference; relations + migrations done right.
+Food delivery / commerce UI (your domain)
+Repo	Why
+medusajs/nextjs-starter-medusa — https://github.com/medusajs/nextjs-starter-medusa	Best-in-class cart, checkout, product grid patterns.
+vercel/commerce — https://github.com/vercel/commerce	Polished Tailwind product detail pages → use for /dish/:slug.
+pmndrs/zustand — https://github.com/pmndrs/zustand	Tiny cart store with persist middleware → wires up the hardcoded cartCount.
+Rider tracking / live maps / realtime
+Repo	Why
+visgl/react-map-gl — https://github.com/visgl/react-map-gl	Mapbox GL React bindings — standard for live rider markers on /track.
+PaulLeCam/react-leaflet — https://github.com/PaulLeCam/react-leaflet	Free OSM alternative if avoiding Mapbox token cost.
+socketio/socket.io — https://github.com/socketio/socket.io	For the missing websocket transport — your notifications table records events but nothing pushes them yet.
+partykit/partykit — https://github.com/partykit/partykit	Modern managed-realtime alternative.
+AI ops agent (Tanmatra's standout feature)
+Your support agent currently regex-parses Gemini responses. Strongly recommend migrating to one of:
+
+Repo	Why
+vercel/ai — https://github.com/vercel/ai	The AI SDK — first-class Gemini support, native tool calling, streaming, useChat hook. Replaces ~80% of support-agent.service.ts.
+vercel/ai-chatbot — https://github.com/vercel/ai-chatbot	Reference UI for the floating chat widget.
+google-gemini/cookbook — https://github.com/google-gemini/cookbook	Gemini 2.5 function-calling examples.
+Yonom/assistant-ui — https://github.com/Yonom/assistant-ui	Pre-built React chat UI on top of the AI SDK.
+langchain-ai/langgraph — https://github.com/langchain-ai/langgraph	State-machine agents with the human-in-the-loop pattern your code already gestures at (needsConfirm, approveAction).
+Background jobs (fix the setTimeout race)
+Repo	Why
+taskforcesh/bullmq — https://github.com/taskforcesh/bullmq	Redis-backed jobs. Industry standard. Ideal for delayed rider-assignment + retries.
+graphile/worker — https://github.com/graphile/worker	If you ever migrate to Postgres — uses the DB itself, no Redis needed.
+triggerdotdev/trigger.dev — https://github.com/triggerdotdev/trigger.dev	Managed if you'd rather not run infra.
+Auth alternatives (if you ever leave Kimi)
+Repo	Why
+better-auth/better-auth — https://github.com/better-auth/better-auth	Modern, framework-agnostic, works great with Drizzle + Hono. Best replacement for your hand-rolled jose JWT setup.
+lucia-auth/lucia — https://github.com/lucia-auth/lucia	In maintenance mode but the docs remain the best learning resource for session auth.
+Clinical / hospital-flavored UI inspiration
+Tanmatra's wellness / clinical / RD-verified angle is unusual — visual references:
+
+Repo	Why
+calcom/cal.com — https://github.com/calcom/cal.com	Best-in-class scheduling UI; relevant for ward delivery slots.
+medplum/medplum — https://github.com/medplum/medplum	Open-source healthcare platform. Browse the components folder for clinical UI patterns (patient cards, ward views).
+OHIF/Viewers — https://github.com/OHIF/Viewers	Heavier, but great patterns for clinical dashboards (status pills, role-gated panels).

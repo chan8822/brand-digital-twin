@@ -2,9 +2,8 @@ import { Link, useNavigate } from "react-router";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { useState } from "react";
 import MacroOverlay from "@/components/dish/MacroOverlay";
 import {
   Trash2,
@@ -17,80 +16,16 @@ import {
   Utensils,
 } from "lucide-react";
 import { formatPrice } from "@/lib/api/adapter";
-
-interface CartItem {
-  id: number;
-  name: string;
-  slug: string;
-  image: string;
-  price: number;
-  quantity: number;
-  kitchen: string;
-  rdVerified: boolean;
-  macros: { protein: number; carbs: number; fat: number; fiber: number; calories: number };
-  customizations: string[];
-}
-
-const DEMO_CART: CartItem[] = [
-  {
-    id: 1,
-    name: "Grilled Atlantic Salmon",
-    slug: "grilled-salmon",
-    image: "/dishes/salmon-quinoa.jpg",
-    price: 48500,
-    quantity: 2,
-    kitchen: "continental",
-    rdVerified: true,
-    macros: { protein: 34, carbs: 28, fat: 18, fiber: 6, calories: 420 },
-    customizations: ["Wild Sea Bass (+Rs.35)", "Extra Salmon Portion (+Rs.25)"],
-  },
-  {
-    id: 2,
-    name: "Performance Power Bowl",
-    slug: "power-bowl",
-    image: "/dishes/buddha-bowl.jpg",
-    price: 39500,
-    quantity: 1,
-    kitchen: "continental",
-    rdVerified: true,
-    macros: { protein: 42, carbs: 55, fat: 22, fiber: 9, calories: 580 },
-    customizations: ["Brown Jasmine Rice (+Rs.5)"],
-  },
-  {
-    id: 3,
-    name: "Keto Prime Ribeye",
-    slug: "keto-ribeye",
-    image: "/dishes/steak-keto.jpg",
-    price: 62500,
-    quantity: 1,
-    kitchen: "continental",
-    rdVerified: true,
-    macros: { protein: 48, carbs: 8, fat: 38, fiber: 5, calories: 540 },
-    customizations: ["Avocado Slices (+Rs.12)"],
-  },
-];
+import { useCart, FREE_DELIVERY_THRESHOLD, DELIVERY_FEE } from "@/lib/cartContext";
 
 export default function Cart() {
   const navigate = useNavigate();
-  const [items, setItems] = useState<CartItem[]>(DEMO_CART);
+  const { items, updateQty, removeItem, subtotal, totalQuantity } = useCart();
 
-  const updateQty = (id: number, delta: number) => {
-    setItems((prev) =>
-      prev
-        .map((item) => (item.id === id ? { ...item, quantity: Math.max(0, item.quantity + delta) } : item))
-        .filter((item) => item.quantity > 0)
-    );
-  };
-
-  const removeItem = (id: number) => {
-    setItems((prev) => prev.filter((item) => item.id !== id));
-    toast.success("Item removed from Nutrition Plan");
-  };
-
-  const subtotal = items.reduce((s, item) => s + item.price * item.quantity, 0);
-  const deliveryFee = subtotal > 50000 ? 0 : 5000;
+  const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
   const total = subtotal + deliveryFee;
-  const totalItems = items.reduce((t, item) => t + item.quantity, 0);
+  const amountToFreeDelivery = Math.max(0, FREE_DELIVERY_THRESHOLD - subtotal);
+  const freeDeliveryProgress = Math.min(100, (subtotal / FREE_DELIVERY_THRESHOLD) * 100);
 
   if (items.length === 0) {
     return (
@@ -114,24 +49,48 @@ export default function Cart() {
 
   return (
     <div className="max-w-5xl mx-auto p-4 grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-500">
-      {/* LEFT: Cart Items */}
       <div className="lg:col-span-2 space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-clinical-h2 text-white">Nutrition Plan</h1>
-            <p className="text-xs text-clinical-zinc mt-1">{totalItems} item(s) · Clinical-grade precision meals</p>
+            <p className="text-xs text-clinical-zinc mt-1">
+              {totalQuantity} item{totalQuantity === 1 ? "" : "s"} · Clinical-grade precision meals
+            </p>
           </div>
           <Link to="/menu" className="text-xs text-clinical-gold hover:underline flex items-center gap-1">
             <Utensils className="w-3 h-3" /> Add more
           </Link>
         </div>
 
+        {/* Free delivery progress */}
+        {amountToFreeDelivery > 0 ? (
+          <Card className="bg-clinical-gold/5 border-clinical-gold/20">
+            <CardContent className="p-3 space-y-2">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-clinical-gold font-medium">
+                  Add {formatPrice(amountToFreeDelivery)} more for FREE delivery
+                </span>
+                <Link to="/menu" className="text-clinical-gold hover:underline">
+                  Browse →
+                </Link>
+              </div>
+              <Progress value={freeDeliveryProgress} className="h-1.5" />
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="bg-clinical-sage/10 border-clinical-sage/30">
+            <CardContent className="p-3 text-xs text-clinical-sage flex items-center gap-2">
+              <ClipboardList className="w-3.5 h-3.5" />
+              You've unlocked FREE delivery on this order.
+            </CardContent>
+          </Card>
+        )}
+
         <div className="space-y-3">
           {items.map((item) => (
-            <Card key={item.id} className="bg-clinical-surface border-clinical-slate/20 overflow-hidden">
+            <Card key={item.lineId} className="bg-clinical-surface border-clinical-slate/20 overflow-hidden">
               <CardContent className="p-0">
                 <div className="flex gap-4">
-                  {/* Dish image */}
                   <Link to={`/dish/${item.slug}`} className="shrink-0 w-28 h-28 sm:w-32 sm:h-32">
                     <img
                       src={item.image}
@@ -141,12 +100,23 @@ export default function Cart() {
                     />
                   </Link>
 
-                  {/* Details */}
                   <div className="flex-1 py-3 pr-4 space-y-2 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <Link to={`/dish/${item.slug}`}>
-                          <h3 className="text-sm font-semibold text-white hover:text-clinical-gold transition-colors truncate">
+                          <h3 className="text-sm font-semibold text-white hover:text-clinical-gold transition-colors truncate flex items-center gap-2">
+                            <span
+                              className={`inline-flex items-center justify-center w-3 h-3 rounded-sm border ${
+                                item.isVeg ? "border-green-500" : "border-red-500"
+                              }`}
+                              aria-label={item.isVeg ? "Vegetarian" : "Non-vegetarian"}
+                            >
+                              <span
+                                className={`w-1 h-1 rounded-full ${
+                                  item.isVeg ? "bg-green-500" : "bg-red-500"
+                                }`}
+                              />
+                            </span>
                             {item.name}
                           </h3>
                         </Link>
@@ -156,14 +126,16 @@ export default function Cart() {
                         size="icon"
                         variant="ghost"
                         className="h-7 w-7 text-clinical-zinc hover:text-red-400 shrink-0"
-                        onClick={() => removeItem(item.id)}
+                        onClick={() => {
+                          removeItem(item.lineId);
+                          toast.success("Item removed from Nutrition Plan");
+                        }}
                         aria-label={`Remove ${item.name}`}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </Button>
                     </div>
 
-                    {/* Customizations */}
                     {item.customizations.length > 0 && (
                       <div className="flex flex-wrap gap-1">
                         {item.customizations.map((c) => (
@@ -174,7 +146,6 @@ export default function Cart() {
                       </div>
                     )}
 
-                    {/* Macro compact + quantity */}
                     <div className="flex items-end justify-between gap-3">
                       <MacroOverlay macros={item.macros} rdVerified={item.rdVerified} compact />
 
@@ -183,7 +154,7 @@ export default function Cart() {
                           size="icon"
                           variant="outline"
                           className="h-7 w-7 border-clinical-slate/30 text-clinical-zinc"
-                          onClick={() => updateQty(item.id, -1)}
+                          onClick={() => updateQty(item.lineId, -1)}
                           aria-label="Decrease quantity"
                         >
                           <Minus className="w-3 h-3" />
@@ -195,7 +166,7 @@ export default function Cart() {
                           size="icon"
                           variant="outline"
                           className="h-7 w-7 border-clinical-slate/30 text-clinical-zinc"
-                          onClick={() => updateQty(item.id, 1)}
+                          onClick={() => updateQty(item.lineId, 1)}
                           aria-label="Increase quantity"
                         >
                           <Plus className="w-3 h-3" />
@@ -203,9 +174,8 @@ export default function Cart() {
                       </div>
                     </div>
 
-                    {/* Price */}
                     <p className="tabular-nums text-sm font-bold text-clinical-gold text-right">
-                      {formatPrice(item.price * item.quantity)}
+                      {formatPrice(item.unitPrice * item.quantity)}
                     </p>
                   </div>
                 </div>
@@ -215,7 +185,6 @@ export default function Cart() {
         </div>
       </div>
 
-      {/* RIGHT: Order Summary */}
       <div className="space-y-4">
         <Card className="bg-clinical-surface border-clinical-slate/20 sticky top-20">
           <CardContent className="p-5 space-y-4">
@@ -226,7 +195,7 @@ export default function Cart() {
 
             <div className="space-y-2.5">
               <div className="flex justify-between text-xs">
-                <span className="text-clinical-zinc">Subtotal ({totalItems} items)</span>
+                <span className="text-clinical-zinc">Subtotal ({totalQuantity} items)</span>
                 <span className="tabular-nums text-white font-medium">{formatPrice(subtotal)}</span>
               </div>
               <div className="flex justify-between text-xs">

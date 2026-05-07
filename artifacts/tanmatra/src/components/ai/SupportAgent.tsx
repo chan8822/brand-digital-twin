@@ -22,7 +22,8 @@ export default function SupportAgentWidget() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "agent",
-      text: "Hello! I'm the Tanmatra Support Agent. I can check order status, help with riders, and check inventory. How can I help?",
+      text:
+        "Hello! I'm the Tanmatra Support Agent. I can help with order status, rider availability, menu inventory, and looking up allergens for a dish.\n\nFor changes to an existing order, cancellations, refunds, or severe-allergy questions, I'll route you straight to our care team.",
       timestamp: new Date().toLocaleTimeString(),
     },
   ]);
