@@ -1,0 +1,136 @@
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import MacroOverlay from "@/components/dish/MacroOverlay";
+import SegmentToggle from "@/components/layout/SegmentToggle";
+import { Link } from "react-router";
+import { Dna, Syringe, HeartPulse, ShieldCheck, AlertCircle } from "lucide-react";
+
+const FEATURED = [
+  { id: 3, name: "Keto Prime Ribeye", image: "/dishes/steak-keto.jpg", price: 62500, slug: "keto-ribeye", macros: { protein: 48, carbs: 8, fat: 38, fiber: 5, calories: 540 }, rdVerified: true, description: "Grass-fed ribeye with cauliflower puree. Ketogenic 75F/20P/5C macro split." },
+  { id: 4, name: "Miso Glazed Black Cod", image: "/dishes/miso-cod.jpg", price: 54500, slug: "miso-cod", macros: { protein: 32, carbs: 18, fat: 16, fiber: 4, calories: 360 }, rdVerified: true, description: "Anti-inflammatory black cod with bok choy and shiitake." },
+  { id: 1, name: "Grilled Atlantic Salmon", image: "/dishes/salmon-quinoa.jpg", price: 48500, slug: "grilled-salmon", macros: { protein: 34, carbs: 28, fat: 18, fiber: 6, calories: 420 }, rdVerified: true, description: "Omega-3 optimized for cardiovascular and cognitive protocols." },
+];
+
+const PILLARS = [
+  { icon: Syringe, title: "Condition-Specific", desc: "Formulated for diabetes, cardiovascular, renal, and post-surgical recovery protocols with precise nutrient restrictions." },
+  { icon: HeartPulse, title: "EHR Integration", desc: "Nutrition plans sync with patient electronic health records for real-time dietary adherence monitoring." },
+  { icon: Dna, title: "Evidence-Based", desc: "Every formulation is grounded in peer-reviewed clinical trials and ADA/ESC guidelines." },
+];
+
+function formatPrice(p: number) { return `Rs.${(p/100).toFixed(0)}`; }
+
+export default function Clinical() {
+  return (
+    <div className="min-h-screen bg-clinical-dark">
+      <SegmentToggle />
+
+      <section className="relative py-16 border-b border-clinical-slate/20">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+            <div className="space-y-5">
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-xl bg-clinical-gold/15 flex items-center justify-center border border-clinical-gold/25">
+                  <Dna className="w-5 h-5 text-clinical-gold" />
+                </div>
+                <Badge className="bg-clinical-gold/15 text-clinical-gold border-clinical-gold/30 text-[10px] tracking-widest uppercase">
+                  Clinical Protocol
+                </Badge>
+              </div>
+              <h1 className="text-clinical-h1 text-white">
+                Medical Nutrition <span className="text-clinical-gold">Therapy</span>
+              </h1>
+              <p className="text-sm text-clinical-zinc leading-relaxed max-w-md">
+                Therapeutic meals for diabetes management, cardiovascular health, ketogenic protocols,
+                and post-surgical recovery. Each plan integrates with patient electronic health records
+                and is overseen by board-certified clinical dietitians.
+              </p>
+              <div className="flex gap-3">
+                <div className="text-center">
+                  <p className="tabular-nums text-2xl font-bold text-clinical-gold">100%</p>
+                  <p className="text-clinical-label mt-0.5">RD Verified</p>
+                </div>
+                <div className="w-px bg-clinical-slate/30" />
+                <div className="text-center">
+                  <p className="tabular-nums text-2xl font-bold text-clinical-gold">&lt;15g</p>
+                  <p className="text-clinical-label mt-0.5">Net Carbs (Keto)</p>
+                </div>
+                <div className="w-px bg-clinical-slate/30" />
+                <div className="text-center">
+                  <p className="tabular-nums text-2xl font-bold text-clinical-gold">ADA</p>
+                  <p className="text-clinical-label mt-0.5">Compliant</p>
+                </div>
+              </div>
+            </div>
+            <div className="relative">
+              <img src="/dishes/steak-keto.jpg" alt="Clinical nutrition" className="rounded-2xl border border-clinical-gold/20 aspect-[4/3] object-cover" />
+              <div className="absolute -bottom-4 -left-4 bg-clinical-surface border border-clinical-gold/20 rounded-xl p-4 shadow-clinical max-w-[240px]">
+                <p className="text-[10px] text-clinical-gold font-medium uppercase tracking-wider mb-1">Clinical Outcome</p>
+                <p className="text-xs text-clinical-zinc">HbA1c reduction of 1.2% observed in diabetic patients after 12-week MNT adherence.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Disclaimer */}
+      <section className="py-4 border-b border-clinical-slate/20 bg-clinical-gold/5">
+        <div className="max-w-7xl mx-auto px-4 flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 text-clinical-gold shrink-0 mt-0.5" />
+          <p className="text-xs text-clinical-zinc leading-relaxed">
+            <strong className="text-clinical-gold">Medical Disclaimer:</strong> Clinical Protocol meals are designed as
+            adjuncts to medical treatment and should not replace prescribed therapies. Always consult your
+            physician or registered dietitian before beginning any therapeutic nutrition program.
+          </p>
+        </div>
+      </section>
+
+      <section className="py-12 border-b border-clinical-slate/20">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {PILLARS.map((p) => (
+              <Card key={p.title} className="bg-clinical-gold/5 border-clinical-gold/15">
+                <CardContent className="p-5 space-y-3">
+                  <div className="w-9 h-9 rounded-lg bg-clinical-gold/15 flex items-center justify-center border border-clinical-gold/25">
+                    <p.icon className="w-4 h-4 text-clinical-gold" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-white">{p.title}</h3>
+                  <p className="text-xs text-clinical-zinc leading-relaxed">{p.desc}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="py-16">
+        <div className="max-w-7xl mx-auto px-4 space-y-8">
+          <div>
+            <p className="text-clinical-label mb-2">Protocol Menu</p>
+            <h2 className="text-clinical-h2 text-white">Clinical Offerings</h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {FEATURED.map((meal) => (
+              <Link to={`/dish/${meal.slug}`} key={meal.id}>
+                <Card className="bg-clinical-surface border-clinical-slate/20 hover:border-clinical-gold/40 transition-all overflow-hidden group">
+                  <div className="relative aspect-[4/3] overflow-hidden">
+                    <img src={meal.image} alt={meal.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#050505]/80 via-transparent to-transparent" />
+                    <div className="absolute top-3 left-3 flex gap-1.5">
+                      {meal.rdVerified && <Badge className="bg-clinical-sage/80 text-white border-0 text-[9px]"><ShieldCheck className="w-2.5 h-2.5 mr-0.5" />RD</Badge>}
+                    </div>
+                    <div className="absolute top-3 right-3"><Badge className="bg-clinical-gold/90 text-[#050505] border-0 font-bold tabular-nums">{formatPrice(meal.price)}</Badge></div>
+                    <div className="absolute bottom-3 left-3"><MacroOverlay macros={meal.macros} compact /></div>
+                  </div>
+                  <CardContent className="p-4 space-y-1.5">
+                    <h3 className="text-sm font-semibold text-white group-hover:text-clinical-gold transition-colors">{meal.name}</h3>
+                    <p className="text-xs text-clinical-zinc line-clamp-2">{meal.description}</p>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
