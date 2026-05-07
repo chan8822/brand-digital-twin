@@ -308,6 +308,78 @@ const rdNotesSchema = z.object({
   joinUrl: z.string().url().max(2000).optional().nullable(),
 });
 
+// --- Directory ---
+// Server-side RD directory. Returns the canonical list of bookable RDs
+// with bio, languages, specialties, pricing, and office hours. Frontend
+// may render its own static metadata (avatar/copy) keyed by `slug`, but
+// the source of truth for who is bookable lives here.
+const RD_DIRECTORY: Array<{
+  slug: string;
+  name: string;
+  title: string;
+  credentials: string[];
+  bio: string;
+  yearsExperience: number;
+  languages: string[];
+  specialties: string[];
+  bookable: boolean;
+  pricing: { intro_15m: number; follow_up_30m: number; follow_up_45m: number };
+}> = [
+  {
+    slug: "rd-anjali-nair",
+    name: "Anjali Nair",
+    title: "Lead Registered Dietitian",
+    credentials: ["RD (India)", "MSc Clinical Nutrition", "CDE"],
+    bio: "Anjali leads our metabolic health desk and has spent the last decade tightening glycaemic control for adults with Type 2 diabetes, PCOS, and dyslipidaemia.",
+    yearsExperience: 12,
+    languages: ["English", "Hindi", "Malayalam"],
+    specialties: ["Type 2 diabetes", "PCOS", "Cardiometabolic", "Cholesterol"],
+    bookable: true,
+    pricing: { intro_15m: 0, follow_up_30m: 120000, follow_up_45m: 180000 },
+  },
+  {
+    slug: "rd-vikram-sethi",
+    name: "Vikram Sethi",
+    title: "Performance Dietitian",
+    credentials: ["RD", "ISAK Level 2", "CISSN"],
+    bio: "Vikram works with athletes and recreational lifters on body recomposition, periodised fuelling, and protein distribution that fits Indian household kitchens.",
+    yearsExperience: 9,
+    languages: ["English", "Hindi", "Punjabi"],
+    specialties: ["Sports nutrition", "Lean muscle", "Body recomposition"],
+    bookable: true,
+    pricing: { intro_15m: 0, follow_up_30m: 100000, follow_up_45m: 150000 },
+  },
+  {
+    slug: "rd-kavya-menon",
+    name: "Kavya Menon",
+    title: "Family & Gut-Health Dietitian",
+    credentials: ["RD", "MSc Nutrition & Dietetics", "Monash FODMAP-trained"],
+    bio: "Kavya plans meals for whole households — from school lunchboxes to senior renal-friendly trays — and runs our IBS / FODMAP elimination protocols.",
+    yearsExperience: 8,
+    languages: ["English", "Hindi", "Tamil", "Malayalam"],
+    specialties: [
+      "Family nutrition",
+      "Paediatric",
+      "Gut health / IBS",
+      "Senior wellness",
+    ],
+    bookable: true,
+    pricing: { intro_15m: 0, follow_up_30m: 90000, follow_up_45m: 135000 },
+  },
+];
+
+router.get("/rd/directory", async (_req: Request, res: Response) => {
+  // Attach office hours from the canonical loadHours() resolver so the
+  // directory always reflects rd_availability overrides if present.
+  const out = await Promise.all(
+    RD_DIRECTORY.map(async (rd) => ({
+      ...rd,
+      hours: await loadHours(rd.slug),
+    })),
+  );
+  res.json({ rds: out });
+});
+
 // --- Appointments ---
 
 router.get("/rd/appointments", async (req: Request, res: Response) => {
@@ -820,6 +892,23 @@ router.post("/rd/messages", async (req: Request, res: Response) => {
     }
     targetUserId = parsed.data.threadUserId;
   } else {
+    // Symmetric guard for user→RD: only users with at least one
+    // appointment (any status) with the RD may post messages. Prevents
+    // unsolicited inbound DMs to RDs from arbitrary signed-in users.
+    const link = await db
+      .select({ id: rdAppointmentsTable.id })
+      .from(rdAppointmentsTable)
+      .where(
+        and(
+          eq(rdAppointmentsTable.userId, userId),
+          eq(rdAppointmentsTable.rdSlug, parsed.data.rdSlug),
+        ),
+      )
+      .limit(1);
+    if (link.length === 0) {
+      res.status(403).json({ error: "book a session to start messaging" });
+      return;
+    }
     targetUserId = userId;
   }
   const [row] = await db
