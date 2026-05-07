@@ -82,7 +82,7 @@ router.get("/recipes/:slug", async (req: Request, res: Response) => {
   const [recipe] = await db
     .select()
     .from(recipesTable)
-    .where(eq(recipesTable.slug, req.params.slug))
+    .where(eq(recipesTable.slug, String(req.params["slug"] ?? "")))
     .limit(1);
   if (!recipe) {
     res.status(404).json({ error: "recipe not found" });

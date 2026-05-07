@@ -1,9 +1,14 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Link, useSearchParams } from "react-router";
-import { useOrders, type PastOrder } from "@/lib/ordersContext";
+import { useQueryClient } from "@tanstack/react-query";
+import { useDeliveryTimeline, useRecordDeliveryEvent } from "@/lib/queries";
+import { useOrders } from "@/lib/ordersContext";
+import { getSocket } from "@/lib/socket";
+import RiderMap from "@/components/track/RiderMap";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { formatPrice } from "@/lib/api/adapter";
 import {
@@ -20,7 +25,7 @@ import {
   ClipboardList,
 } from "lucide-react";
 
-const STEPS: Array<{ status: PastOrder["status"]; label: string; icon: typeof CheckCircle2 }> = [
+const STEPS = [
   { status: "placed", label: "Placed", icon: CheckCircle2 },
   { status: "preparing", label: "Preparing", icon: ChefHat },
   { status: "ready", label: "Ready", icon: Package },
@@ -28,7 +33,18 @@ const STEPS: Array<{ status: PastOrder["status"]; label: string; icon: typeof Ch
   { status: "delivered", label: "Delivered", icon: CheckCircle2 },
 ];
 
-function statusToStepIndex(status: PastOrder["status"]): number {
+const EVENT_LABELS: Record<string, string> = {
+  rider_assigned: "Rider assigned",
+  rider_en_route_to_kitchen: "Rider heading to kitchen",
+  rider_at_kitchen: "Rider at kitchen",
+  order_picked_up: "Order picked up",
+  rider_en_route_to_customer: "Rider heading to you",
+  rider_at_customer: "Rider at your location",
+  delivered: "Delivered",
+  delivery_failed: "Delivery failed",
+};
+
+function statusToStepIndex(status: string): number {
   switch (status) {
     case "placed":
       return 0;
@@ -42,14 +58,12 @@ function statusToStepIndex(status: PastOrder["status"]): number {
       return 4;
     case "cancelled":
       return -1;
+    default:
+      return 0;
   }
 }
 
 function formatAbsoluteTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-}
-
-function formatTimelineStamp(iso: string): string {
   return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
@@ -61,14 +75,60 @@ export default function Track() {
   const { orders, latest, getOrder, updateStatus } = useOrders();
   const order = orderIdParam ? getOrder(orderIdParam) : latest();
 
+  const numericOrderId = useMemo(() => {
+    if (!order) return 0;
+    const m = order.orderId.match(/(\d+)$/);
+    return m ? Number(m[1]) : 1;
+  }, [order]);
+
+  const { data: timeline, isLoading } = useDeliveryTimeline(numericOrderId || 0);
+  const recordEvent = useRecordDeliveryEvent();
+  const qc = useQueryClient();
+
   const currentStepIndex = order ? statusToStepIndex(order.status) : -1;
 
-  // Auto-advance "placed" → "preparing" once the user has had a moment to read the page
+  // Subscribe to live delivery events for this order; invalidate the timeline cache
+  // on any push from the server (replaces the previous polling interval).
   useEffect(() => {
-    if (!order || order.status !== "placed") return;
-    const t = setTimeout(() => updateStatus(order.orderId, "preparing"), 6000);
-    return () => clearTimeout(t);
-  }, [order, updateStatus]);
+    if (!numericOrderId) return;
+    const socket = getSocket();
+    socket.emit("subscribe:order", numericOrderId);
+    const onEvent = () => {
+      qc.invalidateQueries({ queryKey: ["delivery", "timeline", numericOrderId] });
+    };
+    socket.on("delivery:event", onEvent);
+    return () => {
+      socket.off("delivery:event", onEvent);
+      socket.emit("unsubscribe:order", numericOrderId);
+    };
+  }, [numericOrderId, qc]);
+
+  // Auto-advance "placed" → "preparing" via the server-side BullMQ pipeline (falls back to a
+  // local optimistic update if the queue isn't accepting jobs — e.g. REDIS_URL unset).
+  useEffect(() => {
+    if (!order || order.status !== "placed" || !numericOrderId) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const base = `${import.meta.env.BASE_URL.replace(/\/$/, "")}/api`;
+        const r = await fetch(`${base}/delivery/schedule-advance`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orderId: numericOrderId, step: "preparing", delayMs: 6000 }),
+        });
+        if (!r.ok || !cancelled) {
+          // Optimistic local fallback so the user still sees progress in dev.
+          setTimeout(() => !cancelled && updateStatus(order.orderId, "preparing"), 6000);
+        }
+      } catch {
+        setTimeout(() => !cancelled && updateStatus(order.orderId, "preparing"), 6000);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [order, updateStatus, numericOrderId]);
 
   if (orders.length === 0) {
     return (
@@ -100,33 +160,22 @@ export default function Track() {
     );
   }
 
-  // Derive a deterministic timeline from the order's current status + placedAt/etaAt.
-  // This avoids fetching unrelated server-side delivery events for an unrelated DB id.
-  const timelineEntries: Array<{ label: string; stamp: string; done: boolean }> = (() => {
-    const placed = new Date(order.placedAt).getTime();
-    const eta = new Date(order.etaAt).getTime();
-    const span = Math.max(eta - placed, 5 * 60 * 1000);
-    const stages: Array<{ status: PastOrder["status"]; label: string; offset: number }> = [
-      { status: "placed", label: "Order placed & payment confirmed", offset: 0 },
-      { status: "preparing", label: "Kitchen started preparing", offset: 0.15 },
-      { status: "ready", label: "Order ready for pickup", offset: 0.55 },
-      { status: "out_for_delivery", label: "Rider picked up & en route", offset: 0.7 },
-      { status: "delivered", label: "Delivered", offset: 1 },
-    ];
-    return stages.map((s) => ({
-      label: s.label,
-      stamp: new Date(placed + span * s.offset).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      done: statusToStepIndex(s.status) <= currentStepIndex,
-    }));
-  })();
+  const handleEvent = (event: string) => {
+    recordEvent.mutate(
+      { orderId: numericOrderId, riderId: 1, event },
+      {
+        onSuccess: () => {
+          toast.info(EVENT_LABELS[event] ?? event);
+          if (event === "delivered") updateStatus(order.orderId, "delivered");
+          else if (event === "order_picked_up") updateStatus(order.orderId, "out_for_delivery");
+          else if (event === "rider_at_kitchen") updateStatus(order.orderId, "ready");
+        },
+      },
+    );
+  };
 
   const showRiderCard =
     order.status === "ready" || order.status === "out_for_delivery" || order.status === "delivered";
-
-  const advanceTo = (status: PastOrder["status"]) => {
-    updateStatus(order.orderId, status);
-    toast.info(`Status → ${status.replace(/_/g, " ")}`);
-  };
 
   return (
     <div className="max-w-2xl mx-auto p-4 space-y-5 animate-in fade-in duration-500">
@@ -204,6 +253,21 @@ export default function Track() {
         </CardContent>
       </Card>
 
+      {/* Live rider map — visible once a rider is on the move. */}
+      {showRiderCard && numericOrderId > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Navigation className="w-4 h-4 text-clinical-gold" />
+              Live Rider Location
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-3">
+            <RiderMap orderId={numericOrderId} />
+          </CardContent>
+        </Card>
+      )}
+
       {/* Rider card — only after ready */}
       {showRiderCard ? (
         <Card className="border-l-4 border-l-[#6BA3C8]">
@@ -269,7 +333,7 @@ export default function Track() {
         </CardContent>
       </Card>
 
-      {/* Derived timeline (from this order only — never from another order's events) */}
+      {/* Timeline (server events) */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-sm flex items-center gap-2">
@@ -278,30 +342,40 @@ export default function Track() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {timelineEntries.map((entry, idx) => (
-              <div key={idx} className="flex gap-3 items-start">
-                <div className="flex flex-col items-center pt-1">
-                  <div
-                    className={`w-2.5 h-2.5 rounded-full ${
-                      entry.done ? "bg-clinical-gold" : "bg-muted"
-                    }`}
-                  />
-                  {idx < timelineEntries.length - 1 && (
-                    <div className={`w-0.5 flex-1 mt-1 min-h-[18px] ${entry.done ? "bg-clinical-gold/40" : "bg-muted"}`} />
-                  )}
+          {isLoading ? (
+            <div className="space-y-3">
+              {[...Array(3)].map((_, i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))}
+            </div>
+          ) : timeline && timeline.length > 0 ? (
+            <div className="space-y-4">
+              {timeline.map((event, idx) => (
+                <div key={idx} className="flex gap-3">
+                  <div className="flex flex-col items-center">
+                    <div
+                      className={`w-2.5 h-2.5 rounded-full ${
+                        event.event === "delivered" ? "bg-green-500" : "bg-[#D4AF37]"
+                      }`}
+                    />
+                    {idx < timeline.length - 1 && <div className="w-0.5 flex-1 bg-muted mt-1" />}
+                  </div>
+                  <div className="pb-4">
+                    <p className="text-sm font-medium">{EVENT_LABELS[event.event] ?? event.event}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {event.createdAt
+                        ? new Date(event.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                        : "Just now"}
+                    </p>
+                  </div>
                 </div>
-                <div className="pb-2">
-                  <p className={`text-sm ${entry.done ? "text-white font-medium" : "text-clinical-zinc"}`}>
-                    {entry.label}
-                  </p>
-                  <p className="text-[10px] text-clinical-zinc tabular-nums">
-                    {entry.done ? "Completed at" : "Expected at"} {entry.stamp}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground italic">
+              Timeline events will appear here as your order progresses.
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -320,15 +394,6 @@ export default function Track() {
               <div className="flex-1 min-w-0">
                 <p className="text-white truncate">{item.name}</p>
                 <p className="text-[10px] text-clinical-zinc">Qty: {item.quantity}</p>
-                {item.customizations.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {item.customizations.map((c) => (
-                      <span key={c} className="text-[9px] px-1 py-0.5 rounded bg-clinical-slate/20 text-clinical-zinc">
-                        {c}
-                      </span>
-                    ))}
-                  </div>
-                )}
               </div>
               <span className="tabular-nums text-clinical-gold font-medium">
                 {formatPrice(item.unitPrice * item.quantity)}
@@ -338,7 +403,7 @@ export default function Track() {
         </CardContent>
       </Card>
 
-      {/* Dev panel — gated behind ?dev=1, advances LOCAL order state only */}
+      {/* Dev panel — gated behind ?dev=1 */}
       {showDevPanel && (
         <Card className="border-dashed border-orange-400/40 bg-orange-500/5">
           <CardHeader className="pb-2">
@@ -350,15 +415,22 @@ export default function Track() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
-              {(["preparing", "ready", "out_for_delivery", "delivered"] as PastOrder["status"][]).map((s) => (
+              {[
+                "rider_en_route_to_kitchen",
+                "rider_at_kitchen",
+                "order_picked_up",
+                "rider_en_route_to_customer",
+                "delivered",
+              ].map((evt) => (
                 <Button
-                  key={s}
+                  key={evt}
                   size="sm"
                   variant="outline"
-                  onClick={() => advanceTo(s)}
+                  onClick={() => handleEvent(evt)}
+                  disabled={recordEvent.isPending}
                   className="text-xs border-orange-400/30 text-orange-200 hover:bg-orange-500/10"
                 >
-                  Set: {s.replace(/_/g, " ")}
+                  {EVENT_LABELS[evt]}
                 </Button>
               ))}
             </div>

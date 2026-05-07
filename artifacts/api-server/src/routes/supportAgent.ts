@@ -1,9 +1,22 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { ai } from "@workspace/integrations-gemini-ai";
+import { generateText, stepCountIs, tool, type ModelMessage } from "ai";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { db, ordersTable, ridersTable, deliveryEventsTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
+import { z } from "zod/v4";
 
 const router: IRouter = Router();
+
+const apiKey = process.env["AI_INTEGRATIONS_GEMINI_API_KEY"];
+const baseURL = process.env["AI_INTEGRATIONS_GEMINI_BASE_URL"];
+if (!apiKey || !baseURL) {
+  throw new Error(
+    "AI_INTEGRATIONS_GEMINI_API_KEY and AI_INTEGRATIONS_GEMINI_BASE_URL must be set",
+  );
+}
+
+const google = createGoogleGenerativeAI({ apiKey, baseURL });
+const model = google("gemini-2.5-flash");
 
 const SYSTEM_INSTRUCTION = `You are the Tanmatra Support Agent for a clinical-grade nutrition delivery platform.
 
@@ -47,51 +60,6 @@ const DISH_ALLERGENS: Record<string, { name: string; allergens: string[] }> = {
   "pesto-pasta-veg": { name: "Pesto Pasta (Veg)", allergens: ["Gluten"] },
 };
 
-const tools: any = [
-  {
-    functionDeclarations: [
-      {
-        name: "get_order_status",
-        description: "Look up the current status and timeline of a customer order by id. Read-only.",
-        parameters: {
-          type: "object",
-          properties: { orderId: { type: "number", description: "Numeric order id" } },
-          required: ["orderId"],
-        },
-      },
-      {
-        name: "list_active_riders",
-        description: "List currently online delivery riders (max 10). Read-only.",
-        parameters: { type: "object", properties: {} },
-      },
-      {
-        name: "check_inventory",
-        description: "Check whether a menu item is available right now. Read-only.",
-        parameters: {
-          type: "object",
-          properties: { itemName: { type: "string" } },
-          required: ["itemName"],
-        },
-      },
-      {
-        name: "get_dish_allergens",
-        description:
-          "Return the official allergen list for a dish by slug or name. Read-only. The agent MUST append a shared-kitchen disclaimer when responding.",
-        parameters: {
-          type: "object",
-          properties: {
-            dish: {
-              type: "string",
-              description: "Dish slug (e.g., 'grilled-salmon') or display name",
-            },
-          },
-          required: ["dish"],
-        },
-      },
-    ],
-  },
-];
-
 const STATIC_INVENTORY: Record<string, boolean> = {
   "activated charcoal smoothie": true,
   "aglio olio - veg": true,
@@ -113,68 +81,78 @@ function lookupDishAllergens(dish: string): { name: string; allergens: string[] 
   for (const v of Object.values(DISH_ALLERGENS)) {
     if (v.name.toLowerCase() === key) return v;
   }
-  // Loose match: pick the first dish whose name contains the query
   for (const v of Object.values(DISH_ALLERGENS)) {
     if (v.name.toLowerCase().includes(key) || key.includes(v.name.toLowerCase())) return v;
   }
   return null;
 }
 
-async function executeTool(name: string, args: Record<string, unknown>) {
-  try {
-    if (name === "get_order_status") {
-      const orderId = Number(args.orderId);
-      if (!Number.isFinite(orderId)) return { success: false, error: "Invalid orderId" };
+const tools = {
+  get_order_status: tool({
+    description: "Look up the current status and timeline of a customer order by id. Read-only.",
+    inputSchema: z.object({ orderId: z.number().int().positive() }),
+    execute: async ({ orderId }) => {
       const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, orderId)).limit(1);
-      if (!order) return { success: false, error: "Order not found" };
+      if (!order) return { success: false as const, error: "Order not found" };
       const events = await db
         .select()
         .from(deliveryEventsTable)
         .where(eq(deliveryEventsTable.orderId, orderId))
         .orderBy(desc(deliveryEventsTable.createdAt))
         .limit(10);
-      return { success: true, order: { id: order.id, status: order.status, total: order.totalPaise }, events };
-    }
-    if (name === "list_active_riders") {
+      return {
+        success: true as const,
+        order: { id: order.id, status: order.status, total: order.totalPaise },
+        events,
+      };
+    },
+  }),
+  list_active_riders: tool({
+    description: "List currently online delivery riders (max 10). Read-only.",
+    inputSchema: z.object({}),
+    execute: async () => {
       const riders = await db
         .select()
         .from(ridersTable)
         .where(eq(ridersTable.status, "online"))
         .limit(10);
-      return { success: true, riders };
-    }
-    if (name === "check_inventory") {
-      const key = String(args.itemName ?? "").toLowerCase().trim();
-      const available = STATIC_INVENTORY[key];
-      return { success: true, itemName: args.itemName, available: available ?? true };
-    }
-    if (name === "get_dish_allergens") {
-      const found = lookupDishAllergens(String(args.dish ?? ""));
+      return { success: true as const, riders };
+    },
+  }),
+  check_inventory: tool({
+    description: "Check whether a menu item is available right now. Read-only.",
+    inputSchema: z.object({ itemName: z.string() }),
+    execute: async ({ itemName }) => {
+      const key = itemName.toLowerCase().trim();
+      return { success: true as const, itemName, available: STATIC_INVENTORY[key] ?? true };
+    },
+  }),
+  get_dish_allergens: tool({
+    description:
+      "Return the official allergen list for a dish by slug or name. Read-only. The agent MUST append a shared-kitchen disclaimer when responding.",
+    inputSchema: z.object({ dish: z.string() }),
+    execute: async ({ dish }) => {
+      const found = lookupDishAllergens(dish);
       if (!found) {
         return {
-          success: false,
-          error:
-            "Dish not found in allergen index. Refuse and escalate — do not guess allergens.",
+          success: false as const,
+          error: "Dish not found in allergen index. Refuse and escalate — do not guess allergens.",
         };
       }
       return {
-        success: true,
+        success: true as const,
         dish: found.name,
         allergens: found.allergens,
         disclaimer:
           "Shared-kitchen environment. Cross-contamination with fish, dairy, soy, peanuts, tree nuts, sesame, and gluten cannot be ruled out. For severe allergies, the agent must instruct the customer to call care before ordering.",
       };
-    }
-    return { success: false, error: `Unknown tool ${name}` };
-  } catch (err) {
-    return { success: false, error: (err as Error).message };
-  }
-}
+    },
+  }),
+};
 
 interface ChatTurn { role: "user" | "agent"; text: string }
 interface ChatBody { message: string; history?: ChatTurn[] }
 
-// Hard guardrail: detect modify / cancel / refund intents and short-circuit the LLM.
 const REFUSAL_PATTERNS: Array<{ re: RegExp; reason: string }> = [
   { re: /\b(cancel|cancell?ation)\b/i, reason: "cancel" },
   { re: /\b(refund|money back|chargeback)\b/i, reason: "refund" },
@@ -202,7 +180,6 @@ router.post("/support-agent/chat", async (req: Request, res: Response) => {
 
   const message = body.message.trim();
 
-  // 1) Hard refuse modify / cancel / refund intents.
   const refusalMatch = REFUSAL_PATTERNS.find((p) => p.re.test(message));
   if (refusalMatch) {
     res.json({
@@ -214,7 +191,6 @@ router.post("/support-agent/chat", async (req: Request, res: Response) => {
     return;
   }
 
-  // 2) Severe-allergy escalation.
   if (SEVERE_ALLERGY_PATTERNS.some((re) => re.test(message))) {
     res.json({
       text:
@@ -227,48 +203,36 @@ router.post("/support-agent/chat", async (req: Request, res: Response) => {
   }
 
   try {
-    const contents = [
-      ...((body.history ?? []).map((m) => ({
-        role: m.role === "user" ? "user" : "model",
-        parts: [{ text: m.text }],
+    const messages: ModelMessage[] = [
+      ...((body.history ?? []).map((m): ModelMessage => ({
+        role: m.role === "user" ? "user" : "assistant",
+        content: m.text,
       }))),
-      { role: "user", parts: [{ text: message }] },
+      { role: "user", content: message },
     ];
 
-    const toolCalls: Array<{ name: string; args?: unknown; result?: unknown }> = [];
-    let escalated = false;
-
-    let response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents,
-      config: { systemInstruction: SYSTEM_INSTRUCTION, tools },
+    const result = await generateText({
+      model,
+      system: SYSTEM_INSTRUCTION,
+      messages,
+      tools,
+      stopWhen: stepCountIs(4),
     });
 
-    for (let iter = 0; iter < 3; iter++) {
-      const fnCalls = response.functionCalls ?? [];
-      if (fnCalls.length === 0) break;
-
-      const toolResponseParts: Array<{ functionResponse: { name: string; response: Record<string, unknown> } }> = [];
-      for (const call of fnCalls) {
-        const result = await executeTool(call.name ?? "", (call.args as Record<string, unknown>) ?? {});
-        toolCalls.push({ name: call.name ?? "", args: call.args, result });
-        toolResponseParts.push({
-          functionResponse: { name: call.name ?? "", response: result as Record<string, unknown> },
+    const toolCalls: Array<{ name: string; args?: unknown; result?: unknown }> = [];
+    for (const step of result.steps) {
+      for (const tc of step.toolCalls) {
+        const matchingResult = step.toolResults.find((r) => r.toolCallId === tc.toolCallId);
+        toolCalls.push({
+          name: tc.toolName,
+          args: tc.input,
+          result: matchingResult ? (matchingResult as unknown as { output: unknown }).output : undefined,
         });
       }
-
-      contents.push({ role: "model", parts: response.candidates?.[0]?.content?.parts ?? [] } as never);
-      contents.push({ role: "user", parts: toolResponseParts } as never);
-
-      response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents,
-        config: { systemInstruction: SYSTEM_INSTRUCTION, tools },
-      });
     }
 
-    const text = response.text ?? "I'm not sure how to help with that.";
-    if (/escalate|human|specialist|team|care team/i.test(text)) escalated = true;
+    const text = result.text || "I'm not sure how to help with that.";
+    const escalated = /escalate|human|specialist|care team/i.test(text);
 
     res.json({ text, toolCalls, escalated });
   } catch (err) {

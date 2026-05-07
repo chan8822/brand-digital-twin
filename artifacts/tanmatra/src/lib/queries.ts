@@ -54,7 +54,7 @@ export function useDeliveryTimeline(orderId: number) {
     queryKey: ["delivery", "timeline", orderId],
     queryFn: () => api<DeliveryEvent[]>(`/delivery/${orderId}/timeline`),
     enabled: !!orderId,
-    refetchInterval: 5000,
+    // Updates pushed via Socket.IO; React Query cache is invalidated on `delivery:event`.
   });
 }
 

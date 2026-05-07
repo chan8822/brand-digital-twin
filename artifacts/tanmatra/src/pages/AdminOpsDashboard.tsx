@@ -16,6 +16,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { formatCurrency } from "@/lib/utils";
+import DecisionsTable from "@/components/ops/DecisionsTable";
 import {
   Send,
   Bot,
@@ -364,27 +365,15 @@ export default function AdminOpsDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {actionHistory.length === 0 ? (
-              <p className="text-sm text-muted-foreground italic">No decisions yet.</p>
-            ) : (
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                {actionHistory.slice(-10).map((h, i) => (
-                  <div key={i} className="flex items-center justify-between text-xs p-2 rounded-md bg-muted/30">
-                    <span className="font-medium capitalize">{h.actionType.replace("_", " ")}</span>
-                    <Badge
-                      variant="outline"
-                      className={`text-[10px] ${
-                        h.approved
-                          ? "border-green-500/30 text-green-400"
-                          : "border-red-500/30 text-red-400"
-                      }`}
-                    >
-                      {h.approved ? "Approved" : "Rejected"}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            )}
+            <DecisionsTable
+              rows={actionHistory.map((h) => ({
+                id: h.id,
+                actionType: h.actionType,
+                riskScore: h.riskScore,
+                approved: h.approved,
+                decidedAt: h.decidedAt,
+              }))}
+            />
           </CardContent>
         </Card>
 
