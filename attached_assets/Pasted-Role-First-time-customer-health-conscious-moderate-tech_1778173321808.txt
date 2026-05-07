@@ -1,0 +1,135 @@
+Role: First-time customer, health-conscious, moderate tech literacy, ordering on mobile during a 20-minute lunch break.
+BLOCK A — FIRST CONTACT & MENTAL MODEL (5 min)
+A1. The 5-Second Test
+Land on the homepage with fresh eyes. Cover the rest of the page. In 5 seconds, answer:
+
+What does this app sell?
+Who is it for?
+Why should I trust it over Swiggy?
+Now scroll. Did the page confirm or contradict your first impression? Note the exact element that either built or broke trust first.
+
+A2. Value Proposition Stress Test
+"No Maida · No Refined Sugar · High Protein" — these claims appear in the hero. Now navigate the menu.
+
+Pick any 3 random items. Do their names, descriptions, or tags substantiate those claims?
+If you were a diabetic customer, could you confirm any item is safe based only on what the app shows? What's missing — macros table? Glycaemic index? Allergen list?
+Does "For Healthy Soul" feel earned by the time you've browsed 2 minutes, or does it feel like a tagline the food doesn't back up?
+A3. Competitive Context
+You just closed Swiggy, where you saw 200+ restaurants. Why would you stay here?
+
+Is there a clear answer visible without scrolling?
+Does the app give you a reason to skip restaurant variety for a single-brand experience?
+BLOCK B — MENU EXPLORATION (10 min)
+B1. Diet Confidence Test
+You are a strict vegetarian. Navigate the full menu.
+
+Is it possible to accidentally add a non-veg item without noticing?
+The green/red dot system — does it hold up under speed? Tap Veg filter, then scroll fast. Do any ambiguous items appear?
+Now switch to Non-Veg. Does the filter update instantly and completely?
+B2. Decision Fatigue Map
+Navigate every category in order (Healthy Meals → Desserts).
+
+At which category do you stop reading descriptions carefully?
+Which category has the weakest item descriptions?
+After 8 categories, can you remember what distinguished Healthy Meals from Meal Boxes?
+Is there a natural "this is enough, I'll order now" moment, or does the app exhaust you?
+B3. The Search Trap
+Type "chicken" in the search bar.
+
+How many results appear? Are they ordered by relevance or arbitrarily?
+Type "tikka" — do you get both the wrap and the bowl?
+Type "protien" (misspelled) — what happens?
+Clear the search and switch to a category. Does the diet filter state persist, or reset?
+B4. Price Anchoring Check
+Without looking at your cart total, estimate what you'd spend on a satisfying lunch (wrap + drink).
+
+Now actually add those items. Was your mental estimate within ₹50?
+Is there a price-to-value signal on the menu (e.g., calorie count, portion size) that would have helped you estimate?
+The ₹150 Quinoa Khichdi vs ₹359 Chicken Tikka Wrap — without descriptions, would you assume quality difference or portion difference?
+BLOCK C — DISH DETAIL & CUSTOMIZATION (10 min)
+C1. Customization Completeness Test
+Open Chicken Tikka Wrap. Make these changes:
+
+Switch sauce to Peri Peri
+Upgrade to Multigrain Wrap
+Toggle Subscribe & Save on
+Change quantity to 3
+Now look at the sticky bottom bar price. Does it accurately reflect: base + ₹10 upgrade + 15% discount × 3?
+
+If the math is wrong, note exactly which step broke it.
+What happens if you toggle Subscribe off and back on — does the price restore correctly?
+C2. Subscription Trust Test
+"Subscribe & Save 15%" — before toggling it:
+
+Do you understand what you're committing to?
+Is the delivery frequency stated anywhere visible without toggling?
+Is there a cancellation promise before you commit?
+Toggle it on, add to cart, go to checkout. Where does the subscription show up? Can you cancel from checkout?
+C3. Pairing Intelligence Test
+Open any dish. Look at "Pairs well with."
+
+Are the pairings nutritionally logical (high protein meal + protein smoothie is redundant)?
+Click a pairing item. Does the back navigation work correctly and land you back where you'd expect?
+If you add both the main dish and its pairing to cart, does the cart total calculate correctly?
+C4. The Empty State
+Navigate to a category with a non-veg filter active, then find a category that is 100% non-veg items and switch to Veg filter.
+
+Does the app tell you there are no results, or does it just show a blank list?
+Is there a recovery action (e.g., "Clear filter" or "Show all") offered?
+BLOCK D — CART & CHECKOUT STRESS TEST (10 min)
+D1. Cart Integrity Test
+Add 5 different items across 3 categories. Then:
+
+Increase item 2 to quantity 4
+Remove item 4
+Add item 4 back from the cart page (you can't — can you? What does the app let you do?)
+Navigate away to the homepage and come back
+Are all quantities and items exactly as you left them? Does the subtotal and delivery fee update live?
+
+D2. Free Delivery Threshold Manipulation
+Add items totalling ₹440 (under the ₹499 free delivery threshold).
+
+Is the gap (₹59 to free delivery) displayed prominently?
+Does the app suggest specific items that would close the gap?
+Now add an item that brings you to exactly ₹499. Does the delivery fee drop to zero instantly?
+Remove that item. Does the ₹49 fee return?
+D3. Checkout Abandonment Points
+Go through checkout step by step and note every moment where you feel uncertain enough to quit:
+
+Is there a point where you don't trust the address selection?
+Does the rider tip feel pressured or optional?
+Is "Razorpay Secure Checkout" enough to make you comfortable entering payment info?
+At what exact screen would a first-time user most likely close the app?
+D4. The Phone Number Gap
+At address selection — none of the addresses list your phone number visibly. How does the rider contact you? Is that explained anywhere before you pay?
+
+BLOCK E — POST-ORDER & SUPPORT (5 min)
+E1. Track Page Disorientation
+You just paid. The Track page shows order #TAN-202605-8843.
+
+Is this the order you just placed? How do you know?
+The ETA shows 25 min. What time did you place the order? Is the absolute delivery time shown anywhere?
+Click "Next Status →" twice. Does the rider card appear at the right moment? Is it the right moment?
+What happens if you refresh the page — does the simulated status persist or reset?
+E2. Support Agent Trust Test
+Open the chat widget and ask:
+
+"I just placed order #8843 — can you change the sauce to BBQ?"
+Wait for the reply. Is it accurate, helpful, or a brush-off?
+Ask: "I'm allergic to peanuts. Is the Peri Peri sauce safe?"
+Ask: "I want to cancel my order immediately."
+Does the agent ever tell you something that could be wrong but sounds confident? That's a critical failure mode.
+
+E3. Orders Page Completeness
+Navigate to Orders (header nav).
+
+Can you reorder your last meal in two taps?
+Is there a way to see what customizations were applied to past orders?
+If you want to dispute an order — wrong item delivered — what do you do from this page?
+END USER AUDIT — SCORING RUBRIC
+Rate each block 1–5 where:
+
+5 = Frictionless, builds confidence
+3 = Works but leaves questions
+1 = Confusing or would cause abandonment
+Note your top 3 "fix this first" moments.
