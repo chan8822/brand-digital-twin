@@ -63,6 +63,10 @@ const DELIVERY_BADGE: Record<SubscriptionDelivery["status"], { label: string; cl
     label: "Upcoming",
     cls: "bg-clinical-gold/15 text-clinical-gold border-clinical-gold/40",
   },
+  paused: {
+    label: "Paused",
+    cls: "bg-clinical-zinc/15 text-clinical-zinc border-clinical-zinc/40",
+  },
   skipped: {
     label: "Skipped",
     cls: "bg-orange-500/15 text-orange-300 border-orange-500/40",

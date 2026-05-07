@@ -4,7 +4,8 @@ export type DeliveryStatus =
   | "upcoming"
   | "skipped"
   | "delivered"
-  | "cancelled";
+  | "cancelled"
+  | "paused";
 
 export interface SubscriptionItem {
   slug: string;
