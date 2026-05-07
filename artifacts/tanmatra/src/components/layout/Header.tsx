@@ -7,6 +7,7 @@ import {
   MapPin,
   Package,
   ShoppingCart,
+  CalendarClock,
   Menu as MenuIcon,
   X,
 } from "lucide-react";
@@ -25,6 +26,7 @@ export default function Header() {
     { path: "/", label: "Home", icon: Home },
     { path: "/menu", label: "Menu", icon: Utensils },
     { path: "/orders", label: "Orders", icon: Package },
+    { path: "/subscriptions", label: "Plans", icon: CalendarClock },
     { path: "/track", label: "Track", icon: MapPin },
   ];
 
