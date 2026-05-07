@@ -332,6 +332,10 @@ router.post(
       res.status(404).json({ error: "not found" });
       return;
     }
+    if (sub.status !== "paused") {
+      res.status(409).json({ error: "subscription is not paused" });
+      return;
+    }
     const [updated] = await db
       .update(subscriptionsTable)
       .set({ status: "active", pausedAt: null })
@@ -351,6 +355,10 @@ router.post(
     const sub = await loadSubscriptionForUser(subId, userId);
     if (!sub) {
       res.status(404).json({ error: "not found" });
+      return;
+    }
+    if (sub.status === "cancelled") {
+      res.status(409).json({ error: "subscription already cancelled" });
       return;
     }
     const [updated] = await db
