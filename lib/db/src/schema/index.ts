@@ -12,3 +12,4 @@ export * from "./rdAdvisory";
 export * from "./bundles";
 export * from "./groupOrders";
 export * from "./wellness";
+export * from "./aiRuns";

@@ -11,6 +11,7 @@ import rdAdvisoryRouter from "./rdAdvisory";
 import bundlesRouter from "./bundles";
 import groupOrdersRouter from "./groupOrders";
 import wellnessRouter from "./wellness";
+import aiRunsRouter from "./aiRuns";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(rdAdvisoryRouter);
 router.use(bundlesRouter);
 router.use(groupOrdersRouter);
 router.use(wellnessRouter);
+router.use(aiRunsRouter);
 
 export default router;
