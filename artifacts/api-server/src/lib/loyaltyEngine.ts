@@ -365,16 +365,20 @@ export interface FinalizeOrderAddress {
   phone?: string | null;
 }
 
+export const PREORDER_DISCOUNT_BPS = 500; // 5% off scheduled orders
+
 export async function finalizeOrder(args: {
   userId: string;
   orderId: string;
   items: FinalizeOrderItem[];
   address?: FinalizeOrderAddress;
   applyCreditsPaise?: number;
+  scheduledFor?: Date | null;
 }): Promise<{
   orderId: string;
   serverOrderId: number;
   grossPaise: number;
+  preorderDiscountPaise: number;
   redeemedPaise: number;
   finalPaise: number;
   balancePaise: number;
@@ -400,6 +404,15 @@ export async function finalizeOrder(args: {
   if (grossPaise <= 0) {
     throw new Error("order total must be positive");
   }
+  // Pre-order discount: 5% off the meal subtotal when scheduled for the
+  // future. Floored to whole paise; never negative.
+  const isScheduled =
+    args.scheduledFor instanceof Date &&
+    args.scheduledFor.getTime() > Date.now();
+  const preorderDiscountPaise = isScheduled
+    ? Math.floor((grossPaise * PREORDER_DISCOUNT_BPS) / 10_000)
+    : 0;
+  const discountedGross = grossPaise - preorderDiscountPaise;
   const requested = Math.max(0, Math.floor(args.applyCreditsPaise ?? 0));
   return db.transaction(async (tx) => {
     // 1. Persist a real server-side order row, idempotent on
@@ -411,13 +424,14 @@ export async function finalizeOrder(args: {
         userId: args.userId,
         externalOrderId: args.orderId,
         status: "placed",
-        totalPaise: grossPaise,
+        totalPaise: discountedGross,
         items: validatedItems,
         addressLabel: args.address?.label ?? null,
         addressLine: args.address?.line ?? null,
         city: args.address?.city ?? null,
         pincode: args.address?.pincode ?? null,
         phone: args.address?.phone ?? null,
+        scheduledFor: isScheduled ? args.scheduledFor! : null,
       })
       .onConflictDoNothing({
         target: [ordersTable.userId, ordersTable.externalOrderId],
@@ -447,9 +461,9 @@ export async function finalizeOrder(args: {
       .values({
         userId: args.userId,
         orderId: args.orderId,
-        grossPaise,
+        grossPaise: discountedGross,
         redeemedPaise: 0,
-        finalPaise: grossPaise,
+        finalPaise: discountedGross,
       })
       .onConflictDoNothing({
         target: [orderClaimsTable.userId, orderClaimsTable.orderId],
@@ -471,9 +485,10 @@ export async function finalizeOrder(args: {
       return {
         orderId: args.orderId,
         serverOrderId,
-        grossPaise: existing?.grossPaise ?? grossPaise,
+        grossPaise: existing?.grossPaise ?? discountedGross,
+        preorderDiscountPaise,
         redeemedPaise: existing?.redeemedPaise ?? 0,
-        finalPaise: existing?.finalPaise ?? grossPaise,
+        finalPaise: existing?.finalPaise ?? discountedGross,
         balancePaise: balance,
         duplicate: true,
         referral: {
@@ -490,7 +505,7 @@ export async function finalizeOrder(args: {
         sql`select pg_advisory_xact_lock(hashtextextended(${"credit:" + args.userId}, 0))`,
       );
       const balance = await getCreditBalancePaise(args.userId, tx);
-      redeemed = Math.min(requested, balance, grossPaise);
+      redeemed = Math.min(requested, balance, discountedGross);
       if (redeemed > 0) {
         await issueCredit(
           {
@@ -505,7 +520,7 @@ export async function finalizeOrder(args: {
         );
       }
     }
-    const finalPaise = grossPaise - redeemed;
+    const finalPaise = discountedGross - redeemed;
 
     // 4. Persist actual amounts on the claim and the order total.
     await tx
@@ -541,7 +556,8 @@ export async function finalizeOrder(args: {
     return {
       orderId: args.orderId,
       serverOrderId,
-      grossPaise,
+      grossPaise: discountedGross,
+      preorderDiscountPaise,
       redeemedPaise: redeemed,
       finalPaise,
       balancePaise,

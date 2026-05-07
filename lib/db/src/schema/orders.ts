@@ -19,6 +19,7 @@ export const ordersTable = pgTable(
     phone: varchar("phone", { length: 32 }),
     items: jsonb("items").notNull().$type<Array<{ id: number; name: string; qty: number; price: number }>>(),
     riderId: integer("rider_id"),
+    scheduledFor: timestamp("scheduled_for", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   },

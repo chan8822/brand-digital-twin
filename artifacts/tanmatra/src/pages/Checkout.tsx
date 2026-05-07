@@ -34,6 +34,8 @@ import {
   IndianRupee,
   Phone,
   AlertTriangle,
+  CalendarClock,
+  Tag,
 } from "lucide-react";
 
 interface SavedAddress {
@@ -66,6 +68,19 @@ export default function Checkout() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [creditBalance, setCreditBalance] = useState(0);
   const [applyCredits, setApplyCredits] = useState(true);
+  const [preorderTomorrow, setPreorderTomorrow] = useState(false);
+
+  // Default scheduled time: tomorrow 12:30 in the user's locale.
+  const tomorrowSlot = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    d.setHours(12, 30, 0, 0);
+    return d;
+  })();
+  const PREORDER_BPS = 500;
+  const preorderDiscount = preorderTomorrow
+    ? Math.floor((subtotal * PREORDER_BPS) / 10_000)
+    : 0;
 
   useEffect(() => {
     let alive = true;
@@ -86,11 +101,14 @@ export default function Checkout() {
 
   const effectiveTip = tipAmount === -1 ? Math.round((parseFloat(customTip) || 0) * 100) : tipAmount;
   const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
-  const grossTotal = subtotal + deliveryFee + effectiveTip;
-  // Server only redeems against the meal subtotal; cap here too so
-  // the UI total matches the server final total exactly.
+  const discountedSubtotal = subtotal - preorderDiscount;
+  const grossTotal = discountedSubtotal + deliveryFee + effectiveTip;
+  // Server only redeems against the (discounted) meal subtotal; cap here too
+  // so the UI total matches the server final total exactly.
   const creditApplied =
-    applyCredits && creditBalance > 0 ? Math.min(creditBalance, subtotal) : 0;
+    applyCredits && creditBalance > 0
+      ? Math.min(creditBalance, discountedSubtotal)
+      : 0;
   const razorpayTotal = Math.max(0, grossTotal - creditApplied);
 
   const activeAddr = SAVED_ADDRESSES.find((a) => a.id === selectedAddress);
@@ -144,6 +162,7 @@ export default function Checkout() {
           phone: activeAddr.phone,
         },
         applyCreditsPaise: creditApplied > 0 ? creditApplied : undefined,
+        scheduledFor: preorderTomorrow ? tomorrowSlot.toISOString() : undefined,
       });
       // Add delivery + tip on top of the server-validated meal total.
       finalTotal = out.finalPaise + deliveryFee + effectiveTip;
@@ -165,6 +184,8 @@ export default function Checkout() {
       deliveryFee,
       tip: effectiveTip,
       total: finalTotal,
+      scheduledFor: preorderTomorrow ? tomorrowSlot.toISOString() : undefined,
+      preorderDiscount: preorderTomorrow ? preorderDiscount : undefined,
       address: {
         label: activeAddr.label,
         line1: activeAddr.line1,
@@ -337,6 +358,41 @@ export default function Checkout() {
         <Card className="bg-clinical-surface border-clinical-slate/20">
           <CardContent className="p-5 space-y-3">
             <div className="flex items-center gap-2">
+              <CalendarClock className="w-4 h-4 text-clinical-gold" />
+              <h2 className="text-sm font-semibold text-white">Delivery Time</h2>
+            </div>
+            <div className="flex items-center justify-between gap-3 p-3 rounded-lg border border-clinical-gold/30 bg-clinical-gold/5">
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-white">
+                  Pre-order for tomorrow
+                </p>
+                <p className="text-[10px] text-clinical-zinc">
+                  {preorderTomorrow
+                    ? `Scheduled for ${tomorrowSlot.toLocaleString([], {
+                        weekday: "short",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })} · 5% off your meals`
+                    : "Lock in tomorrow's lunch slot and save 5%"}
+                </p>
+              </div>
+              <Switch
+                checked={preorderTomorrow}
+                onCheckedChange={setPreorderTomorrow}
+              />
+            </div>
+            {preorderTomorrow && (
+              <p className="text-[10px] text-clinical-sage flex items-center gap-1">
+                <Tag className="w-3 h-3" />
+                You save {formatPrice(preorderDiscount)} on this order
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="bg-clinical-surface border-clinical-slate/20">
+          <CardContent className="p-5 space-y-3">
+            <div className="flex items-center gap-2">
               <CreditCard className="w-4 h-4 text-clinical-gold" />
               <h2 className="text-sm font-semibold text-white">Payment</h2>
             </div>
@@ -410,6 +466,16 @@ export default function Checkout() {
                 <span className="text-clinical-zinc">Subtotal</span>
                 <span className="tabular-nums text-white">{formatPrice(subtotal)}</span>
               </div>
+              {preorderDiscount > 0 && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-clinical-sage flex items-center gap-1">
+                    <CalendarClock className="w-3 h-3" /> Pre-order discount (5%)
+                  </span>
+                  <span className="tabular-nums text-clinical-sage">
+                    -{formatPrice(preorderDiscount)}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between text-xs">
                 <span className="text-clinical-zinc">Delivery</span>
                 <span className={deliveryFee === 0 ? "text-clinical-sage text-xs" : "tabular-nums text-white"}>

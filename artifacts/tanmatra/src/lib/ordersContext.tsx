@@ -11,6 +11,8 @@ export interface PastOrder {
   deliveryFee: number;
   tip: number;
   total: number;
+  scheduledFor?: string;
+  preorderDiscount?: number;
   address: {
     label: string;
     line1: string;

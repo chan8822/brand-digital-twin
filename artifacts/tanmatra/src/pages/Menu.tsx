@@ -1,7 +1,11 @@
 import { useState, useMemo } from "react";
+import { useSearchParams } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/api/adapter";
+import { useBundles, groupOrdersApi } from "@/lib/queries";
 import {
   DISHES,
   CATEGORY_LABELS,
@@ -9,6 +13,7 @@ import {
   type DishKitchen,
   type DishData,
 } from "@/lib/menuData";
+import { getDishById } from "@workspace/menu-catalog";
 import {
   LIFESTYLE_LABELS,
   LIFESTYLE_TAGS,
@@ -36,6 +41,9 @@ import {
   ShieldAlert,
   Sparkles as SparklesIcon,
   SlidersHorizontal,
+  Package,
+  Users,
+  PlusCircle,
 } from "lucide-react";
 import { Link } from "react-router";
 
@@ -77,11 +85,30 @@ export default function Menu() {
   const [hideBlocked, setHideBlocked] = useState(true);
   const { addItem } = useCart();
   const { preferences } = usePreferences();
+  const [searchParams] = useSearchParams();
+  const groupCode = searchParams.get("group");
+  const { data: bundles } = useBundles();
 
   const handleQuickAdd = (e: React.MouseEvent, item: DishData) => {
     e.preventDefault();
     e.stopPropagation();
     if (!item.isAvailable) return;
+    if (groupCode) {
+      groupOrdersApi
+        .addItem(groupCode, {
+          dishId: item.id,
+          name: item.name,
+          image: item.image,
+          unitPrice: item.price,
+          quantity: 1,
+          customizations: [],
+        })
+        .then(() => {
+          toast.success(`Added ${item.name} to group ${groupCode}`);
+        })
+        .catch(() => toast.error("Could not add to group order"));
+      return;
+    }
     addItem({
       dishId: item.id,
       slug: item.slug,
@@ -97,6 +124,46 @@ export default function Menu() {
       customizations: [],
     });
     toast.success(`Added ${item.name} to cart`);
+  };
+
+  const handleAddBundle = (
+    bundle: NonNullable<typeof bundles>[number],
+  ) => {
+    if (groupCode) {
+      toast.error("Bundles can only be added to your personal cart");
+      return;
+    }
+    let added = 0;
+    for (const did of bundle.dishIds) {
+      const dish = getDishById(did);
+      if (!dish || !dish.isAvailable) continue;
+      // Per-line discount so the cart subtotal matches the bundle price.
+      const perDishOriginal = dish.price;
+      const ratio = bundle.pricePaise / Math.max(1, bundle.originalPricePaise);
+      const discounted = Math.round(perDishOriginal * ratio);
+      addItem({
+        dishId: dish.id,
+        slug: dish.slug,
+        name: dish.name,
+        image: dish.image,
+        basePrice: dish.price,
+        unitPrice: discounted,
+        quantity: 1,
+        kitchen: dish.kitchen,
+        isVeg: dish.isVeg,
+        rdVerified: dish.rdVerified,
+        macros: dish.macros,
+        customizations: [`Bundle: ${bundle.name}`],
+      });
+      added++;
+    }
+    if (added === 0) {
+      toast.error("This bundle is currently unavailable");
+    } else {
+      toast.success(`${bundle.name} added`, {
+        description: `${added} item${added === 1 ? "" : "s"} for ${formatPrice(bundle.pricePaise)}`,
+      });
+    }
   };
 
   const filtered = useMemo(() => {
@@ -135,6 +202,96 @@ export default function Menu() {
           Kitchen-synced · Inventory-aware · RD-verified
         </p>
       </div>
+
+      {groupCode && (
+        <Card className="bg-clinical-gold/5 border-clinical-gold/30">
+          <CardContent className="p-3 text-xs flex items-center gap-2 text-clinical-zinc">
+            <Users className="w-4 h-4 text-clinical-gold" />
+            <span className="flex-1">
+              Adding items to group{" "}
+              <span className="font-mono text-clinical-gold">{groupCode}</span>.
+              Items go straight to the shared order, not your cart.
+            </span>
+            <Link
+              to={`/group/${groupCode}`}
+              className="text-clinical-gold hover:underline"
+            >
+              View group →
+            </Link>
+          </CardContent>
+        </Card>
+      )}
+
+      {bundles && bundles.length > 0 && !groupCode && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.18em] text-clinical-zinc/60 font-semibold flex items-center gap-1.5">
+                <Package className="w-3 h-3 text-clinical-gold" />
+                Combo Bundles
+              </p>
+              <h2 className="text-lg font-serif text-white mt-0.5">
+                Save more with curated combos
+              </h2>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {bundles.map((b) => {
+              const savings = b.originalPricePaise - b.pricePaise;
+              return (
+                <Card
+                  key={b.id}
+                  className="bg-clinical-surface border-clinical-slate/20 hover:border-clinical-gold/40 transition-colors overflow-hidden"
+                >
+                  <div className="relative aspect-[4/3]">
+                    {b.image && (
+                      <img
+                        src={b.image}
+                        alt={b.name}
+                        loading="lazy"
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#050505]/85 via-transparent to-transparent" />
+                    {b.badge && (
+                      <Badge className="absolute top-2 left-2 bg-clinical-gold/90 text-[#050505] border-0 text-[9px] tracking-widest">
+                        {b.badge}
+                      </Badge>
+                    )}
+                    <div className="absolute bottom-2 right-2 bg-clinical-sage/90 text-[#050505] rounded px-1.5 py-0.5 text-[10px] font-bold">
+                      Save {formatPrice(savings)}
+                    </div>
+                  </div>
+                  <CardContent className="p-3 space-y-2">
+                    <h3 className="text-sm font-semibold text-white">
+                      {b.name}
+                    </h3>
+                    <p className="text-[11px] text-clinical-zinc line-clamp-2 leading-relaxed">
+                      {b.description}
+                    </p>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-base font-bold text-clinical-gold tabular-nums">
+                        {formatPrice(b.pricePaise)}
+                      </span>
+                      <span className="text-[11px] text-clinical-zinc line-through tabular-nums">
+                        {formatPrice(b.originalPricePaise)}
+                      </span>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => handleAddBundle(b)}
+                      className="w-full bg-clinical-gold/15 text-clinical-gold border border-clinical-gold/40 hover:bg-clinical-gold/25 gap-1.5 h-9 text-xs"
+                    >
+                      <PlusCircle className="w-3.5 h-3.5" />
+                      Add Combo
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Search */}
       <div className="relative">

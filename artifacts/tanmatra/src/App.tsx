@@ -39,6 +39,7 @@ import Appointments from "@/pages/Appointments";
 import RdConsole from "@/pages/RdConsole";
 import CheckoutAppointment from "@/pages/CheckoutAppointment";
 import AdminOpsDashboard from "@/pages/AdminOpsDashboard";
+import GroupOrder from "@/pages/GroupOrder";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
 
@@ -105,6 +106,7 @@ export default function App() {
                         </AdminGate>
                       }
                     />
+                    <Route path="/group/:code" element={<GroupOrder />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>

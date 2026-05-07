@@ -245,6 +245,7 @@ const finalizeOrderSchema = z.object({
     })
     .optional(),
   applyCreditsPaise: z.number().int().nonnegative().max(10_000_000).optional(),
+  scheduledFor: z.string().datetime().optional(),
 });
 
 router.post("/orders/finalize", async (req: Request, res: Response) => {
@@ -256,7 +257,12 @@ router.post("/orders/finalize", async (req: Request, res: Response) => {
     return;
   }
   try {
-    const out = await finalizeOrder({ userId, ...parsed.data });
+    const { scheduledFor, ...rest } = parsed.data;
+    const out = await finalizeOrder({
+      userId,
+      ...rest,
+      scheduledFor: scheduledFor ? new Date(scheduledFor) : null,
+    });
     res.json(out);
   } catch (err) {
     req.log.error({ err }, "finalize order failed");

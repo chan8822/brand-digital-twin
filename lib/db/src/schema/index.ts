@@ -9,3 +9,5 @@ export * from "./subscriptions";
 export * from "./loyalty";
 export * from "./preferences";
 export * from "./rdAdvisory";
+export * from "./bundles";
+export * from "./groupOrders";

@@ -17,6 +17,9 @@ import {
 } from "lucide-react";
 import { formatPrice } from "@/lib/api/adapter";
 import { useCart, FREE_DELIVERY_THRESHOLD, DELIVERY_FEE } from "@/lib/cartContext";
+import { groupOrdersApi } from "@/lib/queries";
+import { Users } from "lucide-react";
+import { useState } from "react";
 import { usePreferences } from "@/lib/preferencesContext";
 import {
   evaluateDishForPreferences,
@@ -305,6 +308,8 @@ export default function Cart() {
               <ArrowRight className="w-4 h-4" />
             </Button>
 
+            <StartGroupOrderButton />
+
             <p className="text-[10px] text-clinical-zinc text-center">
               Secured by Razorpay · SSL encrypted
             </p>
@@ -312,5 +317,35 @@ export default function Cart() {
         </Card>
       </div>
     </div>
+  );
+}
+
+function StartGroupOrderButton() {
+  const navigate = useNavigate();
+  const [busy, setBusy] = useState(false);
+  const start = async () => {
+    setBusy(true);
+    try {
+      const r = await groupOrdersApi.create();
+      const code = r.group.code;
+      toast.success(`Group order ${code} created`, {
+        description: "Share the code with friends",
+      });
+      navigate(`/group/${code}`);
+    } catch {
+      toast.error("Sign in to start a group order");
+      setBusy(false);
+    }
+  };
+  return (
+    <Button
+      onClick={start}
+      disabled={busy}
+      variant="outline"
+      className="w-full border-clinical-gold/40 text-clinical-gold hover:bg-clinical-gold/10 gap-2 h-10"
+    >
+      <Users className="w-4 h-4" />
+      {busy ? "Starting…" : "Start a Group Order"}
+    </Button>
   );
 }

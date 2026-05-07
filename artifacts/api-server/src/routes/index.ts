@@ -8,6 +8,8 @@ import subscriptionsRouter from "./subscriptions";
 import loyaltyRouter from "./loyalty";
 import preferencesRouter from "./preferences";
 import rdAdvisoryRouter from "./rdAdvisory";
+import bundlesRouter from "./bundles";
+import groupOrdersRouter from "./groupOrders";
 
 const router: IRouter = Router();
 
@@ -20,5 +22,7 @@ router.use(subscriptionsRouter);
 router.use(loyaltyRouter);
 router.use(preferencesRouter);
 router.use(rdAdvisoryRouter);
+router.use(bundlesRouter);
+router.use(groupOrdersRouter);
 
 export default router;

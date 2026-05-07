@@ -1,9 +1,14 @@
 import { Link } from "react-router";
+import { useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import MacroOverlay from "@/components/dish/MacroOverlay";
 import SegmentToggle from "@/components/layout/SegmentToggle";
+import { useOrders } from "@/lib/ordersContext";
+import { useCart } from "@/lib/cartContext";
+import { DISHES, type DishData } from "@/lib/menuData";
+import { toast } from "sonner";
 import {
   ShieldCheck,
   BrainCircuit,
@@ -19,6 +24,12 @@ import {
   Leaf,
   TrendingUp,
   Syringe,
+  RefreshCw,
+  Clock,
+  Sun,
+  Sunset,
+  Moon,
+  Plus,
 } from "lucide-react";
 
 /* ── Featured meals (each with unique image) ──────────────────────── */
@@ -99,7 +110,74 @@ function formatPrice(paise: number) {
   return `Rs.${(paise / 100).toFixed(0)}`;
 }
 
+type Daypart = "breakfast" | "lunch" | "dinner";
+
+function currentDaypart(): Daypart {
+  const h = new Date().getHours();
+  if (h >= 5 && h < 11) return "breakfast";
+  if (h >= 11 && h < 16) return "lunch";
+  return "dinner";
+}
+
+const DAYPART_META: Record<
+  Daypart,
+  { label: string; sub: string; icon: typeof Sun; categories: string[] }
+> = {
+  breakfast: {
+    label: "Good morning — built for breakfast",
+    sub: "High-protein starts and energizing smoothies for the next few hours.",
+    icon: Sun,
+    categories: ["breakfast", "beverages"],
+  },
+  lunch: {
+    label: "Lunch picks for right now",
+    sub: "Balanced bowls, salads, and warm comfort under 700 kcal.",
+    icon: Sunset,
+    categories: ["bowls", "salads", "wraps", "soups", "pasta"],
+  },
+  dinner: {
+    label: "Tonight's lighter options",
+    sub: "Lighter proteins, soups, and slow-digesting carbs for the evening.",
+    icon: Moon,
+    categories: ["soups", "salads", "mains", "bowls"],
+  },
+};
+
 export default function Home() {
+  const { orders } = useOrders();
+  const { addItem } = useCart();
+
+  const reorderRail = useMemo(() => orders.slice(0, 3), [orders]);
+
+  const daypart = currentDaypart();
+  const daypartMeta = DAYPART_META[daypart];
+  const daypartDishes = useMemo(() => {
+    return DISHES.filter(
+      (d) => d.isAvailable && daypartMeta.categories.includes(d.category),
+    )
+      .slice(0, 6);
+  }, [daypartMeta]);
+
+  const quickAddDaypart = (e: React.MouseEvent, item: DishData) => {
+    e.preventDefault();
+    e.stopPropagation();
+    addItem({
+      dishId: item.id,
+      slug: item.slug,
+      name: item.name,
+      image: item.image,
+      basePrice: item.price,
+      unitPrice: item.price,
+      quantity: 1,
+      kitchen: item.kitchen,
+      isVeg: item.isVeg,
+      rdVerified: item.rdVerified,
+      macros: item.macros,
+      customizations: [],
+    });
+    toast.success(`Added ${item.name}`);
+  };
+
   return (
     <div className="min-h-screen bg-clinical-dark">
       <SegmentToggle />
@@ -172,6 +250,180 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* ═══════════════ ORDER AGAIN RAIL ═══════════════ */}
+      {reorderRail.length > 0 && (
+        <section className="py-10 border-b border-clinical-slate/15">
+          <div className="max-w-7xl mx-auto px-4 space-y-5">
+            <div className="flex items-end justify-between">
+              <div>
+                <p className="text-clinical-label mb-1 flex items-center gap-1.5">
+                  <RefreshCw className="w-3 h-3 text-clinical-gold" />
+                  Order Again
+                </p>
+                <h2 className="text-lg font-semibold text-white">
+                  Reorder in one tap
+                </h2>
+              </div>
+              <Link
+                to="/orders"
+                className="hidden sm:flex items-center gap-1 text-xs text-clinical-gold hover:underline"
+              >
+                All orders <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {reorderRail.map((order) => (
+                <Card
+                  key={order.orderId}
+                  className="bg-clinical-surface border-clinical-slate/20 hover:border-clinical-gold/30 transition-colors"
+                >
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-mono text-[10px] text-clinical-gold truncate">
+                          {order.orderId}
+                        </p>
+                        <p className="text-[10px] text-clinical-zinc">
+                          {order.items.length} item
+                          {order.items.length === 1 ? "" : "s"} ·{" "}
+                          {formatPrice(order.total)}
+                        </p>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className="text-[9px] border-clinical-slate/30 text-clinical-zinc"
+                      >
+                        {order.status.replace(/_/g, " ")}
+                      </Badge>
+                    </div>
+                    <div className="flex gap-1.5 overflow-hidden">
+                      {order.items.slice(0, 4).map((it) => (
+                        <img
+                          key={it.lineId}
+                          src={it.image}
+                          alt={it.name}
+                          className="w-12 h-12 rounded object-cover border border-clinical-slate/20 shrink-0"
+                          loading="lazy"
+                        />
+                      ))}
+                      {order.items.length > 4 && (
+                        <div className="w-12 h-12 rounded border border-clinical-slate/20 flex items-center justify-center text-[10px] text-clinical-zinc shrink-0">
+                          +{order.items.length - 4}
+                        </div>
+                      )}
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        order.items.forEach((it) => {
+                          addItem({
+                            dishId: it.dishId,
+                            slug: it.slug,
+                            name: it.name,
+                            image: it.image,
+                            basePrice: it.basePrice,
+                            unitPrice: it.unitPrice,
+                            quantity: it.quantity,
+                            kitchen: it.kitchen,
+                            isVeg: it.isVeg,
+                            rdVerified: it.rdVerified,
+                            macros: it.macros,
+                            customizations: it.customizations,
+                          });
+                        });
+                        toast.success(
+                          `${order.items.length} item${order.items.length === 1 ? "" : "s"} added`,
+                          {
+                            description: `From order ${order.orderId}`,
+                          },
+                        );
+                      }}
+                      className="w-full bg-clinical-gold/15 text-clinical-gold border border-clinical-gold/30 hover:bg-clinical-gold/25 gap-1.5 h-9 text-xs"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" /> Reorder
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ═══════════════ TIME-OF-DAY RAIL ═══════════════ */}
+      {daypartDishes.length > 0 && (
+        <section className="py-10 border-b border-clinical-slate/15">
+          <div className="max-w-7xl mx-auto px-4 space-y-5">
+            <div className="flex items-end justify-between gap-3 flex-wrap">
+              <div>
+                <p className="text-clinical-label mb-1 flex items-center gap-1.5">
+                  <daypartMeta.icon className="w-3 h-3 text-clinical-gold" />
+                  <Clock className="w-3 h-3 text-clinical-gold" />
+                  {daypart === "breakfast"
+                    ? "Breakfast"
+                    : daypart === "lunch"
+                      ? "Lunch"
+                      : "Dinner"}{" "}
+                  Now
+                </p>
+                <h2 className="text-lg font-semibold text-white">
+                  {daypartMeta.label}
+                </h2>
+                <p className="text-xs text-clinical-zinc mt-1 max-w-md">
+                  {daypartMeta.sub}
+                </p>
+              </div>
+              <Link
+                to="/menu"
+                className="text-xs text-clinical-gold hover:underline flex items-center gap-1"
+              >
+                Full menu <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              {daypartDishes.map((d) => (
+                <Link to={`/dish/${d.slug}`} key={d.id} className="group">
+                  <Card className="bg-clinical-surface border-clinical-slate/20 hover:border-clinical-gold/40 transition-colors overflow-hidden">
+                    <div className="relative aspect-square overflow-hidden">
+                      <img
+                        src={d.image}
+                        alt={d.name}
+                        loading="lazy"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#050505]/85 via-transparent to-transparent" />
+                      <div className="absolute top-1.5 left-1.5">
+                        <span
+                          className={`block w-2.5 h-2.5 rounded-sm border-2 ${
+                            d.isVeg ? "border-green-500" : "border-red-500"
+                          } bg-[#050505]/80`}
+                          title={d.isVeg ? "Vegetarian" : "Non-vegetarian"}
+                        />
+                      </div>
+                      <button
+                        onClick={(e) => quickAddDaypart(e, d)}
+                        className="absolute bottom-1.5 right-1.5 w-7 h-7 rounded-full bg-clinical-gold text-[#050505] flex items-center justify-center hover:scale-110 transition-transform shadow-clinical"
+                        aria-label={`Quick add ${d.name}`}
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="p-2.5 space-y-0.5">
+                      <p className="text-[11px] font-semibold text-white line-clamp-2 leading-tight">
+                        {d.name}
+                      </p>
+                      <p className="text-[10px] text-clinical-gold tabular-nums">
+                        {formatPrice(d.price)}
+                      </p>
+                    </div>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ═══════════════ FEATURED MEALS ═══════════════ */}
       <section className="py-16">

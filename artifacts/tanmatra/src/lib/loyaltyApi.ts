@@ -122,11 +122,13 @@ export const loyaltyApi = {
       phone?: string | null;
     };
     applyCreditsPaise?: number;
+    scheduledFor?: string;
   }) =>
     request<{
       orderId: string;
       serverOrderId: number;
       grossPaise: number;
+      preorderDiscountPaise: number;
       redeemedPaise: number;
       finalPaise: number;
       balancePaise: number;

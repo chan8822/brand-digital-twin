@@ -19,6 +19,101 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+export interface BundleDTO {
+  id: number;
+  slug: string;
+  name: string;
+  description: string;
+  badge: string | null;
+  pricePaise: number;
+  originalPricePaise: number;
+  dishIds: number[];
+  image: string | null;
+}
+
+export function useBundles() {
+  return useQuery<BundleDTO[]>({
+    queryKey: ["bundles"],
+    queryFn: async () => {
+      const r = await api<{ bundles: BundleDTO[] }>(`/bundles`);
+      return r.bundles;
+    },
+    staleTime: 1000 * 60 * 10,
+  });
+}
+
+export interface GroupOrderLine {
+  lineId: string;
+  dishId: number;
+  name: string;
+  image: string;
+  unitPrice: number;
+  quantity: number;
+  customizations: string[];
+  addedBy: string;
+  addedByName: string;
+}
+
+export interface GroupOrderDTO {
+  id: number;
+  code: string;
+  hostUserId: string | null;
+  hostName: string;
+  status: "open" | "closed";
+  items: GroupOrderLine[];
+  participants: Array<{ id: string; name: string }>;
+  createdAt: string;
+  updatedAt: string;
+  closedAt: string | null;
+}
+
+export const groupOrdersApi = {
+  create: (hostName?: string) =>
+    api<{ group: GroupOrderDTO }>(`/group-orders`, {
+      method: "POST",
+      body: JSON.stringify({ hostName }),
+    }),
+  get: (code: string) =>
+    api<{ group: GroupOrderDTO }>(`/group-orders/${encodeURIComponent(code)}`),
+  addItem: (
+    code: string,
+    item: {
+      dishId: number;
+      name: string;
+      image: string;
+      unitPrice: number;
+      quantity: number;
+      customizations?: string[];
+    },
+  ) =>
+    api<{ group: GroupOrderDTO }>(
+      `/group-orders/${encodeURIComponent(code)}/items`,
+      { method: "POST", body: JSON.stringify(item) },
+    ),
+  removeLine: (code: string, lineId: string) =>
+    api<{ group: GroupOrderDTO }>(
+      `/group-orders/${encodeURIComponent(code)}/remove-line`,
+      { method: "POST", body: JSON.stringify({ lineId }) },
+    ),
+  close: (code: string) =>
+    api<{ group: GroupOrderDTO }>(
+      `/group-orders/${encodeURIComponent(code)}/close`,
+      { method: "POST" },
+    ),
+};
+
+export function useGroupOrder(code: string | null | undefined) {
+  return useQuery<GroupOrderDTO>({
+    queryKey: ["group-order", code],
+    queryFn: async () => {
+      const r = await groupOrdersApi.get(code!);
+      return r.group;
+    },
+    enabled: !!code,
+    refetchInterval: 3000,
+  });
+}
+
 const STATIC_MENU: MenuComboWithAvailability[] = [
   { id: 1, name: "Grilled Atlantic Salmon", category: "wellness", kitchen: "continental", price: 48500, isAvailable: true, ingredients: ["Salmon", "Quinoa", "Broccoli"], imageUrl: "/dishes/salmon-quinoa.jpg", rdVerified: true },
   { id: 2, name: "Performance Power Bowl", category: "performance", kitchen: "continental", price: 39500, isAvailable: true, ingredients: ["Chicken", "Brown Rice", "Sweet Potato", "Avocado"], imageUrl: "/dishes/buddha-bowl.jpg", rdVerified: true },
