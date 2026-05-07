@@ -163,27 +163,28 @@ const assignRider = defineTool({
     }
 
     const before = { riderId: order.riderId, status: order.status };
+    const sameRider = order.riderId === riderId;
     await db.transaction(async (tx) => {
       await tx
         .update(ordersTable)
         .set({ riderId, status: "rider_assigned" })
         .where(eq(ordersTable.id, orderId));
-      // If reassigning, decrement the previous rider's active count first.
-      if (
-        order.riderId != null &&
-        order.riderId !== riderId
-      ) {
+      if (!sameRider) {
+        // Decrement previous rider (if any) and increment the new one.
+        // No-op when re-asserting the same rider to keep counters idempotent.
+        if (order.riderId != null) {
+          await tx
+            .update(ridersTable)
+            .set({
+              activeOrderCount: sql`GREATEST(${ridersTable.activeOrderCount} - 1, 0)`,
+            })
+            .where(eq(ridersTable.id, order.riderId));
+        }
         await tx
           .update(ridersTable)
-          .set({
-            activeOrderCount: sql`GREATEST(${ridersTable.activeOrderCount} - 1, 0)`,
-          })
-          .where(eq(ridersTable.id, order.riderId));
+          .set({ activeOrderCount: sql`${ridersTable.activeOrderCount} + 1` })
+          .where(eq(ridersTable.id, riderId));
       }
-      await tx
-        .update(ridersTable)
-        .set({ activeOrderCount: sql`${ridersTable.activeOrderCount} + 1` })
-        .where(eq(ridersTable.id, riderId));
       await tx.insert(deliveryEventsTable).values({
         orderId,
         riderId,
