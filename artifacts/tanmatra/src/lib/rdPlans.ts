@@ -347,7 +347,11 @@ export function getPlanConflicts(
       const dish = day[mealKey];
       if (!dish) continue;
       const match = evaluateDishForPreferences(dish, prefs);
-      if (match.blocked || match.warnings.length > 0) {
+      const isSafetyConflict =
+        match.blocked ||
+        match.matchedAllergens.length > 0 ||
+        match.matchedDislikes.length > 0;
+      if (isSafetyConflict) {
         out.push({
           dayLabel: day.label,
           mealKey,
@@ -382,7 +386,13 @@ export function findPlanSafeSwap(
   );
   for (const c of candidates) {
     const m = evaluateDishForPreferences(c, prefs);
-    if (!m.blocked && m.warnings.length === 0) return c;
+    if (
+      !m.blocked &&
+      m.matchedAllergens.length === 0 &&
+      m.matchedDislikes.length === 0
+    ) {
+      return c;
+    }
   }
   return null;
 }

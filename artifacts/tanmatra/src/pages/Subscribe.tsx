@@ -108,7 +108,11 @@ export default function Subscribe() {
         let chosen = meal;
         if (preferences) {
           const evalResult = evaluateDishForPreferences(meal, preferences);
-          if (evalResult.blocked) {
+          const needsSwap =
+            evalResult.blocked ||
+            evalResult.matchedAllergens.length > 0 ||
+            evalResult.matchedDislikes.length > 0;
+          if (needsSwap) {
             const swap = findPlanSafeSwap(rdPlan, meal, preferences);
             if (!swap) {
               droppedCount += 1;
@@ -262,7 +266,7 @@ export default function Subscribe() {
                 We've pre-loaded {planWeekItems.length} curated meals
                 {planItemsResult.swappedCount > 0 && (
                   <>
-                    {" "}— <span className="text-clinical-sage">{planItemsResult.swappedCount} auto-swapped</span> for your allergens
+                    {" "}— <span className="text-clinical-sage">{planItemsResult.swappedCount} auto-swapped</span> for your allergens & dislikes
                   </>
                 )}
                 {planItemsResult.droppedCount > 0 && (
