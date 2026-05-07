@@ -3,6 +3,7 @@ import type { ModelMessage } from "ai";
 import { db, opsActionsTable } from "@workspace/db";
 import { desc, eq, and, type SQL } from "drizzle-orm";
 import { runAgent, type GatewayEvent } from "../lib/ai";
+import { fetchLiveQueue } from "../lib/ai/agents/ops";
 
 const router: IRouter = Router();
 
@@ -141,6 +142,16 @@ router.post("/ops-agent/chat", async (req: Request, res: Response) => {
     });
     res.end();
   }
+});
+
+router.get("/ops-agent/live-queue", async (req: Request, res: Response) => {
+  const { allowed } = resolveOps(req);
+  if (!allowed) {
+    res.status(403).json({ error: "ops scope required" });
+    return;
+  }
+  const result = await fetchLiveQueue({});
+  res.json(result);
 });
 
 router.get("/ops-agent/audit", async (req: Request, res: Response) => {

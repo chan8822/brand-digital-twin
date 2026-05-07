@@ -32,8 +32,30 @@ interface AuditRow {
   beforeState: unknown;
   afterState: unknown;
   status: string;
+  reasoning: string | null;
   createdAt: string;
 }
+
+interface LiveQueueOrder {
+  id: number;
+  status: string;
+  totalPaise: number;
+  riderId: number | null;
+  addressLabel: string | null;
+  createdAt: string;
+}
+
+interface LiveQueue {
+  counts: Record<string, number>;
+  orders: LiveQueueOrder[];
+}
+
+const QUICK_ACTIONS: Array<{ label: string; message: string }> = [
+  { label: "Show live queue", message: "Show me the live queue right now." },
+  { label: "Refund last order", message: "I need to refund the most recent delivered order. Walk me through it." },
+  { label: "Mark item 86", message: "Mark a menu item as unavailable — ask me which one." },
+  { label: "Reassign rider", message: "I need to reassign a rider on an order; ask me which." },
+];
 
 function newId(): string {
   return `m_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -52,6 +74,7 @@ export default function AdminOpsAgent() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [audit, setAudit] = useState<AuditRow[]>([]);
+  const [liveQueue, setLiveQueue] = useState<LiveQueue | null>(null);
   const [adminToken, setAdminToken] = useState<string>(() =>
     typeof window === "undefined"
       ? ""
@@ -67,13 +90,17 @@ export default function AdminOpsAgent() {
     }
   };
 
+  const authedHeaders = (): HeadersInit => {
+    const h: HeadersInit = {};
+    if (adminToken) h["x-admin-token"] = adminToken;
+    return h;
+  };
+
   const loadAudit = async () => {
     try {
-      const headers: HeadersInit = {};
-      if (adminToken) headers["x-admin-token"] = adminToken;
       const res = await fetch("/api/ops-agent/audit?limit=20", {
         credentials: "include",
-        headers,
+        headers: authedHeaders(),
       });
       if (res.status === 403) {
         setError("Ops scope required — set an admin token below.");
@@ -88,8 +115,25 @@ export default function AdminOpsAgent() {
     }
   };
 
+  const loadLiveQueue = async () => {
+    try {
+      const res = await fetch("/api/ops-agent/live-queue", {
+        credentials: "include",
+        headers: authedHeaders(),
+      });
+      if (!res.ok) return;
+      const json = (await res.json()) as LiveQueue;
+      setLiveQueue(json);
+    } catch {
+      // ignore — surfaced via audit error already
+    }
+  };
+
   useEffect(() => {
     void loadAudit();
+    void loadLiveQueue();
+    const t = setInterval(() => void loadLiveQueue(), 10_000);
+    return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminToken]);
 
@@ -100,8 +144,20 @@ export default function AdminOpsAgent() {
     });
   }, [messages]);
 
+  const sendText = async (text: string) => {
+    if (!text || busy) return;
+    setInput(text);
+    await Promise.resolve();
+    await sendInner(text);
+  };
+
   const send = async () => {
     const text = input.trim();
+    await sendInner(text);
+  };
+
+  const sendInner = async (raw: string) => {
+    const text = raw.trim();
     if (!text || busy) return;
     const history = messages.map((m) => ({ role: m.role, text: m.text }));
     setMessages((prev) => [
@@ -170,6 +226,7 @@ export default function AdminOpsAgent() {
         }
       }
       void loadAudit();
+      void loadLiveQueue();
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -198,6 +255,67 @@ export default function AdminOpsAgent() {
               value={adminToken}
               onChange={(e) => persistToken(e.target.value)}
             />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Live queue</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!liveQueue ? (
+              <div className="text-sm text-muted-foreground">Loading…</div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(liveQueue.counts).map(([status, count]) => (
+                    <Badge key={status} variant="secondary">
+                      {status}: {count}
+                    </Badge>
+                  ))}
+                  {Object.keys(liveQueue.counts).length === 0 && (
+                    <span className="text-sm text-muted-foreground">
+                      No active orders.
+                    </span>
+                  )}
+                </div>
+                <div className="space-y-1 max-h-40 overflow-y-auto text-xs">
+                  {liveQueue.orders.map((o) => (
+                    <div
+                      key={o.id}
+                      className="flex justify-between border-b py-1"
+                    >
+                      <span>
+                        #{o.id} · {o.status}
+                        {o.riderId != null ? ` · rider ${o.riderId}` : ""}
+                      </span>
+                      <span className="text-muted-foreground">
+                        ₹{(o.totalPaise / 100).toFixed(0)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Quick actions</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            {QUICK_ACTIONS.map((a) => (
+              <Button
+                key={a.label}
+                variant="outline"
+                size="sm"
+                disabled={busy}
+                onClick={() => void sendText(a.message)}
+              >
+                {a.label}
+              </Button>
+            ))}
           </CardContent>
         </Card>
 
@@ -281,6 +399,11 @@ export default function AdminOpsAgent() {
                   <div className="mt-1 text-muted-foreground">
                     operator: {a.operatorId ?? "—"}
                   </div>
+                  {a.reasoning && (
+                    <div className="mt-1 italic text-muted-foreground">
+                      “{a.reasoning}”
+                    </div>
+                  )}
                   <pre className="mt-1 text-[11px] whitespace-pre-wrap">
                     {JSON.stringify(a.params, null, 2)}
                   </pre>
