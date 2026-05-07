@@ -99,6 +99,8 @@ export default function Subscriptions() {
     useState<SubscriptionDelivery | null>(null);
   const [reschedDate, setReschedDate] = useState("");
   const [reschedWindow, setReschedWindow] = useState(TIME_WINDOWS[1]);
+  const [windowEditOpen, setWindowEditOpen] = useState(false);
+  const [pendingWindow, setPendingWindow] = useState(TIME_WINDOWS[1]);
 
   const refreshList = useCallback(async () => {
     try {
@@ -261,6 +263,10 @@ export default function Subscriptions() {
         onCancel={() =>
           wrap(subscriptionsApi.cancel(detail.subscription.id), "Subscription cancelled")
         }
+        onEditWindow={() => {
+          setPendingWindow(detail.subscription.deliveryWindow);
+          setWindowEditOpen(true);
+        }}
         onGenerateMore={() =>
           wrap(
             subscriptionsApi.generateNext(detail.subscription.id),
@@ -297,6 +303,62 @@ export default function Subscriptions() {
           setReschedWindow(d.deliveryWindow);
         }}
       />}
+
+      <Dialog open={windowEditOpen} onOpenChange={setWindowEditOpen}>
+        <DialogContent className="bg-clinical-surface border-clinical-slate/30">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <Clock className="w-4 h-4 text-clinical-gold" />
+              Update locked delivery window
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <p className="text-xs text-clinical-zinc">
+              The new window applies to every upcoming delivery on this plan.
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {TIME_WINDOWS.map((w) => (
+                <button
+                  key={w}
+                  onClick={() => setPendingWindow(w)}
+                  className={`px-2.5 py-1 rounded-md text-[11px] border ${
+                    w === pendingWindow
+                      ? "border-clinical-gold bg-clinical-gold/10 text-clinical-gold"
+                      : "border-clinical-slate/30 text-clinical-zinc"
+                  }`}
+                >
+                  {w}
+                </button>
+              ))}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              className="border-clinical-slate/30 text-clinical-zinc"
+              onClick={() => setWindowEditOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90"
+              onClick={async () => {
+                if (!detail) return;
+                await wrap(
+                  subscriptionsApi.updateDeliveryWindow(
+                    detail.subscription.id,
+                    pendingWindow,
+                  ),
+                  "Delivery window updated",
+                );
+                setWindowEditOpen(false);
+              }}
+            >
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={reschedDelivery !== null} onOpenChange={(open) => !open && setReschedDelivery(null)}>
         <DialogContent className="bg-clinical-surface border-clinical-slate/30">
@@ -373,6 +435,7 @@ function DetailView({
   onPause,
   onResume,
   onCancel,
+  onEditWindow,
   onGenerateMore,
   onSkip,
   onSwap,
@@ -382,6 +445,7 @@ function DetailView({
   onPause: () => void;
   onResume: () => void;
   onCancel: () => void;
+  onEditWindow: () => void;
   onGenerateMore: () => void;
   onSkip: (d: SubscriptionDelivery) => void;
   onSwap: (d: SubscriptionDelivery) => void;
@@ -443,6 +507,14 @@ function DetailView({
                   <XCircle className="w-3.5 h-3.5" /> Cancel
                 </Button>
               )}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onEditWindow}
+                className="border-clinical-slate/30 text-clinical-zinc hover:text-white gap-1.5 text-xs"
+              >
+                <Clock className="w-3.5 h-3.5" /> Edit window
+              </Button>
               <Button
                 size="sm"
                 variant="outline"
