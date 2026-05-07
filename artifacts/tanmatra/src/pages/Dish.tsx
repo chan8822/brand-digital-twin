@@ -307,6 +307,79 @@ export default function Dish() {
             </div>
           </div>
 
+          {preferences &&
+            meal &&
+            (preferences.calorieTarget || preferences.proteinTargetGrams) && (
+              <div className="rounded-xl border border-clinical-slate/20 bg-clinical-surface-elevated p-4 space-y-2">
+                <p className="text-[10px] uppercase tracking-[0.12em] text-clinical-zinc/70 font-semibold">
+                  Vs. your daily targets
+                </p>
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  {preferences.calorieTarget && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-clinical-zinc">Calories</span>
+                      <span className="tabular-nums text-white">
+                        {meal.macros.calories} /{" "}
+                        <span className="text-clinical-zinc">
+                          {preferences.calorieTarget}
+                        </span>{" "}
+                        <span className="text-clinical-gold">
+                          (
+                          {Math.round(
+                            (meal.macros.calories / preferences.calorieTarget) *
+                              100,
+                          )}
+                          %)
+                        </span>
+                      </span>
+                    </div>
+                  )}
+                  {preferences.proteinTargetGrams && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-clinical-zinc">Protein</span>
+                      <span className="tabular-nums text-white">
+                        {meal.macros.protein}g /{" "}
+                        <span className="text-clinical-zinc">
+                          {preferences.proteinTargetGrams}g
+                        </span>{" "}
+                        <span className="text-clinical-gold">
+                          (
+                          {Math.round(
+                            (meal.macros.protein /
+                              preferences.proteinTargetGrams) *
+                              100,
+                          )}
+                          %)
+                        </span>
+                      </span>
+                    </div>
+                  )}
+                  {preferences.carbsTargetGrams && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-clinical-zinc">Carbs</span>
+                      <span className="tabular-nums text-white">
+                        {meal.macros.carbs}g /{" "}
+                        <span className="text-clinical-zinc">
+                          {preferences.carbsTargetGrams}g
+                        </span>
+                      </span>
+                    </div>
+                  )}
+                  {preferences.fatTargetGrams && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-clinical-zinc">Fat</span>
+                      <span className="tabular-nums text-white">
+                        {meal.macros.fat}g /{" "}
+                        <span className="text-clinical-zinc">
+                          {preferences.fatTargetGrams}g
+                        </span>
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
           {match && (match.warnings.length > 0 || match.reasons.length > 0) && (
             <div
               className={`rounded-xl p-4 border space-y-3 ${

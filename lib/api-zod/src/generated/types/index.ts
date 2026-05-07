@@ -6,4 +6,12 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./activityLevel";
+export * from "./dietaryStyle";
 export * from "./healthStatus";
+export * from "./preferencesEnvelope";
+export * from "./preferencesEnvelopeRequired";
+export * from "./preferencesPatch";
+export * from "./spiceLevel";
+export * from "./userPreferences";
+export * from "./wellnessGoal";

@@ -14,3 +14,354 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * @summary Get the signed-in user's preferences
+ */
+export const getPreferencesResponsePreferencesOneCalorieTargetMin = 800;
+export const getPreferencesResponsePreferencesOneCalorieTargetMax = 6000;
+
+export const getPreferencesResponsePreferencesOneProteinTargetGramsMin = 20;
+export const getPreferencesResponsePreferencesOneProteinTargetGramsMax = 400;
+
+export const getPreferencesResponsePreferencesOneCarbsTargetGramsMin = 0;
+export const getPreferencesResponsePreferencesOneCarbsTargetGramsMax = 800;
+
+export const getPreferencesResponsePreferencesOneFatTargetGramsMin = 0;
+export const getPreferencesResponsePreferencesOneFatTargetGramsMax = 300;
+
+export const GetPreferencesResponse = zod.object({
+  preferences: zod.union([
+    zod.object({
+      userId: zod.string(),
+      allergens: zod.array(zod.string()),
+      dislikedIngredients: zod.array(zod.string()),
+      cuisines: zod.array(zod.string()),
+      spiceLevel: zod.enum(["none", "mild", "medium", "hot"]),
+      dietaryStyle: zod.enum([
+        "omnivore",
+        "vegetarian",
+        "vegan",
+        "pescatarian",
+        "keto",
+      ]),
+      goal: zod.enum([
+        "lose_weight",
+        "maintain",
+        "gain_muscle",
+        "general_wellness",
+      ]),
+      activityLevel: zod.enum([
+        "sedentary",
+        "light",
+        "moderate",
+        "active",
+        "very_active",
+      ]),
+      calorieTarget: zod
+        .number()
+        .min(getPreferencesResponsePreferencesOneCalorieTargetMin)
+        .max(getPreferencesResponsePreferencesOneCalorieTargetMax)
+        .nullish(),
+      proteinTargetGrams: zod
+        .number()
+        .min(getPreferencesResponsePreferencesOneProteinTargetGramsMin)
+        .max(getPreferencesResponsePreferencesOneProteinTargetGramsMax)
+        .nullish(),
+      carbsTargetGrams: zod
+        .number()
+        .min(getPreferencesResponsePreferencesOneCarbsTargetGramsMin)
+        .max(getPreferencesResponsePreferencesOneCarbsTargetGramsMax)
+        .nullish(),
+      fatTargetGrams: zod
+        .number()
+        .min(getPreferencesResponsePreferencesOneFatTargetGramsMin)
+        .max(getPreferencesResponsePreferencesOneFatTargetGramsMax)
+        .nullish(),
+      quizCompletedAt: zod.coerce.date().nullish(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+    zod.null(),
+  ]),
+});
+
+/**
+ * @summary Upsert preferences (partial)
+ */
+export const putPreferencesBodyAllergensItemMax = 64;
+
+export const putPreferencesBodyAllergensMax = 50;
+
+export const putPreferencesBodyDislikedIngredientsItemMax = 64;
+
+export const putPreferencesBodyDislikedIngredientsMax = 50;
+
+export const putPreferencesBodyCuisinesItemMax = 64;
+
+export const putPreferencesBodyCuisinesMax = 50;
+
+export const putPreferencesBodyCalorieTargetMin = 800;
+export const putPreferencesBodyCalorieTargetMax = 6000;
+
+export const putPreferencesBodyProteinTargetGramsMin = 20;
+export const putPreferencesBodyProteinTargetGramsMax = 400;
+
+export const putPreferencesBodyCarbsTargetGramsMin = 0;
+export const putPreferencesBodyCarbsTargetGramsMax = 800;
+
+export const putPreferencesBodyFatTargetGramsMin = 0;
+export const putPreferencesBodyFatTargetGramsMax = 300;
+
+export const PutPreferencesBody = zod.object({
+  allergens: zod
+    .array(zod.string().min(1).max(putPreferencesBodyAllergensItemMax))
+    .max(putPreferencesBodyAllergensMax)
+    .optional(),
+  dislikedIngredients: zod
+    .array(
+      zod.string().min(1).max(putPreferencesBodyDislikedIngredientsItemMax),
+    )
+    .max(putPreferencesBodyDislikedIngredientsMax)
+    .optional(),
+  cuisines: zod
+    .array(zod.string().min(1).max(putPreferencesBodyCuisinesItemMax))
+    .max(putPreferencesBodyCuisinesMax)
+    .optional(),
+  spiceLevel: zod.enum(["none", "mild", "medium", "hot"]).optional(),
+  dietaryStyle: zod
+    .enum(["omnivore", "vegetarian", "vegan", "pescatarian", "keto"])
+    .optional(),
+  goal: zod
+    .enum(["lose_weight", "maintain", "gain_muscle", "general_wellness"])
+    .optional(),
+  activityLevel: zod
+    .enum(["sedentary", "light", "moderate", "active", "very_active"])
+    .optional(),
+  calorieTarget: zod
+    .number()
+    .min(putPreferencesBodyCalorieTargetMin)
+    .max(putPreferencesBodyCalorieTargetMax)
+    .nullish(),
+  proteinTargetGrams: zod
+    .number()
+    .min(putPreferencesBodyProteinTargetGramsMin)
+    .max(putPreferencesBodyProteinTargetGramsMax)
+    .nullish(),
+  carbsTargetGrams: zod
+    .number()
+    .min(putPreferencesBodyCarbsTargetGramsMin)
+    .max(putPreferencesBodyCarbsTargetGramsMax)
+    .nullish(),
+  fatTargetGrams: zod
+    .number()
+    .min(putPreferencesBodyFatTargetGramsMin)
+    .max(putPreferencesBodyFatTargetGramsMax)
+    .nullish(),
+  markQuizComplete: zod.boolean().optional(),
+});
+
+export const putPreferencesResponsePreferencesCalorieTargetMin = 800;
+export const putPreferencesResponsePreferencesCalorieTargetMax = 6000;
+
+export const putPreferencesResponsePreferencesProteinTargetGramsMin = 20;
+export const putPreferencesResponsePreferencesProteinTargetGramsMax = 400;
+
+export const putPreferencesResponsePreferencesCarbsTargetGramsMin = 0;
+export const putPreferencesResponsePreferencesCarbsTargetGramsMax = 800;
+
+export const putPreferencesResponsePreferencesFatTargetGramsMin = 0;
+export const putPreferencesResponsePreferencesFatTargetGramsMax = 300;
+
+export const PutPreferencesResponse = zod.object({
+  preferences: zod.object({
+    userId: zod.string(),
+    allergens: zod.array(zod.string()),
+    dislikedIngredients: zod.array(zod.string()),
+    cuisines: zod.array(zod.string()),
+    spiceLevel: zod.enum(["none", "mild", "medium", "hot"]),
+    dietaryStyle: zod.enum([
+      "omnivore",
+      "vegetarian",
+      "vegan",
+      "pescatarian",
+      "keto",
+    ]),
+    goal: zod.enum([
+      "lose_weight",
+      "maintain",
+      "gain_muscle",
+      "general_wellness",
+    ]),
+    activityLevel: zod.enum([
+      "sedentary",
+      "light",
+      "moderate",
+      "active",
+      "very_active",
+    ]),
+    calorieTarget: zod
+      .number()
+      .min(putPreferencesResponsePreferencesCalorieTargetMin)
+      .max(putPreferencesResponsePreferencesCalorieTargetMax)
+      .nullish(),
+    proteinTargetGrams: zod
+      .number()
+      .min(putPreferencesResponsePreferencesProteinTargetGramsMin)
+      .max(putPreferencesResponsePreferencesProteinTargetGramsMax)
+      .nullish(),
+    carbsTargetGrams: zod
+      .number()
+      .min(putPreferencesResponsePreferencesCarbsTargetGramsMin)
+      .max(putPreferencesResponsePreferencesCarbsTargetGramsMax)
+      .nullish(),
+    fatTargetGrams: zod
+      .number()
+      .min(putPreferencesResponsePreferencesFatTargetGramsMin)
+      .max(putPreferencesResponsePreferencesFatTargetGramsMax)
+      .nullish(),
+    quizCompletedAt: zod.coerce.date().nullish(),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+  }),
+});
+
+/**
+ * @summary Partial update of preferences
+ */
+export const patchPreferencesBodyAllergensItemMax = 64;
+
+export const patchPreferencesBodyAllergensMax = 50;
+
+export const patchPreferencesBodyDislikedIngredientsItemMax = 64;
+
+export const patchPreferencesBodyDislikedIngredientsMax = 50;
+
+export const patchPreferencesBodyCuisinesItemMax = 64;
+
+export const patchPreferencesBodyCuisinesMax = 50;
+
+export const patchPreferencesBodyCalorieTargetMin = 800;
+export const patchPreferencesBodyCalorieTargetMax = 6000;
+
+export const patchPreferencesBodyProteinTargetGramsMin = 20;
+export const patchPreferencesBodyProteinTargetGramsMax = 400;
+
+export const patchPreferencesBodyCarbsTargetGramsMin = 0;
+export const patchPreferencesBodyCarbsTargetGramsMax = 800;
+
+export const patchPreferencesBodyFatTargetGramsMin = 0;
+export const patchPreferencesBodyFatTargetGramsMax = 300;
+
+export const PatchPreferencesBody = zod.object({
+  allergens: zod
+    .array(zod.string().min(1).max(patchPreferencesBodyAllergensItemMax))
+    .max(patchPreferencesBodyAllergensMax)
+    .optional(),
+  dislikedIngredients: zod
+    .array(
+      zod.string().min(1).max(patchPreferencesBodyDislikedIngredientsItemMax),
+    )
+    .max(patchPreferencesBodyDislikedIngredientsMax)
+    .optional(),
+  cuisines: zod
+    .array(zod.string().min(1).max(patchPreferencesBodyCuisinesItemMax))
+    .max(patchPreferencesBodyCuisinesMax)
+    .optional(),
+  spiceLevel: zod.enum(["none", "mild", "medium", "hot"]).optional(),
+  dietaryStyle: zod
+    .enum(["omnivore", "vegetarian", "vegan", "pescatarian", "keto"])
+    .optional(),
+  goal: zod
+    .enum(["lose_weight", "maintain", "gain_muscle", "general_wellness"])
+    .optional(),
+  activityLevel: zod
+    .enum(["sedentary", "light", "moderate", "active", "very_active"])
+    .optional(),
+  calorieTarget: zod
+    .number()
+    .min(patchPreferencesBodyCalorieTargetMin)
+    .max(patchPreferencesBodyCalorieTargetMax)
+    .nullish(),
+  proteinTargetGrams: zod
+    .number()
+    .min(patchPreferencesBodyProteinTargetGramsMin)
+    .max(patchPreferencesBodyProteinTargetGramsMax)
+    .nullish(),
+  carbsTargetGrams: zod
+    .number()
+    .min(patchPreferencesBodyCarbsTargetGramsMin)
+    .max(patchPreferencesBodyCarbsTargetGramsMax)
+    .nullish(),
+  fatTargetGrams: zod
+    .number()
+    .min(patchPreferencesBodyFatTargetGramsMin)
+    .max(patchPreferencesBodyFatTargetGramsMax)
+    .nullish(),
+  markQuizComplete: zod.boolean().optional(),
+});
+
+export const patchPreferencesResponsePreferencesCalorieTargetMin = 800;
+export const patchPreferencesResponsePreferencesCalorieTargetMax = 6000;
+
+export const patchPreferencesResponsePreferencesProteinTargetGramsMin = 20;
+export const patchPreferencesResponsePreferencesProteinTargetGramsMax = 400;
+
+export const patchPreferencesResponsePreferencesCarbsTargetGramsMin = 0;
+export const patchPreferencesResponsePreferencesCarbsTargetGramsMax = 800;
+
+export const patchPreferencesResponsePreferencesFatTargetGramsMin = 0;
+export const patchPreferencesResponsePreferencesFatTargetGramsMax = 300;
+
+export const PatchPreferencesResponse = zod.object({
+  preferences: zod.object({
+    userId: zod.string(),
+    allergens: zod.array(zod.string()),
+    dislikedIngredients: zod.array(zod.string()),
+    cuisines: zod.array(zod.string()),
+    spiceLevel: zod.enum(["none", "mild", "medium", "hot"]),
+    dietaryStyle: zod.enum([
+      "omnivore",
+      "vegetarian",
+      "vegan",
+      "pescatarian",
+      "keto",
+    ]),
+    goal: zod.enum([
+      "lose_weight",
+      "maintain",
+      "gain_muscle",
+      "general_wellness",
+    ]),
+    activityLevel: zod.enum([
+      "sedentary",
+      "light",
+      "moderate",
+      "active",
+      "very_active",
+    ]),
+    calorieTarget: zod
+      .number()
+      .min(patchPreferencesResponsePreferencesCalorieTargetMin)
+      .max(patchPreferencesResponsePreferencesCalorieTargetMax)
+      .nullish(),
+    proteinTargetGrams: zod
+      .number()
+      .min(patchPreferencesResponsePreferencesProteinTargetGramsMin)
+      .max(patchPreferencesResponsePreferencesProteinTargetGramsMax)
+      .nullish(),
+    carbsTargetGrams: zod
+      .number()
+      .min(patchPreferencesResponsePreferencesCarbsTargetGramsMin)
+      .max(patchPreferencesResponsePreferencesCarbsTargetGramsMax)
+      .nullish(),
+    fatTargetGrams: zod
+      .number()
+      .min(patchPreferencesResponsePreferencesFatTargetGramsMin)
+      .max(patchPreferencesResponsePreferencesFatTargetGramsMax)
+      .nullish(),
+    quizCompletedAt: zod.coerce.date().nullish(),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+  }),
+});

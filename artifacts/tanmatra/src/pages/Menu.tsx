@@ -380,6 +380,28 @@ export default function Menu() {
                 {CATEGORY_LABELS[item.category]} · {item.kitchen}
               </div>
 
+              {preferences &&
+                (preferences.calorieTarget || preferences.proteinTargetGrams) && (
+                  <div className="flex flex-wrap gap-1.5 text-[10px]">
+                    {preferences.calorieTarget && (
+                      <span className="px-1.5 py-0.5 rounded bg-clinical-slate/20 text-clinical-zinc">
+                        {Math.round(
+                          (item.macros.calories / preferences.calorieTarget) * 100,
+                        )}
+                        % of daily kcal
+                      </span>
+                    )}
+                    {preferences.proteinTargetGrams && (
+                      <span className="px-1.5 py-0.5 rounded bg-clinical-slate/20 text-clinical-zinc">
+                        {Math.round(
+                          (item.macros.protein / preferences.proteinTargetGrams) * 100,
+                        )}
+                        % of daily protein
+                      </span>
+                    )}
+                  </div>
+                )}
+
               {match.warnings.length > 0 && (
                 <div className="flex items-start gap-1.5 text-[11px] text-orange-400">
                   <ShieldAlert className="w-3.5 h-3.5 shrink-0 mt-0.5" />

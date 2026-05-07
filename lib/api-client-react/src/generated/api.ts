@@ -5,18 +5,26 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus } from "./api.schemas";
+import type {
+  HealthStatus,
+  PreferencesEnvelope,
+  PreferencesEnvelopeRequired,
+  PreferencesPatch,
+} from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
-import type { ErrorType } from "../custom-fetch";
+import type { ErrorType, BodyType } from "../custom-fetch";
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -99,3 +107,250 @@ export function useHealthCheck<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Get the signed-in user's preferences
+ */
+export const getGetPreferencesUrl = () => {
+  return `/api/preferences`;
+};
+
+export const getPreferences = async (
+  options?: RequestInit,
+): Promise<PreferencesEnvelope> => {
+  return customFetch<PreferencesEnvelope>(getGetPreferencesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPreferencesQueryKey = () => {
+  return [`/api/preferences`] as const;
+};
+
+export const getGetPreferencesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPreferences>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getPreferences>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetPreferencesQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getPreferences>>> = ({
+    signal,
+  }) => getPreferences({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPreferences>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPreferencesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPreferences>>
+>;
+export type GetPreferencesQueryError = ErrorType<void>;
+
+/**
+ * @summary Get the signed-in user's preferences
+ */
+
+export function useGetPreferences<
+  TData = Awaited<ReturnType<typeof getPreferences>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getPreferences>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPreferencesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Upsert preferences (partial)
+ */
+export const getPutPreferencesUrl = () => {
+  return `/api/preferences`;
+};
+
+export const putPreferences = async (
+  preferencesPatch: PreferencesPatch,
+  options?: RequestInit,
+): Promise<PreferencesEnvelopeRequired> => {
+  return customFetch<PreferencesEnvelopeRequired>(getPutPreferencesUrl(), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(preferencesPatch),
+  });
+};
+
+export const getPutPreferencesMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof putPreferences>>,
+    TError,
+    { data: BodyType<PreferencesPatch> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof putPreferences>>,
+  TError,
+  { data: BodyType<PreferencesPatch> },
+  TContext
+> => {
+  const mutationKey = ["putPreferences"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof putPreferences>>,
+    { data: BodyType<PreferencesPatch> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return putPreferences(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PutPreferencesMutationResult = NonNullable<
+  Awaited<ReturnType<typeof putPreferences>>
+>;
+export type PutPreferencesMutationBody = BodyType<PreferencesPatch>;
+export type PutPreferencesMutationError = ErrorType<void>;
+
+/**
+ * @summary Upsert preferences (partial)
+ */
+export const usePutPreferences = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof putPreferences>>,
+    TError,
+    { data: BodyType<PreferencesPatch> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof putPreferences>>,
+  TError,
+  { data: BodyType<PreferencesPatch> },
+  TContext
+> => {
+  return useMutation(getPutPreferencesMutationOptions(options));
+};
+
+/**
+ * @summary Partial update of preferences
+ */
+export const getPatchPreferencesUrl = () => {
+  return `/api/preferences`;
+};
+
+export const patchPreferences = async (
+  preferencesPatch: PreferencesPatch,
+  options?: RequestInit,
+): Promise<PreferencesEnvelopeRequired> => {
+  return customFetch<PreferencesEnvelopeRequired>(getPatchPreferencesUrl(), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(preferencesPatch),
+  });
+};
+
+export const getPatchPreferencesMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchPreferences>>,
+    TError,
+    { data: BodyType<PreferencesPatch> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof patchPreferences>>,
+  TError,
+  { data: BodyType<PreferencesPatch> },
+  TContext
+> => {
+  const mutationKey = ["patchPreferences"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof patchPreferences>>,
+    { data: BodyType<PreferencesPatch> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return patchPreferences(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PatchPreferencesMutationResult = NonNullable<
+  Awaited<ReturnType<typeof patchPreferences>>
+>;
+export type PatchPreferencesMutationBody = BodyType<PreferencesPatch>;
+export type PatchPreferencesMutationError = ErrorType<void>;
+
+/**
+ * @summary Partial update of preferences
+ */
+export const usePatchPreferences = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchPreferences>>,
+    TError,
+    { data: BodyType<PreferencesPatch> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof patchPreferences>>,
+  TError,
+  { data: BodyType<PreferencesPatch> },
+  TContext
+> => {
+  return useMutation(getPatchPreferencesMutationOptions(options));
+};

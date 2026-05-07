@@ -8,3 +8,117 @@
 export interface HealthStatus {
   status: string;
 }
+
+export type DietaryStyle = (typeof DietaryStyle)[keyof typeof DietaryStyle];
+
+export const DietaryStyle = {
+  omnivore: "omnivore",
+  vegetarian: "vegetarian",
+  vegan: "vegan",
+  pescatarian: "pescatarian",
+  keto: "keto",
+} as const;
+
+export type SpiceLevel = (typeof SpiceLevel)[keyof typeof SpiceLevel];
+
+export const SpiceLevel = {
+  none: "none",
+  mild: "mild",
+  medium: "medium",
+  hot: "hot",
+} as const;
+
+export type ActivityLevel = (typeof ActivityLevel)[keyof typeof ActivityLevel];
+
+export const ActivityLevel = {
+  sedentary: "sedentary",
+  light: "light",
+  moderate: "moderate",
+  active: "active",
+  very_active: "very_active",
+} as const;
+
+export type WellnessGoal = (typeof WellnessGoal)[keyof typeof WellnessGoal];
+
+export const WellnessGoal = {
+  lose_weight: "lose_weight",
+  maintain: "maintain",
+  gain_muscle: "gain_muscle",
+  general_wellness: "general_wellness",
+} as const;
+
+export interface UserPreferences {
+  userId: string;
+  allergens: string[];
+  dislikedIngredients: string[];
+  cuisines: string[];
+  spiceLevel: SpiceLevel;
+  dietaryStyle: DietaryStyle;
+  goal: WellnessGoal;
+  activityLevel: ActivityLevel;
+  /**
+   * @minimum 800
+   * @maximum 6000
+   */
+  calorieTarget?: number | null;
+  /**
+   * @minimum 20
+   * @maximum 400
+   */
+  proteinTargetGrams?: number | null;
+  /**
+   * @minimum 0
+   * @maximum 800
+   */
+  carbsTargetGrams?: number | null;
+  /**
+   * @minimum 0
+   * @maximum 300
+   */
+  fatTargetGrams?: number | null;
+  quizCompletedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PreferencesPatch {
+  /** @maxItems 50 */
+  allergens?: string[];
+  /** @maxItems 50 */
+  dislikedIngredients?: string[];
+  /** @maxItems 50 */
+  cuisines?: string[];
+  spiceLevel?: SpiceLevel;
+  dietaryStyle?: DietaryStyle;
+  goal?: WellnessGoal;
+  activityLevel?: ActivityLevel;
+  /**
+   * @minimum 800
+   * @maximum 6000
+   */
+  calorieTarget?: number | null;
+  /**
+   * @minimum 20
+   * @maximum 400
+   */
+  proteinTargetGrams?: number | null;
+  /**
+   * @minimum 0
+   * @maximum 800
+   */
+  carbsTargetGrams?: number | null;
+  /**
+   * @minimum 0
+   * @maximum 300
+   */
+  fatTargetGrams?: number | null;
+  markQuizComplete?: boolean;
+}
+
+export interface PreferencesEnvelope {
+  preferences: UserPreferences | null;
+}
+
+export interface PreferencesEnvelopeRequired {
+  preferences: UserPreferences;
+}

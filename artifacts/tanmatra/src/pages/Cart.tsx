@@ -17,10 +17,41 @@ import {
 } from "lucide-react";
 import { formatPrice } from "@/lib/api/adapter";
 import { useCart, FREE_DELIVERY_THRESHOLD, DELIVERY_FEE } from "@/lib/cartContext";
+import { usePreferences } from "@/lib/preferencesContext";
+import {
+  evaluateDishForPreferences,
+  findSmartSwap,
+} from "@/lib/preferencesMatch";
+import { getDishById } from "@workspace/menu-catalog";
+import { ShieldAlert, Sparkles } from "lucide-react";
 
 export default function Cart() {
   const navigate = useNavigate();
   const { items, updateQty, removeItem, subtotal, totalQuantity } = useCart();
+  const { preferences } = usePreferences();
+
+  const conflictMap = (() => {
+    const out = new Map<
+      string,
+      { warnings: string[]; blocked: boolean; swapSlug: string | null; swapName: string | null }
+    >();
+    if (!preferences) return out;
+    for (const item of items) {
+      const dish = getDishById(item.dishId);
+      if (!dish) continue;
+      const m = evaluateDishForPreferences(dish, preferences);
+      if (m.warnings.length === 0 && !m.blocked) continue;
+      const swap = findSmartSwap(dish, preferences);
+      out.set(item.lineId, {
+        warnings: m.warnings,
+        blocked: m.blocked,
+        swapSlug: swap?.slug ?? null,
+        swapName: swap?.name ?? null,
+      });
+    }
+    return out;
+  })();
+  const conflictCount = conflictMap.size;
 
   const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
   const total = subtotal + deliveryFee;
@@ -61,6 +92,25 @@ export default function Cart() {
             <Utensils className="w-3 h-3" /> Add more
           </Link>
         </div>
+
+        {conflictCount > 0 && (
+          <Card className="bg-orange-500/5 border-orange-500/30">
+            <CardContent className="p-3 text-xs text-orange-400 flex items-start gap-2">
+              <ShieldAlert className="w-4 h-4 mt-0.5 shrink-0" />
+              <span>
+                {conflictCount} item{conflictCount === 1 ? "" : "s"} in your
+                cart conflict with your{" "}
+                <Link
+                  to="/preferences"
+                  className="underline underline-offset-2 hover:text-orange-300"
+                >
+                  preferences
+                </Link>
+                . Smart Swap suggestions are shown below.
+              </span>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Free delivery progress */}
         {amountToFreeDelivery > 0 ? (
@@ -177,6 +227,34 @@ export default function Cart() {
                     <p className="tabular-nums text-sm font-bold text-clinical-gold text-right">
                       {formatPrice(item.unitPrice * item.quantity)}
                     </p>
+
+                    {conflictMap.get(item.lineId) && (
+                      <div className="mt-2 rounded-lg border border-orange-500/30 bg-orange-500/5 p-2.5 space-y-2">
+                        <div className="flex items-start gap-1.5 text-[11px] text-orange-400">
+                          <ShieldAlert className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                          <span className="leading-tight">
+                            {conflictMap.get(item.lineId)!.warnings[0]}
+                          </span>
+                        </div>
+                        {conflictMap.get(item.lineId)!.swapSlug && (
+                          <div className="flex items-center justify-between gap-2 text-[11px]">
+                            <span className="flex items-center gap-1 text-clinical-gold">
+                              <Sparkles className="w-3 h-3" />
+                              Smart swap:{" "}
+                              <span className="text-white">
+                                {conflictMap.get(item.lineId)!.swapName}
+                              </span>
+                            </span>
+                            <Link
+                              to={`/dish/${conflictMap.get(item.lineId)!.swapSlug}`}
+                              className="text-clinical-gold hover:underline shrink-0"
+                            >
+                              View →
+                            </Link>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>

@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: preferences
+    description: User taste & wellness preferences
 paths:
   /healthz:
     get:
@@ -24,6 +26,62 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /preferences:
+    get:
+      operationId: getPreferences
+      tags: [preferences]
+      summary: Get the signed-in user's preferences
+      responses:
+        "200":
+          description: Current preferences (null when unset)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreferencesEnvelope"
+        "401":
+          description: Unauthorized
+    put:
+      operationId: putPreferences
+      tags: [preferences]
+      summary: Upsert preferences (partial)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PreferencesPatch"
+      responses:
+        "200":
+          description: Updated preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreferencesEnvelopeRequired"
+        "400":
+          description: Invalid payload
+        "401":
+          description: Unauthorized
+    patch:
+      operationId: patchPreferences
+      tags: [preferences]
+      summary: Partial update of preferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PreferencesPatch"
+      responses:
+        "200":
+          description: Updated preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreferencesEnvelopeRequired"
+        "400":
+          description: Invalid payload
+        "401":
+          description: Unauthorized
 components:
   schemas:
     HealthStatus:
@@ -33,4 +91,137 @@ components:
           type: string
       required:
         - status
-
+    DietaryStyle:
+      type: string
+      enum: [omnivore, vegetarian, vegan, pescatarian, keto]
+    SpiceLevel:
+      type: string
+      enum: [none, mild, medium, hot]
+    ActivityLevel:
+      type: string
+      enum: [sedentary, light, moderate, active, very_active]
+    WellnessGoal:
+      type: string
+      enum: [lose_weight, maintain, gain_muscle, general_wellness]
+    UserPreferences:
+      type: object
+      required:
+        - userId
+        - allergens
+        - dislikedIngredients
+        - cuisines
+        - spiceLevel
+        - dietaryStyle
+        - goal
+        - activityLevel
+        - createdAt
+        - updatedAt
+      properties:
+        userId:
+          type: string
+        allergens:
+          type: array
+          items: { type: string }
+        dislikedIngredients:
+          type: array
+          items: { type: string }
+        cuisines:
+          type: array
+          items: { type: string }
+        spiceLevel:
+          $ref: "#/components/schemas/SpiceLevel"
+        dietaryStyle:
+          $ref: "#/components/schemas/DietaryStyle"
+        goal:
+          $ref: "#/components/schemas/WellnessGoal"
+        activityLevel:
+          $ref: "#/components/schemas/ActivityLevel"
+        calorieTarget:
+          type: integer
+          nullable: true
+          minimum: 800
+          maximum: 6000
+        proteinTargetGrams:
+          type: integer
+          nullable: true
+          minimum: 20
+          maximum: 400
+        carbsTargetGrams:
+          type: integer
+          nullable: true
+          minimum: 0
+          maximum: 800
+        fatTargetGrams:
+          type: integer
+          nullable: true
+          minimum: 0
+          maximum: 300
+        quizCompletedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    PreferencesPatch:
+      type: object
+      properties:
+        allergens:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 64 }
+          maxItems: 50
+        dislikedIngredients:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 64 }
+          maxItems: 50
+        cuisines:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 64 }
+          maxItems: 50
+        spiceLevel:
+          $ref: "#/components/schemas/SpiceLevel"
+        dietaryStyle:
+          $ref: "#/components/schemas/DietaryStyle"
+        goal:
+          $ref: "#/components/schemas/WellnessGoal"
+        activityLevel:
+          $ref: "#/components/schemas/ActivityLevel"
+        calorieTarget:
+          type: integer
+          nullable: true
+          minimum: 800
+          maximum: 6000
+        proteinTargetGrams:
+          type: integer
+          nullable: true
+          minimum: 20
+          maximum: 400
+        carbsTargetGrams:
+          type: integer
+          nullable: true
+          minimum: 0
+          maximum: 800
+        fatTargetGrams:
+          type: integer
+          nullable: true
+          minimum: 0
+          maximum: 300
+        markQuizComplete:
+          type: boolean
+    PreferencesEnvelope:
+      type: object
+      required: [preferences]
+      properties:
+        preferences:
+          oneOf:
+            - $ref: "#/components/schemas/UserPreferences"
+            - type: "null"
+    PreferencesEnvelopeRequired:
+      type: object
+      required: [preferences]
+      properties:
+        preferences:
+          $ref: "#/components/schemas/UserPreferences"
