@@ -110,6 +110,14 @@ export const loyaltyApi = {
         body: JSON.stringify({ paise, refId, note }),
       },
     ),
+  refundCredit: (paise: number, refId?: string, note?: string) =>
+    request<{ refundedPaise: number; balancePaise: number }>(
+      "/credit-ledger/refund",
+      {
+        method: "POST",
+        body: JSON.stringify({ paise, refId, note }),
+      },
+    ),
   getNotifications: () =>
     request<{ notifications: NotificationItem[] }>("/notifications"),
   dismissNotification: (id: number) =>

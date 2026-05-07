@@ -216,6 +216,38 @@ router.post(
   },
 );
 
+const refundCreditSchema = z.object({
+  paise: z.number().int().positive().max(10_000_000),
+  note: z.string().max(128).optional(),
+  refId: z.string().max(64).optional(),
+});
+
+router.post(
+  "/credit-ledger/refund",
+  async (req: Request, res: Response) => {
+    const userId = requireAuth(req, res);
+    if (!userId) return;
+    const parsed = refundCreditSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "invalid payload" });
+      return;
+    }
+    // Refunds are non-expiring positive credits — we re-issue as
+    // manual_grant scoped to the failed order's refId so it shows up
+    // clearly in the ledger.
+    await db.insert(creditLedgerTable).values({
+      userId,
+      deltaPaise: parsed.data.paise,
+      reason: "manual_grant",
+      refType: "order_refund",
+      refId: parsed.data.refId ?? null,
+      note: parsed.data.note ?? "Order failed — credits returned",
+    });
+    const balancePaise = await getCreditBalancePaise(userId);
+    res.json({ refundedPaise: parsed.data.paise, balancePaise });
+  },
+);
+
 const orderCompletedSchema = z.object({
   orderId: z.string().min(1).max(64),
 });
@@ -304,7 +336,51 @@ router.get("/profile", async (req: Request, res: Response) => {
   res.json({ profile: profile ?? null });
 });
 
-router.put("/profile", async (req: Request, res: Response) => {
+async function upsertProfilePartial(
+  userId: string,
+  patch: z.infer<typeof profileSchema>,
+) {
+  // PATCH semantics: omitted fields stay untouched, including on first
+  // insert (where they fall back to null/0 defaults).
+  const insertValues = {
+    userId,
+    birthDate: patch.birthDate ?? null,
+    anniversaryDate: patch.anniversaryDate ?? null,
+    proteinGoalGrams: patch.proteinGoalGrams ?? null,
+    proteinShortfallStreak: patch.proteinShortfallStreak ?? 0,
+  };
+  const updateSet: Record<string, unknown> = {};
+  if (patch.birthDate !== undefined) updateSet["birthDate"] = patch.birthDate;
+  if (patch.anniversaryDate !== undefined)
+    updateSet["anniversaryDate"] = patch.anniversaryDate;
+  if (patch.proteinGoalGrams !== undefined)
+    updateSet["proteinGoalGrams"] = patch.proteinGoalGrams;
+  if (patch.proteinShortfallStreak !== undefined)
+    updateSet["proteinShortfallStreak"] = patch.proteinShortfallStreak;
+
+  if (Object.keys(updateSet).length === 0) {
+    const [existing] = await db
+      .insert(userProfileTable)
+      .values(insertValues)
+      .onConflictDoNothing({ target: userProfileTable.userId })
+      .returning();
+    if (existing) return existing;
+    const [row] = await db
+      .select()
+      .from(userProfileTable)
+      .where(eq(userProfileTable.userId, userId));
+    return row;
+  }
+
+  const [profile] = await db
+    .insert(userProfileTable)
+    .values(insertValues)
+    .onConflictDoUpdate({ target: userProfileTable.userId, set: updateSet })
+    .returning();
+  return profile;
+}
+
+async function profileWriteHandler(req: Request, res: Response) {
   const userId = requireAuth(req, res);
   if (!userId) return;
   const parsed = profileSchema.safeParse(req.body);
@@ -312,27 +388,11 @@ router.put("/profile", async (req: Request, res: Response) => {
     res.status(400).json({ error: "invalid payload" });
     return;
   }
-  const values = {
-    userId,
-    birthDate: parsed.data.birthDate ?? null,
-    anniversaryDate: parsed.data.anniversaryDate ?? null,
-    proteinGoalGrams: parsed.data.proteinGoalGrams ?? null,
-    proteinShortfallStreak: parsed.data.proteinShortfallStreak ?? 0,
-  };
-  const [profile] = await db
-    .insert(userProfileTable)
-    .values(values)
-    .onConflictDoUpdate({
-      target: userProfileTable.userId,
-      set: {
-        birthDate: values.birthDate,
-        anniversaryDate: values.anniversaryDate,
-        proteinGoalGrams: values.proteinGoalGrams,
-        proteinShortfallStreak: values.proteinShortfallStreak,
-      },
-    })
-    .returning();
+  const profile = await upsertProfilePartial(userId, parsed.data);
   res.json({ profile });
-});
+}
+
+router.put("/profile", profileWriteHandler);
+router.patch("/profile", profileWriteHandler);
 
 export default router;

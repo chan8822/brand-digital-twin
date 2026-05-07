@@ -119,6 +119,31 @@ export default function Checkout() {
     const placedAt = new Date().toISOString();
     const etaAt = new Date(Date.now() + 25 * 60 * 1000).toISOString();
 
+    // Atomically settle the credit ledger BEFORE committing the order.
+    // The discounted total is only used if the redemption succeeds; on
+    // any failure we fall back to the full gross total so the order
+    // amount and ledger never diverge.
+    let appliedDiscount = 0;
+    let finalTotal = grossTotal;
+    if (creditApplied > 0) {
+      try {
+        const out = await loyaltyApi.redeemCredit(
+          creditApplied,
+          orderId,
+          `Order ${orderId}`,
+        );
+        appliedDiscount = out.redeemedPaise;
+        finalTotal = Math.max(0, grossTotal - appliedDiscount);
+        setCreditBalance(out.balancePaise);
+      } catch {
+        toast.warning(
+          "Credits could not be applied — placing order at full price",
+        );
+        appliedDiscount = 0;
+        finalTotal = grossTotal;
+      }
+    }
+
     try {
       addOrder({
         orderId,
@@ -129,7 +154,7 @@ export default function Checkout() {
         subtotal,
         deliveryFee,
         tip: effectiveTip,
-        total: razorpayTotal,
+        total: finalTotal,
         address: {
           label: activeAddr.label,
           line1: activeAddr.line1,
@@ -140,24 +165,24 @@ export default function Checkout() {
         },
       });
     } catch (e) {
+      // Order placement failed AFTER we redeemed credits → refund them
+      // so the ledger stays consistent with what the user actually owes.
+      if (appliedDiscount > 0) {
+        try {
+          await loyaltyApi.refundCredit(
+            appliedDiscount,
+            orderId,
+            `Refund for failed order ${orderId}`,
+          );
+        } catch {
+          toast.error(
+            "Order failed and credits could not be auto-refunded — contact support",
+          );
+        }
+      }
       toast.error("Could not place order");
       setIsProcessing(false);
       return;
-    }
-
-    // Order is committed locally; now settle loyalty side-effects. These
-    // are best-effort: the order itself is the source of truth.
-    if (creditApplied > 0) {
-      try {
-        const out = await loyaltyApi.redeemCredit(
-          creditApplied,
-          orderId,
-          `Order ${orderId}`,
-        );
-        setCreditBalance(out.balancePaise);
-      } catch {
-        toast.warning("Credits could not be applied — please contact support");
-      }
     }
     try {
       const r = await loyaltyApi.notifyOrderCompleted(orderId);
