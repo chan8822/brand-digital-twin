@@ -136,6 +136,29 @@ async function loadDeliveryForUser(
   return rows[0] ?? null;
 }
 
+async function recomputeNextDeliveryAt(
+  subscriptionId: number,
+  fallback: Date,
+): Promise<Date> {
+  const next = await db
+    .select({ scheduledFor: subscriptionDeliveriesTable.scheduledFor })
+    .from(subscriptionDeliveriesTable)
+    .where(
+      and(
+        eq(subscriptionDeliveriesTable.subscriptionId, subscriptionId),
+        eq(subscriptionDeliveriesTable.status, "upcoming"),
+      ),
+    )
+    .orderBy(asc(subscriptionDeliveriesTable.scheduledFor))
+    .limit(1);
+  const value = next[0]?.scheduledFor ?? fallback;
+  await db
+    .update(subscriptionsTable)
+    .set({ nextDeliveryAt: value })
+    .where(eq(subscriptionsTable.id, subscriptionId));
+  return value;
+}
+
 async function generateDeliveriesForSubscription(
   subscriptionId: number,
   cadence: SubscriptionCadence,
@@ -334,6 +357,7 @@ router.post(
   },
 );
 
+
 router.post(
   "/subscriptions/:id/members",
   async (req: Request, res: Response) => {
@@ -414,6 +438,10 @@ router.post(
       expiresAt,
     });
 
+    await recomputeNextDeliveryAt(
+      found.subscription.id,
+      found.subscription.nextDeliveryAt,
+    );
     res.json({ delivery: updated });
   },
 );
@@ -487,6 +515,10 @@ router.post(
       })
       .where(eq(subscriptionDeliveriesTable.id, deliveryId))
       .returning();
+    await recomputeNextDeliveryAt(
+      found.subscription.id,
+      found.subscription.nextDeliveryAt,
+    );
     res.json({ delivery: updated });
   },
 );
@@ -524,6 +556,12 @@ router.post(
       res.status(404).json({ error: "not found" });
       return;
     }
+    if (sub.status !== "active") {
+      res
+        .status(400)
+        .json({ error: `cannot generate deliveries while ${sub.status}` });
+      return;
+    }
     const last = await db
       .select()
       .from(subscriptionDeliveriesTable)
@@ -540,6 +578,7 @@ router.post(
       sub.deliveryWindow,
       [],
     );
+    await recomputeNextDeliveryAt(subId, sub.nextDeliveryAt);
     res.json({ deliveries: newOnes });
   },
 );
