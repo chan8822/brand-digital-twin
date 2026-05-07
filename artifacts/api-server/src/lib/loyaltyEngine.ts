@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gt, isNull, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, isNull, sql } from "drizzle-orm";
 import {
   creditLedgerTable,
   db,
@@ -128,25 +128,78 @@ export async function issueCredit(
   });
 }
 
+/**
+ * FIFO lot-based balance: each positive ledger row is a lot with its own
+ * expiry; each negative row consumes from the lots that were unexpired
+ * at the time of the redemption, oldest-expiring first. Lots expire only
+ * by their unconsumed remainder, so redemptions can never drive the
+ * balance negative when their backing lots later expire.
+ */
+async function computeRemainingLots(
+  userId: string,
+  tx: DbOrTx,
+): Promise<Array<{ remaining: number; expiresAt: Date | null }>> {
+  const rows = await tx
+    .select({
+      deltaPaise: creditLedgerTable.deltaPaise,
+      expiresAt: creditLedgerTable.expiresAt,
+      createdAt: creditLedgerTable.createdAt,
+    })
+    .from(creditLedgerTable)
+    .where(eq(creditLedgerTable.userId, userId))
+    .orderBy(asc(creditLedgerTable.createdAt), asc(creditLedgerTable.id));
+
+  const lots: Array<{
+    remaining: number;
+    expiresAt: Date | null;
+    createdAt: Date;
+  }> = [];
+
+  for (const r of rows) {
+    if (r.deltaPaise > 0) {
+      lots.push({
+        remaining: r.deltaPaise,
+        expiresAt: r.expiresAt,
+        createdAt: r.createdAt,
+      });
+      continue;
+    }
+    let needed = -r.deltaPaise;
+    const eligible = lots
+      .filter(
+        (l) =>
+          l.remaining > 0 &&
+          (l.expiresAt === null || l.expiresAt > r.createdAt),
+      )
+      .sort((a, b) => {
+        const ea = a.expiresAt?.getTime() ?? Number.POSITIVE_INFINITY;
+        const eb = b.expiresAt?.getTime() ?? Number.POSITIVE_INFINITY;
+        if (ea !== eb) return ea - eb;
+        return a.createdAt.getTime() - b.createdAt.getTime();
+      });
+    for (const lot of eligible) {
+      if (needed <= 0) break;
+      const take = Math.min(lot.remaining, needed);
+      lot.remaining -= take;
+      needed -= take;
+    }
+  }
+  return lots;
+}
+
 export async function getCreditBalancePaise(
   userId: string,
   tx: DbOrTx = db,
 ): Promise<number> {
-  const rows = await tx
-    .select({
-      total: sql<number>`coalesce(sum(${creditLedgerTable.deltaPaise}), 0)`,
-    })
-    .from(creditLedgerTable)
-    .where(
-      and(
-        eq(creditLedgerTable.userId, userId),
-        or(
-          isNull(creditLedgerTable.expiresAt),
-          gt(creditLedgerTable.expiresAt, sql`now()`),
-        ),
-      ),
-    );
-  return Number(rows[0]?.total ?? 0);
+  const lots = await computeRemainingLots(userId, tx);
+  const now = Date.now();
+  let total = 0;
+  for (const l of lots) {
+    if (l.remaining <= 0) continue;
+    if (l.expiresAt !== null && l.expiresAt.getTime() <= now) continue;
+    total += l.remaining;
+  }
+  return total;
 }
 
 export async function redeemCreditAtomic(args: {
