@@ -42,6 +42,16 @@ interface PORow {
   createdAt: string;
 }
 
+interface SnapshotRow {
+  id: number;
+  forDate: string;
+  daypart: string;
+  zone: string;
+  dishSlug: string;
+  forecastQty: number;
+  actualQty: number | null;
+}
+
 interface MapeRow {
   zone: string;
   dishSlug: string;
@@ -70,6 +80,7 @@ export default function AdminForecasting() {
   const [stock, setStock] = useState<StockRow[]>([]);
   const [pos, setPos] = useState<PORow[]>([]);
   const [mape, setMape] = useState<MapeRow[]>([]);
+  const [snapshots, setSnapshots] = useState<SnapshotRow[]>([]);
   const [messages, setMessages] = useState<Msg[]>([
     {
       id: newId(),
@@ -97,11 +108,12 @@ export default function AdminForecasting() {
 
   const loadAll = async () => {
     try {
-      const [f, s, p, a] = await Promise.all([
+      const [f, s, p, a, sn] = await Promise.all([
         fetch(`/api/forecasting/forecast?granularity=${granularity}`, { credentials: "include", headers: headers() }),
         fetch("/api/forecasting/stock", { credentials: "include", headers: headers() }),
         fetch("/api/forecasting/purchase-orders", { credentials: "include", headers: headers() }),
         fetch("/api/forecasting/accuracy", { credentials: "include", headers: headers() }),
+        fetch("/api/forecasting/snapshots", { credentials: "include", headers: headers() }),
       ]);
       if (f.status === 403) {
         setError("Ops scope required — set an admin token below.");
@@ -112,6 +124,7 @@ export default function AdminForecasting() {
       if (s.ok) setStock((await s.json()).stock);
       if (p.ok) setPos((await p.json()).purchaseOrders);
       if (a.ok) setMape((await a.json()).mape);
+      if (sn.ok) setSnapshots((await sn.json()).snapshots);
     } catch (err) {
       setError((err as Error).message);
     }
@@ -394,6 +407,64 @@ export default function AdminForecasting() {
                         </td>
                       </tr>
                     ))}
+                  </tbody>
+                </table>
+              )}
+            </ScrollArea>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Forecast vs actual (last 14d)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-72">
+              {snapshots.length === 0 ? (
+                <div className="text-sm text-muted-foreground">
+                  No snapshots persisted yet. POST /forecasting/snapshots/run
+                  to capture today's forecast, then
+                  /forecasting/snapshots/backfill-actuals once orders land.
+                </div>
+              ) : (
+                <table className="w-full text-xs">
+                  <thead className="sticky top-0 bg-background">
+                    <tr className="text-left text-muted-foreground">
+                      <th>Date</th>
+                      <th>Part</th>
+                      <th>Zone</th>
+                      <th>Dish</th>
+                      <th className="text-right">Forecast</th>
+                      <th className="text-right">Actual</th>
+                      <th className="text-right">Δ%</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {snapshots.slice(0, 50).map((sn) => {
+                      const delta =
+                        sn.actualQty != null && sn.actualQty !== 0
+                          ? ((sn.forecastQty - sn.actualQty) / sn.actualQty) * 100
+                          : null;
+                      return (
+                        <tr key={sn.id} className="border-b">
+                          <td className="py-1">{sn.forDate}</td>
+                          <td>{sn.daypart}</td>
+                          <td>{sn.zone}</td>
+                          <td>{sn.dishSlug}</td>
+                          <td className="text-right">
+                            {sn.forecastQty.toFixed(1)}
+                          </td>
+                          <td className="text-right">
+                            {sn.actualQty == null
+                              ? "—"
+                              : sn.actualQty.toFixed(1)}
+                          </td>
+                          <td className="text-right">
+                            {delta == null ? "—" : `${delta.toFixed(0)}%`}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               )}

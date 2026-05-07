@@ -2,12 +2,13 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import type { ModelMessage } from "ai";
 import {
   db,
+  forecastSnapshotsTable,
   inventoryItemsTable,
   kitchenStockTable,
   purchaseOrdersTable,
   purchaseOrderLinesTable,
 } from "@workspace/db";
-import { and, asc, desc, eq, lte, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, gte, lte, type SQL } from "drizzle-orm";
 import {
   computeForecast,
   forecastMape,
@@ -85,6 +86,20 @@ router.get("/forecasting/recommend-reorder", async (req: Request, res: Response)
     : undefined;
   const result = await recommendReorder({ zone, horizonDays: horizon });
   res.json(result);
+});
+
+router.get("/forecasting/snapshots", async (req: Request, res: Response) => {
+  if (!gate(req, res)) return;
+  const sinceDays = parseInt(String(req.query.sinceDays ?? "14"), 10) || 14;
+  const since = new Date(Date.now() - sinceDays * 24 * 3600 * 1000)
+    .toISOString()
+    .slice(0, 10);
+  const rows = await db
+    .select()
+    .from(forecastSnapshotsTable)
+    .where(gte(forecastSnapshotsTable.forDate, since))
+    .orderBy(desc(forecastSnapshotsTable.forDate));
+  res.json({ snapshots: rows });
 });
 
 router.get("/forecasting/accuracy", async (req: Request, res: Response) => {
