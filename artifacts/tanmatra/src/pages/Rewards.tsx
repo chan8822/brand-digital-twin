@@ -76,6 +76,7 @@ export default function Rewards() {
   const [unauthorized, setUnauthorized] = useState(false);
   const [redeemCode, setRedeemCode] = useState("");
   const [birthDate, setBirthDate] = useState("");
+  const [anniversaryDate, setAnniversaryDate] = useState("");
 
   const refresh = useCallback(async () => {
     try {
@@ -91,6 +92,7 @@ export default function Rewards() {
       setNotifs(n.notifications);
       setProfile(p.profile);
       if (p.profile?.birthDate) setBirthDate(p.profile.birthDate);
+      if (p.profile?.anniversaryDate) setAnniversaryDate(p.profile.anniversaryDate);
       setUnauthorized(false);
     } catch (e) {
       if (String(e).startsWith("Error: 401")) {
@@ -170,17 +172,21 @@ export default function Rewards() {
     }
   };
 
-  const handleSaveBirthday = async () => {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) {
-      toast.error("Pick a date first");
+  const handleSaveDates = async () => {
+    const payload: { birthDate?: string; anniversaryDate?: string } = {};
+    if (/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) payload.birthDate = birthDate;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(anniversaryDate))
+      payload.anniversaryDate = anniversaryDate;
+    if (!payload.birthDate && !payload.anniversaryDate) {
+      toast.error("Pick at least one date");
       return;
     }
     try {
-      await loyaltyApi.updateProfile({ birthDate });
-      toast.success("Birthday saved — we'll send a free meal on your day");
+      await loyaltyApi.updateProfile(payload);
+      toast.success("Saved — we'll celebrate your milestones with a free meal");
       refresh();
     } catch {
-      toast.error("Could not save birthday");
+      toast.error("Could not save");
     }
   };
 
@@ -342,29 +348,43 @@ export default function Rewards() {
         <CardContent className="p-5 space-y-3">
           <div className="flex items-center gap-2">
             <CalendarHeart className="w-4 h-4 text-pink-400" />
-            <h2 className="text-sm font-semibold text-white">Birthday meal</h2>
+            <h2 className="text-sm font-semibold text-white">Birthday & anniversary</h2>
           </div>
           <p className="text-xs text-clinical-zinc">
-            Save your birthday and we'll auto-credit a free meal each year.
+            Save your dates and we'll auto-credit a free meal each year.
           </p>
-          <div className="flex gap-2 max-w-sm">
-            <Input
-              type="date"
-              value={birthDate}
-              onChange={(e) => setBirthDate(e.target.value)}
-              className="h-10 bg-clinical-dark border-clinical-slate/30"
-            />
-            <Button
-              onClick={handleSaveBirthday}
-              variant="outline"
-              className="border-clinical-gold/40 text-clinical-gold hover:bg-clinical-gold/10"
-            >
-              Save
-            </Button>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl">
+            <div className="space-y-1">
+              <p className="text-[10px] text-clinical-zinc uppercase tracking-wide">Birthday</p>
+              <Input
+                type="date"
+                value={birthDate}
+                onChange={(e) => setBirthDate(e.target.value)}
+                className="h-10 bg-clinical-dark border-clinical-slate/30"
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] text-clinical-zinc uppercase tracking-wide">Anniversary with Tanmatra</p>
+              <Input
+                type="date"
+                value={anniversaryDate}
+                onChange={(e) => setAnniversaryDate(e.target.value)}
+                className="h-10 bg-clinical-dark border-clinical-slate/30"
+              />
+            </div>
           </div>
-          {profile?.birthDate && (
+          <Button
+            onClick={handleSaveDates}
+            variant="outline"
+            className="border-clinical-gold/40 text-clinical-gold hover:bg-clinical-gold/10"
+          >
+            Save dates
+          </Button>
+          {(profile?.birthDate || profile?.anniversaryDate) && (
             <p className="text-[10px] text-clinical-sage">
-              Saved: {new Date(profile.birthDate).toLocaleDateString(undefined, { day: "numeric", month: "long" })}
+              {profile?.birthDate ? `Birthday: ${new Date(profile.birthDate).toLocaleDateString(undefined, { day: "numeric", month: "long" })}` : ""}
+              {profile?.birthDate && profile?.anniversaryDate ? " · " : ""}
+              {profile?.anniversaryDate ? `Anniversary: ${new Date(profile.anniversaryDate).toLocaleDateString(undefined, { day: "numeric", month: "long" })}` : ""}
             </p>
           )}
         </CardContent>

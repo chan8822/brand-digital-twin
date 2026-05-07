@@ -65,6 +65,8 @@ export const referralRedemptionsTable = pgTable(
       .references(() => usersTable.id, { onDelete: "cascade" }),
     refereeAwardPaise: integer("referee_award_paise").notNull(),
     referrerAwardPaise: integer("referrer_award_paise").notNull(),
+    awardedAt: timestamp("awarded_at", { withTimezone: true }),
+    firstOrderId: varchar("first_order_id", { length: 64 }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -148,6 +150,26 @@ export const userProfileTable = pgTable("user_profile", {
     .$onUpdate(() => new Date()),
 });
 
+export const loyaltyConfigTable = pgTable("loyalty_config", {
+  id: integer("id").primaryKey(),
+  referrerAwardPaise: integer("referrer_award_paise").notNull(),
+  refereeAwardPaise: integer("referee_award_paise").notNull(),
+  referralExpiryDays: integer("referral_expiry_days").notNull(),
+  winbackPausedDays: integer("winback_paused_days").notNull(),
+  winbackOfferPaise: integer("winback_offer_paise").notNull(),
+  birthdayPaise: integer("birthday_paise").notNull(),
+  anniversaryPaise: integer("anniversary_paise").notNull(),
+  loyaltyFreeEveryN: integer("loyalty_free_every_n").notNull(),
+  premiumUnlockDeliveries: integer("premium_unlock_deliveries").notNull(),
+  premiumUnlockBonusPaise: integer("premium_unlock_bonus_paise").notNull(),
+  proteinStreakThreshold: integer("protein_streak_threshold").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
+export type LoyaltyConfig = typeof loyaltyConfigTable.$inferSelect;
 export type ReferralCode = typeof referralCodesTable.$inferSelect;
 export type ReferralRedemption = typeof referralRedemptionsTable.$inferSelect;
 export type CreditLedgerEntry = typeof creditLedgerTable.$inferSelect;

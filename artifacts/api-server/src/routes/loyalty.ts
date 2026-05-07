@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { Router, type IRouter, type Request, type Response } from "express";
-import { and, desc, eq, gt, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod/v4";
 import {
   creditLedgerTable,
@@ -11,9 +11,9 @@ import {
   userProfileTable,
 } from "@workspace/db";
 import {
-  LOYALTY_CONSTANTS,
+  awardPendingReferral,
   getCreditBalancePaise,
-  issueCredit,
+  getLoyaltyConstantsSnapshot,
   listNotifications,
   redeemCreditAtomic,
   runLoyaltyEngineForUser,
@@ -70,16 +70,19 @@ router.get("/referral/me", async (req: Request, res: Response) => {
       return;
     }
   }
-  const redemptions = await db
-    .select()
-    .from(referralRedemptionsTable)
-    .where(eq(referralRedemptionsTable.referrerUserId, userId))
-    .orderBy(desc(referralRedemptionsTable.createdAt));
+  const [redemptions, awards] = await Promise.all([
+    db
+      .select()
+      .from(referralRedemptionsTable)
+      .where(eq(referralRedemptionsTable.referrerUserId, userId))
+      .orderBy(desc(referralRedemptionsTable.createdAt)),
+    getLoyaltyConstantsSnapshot(),
+  ]);
   res.json({
     code: code.code,
     awards: {
-      referrerPaise: LOYALTY_CONSTANTS.REFERRER_AWARD_PAISE,
-      refereePaise: LOYALTY_CONSTANTS.REFEREE_AWARD_PAISE,
+      referrerPaise: awards.REFERRER_AWARD_PAISE,
+      refereePaise: awards.REFEREE_AWARD_PAISE,
     },
     redemptions,
   });
@@ -118,67 +121,20 @@ router.post("/referral/redeem", async (req: Request, res: Response) => {
     res.status(409).json({ error: "already redeemed a referral" });
     return;
   }
-  const expiresAt = new Date();
-  expiresAt.setUTCDate(
-    expiresAt.getUTCDate() + LOYALTY_CONSTANTS.REFERRAL_EXPIRY_DAYS,
-  );
+  const constants = await getLoyaltyConstantsSnapshot();
   let redemption;
   try {
-    redemption = await db.transaction(async (tx) => {
-      const [r] = await tx
-        .insert(referralRedemptionsTable)
-        .values({
-          codeId: code.id,
-          referrerUserId: code.userId,
-          refereeUserId: userId,
-          referrerAwardPaise: LOYALTY_CONSTANTS.REFERRER_AWARD_PAISE,
-          refereeAwardPaise: LOYALTY_CONSTANTS.REFEREE_AWARD_PAISE,
-        })
-        .returning();
-      await issueCredit(
-        {
-          userId: code.userId,
-          deltaPaise: LOYALTY_CONSTANTS.REFERRER_AWARD_PAISE,
-          reason: "referral_referrer_award",
-          refType: "referral_redemption",
-          refId: String(r.id),
-          note: "Friend joined with your code",
-          expiresAt,
-        },
-        tx,
-      );
-      await issueCredit(
-        {
-          userId,
-          deltaPaise: LOYALTY_CONSTANTS.REFEREE_AWARD_PAISE,
-          reason: "referral_referee_signup",
-          refType: "referral_redemption",
-          refId: String(r.id),
-          note: "Welcome bonus",
-          expiresAt,
-        },
-        tx,
-      );
-      await tx
-        .insert(notificationsTable)
-        .values({
-          userId: code.userId,
-          kind: "referral_redeemed",
-          title: "Someone joined with your code!",
-          body: `You earned Rs.${(LOYALTY_CONSTANTS.REFERRER_AWARD_PAISE / 100).toFixed(0)} in credits.`,
-          status: "sent",
-          sentAt: new Date(),
-          dedupeKey: `referral:${r.id}`,
-          payload: { redemptionId: r.id },
-        })
-        .onConflictDoNothing({
-          target: [notificationsTable.userId, notificationsTable.dedupeKey],
-        });
-      return r;
-    });
+    [redemption] = await db
+      .insert(referralRedemptionsTable)
+      .values({
+        codeId: code.id,
+        referrerUserId: code.userId,
+        refereeUserId: userId,
+        referrerAwardPaise: constants.REFERRER_AWARD_PAISE,
+        refereeAwardPaise: constants.REFEREE_AWARD_PAISE,
+      })
+      .returning();
   } catch (e) {
-    // Unique violation on referee means a concurrent request already
-    // redeemed; surface the same conflict response.
     if (
       e &&
       typeof e === "object" &&
@@ -190,7 +146,25 @@ router.post("/referral/redeem", async (req: Request, res: Response) => {
     }
     throw e;
   }
-  res.json({ redemption, awardedPaise: LOYALTY_CONSTANTS.REFEREE_AWARD_PAISE });
+  // Award nothing yet: credits are released when the referee places their
+  // first order (POST /loyalty/order-completed). We notify the referrer of
+  // the pending redemption so the action is visible.
+  await db
+    .insert(notificationsTable)
+    .values({
+      userId: code.userId,
+      kind: "referral_redeemed",
+      title: "A friend joined with your code",
+      body: `Credits land when they place their first order.`,
+      status: "sent",
+      sentAt: new Date(),
+      dedupeKey: `referral_pending:${redemption.id}`,
+      payload: { redemptionId: redemption.id, status: "pending" },
+    })
+    .onConflictDoNothing({
+      target: [notificationsTable.userId, notificationsTable.dedupeKey],
+    });
+  res.json({ redemption, awardedPaise: 0, status: "pending_first_order" });
 });
 
 router.get("/credit-ledger", async (req: Request, res: Response) => {
@@ -240,6 +214,25 @@ router.post(
     });
   },
 );
+
+const orderCompletedSchema = z.object({
+  orderId: z.string().min(1).max(64),
+});
+
+router.post("/loyalty/order-completed", async (req: Request, res: Response) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const parsed = orderCompletedSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "invalid payload" });
+    return;
+  }
+  const result = await awardPendingReferral({
+    refereeUserId: userId,
+    orderId: parsed.data.orderId,
+  });
+  res.json(result);
+});
 
 router.get("/notifications", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
@@ -333,11 +326,5 @@ router.put("/profile", async (req: Request, res: Response) => {
     .returning();
   res.json({ profile });
 });
-
-// Filter to use elsewhere (kept here for reference / not exported)
-void sql;
-void or;
-void isNull;
-void gt;
 
 export default router;

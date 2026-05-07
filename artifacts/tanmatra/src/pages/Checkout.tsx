@@ -116,38 +116,57 @@ export default function Checkout() {
     await new Promise((r) => setTimeout(r, 1500));
 
     const orderId = generateOrderId();
-    if (creditApplied > 0) {
-      try {
-        const out = await loyaltyApi.redeemCredit(creditApplied, orderId, `Order ${orderId}`);
-        setCreditBalance(out.balancePaise);
-      } catch (e) {
-        toast.error("Could not apply credits");
-        setIsProcessing(false);
-        return;
-      }
-    }
     const placedAt = new Date().toISOString();
     const etaAt = new Date(Date.now() + 25 * 60 * 1000).toISOString();
 
-    addOrder({
-      orderId,
-      placedAt,
-      etaAt,
-      status: "placed",
-      items: [...items],
-      subtotal,
-      deliveryFee,
-      tip: effectiveTip,
-      total: razorpayTotal,
-      address: {
-        label: activeAddr.label,
-        line1: activeAddr.line1,
-        line2: activeAddr.line2,
-        city: activeAddr.city,
-        pincode: activeAddr.pincode,
-        phone: activeAddr.phone,
-      },
-    });
+    try {
+      addOrder({
+        orderId,
+        placedAt,
+        etaAt,
+        status: "placed",
+        items: [...items],
+        subtotal,
+        deliveryFee,
+        tip: effectiveTip,
+        total: razorpayTotal,
+        address: {
+          label: activeAddr.label,
+          line1: activeAddr.line1,
+          line2: activeAddr.line2,
+          city: activeAddr.city,
+          pincode: activeAddr.pincode,
+          phone: activeAddr.phone,
+        },
+      });
+    } catch (e) {
+      toast.error("Could not place order");
+      setIsProcessing(false);
+      return;
+    }
+
+    // Order is committed locally; now settle loyalty side-effects. These
+    // are best-effort: the order itself is the source of truth.
+    if (creditApplied > 0) {
+      try {
+        const out = await loyaltyApi.redeemCredit(
+          creditApplied,
+          orderId,
+          `Order ${orderId}`,
+        );
+        setCreditBalance(out.balancePaise);
+      } catch {
+        toast.warning("Credits could not be applied — please contact support");
+      }
+    }
+    try {
+      const r = await loyaltyApi.notifyOrderCompleted(orderId);
+      if (r.awarded) {
+        toast.success("Referral reward unlocked for your friend");
+      }
+    } catch {
+      // Non-fatal: engine can be re-run later from /rewards.
+    }
 
     clear();
     setIsProcessing(false);

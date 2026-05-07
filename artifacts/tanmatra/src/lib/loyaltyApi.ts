@@ -133,4 +133,12 @@ export const loyaltyApi = {
       method: "PUT",
       body: JSON.stringify(data),
     }),
+  notifyOrderCompleted: (orderId: string) =>
+    request<{ awarded: boolean; redemptionId?: number }>(
+      "/loyalty/order-completed",
+      {
+        method: "POST",
+        body: JSON.stringify({ orderId }),
+      },
+    ),
 };
