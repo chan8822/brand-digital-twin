@@ -16,6 +16,10 @@ export interface RunAgentOptions {
   onEvent?: (event: GatewayEvent) => void;
   stream?: boolean;
   modelId?: string;
+  /** Per-attempt timeout for the model call. Default 30s. */
+  timeoutMs?: number;
+  /** Maximum attempts on transient errors (non-stream only). Default 2. */
+  maxAttempts?: number;
 }
 
 export type GatewayEvent =
@@ -46,6 +50,20 @@ export interface RunAgentResult {
   runId: number;
 }
 
+const DEFAULT_TIMEOUT_MS = 30_000;
+const DEFAULT_MAX_ATTEMPTS = 2;
+
+function isTransientError(err: unknown): boolean {
+  const message = (err as Error)?.message ?? "";
+  if (/aborted|timeout/i.test(message)) return true;
+  const status = (err as { status?: number; statusCode?: number })?.status ??
+    (err as { statusCode?: number })?.statusCode;
+  if (typeof status === "number" && (status === 429 || status >= 500)) {
+    return true;
+  }
+  return false;
+}
+
 async function persistRun(row: {
   agent: string;
   userId: string | null;
@@ -58,6 +76,8 @@ async function persistRun(row: {
   outputTokens: number;
   costMicroUsd: number;
   latencyMs: number;
+  attempts: number;
+  timedOut: boolean;
   status: "ok" | "error" | "refused";
   error: string | null;
   escalated: boolean;
@@ -79,6 +99,8 @@ async function persistRun(row: {
         totalTokens: row.inputTokens + row.outputTokens,
         costMicroUsd: row.costMicroUsd,
         latencyMs: row.latencyMs,
+        attempts: row.attempts,
+        timedOut: row.timedOut ? 1 : 0,
         status: row.status,
         error: row.error,
         escalated: row.escalated ? 1 : 0,
@@ -166,6 +188,8 @@ export async function runAgent(
       outputTokens: 0,
       costMicroUsd: 0,
       latencyMs,
+      attempts: 1,
+      timedOut: false,
       status: "refused",
       error: null,
       escalated: true,
@@ -180,16 +204,32 @@ export async function runAgent(
   let fullText = "";
   let inputTokens = 0;
   let outputTokens = 0;
+  let attempts = 0;
+  let timedOut = false;
+  const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const maxAttempts = Math.max(1, opts.maxAttempts ?? DEFAULT_MAX_ATTEMPTS);
 
   try {
     if (opts.stream) {
+      // Streaming mode: a single attempt with a timeout. We do not retry mid
+      // stream because partial deltas may already have been flushed to the
+      // client. Transient failures before the first delta still surface as
+      // errors to the caller.
+      attempts = 1;
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => {
+        timedOut = true;
+        ctrl.abort();
+      }, timeoutMs);
       const result = streamText({
         model: getModel(modelId),
         system,
         messages: opts.messages,
         tools,
         stopWhen: stepCountIs(agent.maxSteps ?? 4),
+        abortSignal: ctrl.signal,
       });
+      try {
       for await (const part of result.fullStream) {
         switch (part.type) {
           case "text-delta": {
@@ -226,17 +266,47 @@ export async function runAgent(
       const usage = await result.usage;
       inputTokens = usage.inputTokens ?? 0;
       outputTokens = usage.outputTokens ?? 0;
+      } finally {
+        clearTimeout(timer);
+      }
     } else {
-      const result = await generateText({
-        model: getModel(modelId),
-        system,
-        messages: opts.messages,
-        tools,
-        stopWhen: stepCountIs(agent.maxSteps ?? 4),
-      });
-      fullText = result.text;
-      inputTokens = result.usage.inputTokens ?? 0;
-      outputTokens = result.usage.outputTokens ?? 0;
+      // Non-streaming: bounded retry loop on transient errors with a per
+      // attempt timeout. Attempt count is recorded in ai_runs.attempts.
+      let lastErr: unknown;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        attempts = attempt;
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => {
+          timedOut = true;
+          ctrl.abort();
+        }, timeoutMs);
+        try {
+          const result = await generateText({
+            model: getModel(modelId),
+            system,
+            messages: opts.messages,
+            tools,
+            stopWhen: stepCountIs(agent.maxSteps ?? 4),
+            abortSignal: ctrl.signal,
+          });
+          clearTimeout(timer);
+          fullText = result.text;
+          inputTokens = result.usage.inputTokens ?? 0;
+          outputTokens = result.usage.outputTokens ?? 0;
+          lastErr = undefined;
+          break;
+        } catch (err) {
+          clearTimeout(timer);
+          lastErr = err;
+          if (attempt >= maxAttempts || !isTransientError(err)) break;
+          timedOut = false;
+          logger.warn(
+            { err, agent: agent.name, attempt },
+            "gateway transient error, retrying",
+          );
+        }
+      }
+      if (lastErr) throw lastErr;
     }
   } catch (err) {
     const latencyMs = Date.now() - start;
@@ -255,6 +325,8 @@ export async function runAgent(
       outputTokens,
       costMicroUsd: 0,
       latencyMs,
+      attempts: Math.max(1, attempts),
+      timedOut,
       status: "error",
       error: message,
       escalated: false,
@@ -298,6 +370,8 @@ export async function runAgent(
     outputTokens,
     costMicroUsd,
     latencyMs,
+    attempts: Math.max(1, attempts),
+    timedOut,
     status: "ok",
     error: null,
     escalated,

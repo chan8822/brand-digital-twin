@@ -27,6 +27,8 @@ export const aiRunsTable = pgTable(
       .notNull()
       .default(0),
     latencyMs: integer("latency_ms").notNull().default(0),
+    attempts: integer("attempts").notNull().default(1),
+    timedOut: integer("timed_out").notNull().default(0),
     status: text("status").notNull(),
     error: text("error"),
     escalated: integer("escalated").notNull().default(0),

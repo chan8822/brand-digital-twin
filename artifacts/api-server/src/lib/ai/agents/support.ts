@@ -120,13 +120,21 @@ const supportTools = [
       "Look up the current status and timeline of a customer order by id. Read-only.",
     inputSchema: z.object({ orderId: z.number().int().positive() }),
     authScope: "user",
-    handler: async ({ orderId }) => {
+    handler: async ({ orderId }, ctx) => {
       const [order] = await db
         .select()
         .from(ordersTable)
         .where(eq(ordersTable.id, orderId))
         .limit(1);
       if (!order) return { success: false as const, error: "Order not found" };
+      // Object-level access control: a non-ops caller may only read their own
+      // order. Ops scope (e.g. internal Ops Agent) may read any order.
+      if (!ctx.isOps && order.userId !== ctx.userId) {
+        return {
+          success: false as const,
+          error: "Order not found",
+        };
+      }
       const events = await db
         .select()
         .from(deliveryEventsTable)
