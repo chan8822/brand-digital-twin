@@ -53,17 +53,23 @@ router.get("/referral/me", async (req: Request, res: Response) => {
     .where(eq(referralCodesTable.userId, userId));
   if (!code) {
     let attempt = 0;
-    while (attempt < 5) {
+    while (attempt < 5 && !code) {
       const candidate = generateCode();
       const inserted = await db
         .insert(referralCodesTable)
         .values({ userId, code: candidate })
-        .onConflictDoNothing({ target: referralCodesTable.code })
+        .onConflictDoNothing()
         .returning();
       if (inserted[0]) {
         code = inserted[0];
         break;
       }
+      // Either the code was taken, or this user already had one inserted
+      // by a concurrent request — read it back and use that.
+      [code] = await db
+        .select()
+        .from(referralCodesTable)
+        .where(eq(referralCodesTable.userId, userId));
       attempt++;
     }
     if (!code) {

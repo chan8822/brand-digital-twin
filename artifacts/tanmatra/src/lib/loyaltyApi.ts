@@ -12,6 +12,7 @@ export type CreditLedgerReason =
 export type NotificationKind =
   | "winback"
   | "birthday"
+  | "anniversary"
   | "loyalty_free_week"
   | "loyalty_premium_unlock"
   | "protein_streak"

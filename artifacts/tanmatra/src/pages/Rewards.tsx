@@ -45,6 +45,7 @@ const REASON_LABEL: Record<CreditLedgerReason, string> = {
 const NOTIF_ICON: Record<NotificationKind, typeof Bell> = {
   winback: RefreshCw,
   birthday: Cake,
+  anniversary: Cake,
   loyalty_free_week: Trophy,
   loyalty_premium_unlock: Sparkles,
   protein_streak: AlertTriangle,
@@ -150,7 +151,11 @@ export default function Rewards() {
     if (!redeemCode.trim()) return;
     try {
       const out = await loyaltyApi.redeemReferral(redeemCode.trim());
-      toast.success(`+${formatPaise(out.awardedPaise)} added to your wallet`);
+      toast.success(
+        out.awardedPaise > 0
+          ? `+${formatPaise(out.awardedPaise)} added to your wallet`
+          : "Code applied — credits land after your first order",
+      );
       setRedeemCode("");
       refresh();
     } catch (e) {
