@@ -11,7 +11,9 @@ interface ForecastRow {
   zone: string;
   dishSlug: string;
   dishName: string;
+  bucket: string;
   daypart: string;
+  hour?: number;
   forecastQty: number;
   observedDays: number;
 }
@@ -64,6 +66,7 @@ export default function AdminForecasting() {
       : window.localStorage.getItem(ADMIN_TOKEN_KEY) ?? "",
   );
   const [forecast, setForecast] = useState<ForecastRow[]>([]);
+  const [granularity, setGranularity] = useState<"daypart" | "hour">("daypart");
   const [stock, setStock] = useState<StockRow[]>([]);
   const [pos, setPos] = useState<PORow[]>([]);
   const [mape, setMape] = useState<MapeRow[]>([]);
@@ -95,7 +98,7 @@ export default function AdminForecasting() {
   const loadAll = async () => {
     try {
       const [f, s, p, a] = await Promise.all([
-        fetch("/api/forecasting/forecast", { credentials: "include", headers: headers() }),
+        fetch(`/api/forecasting/forecast?granularity=${granularity}`, { credentials: "include", headers: headers() }),
         fetch("/api/forecasting/stock", { credentials: "include", headers: headers() }),
         fetch("/api/forecasting/purchase-orders", { credentials: "include", headers: headers() }),
         fetch("/api/forecasting/accuracy", { credentials: "include", headers: headers() }),
@@ -117,7 +120,35 @@ export default function AdminForecasting() {
   useEffect(() => {
     void loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adminToken]);
+  }, [adminToken, granularity]);
+
+  const downloadPoCsv = async (id: number) => {
+    try {
+      const res = await fetch(
+        `/api/forecasting/purchase-orders/${id}/export.csv`,
+        { credentials: "include", headers: headers() },
+      );
+      if (!res.ok) {
+        setError(`CSV export failed (${res.status})`);
+        return;
+      }
+      const blob = await res.blob();
+      const filename =
+        /filename="?([^";]+)"?/.exec(
+          res.headers.get("content-disposition") ?? "",
+        )?.[1] ?? `po-${id}.csv`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
 
   const sendMessage = async (raw: string) => {
     const text = raw.trim();
@@ -205,8 +236,24 @@ export default function AdminForecasting() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
-          <CardHeader>
-            <CardTitle>Today's forecast (top 10)</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Today's forecast</CardTitle>
+            <div className="flex gap-1">
+              <Button
+                size="sm"
+                variant={granularity === "daypart" ? "default" : "outline"}
+                onClick={() => setGranularity("daypart")}
+              >
+                Daypart
+              </Button>
+              <Button
+                size="sm"
+                variant={granularity === "hour" ? "default" : "outline"}
+                onClick={() => setGranularity("hour")}
+              >
+                Hourly
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-72">
@@ -220,7 +267,7 @@ export default function AdminForecasting() {
                   <thead className="sticky top-0 bg-background">
                     <tr className="text-left text-muted-foreground">
                       <th className="py-1">Dish</th>
-                      <th>Daypart</th>
+                      <th>{granularity === "hour" ? "Hour" : "Daypart"}</th>
                       <th>Zone</th>
                       <th className="text-right">Forecast qty</th>
                     </tr>
@@ -228,11 +275,11 @@ export default function AdminForecasting() {
                   <tbody>
                     {forecast.slice(0, 25).map((f) => (
                       <tr
-                        key={`${f.zone}-${f.daypart}-${f.dishSlug}`}
+                        key={`${f.zone}-${f.bucket}-${f.dishSlug}`}
                         className="border-b"
                       >
                         <td className="py-1">{f.dishName || f.dishSlug}</td>
-                        <td>{f.daypart}</td>
+                        <td>{f.bucket}</td>
                         <td>{f.zone}</td>
                         <td className="text-right">
                           {f.forecastQty.toFixed(1)}
@@ -337,14 +384,13 @@ export default function AdminForecasting() {
                           ₹{(p.totalPaise / 100).toFixed(0)}
                         </td>
                         <td className="text-right">
-                          <a
+                          <button
+                            type="button"
                             className="underline text-xs"
-                            href={`/api/forecasting/purchase-orders/${p.id}/export.csv`}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                            onClick={() => void downloadPoCsv(p.id)}
                           >
                             export CSV
-                          </a>
+                          </button>
                         </td>
                       </tr>
                     ))}
