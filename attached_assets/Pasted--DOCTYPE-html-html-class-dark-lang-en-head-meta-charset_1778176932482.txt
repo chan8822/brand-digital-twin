@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Noida Artisanal - Dynamic Menu</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;family=Noto+Serif:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-surface-variant": "#d0c5af",
+                        "surface-variant": "#343539",
+                        "error-container": "#93000a",
+                        "on-primary-fixed-variant": "#574500",
+                        "on-error": "#690005",
+                        "tertiary-fixed-dim": "#c8c6c5",
+                        "surface-container": "#1e1f23",
+                        "surface-tint": "#e9c349",
+                        "surface": "#121317",
+                        "primary-container": "#d4af37",
+                        "primary": "#f2ca50",
+                        "inverse-surface": "#e3e2e7",
+                        "surface-bright": "#38393d",
+                        "primary-fixed-dim": "#e9c349",
+                        "on-tertiary-fixed-variant": "#474746",
+                        "surface-container-high": "#292a2e",
+                        "secondary-container": "#4a4949",
+                        "outline-variant": "#4d4635",
+                        "on-surface": "#e3e2e7",
+                        "surface-dim": "#121317",
+                        "inverse-primary": "#735c00",
+                        "secondary-fixed-dim": "#c8c6c5",
+                        "tertiary-container": "#b4b2b2",
+                        "on-primary": "#3c2f00",
+                        "surface-container-lowest": "#0d0e12",
+                        "inverse-on-surface": "#2f3034",
+                        "background": "#121317",
+                        "tertiary-fixed": "#e5e2e1",
+                        "outline": "#99907c",
+                        "on-secondary": "#313030",
+                        "on-secondary-fixed": "#1c1b1b",
+                        "on-error-container": "#ffdad6",
+                        "on-tertiary-fixed": "#1c1b1b",
+                        "on-background": "#e3e2e7",
+                        "on-tertiary": "#313030",
+                        "secondary": "#c8c6c5",
+                        "secondary-fixed": "#e5e2e1",
+                        "surface-container-highest": "#343539",
+                        "primary-fixed": "#ffe088",
+                        "on-primary-fixed": "#241a00",
+                        "on-secondary-fixed-variant": "#474646",
+                        "tertiary": "#d0cdcd",
+                        "on-primary-container": "#554300",
+                        "surface-container-low": "#1a1b1f",
+                        "error": "#ffb4ab",
+                        "on-secondary-container": "#bab8b7",
+                        "on-tertiary-container": "#454544"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    spacing: {
+                        "unit": "4px",
+                        "stack-md": "16px",
+                        "container-padding": "20px",
+                        "gutter": "16px",
+                        "stack-sm": "8px",
+                        "section-gap": "48px"
+                    },
+                    fontFamily: {
+                        "body-lg": ["Be Vietnam Pro"],
+                        "headline-sm": ["Noto Serif"],
+                        "headline-md": ["Noto Serif"],
+                        "body-md": ["Be Vietnam Pro"],
+                        "headline-xl": ["Noto Serif"],
+                        "label-caps": ["Be Vietnam Pro"]
+                    },
+                    fontSize: {
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "headline-sm": ["24px", { "lineHeight": "1.3", "fontWeight": "500" }],
+                        "headline-md": ["32px", { "lineHeight": "1.2", "fontWeight": "500" }],
+                        "body-md": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "headline-xl": ["48px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "label-caps": ["12px", { "lineHeight": "1.0", "letterSpacing": "0.1em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex flex-col pt-[64px] pb-[84px] md:pb-0">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface dark:bg-surface border-b border-outline-variant/20 flex items-center justify-between px-container-padding h-[64px]">
+<div class="flex items-center"><img alt="Tanmatra Logo" class="h-10 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/ADBb0ujKr6Gt-vfvl1d8gy4SlLLCFGDDY1s_sWUR99nIMwjoJTh-4uRy9XX_MmiZZOEd6XDF5H2MYbOytsxy131Qc3wZ7SUtExUV-iWNkduI2ll5Zpziq12dF1NGAdHD7jFFYNtoy7JLkVwKO1pAz0kGnrr-FxyE-WzSNTg5-3ChPvGy7sSbOxpb-UPe7tKNqdYETHOjcpExxXage42i1Tq6tZgRY9mM6XS60X_UUFsaEVp-hJU49spmadnz8YSfr3zBelJsnHtZl4XxaA"/></div>
+<div class="text-primary dark:text-primary font-label-caps text-label-caps active:scale-95 transition-transform duration-200">
+        Priority: 24m
+    </div>
+</header>
+<main class="flex-grow w-full max-w-7xl mx-auto px-container-padding py-stack-md flex flex-col gap-section-gap">
+<!-- Controls Section -->
+<section class="flex flex-col gap-stack-md">
+<!-- Mode Toggle -->
+<div class="flex justify-center">
+<div class="bg-surface-container rounded-full p-1 flex items-center border border-outline-variant/20">
+<button class="px-6 py-2 rounded-full font-label-caps text-label-caps bg-primary text-on-primary transition-all shadow-[0_0_10px_rgba(242,202,80,0.2)]">
+                        BROWSE
+                    </button>
+<button class="px-6 py-2 rounded-full font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-colors">
+                        ORDER
+                    </button>
+</div>
+</div>
+<!-- Lifestyle Filter Bar -->
+<div class="overflow-x-auto hide-scrollbar -mx-container-padding px-container-padding py-2">
+<div class="flex gap-3 whitespace-nowrap w-max">
+<button class="px-4 py-2 rounded-full border border-primary/40 bg-primary/10 text-primary font-label-caps text-label-caps uppercase transition-all shadow-[0_0_8px_rgba(242,202,80,0.15)]">
+                        Heart Healthy
+                    </button>
+<button class="px-4 py-2 rounded-full border border-outline-variant text-on-surface-variant hover:border-primary/50 hover:text-primary font-label-caps text-label-caps uppercase transition-all">
+                        Fitness &amp; Gains
+                    </button>
+<button class="px-4 py-2 rounded-full border border-outline-variant text-on-surface-variant hover:border-primary/50 hover:text-primary font-label-caps text-label-caps uppercase transition-all">
+                        Diabetes Management
+                    </button>
+<button class="px-4 py-2 rounded-full border border-outline-variant text-on-surface-variant hover:border-primary/50 hover:text-primary font-label-caps text-label-caps uppercase transition-all">
+                        Junior Explorers
+                    </button>
+<button class="px-4 py-2 rounded-full border border-outline-variant text-on-surface-variant hover:border-primary/50 hover:text-primary font-label-caps text-label-caps uppercase transition-all">
+                        Silver Vitality
+                    </button>
+</div>
+</div>
+</section>
+<!-- Menu Content -->
+<section class="flex flex-col gap-stack-md">
+<h2 class="font-headline-md text-headline-md text-on-surface">Curated Selections</h2>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- Dish Card 1: Heart Healthy -->
+<article class="bg-surface-container rounded-xl overflow-hidden border border-outline-variant/30 hover:border-primary/50 transition-all flex flex-col group relative">
+<div class="h-48 bg-surface-variant relative overflow-hidden">
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container to-transparent z-10"></div>
+<img alt="Grilled Salmon" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="A cinematic, high-resolution food photography shot of a perfectly grilled piece of salmon resting on a bed of vibrant quinoa and steamed asparagus. The scene is set on a dark slate plate, emphasizing the 'Dark Luxury' aesthetic with deep blacks and rich gold accents. Soft, directional light highlights the texture of the fish and the vivid greens of the asparagus, creating a mouth-watering, premium visual experience suitable for a high-end restaurant menu." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC99A4pmHluhvCDdsjj4uq3DSe1ZnI9-gLBB1ehbqr94YCaahy-yIK5SB_1q7rbJrWcpcPByaq8qA-Zgs0XA4fkB4IJqXL3eLGBPIqxW1aDGwzwEtqALaPHPFjKg7VpEikN535M3UkVxYTgrh-8kCh_1q2Sdqfu4N2ZBPXZVNevW-p9xI_dleIcxfHRLD532pdzIP7o-KWv8GtQPDkbQlZo9AocgtHwrMeATI5-gmqxUHE7xslMckuPmKg7frAijbAZ4VI9UJBckuQ"/>
+<div class="absolute top-3 right-3 z-20 flex gap-2">
+<span class="bg-surface-container-high/90 text-primary px-2 py-1 rounded text-[10px] font-label-caps tracking-wider border border-primary/30 flex items-center gap-1 backdrop-blur-sm">
+<span class="material-symbols-outlined text-[14px]">favorite</span> LOW SODIUM
+                            </span>
+</div>
+</div>
+<div class="p-5 flex flex-col flex-grow relative z-20 -mt-8">
+<div class="flex justify-between items-start mb-2">
+<h3 class="font-headline-sm text-headline-sm text-on-surface leading-tight">Atlantic Salmon &amp; Quinoa</h3>
+<span class="text-primary font-headline-sm text-headline-sm">₹1450</span>
+</div>
+<p class="text-on-surface-variant font-body-md mb-4 text-sm line-clamp-2">Wild-caught salmon delicately grilled, served over herbed organic quinoa with steamed asparagus spears.</p>
+<div class="flex flex-wrap gap-2 mb-6">
+<div class="bg-surface-variant px-3 py-1.5 rounded flex items-center gap-2 border border-outline-variant/20">
+<span class="text-on-surface font-label-caps text-label-caps">CAL</span>
+<span class="text-primary font-body-md font-medium">420</span>
+</div>
+<div class="bg-surface-variant px-3 py-1.5 rounded flex items-center gap-2 border border-outline-variant/20">
+<span class="text-on-surface font-label-caps text-label-caps">PRO</span>
+<span class="text-primary font-body-md font-medium">38g</span>
+</div>
+</div>
+<div class="mt-auto flex gap-3">
+<button class="flex-1 bg-surface-variant text-on-surface border border-outline-variant hover:border-primary/50 py-3 rounded-lg font-label-caps text-label-caps transition-colors">DETAILS</button>
+<button class="flex-1 bg-primary text-on-primary py-3 rounded-lg font-label-caps text-label-caps font-bold transition-all shadow-[0_0_15px_rgba(242,202,80,0.15)] hover:shadow-[0_0_20px_rgba(242,202,80,0.3)]">ADD TO ORDER</button>
+</div>
+</div>
+</article>
+<!-- Dish Card 2: Junior Explorers -->
+<article class="bg-surface-container rounded-xl overflow-hidden border border-outline-variant/30 hover:border-primary/50 transition-all flex flex-col group relative">
+<div class="h-48 bg-surface-variant relative overflow-hidden">
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container to-transparent z-10"></div>
+<img alt="Hidden Veggie Pasta" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="A sophisticated yet appealing close-up of a rustic bowl of tomato pasta, designed for a 'Dark Luxury' digital menu. The lighting is moody and dramatic, focusing on the rich red sauce and golden parmesan flakes against a dark wooden table background. The high-contrast imagery highlights the artisanal quality of the dish, communicating a premium dining experience while subtly hinting at the 'hidden-veggie' health benefits intended for a junior audience." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAeH7m7bD_YnVe4IFPz2_lXNakPeIPwKLY8plXRxFCHQpwYx5VZGlu1K5DdKUZ9_R_zqrgZC6Mm4EzXRdcOhBcc0rIZ5A-Cx1Ii21DGOTLFJ5mF7v0_I38lDhuhhxhzfUf40rnKZy4uvM3pDc3AYQBX8A_bI6yxAv1y4f57Nhhor5ju4ZQkr6OcSPm7bgG0Nxg_iB8cNBaXehVh5lhwA2T79yvf94xEPxyF8B4Gc_IpPHnTW4nF3JH3sQtw_BsLKbTUjqG67fqXkC0"/>
+<div class="absolute top-3 right-3 z-20 flex gap-2">
+<span class="bg-surface-container-high/90 text-primary px-2 py-1 rounded text-[10px] font-label-caps tracking-wider border border-primary/30 flex items-center gap-1 backdrop-blur-sm">
+<span class="material-symbols-outlined text-[14px]">visibility_off</span> HIDDEN VEG
+                            </span>
+</div>
+</div>
+<div class="p-5 flex flex-col flex-grow relative z-20 -mt-8">
+<div class="flex justify-between items-start mb-2">
+<h3 class="font-headline-sm text-headline-sm text-on-surface leading-tight">Artisanal Maca-Ro-Ni</h3>
+<span class="text-primary font-headline-sm text-headline-sm">₹850</span>
+</div>
+<p class="text-on-surface-variant font-body-md mb-4 text-sm line-clamp-2">Whole wheat pasta tossed in our signature robust tomato sauce, secretly blended with 5 seasonal vegetables.</p>
+<div class="flex flex-wrap gap-2 mb-6">
+<div class="bg-surface-variant px-3 py-1.5 rounded flex items-center gap-2 border border-outline-variant/20">
+<span class="text-on-surface font-label-caps text-label-caps">CAL</span>
+<span class="text-primary font-body-md font-medium">310</span>
+</div>
+<div class="bg-surface-variant px-3 py-1.5 rounded flex items-center gap-2 border border-outline-variant/20">
+<span class="text-on-surface font-label-caps text-label-caps">FIBER</span>
+<span class="text-primary font-body-md font-medium">12g</span>
+</div>
+</div>
+<div class="mt-auto flex gap-3">
+<button class="flex-1 bg-surface-variant text-on-surface border border-outline-variant hover:border-primary/50 py-3 rounded-lg font-label-caps text-label-caps transition-colors">DETAILS</button>
+<button class="flex-1 bg-primary text-on-primary py-3 rounded-lg font-label-caps text-label-caps font-bold transition-all shadow-[0_0_15px_rgba(242,202,80,0.15)] hover:shadow-[0_0_20px_rgba(242,202,80,0.3)]">ADD TO ORDER</button>
+</div>
+</div>
+</article>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 rounded-t-xl border-t border-outline-variant/20 bg-surface-container shadow-[0_-4px_20px_rgba(242,202,80,0.05)] flex justify-around items-center h-[84px] pb-6 px-4">
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-2 hover:text-primary transition-all active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined mb-1">home</span>
+<span class="font-label-caps text-label-caps uppercase">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary bg-primary/10 rounded-xl px-4 py-2 hover:text-primary transition-all active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">restaurant</span>
+<span class="font-label-caps text-label-caps uppercase">Menu</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-2 hover:text-primary transition-all active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined mb-1">analytics</span>
+<span class="font-label-caps text-label-caps uppercase">Wellness</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-2 hover:text-primary transition-all active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined mb-1">calendar_month</span>
+<span class="font-label-caps text-label-caps uppercase">Plans</span>
+</a>
+</nav>
+</body></html>

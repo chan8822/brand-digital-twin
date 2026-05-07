@@ -10,6 +10,13 @@ import { Label } from "@/components/ui/label";
 import MacroOverlay from "@/components/dish/MacroOverlay";
 import { toast } from "sonner";
 import { getDishBySlug } from "@/lib/menuData";
+import {
+  getCustomizationsForDish,
+  getKitchenNoteForDish,
+  getRdNoteForDish,
+  getUpsellsForDish,
+  stripIngredientAmount,
+} from "@/lib/dishEnrichment";
 import { useCart } from "@/lib/cartContext";
 import { formatPrice } from "@/lib/api/adapter";
 import {
@@ -21,6 +28,9 @@ import {
   Plus,
   AlertTriangle,
   Activity,
+  Flame,
+  Sparkles,
+  Utensils,
 } from "lucide-react";
 
 export default function Dish() {
@@ -29,10 +39,15 @@ export default function Dish() {
   const { addItem } = useCart();
   const meal = slug ? getDishBySlug(slug) : undefined;
 
+  const customizations = useMemo(
+    () => (meal ? getCustomizationsForDish(meal) : []),
+    [meal],
+  );
+
   const [quantity, setQuantity] = useState(1);
   const [selections, setSelections] = useState<Record<number, string | string[]>>(() => {
     const init: Record<number, string | string[]> = {};
-    meal?.customizations.forEach((group, idx) => {
+    customizations.forEach((group, idx) => {
       if (group.type === "single") {
         const def = group.options.find((o) => o.default);
         init[idx] = def?.name ?? group.options[0].name;
@@ -46,7 +61,7 @@ export default function Dish() {
   const calculatedUnitPrice = useMemo(() => {
     if (!meal) return 0;
     let modifierTotal = 0;
-    meal.customizations.forEach((group, idx) => {
+    customizations.forEach((group, idx) => {
       const sel = selections[idx];
       if (group.type === "single" && typeof sel === "string") {
         const opt = group.options.find((o) => o.name === sel);
@@ -59,7 +74,7 @@ export default function Dish() {
       }
     });
     return meal.price + modifierTotal;
-  }, [selections, meal]);
+  }, [selections, meal, customizations]);
 
   const calculatedTotal = calculatedUnitPrice * quantity;
 
@@ -98,7 +113,7 @@ export default function Dish() {
 
   const collectCustomizationsForCart = (): string[] => {
     const labels: string[] = [];
-    meal.customizations.forEach((group, idx) => {
+    customizations.forEach((group, idx) => {
       const sel = selections[idx];
       if (group.type === "single" && typeof sel === "string") {
         const opt = group.options.find((o) => o.name === sel);
@@ -148,6 +163,9 @@ export default function Dish() {
   };
 
   const pairingDish = meal.pairingSlug ? getDishBySlug(meal.pairingSlug) : undefined;
+  const upsells = getUpsellsForDish(meal, 3);
+  const kitchenNote = getKitchenNoteForDish(meal);
+  const rdNote = getRdNoteForDish(meal);
 
   return (
     <div className="min-h-screen bg-clinical-dark pb-32">
@@ -242,7 +260,6 @@ export default function Dish() {
           <div className="space-y-3">
             <h1 className="text-clinical-h1 text-white">{meal.name}</h1>
             <p className="text-sm text-clinical-zinc leading-relaxed">{meal.description}</p>
-            <p className="text-xs text-clinical-zinc/70 leading-relaxed">{meal.longDescription}</p>
 
             <div className="flex flex-wrap items-center gap-2 pt-1">
               <Badge variant="outline" className="border-clinical-slate/30 text-clinical-zinc text-[10px] gap-1">
@@ -276,42 +293,55 @@ export default function Dish() {
 
           <Separator className="bg-clinical-slate/20" />
 
-          {meal.rdNote && (
-            <div className="bg-clinical-sage/8 rounded-xl p-4 border border-clinical-sage/20">
-              <div className="flex items-start gap-2">
-                <ShieldCheck className="w-4 h-4 text-clinical-sage shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-xs font-medium text-clinical-sage mb-1">RD Advisory Note</p>
-                  <p className="text-xs text-clinical-zinc leading-relaxed">{meal.rdNote}</p>
-                </div>
+          <div className="bg-clinical-sage/8 rounded-xl p-4 border border-clinical-sage/20">
+            <div className="flex items-start gap-2">
+              <ShieldCheck className="w-4 h-4 text-clinical-sage shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-medium text-clinical-sage mb-1">RD Advisory Note</p>
+                <p className="text-xs text-clinical-zinc leading-relaxed">{rdNote}</p>
               </div>
             </div>
-          )}
+          </div>
+
+          <div className="bg-clinical-gold/5 rounded-xl p-4 border border-clinical-gold/20">
+            <div className="flex items-start gap-2">
+              <Flame className="w-4 h-4 text-clinical-gold shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-medium text-clinical-gold mb-1">From the Kitchen</p>
+                <p className="text-xs text-clinical-zinc leading-relaxed">{kitchenNote}</p>
+              </div>
+            </div>
+          </div>
 
           <Separator className="bg-clinical-slate/20" />
 
           <div className="space-y-2">
-            <p className="text-clinical-label">Ingredients</p>
-            <ul className="space-y-1.5">
+            <p className="text-clinical-label flex items-center gap-1.5">
+              <Utensils className="w-3 h-3" />
+              Ingredients
+            </p>
+            <div className="flex flex-wrap gap-1.5">
               {meal.ingredients.map((ing, i) => (
-                <li key={i} className="flex items-center gap-2 text-xs text-clinical-zinc">
-                  <span className="w-1 h-1 rounded-full bg-clinical-gold shrink-0" />
-                  {ing}
-                </li>
+                <span
+                  key={i}
+                  className="text-[11px] px-2 py-1 rounded-md bg-clinical-surface border border-clinical-slate/20 text-clinical-zinc capitalize"
+                >
+                  {stripIngredientAmount(ing)}
+                </span>
               ))}
-            </ul>
+            </div>
           </div>
 
-          {meal.customizations.length > 0 && <Separator className="bg-clinical-slate/20" />}
+          {customizations.length > 0 && <Separator className="bg-clinical-slate/20" />}
 
-          {meal.customizations.length > 0 && (
+          {customizations.length > 0 && (
             <div className="space-y-6">
               <div className="flex items-center gap-2">
                 <ClipboardList className="w-4 h-4 text-clinical-gold" />
                 <p className="text-clinical-label">Customize Your Order</p>
               </div>
 
-              {meal.customizations.map((group, groupIdx) => (
+              {customizations.map((group, groupIdx) => (
                 <div key={group.groupName} className="space-y-3">
                   <h3 className="text-sm font-semibold text-white">{group.groupName}</h3>
 
@@ -389,6 +419,39 @@ export default function Dish() {
               ))}
             </div>
           )}
+
+          <Separator className="bg-clinical-slate/20" />
+
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-clinical-gold" />
+              <p className="text-clinical-label">Often added together</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {upsells.map((u) => (
+                <Link
+                  to={`/dish/${u.slug}`}
+                  key={u.id}
+                  className="group flex items-center gap-2.5 p-2 rounded-lg bg-clinical-surface border border-clinical-slate/20 hover:border-clinical-gold/40 transition-colors"
+                >
+                  <img
+                    src={u.image}
+                    alt={u.name}
+                    className="w-12 h-12 rounded-md object-cover shrink-0"
+                    loading="lazy"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-medium text-white truncate group-hover:text-clinical-gold transition-colors">
+                      {u.name}
+                    </p>
+                    <p className="text-[10px] text-clinical-zinc tabular-nums">
+                      {u.macros.calories} kcal · {formatPrice(u.price)}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 

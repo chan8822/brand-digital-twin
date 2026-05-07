@@ -10,6 +10,12 @@ import SupportAgentWidget from "@/components/ai/SupportAgent";
 import Home from "@/pages/Home";
 import Menu from "@/pages/Menu";
 import Dish from "@/pages/Dish";
+import { useParams } from "react-router";
+
+function DishWithKey() {
+  const { slug } = useParams<{ slug: string }>();
+  return <Dish key={slug} />;
+}
 import Cart from "@/pages/Cart";
 import Checkout from "@/pages/Checkout";
 import Track from "@/pages/Track";
@@ -50,7 +56,7 @@ export default function App() {
                   <Routes>
                     <Route path="/" element={<Home />} />
                     <Route path="/menu" element={<Menu />} />
-                    <Route path="/dish/:slug" element={<Dish />} />
+                    <Route path="/dish/:slug" element={<DishWithKey />} />
                     <Route path="/cart" element={<Cart />} />
                     <Route path="/checkout" element={<Checkout />} />
                     <Route path="/track" element={<Track />} />
