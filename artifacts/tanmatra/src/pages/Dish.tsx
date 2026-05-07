@@ -8,6 +8,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import MacroOverlay from "@/components/dish/MacroOverlay";
+import NutritionLabelModal from "@/components/dish/NutritionLabelModal";
+import WhyThisMealPanel from "@/components/dish/WhyThisMealPanel";
+import { getChefForDish, getRdForDish, ACCENT_CLASSES } from "@/lib/teamData";
 import { toast } from "sonner";
 import { getDishBySlug } from "@/lib/menuData";
 import {
@@ -36,7 +39,6 @@ import {
   Flame,
   Sparkles,
   Utensils,
-  ShieldAlert,
   ArrowRight,
 } from "lucide-react";
 
@@ -182,6 +184,10 @@ export default function Dish() {
   const upsells = getUpsellsForDish(meal, 3);
   const kitchenNote = getKitchenNoteForDish(meal);
   const rdNote = getRdNoteForDish(meal);
+  const chef = getChefForDish(meal);
+  const rd = getRdForDish(meal);
+  const chefAccent = chef ? ACCENT_CLASSES[chef.accent] : null;
+  const rdAccent = rd ? ACCENT_CLASSES[rd.accent] : null;
 
   return (
     <div className="min-h-screen bg-clinical-dark pb-32">
@@ -380,43 +386,13 @@ export default function Dish() {
               </div>
             )}
 
-          {match && (match.warnings.length > 0 || match.reasons.length > 0) && (
-            <div
-              className={`rounded-xl p-4 border space-y-3 ${
-                match.warnings.length > 0
-                  ? "bg-orange-500/5 border-orange-500/30"
-                  : "bg-clinical-sage/5 border-clinical-sage/30"
-              }`}
-            >
-              {match.warnings.length > 0 ? (
-                <div className="flex items-start gap-2">
-                  <ShieldAlert className="w-4 h-4 text-orange-400 shrink-0 mt-0.5" />
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium text-orange-400">
-                      Heads up — based on your preferences
-                    </p>
-                    <ul className="text-xs text-clinical-zinc leading-relaxed space-y-0.5">
-                      {match.warnings.map((w) => (
-                        <li key={w}>• {w}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-start gap-2">
-                  <Sparkles className="w-4 h-4 text-clinical-sage shrink-0 mt-0.5" />
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium text-clinical-sage">
-                      Why this for you
-                    </p>
-                    <ul className="text-xs text-clinical-zinc leading-relaxed space-y-0.5">
-                      {match.reasons.map((r) => (
-                        <li key={r}>• {r}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              )}
+          {match && (
+            <div className="space-y-3">
+              <WhyThisMealPanel
+                dish={meal}
+                preferences={preferences}
+                match={match}
+              />
               {smartSwap && (
                 <Link
                   to={`/dish/${smartSwap.slug}`}
@@ -443,22 +419,68 @@ export default function Dish() {
 
           <Separator className="bg-clinical-slate/20" />
 
+          <div className="flex flex-wrap gap-2">
+            <NutritionLabelModal dish={meal} />
+          </div>
+
           <div className="bg-clinical-sage/8 rounded-xl p-4 border border-clinical-sage/20">
-            <div className="flex items-start gap-2">
+            <div className="flex items-start gap-3">
               <ShieldCheck className="w-4 h-4 text-clinical-sage shrink-0 mt-0.5" />
-              <div>
+              <div className="flex-1">
                 <p className="text-xs font-medium text-clinical-sage mb-1">RD Advisory Note</p>
                 <p className="text-xs text-clinical-zinc leading-relaxed">{rdNote}</p>
+                {rd && rdAccent && (
+                  <Link
+                    to={`/team/${rd.slug}`}
+                    className="mt-3 inline-flex items-center gap-2 group"
+                  >
+                    <span
+                      className={`w-7 h-7 rounded-full ring-1 ${rdAccent.ring} ${rdAccent.bg} flex items-center justify-center shrink-0`}
+                    >
+                      <span className={`text-[10px] font-bold ${rdAccent.text}`}>
+                        {rd.initials}
+                      </span>
+                    </span>
+                    <span className="text-[11px] text-clinical-zinc">
+                      Signed off by{" "}
+                      <span className={`${rdAccent.text} group-hover:underline`}>
+                        {rd.name}
+                      </span>
+                      <span className="text-clinical-zinc/70"> · {rd.title}</span>
+                    </span>
+                  </Link>
+                )}
               </div>
             </div>
           </div>
 
           <div className="bg-clinical-gold/5 rounded-xl p-4 border border-clinical-gold/20">
-            <div className="flex items-start gap-2">
+            <div className="flex items-start gap-3">
               <Flame className="w-4 h-4 text-clinical-gold shrink-0 mt-0.5" />
-              <div>
+              <div className="flex-1">
                 <p className="text-xs font-medium text-clinical-gold mb-1">From the Kitchen</p>
                 <p className="text-xs text-clinical-zinc leading-relaxed">{kitchenNote}</p>
+                {chef && chefAccent && (
+                  <Link
+                    to={`/team/${chef.slug}`}
+                    className="mt-3 inline-flex items-center gap-2 group"
+                  >
+                    <span
+                      className={`w-7 h-7 rounded-full ring-1 ${chefAccent.ring} ${chefAccent.bg} flex items-center justify-center shrink-0`}
+                    >
+                      <span className={`text-[10px] font-bold ${chefAccent.text}`}>
+                        {chef.initials}
+                      </span>
+                    </span>
+                    <span className="text-[11px] text-clinical-zinc">
+                      Cooked by{" "}
+                      <span className={`${chefAccent.text} group-hover:underline`}>
+                        {chef.name}
+                      </span>
+                      <span className="text-clinical-zinc/70"> · {chef.title}</span>
+                    </span>
+                  </Link>
+                )}
               </div>
             </div>
           </div>

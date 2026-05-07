@@ -29,6 +29,8 @@ import Preferences from "@/pages/Preferences";
 import Wellness from "@/pages/Wellness";
 import Performance from "@/pages/Performance";
 import Clinical from "@/pages/Clinical";
+import Team from "@/pages/Team";
+import TeamMember from "@/pages/TeamMember";
 import AdminOpsDashboard from "@/pages/AdminOpsDashboard";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
@@ -76,6 +78,8 @@ export default function App() {
                     <Route path="/wellness" element={<Wellness />} />
                     <Route path="/performance" element={<Performance />} />
                     <Route path="/clinical" element={<Clinical />} />
+                    <Route path="/team" element={<Team />} />
+                    <Route path="/team/:slug" element={<TeamMember />} />
                     <Route
                       path="/admin/ops"
                       element={

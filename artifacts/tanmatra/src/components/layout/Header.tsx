@@ -10,6 +10,7 @@ import {
   CalendarClock,
   Sparkles,
   SlidersHorizontal,
+  Users,
   Menu as MenuIcon,
   X,
 } from "lucide-react";
@@ -31,6 +32,7 @@ export default function Header() {
     { path: "/subscriptions", label: "Plans", icon: CalendarClock },
     { path: "/rewards", label: "Rewards", icon: Sparkles },
     { path: "/preferences", label: "Preferences", icon: SlidersHorizontal },
+    { path: "/team", label: "Team", icon: Users },
     { path: "/track", label: "Track", icon: MapPin },
   ];
 
