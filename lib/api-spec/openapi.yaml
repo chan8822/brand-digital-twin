@@ -12,6 +12,8 @@ tags:
     description: Health operations
   - name: preferences
     description: User taste & wellness preferences
+  - name: wellness
+    description: Wellness dashboard, wearables, and daily activity sync
 paths:
   /healthz:
     get:
@@ -82,6 +84,88 @@ paths:
           description: Invalid payload
         "401":
           description: Unauthorized
+  /wellness/today:
+    get:
+      operationId: getWellnessToday
+      tags: [wellness]
+      summary: Get today's wellness summary (targets, totals, wearables, streaks)
+      responses:
+        "200":
+          description: Today's wellness snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WellnessTodayEnvelope"
+        "401":
+          description: Unauthorized
+  /wellness/wearable/connect:
+    post:
+      operationId: connectWearable
+      tags: [wellness]
+      summary: Mark a wearable provider as connected for the signed-in user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WearableConnectInput"
+      responses:
+        "200":
+          description: Connected wearable link
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WearableLinkEnvelope"
+        "400":
+          description: Invalid payload
+        "401":
+          description: Unauthorized
+  /wellness/wearable/disconnect:
+    post:
+      operationId: disconnectWearable
+      tags: [wellness]
+      summary: Mark a wearable provider as disconnected for the signed-in user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WearableConnectInput"
+      responses:
+        "200":
+          description: Disconnect ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkEnvelope"
+        "400":
+          description: Invalid payload
+        "401":
+          description: Unauthorized
+  /wellness/wearable/sync:
+    post:
+      operationId: syncWearable
+      tags: [wellness]
+      summary: Push today's activity (steps + active kcal) from a wearable
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WearableSyncInput"
+      responses:
+        "200":
+          description: Updated wearable link
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WearableLinkEnvelope"
+        "400":
+          description: Invalid payload
+        "401":
+          description: Unauthorized
+        "409":
+          description: Wearable not connected
 components:
   schemas:
     HealthStatus:
@@ -225,3 +309,112 @@ components:
       properties:
         preferences:
           $ref: "#/components/schemas/UserPreferences"
+    WearableProvider:
+      type: string
+      enum: [apple_health, google_fit]
+    WearableConnectInput:
+      type: object
+      required: [provider]
+      properties:
+        provider:
+          $ref: "#/components/schemas/WearableProvider"
+    WearableSyncInput:
+      type: object
+      required: [provider, activityKcal]
+      properties:
+        provider:
+          $ref: "#/components/schemas/WearableProvider"
+        activityKcal:
+          type: integer
+          minimum: 0
+          maximum: 3000
+        steps:
+          type: integer
+          minimum: 0
+          maximum: 60000
+    WearableLink:
+      type: object
+      required: [id, userId, provider, connected]
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        provider:
+          $ref: "#/components/schemas/WearableProvider"
+        connected:
+          type: boolean
+        lastSyncedAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastActivityKcal:
+          type: integer
+          nullable: true
+        lastSteps:
+          type: integer
+          nullable: true
+    WearableLinkEnvelope:
+      type: object
+      required: [link]
+      properties:
+        link:
+          $ref: "#/components/schemas/WearableLink"
+    OkEnvelope:
+      type: object
+      required: [ok]
+      properties:
+        ok:
+          type: boolean
+    WellnessDailyTotals:
+      type: object
+      required: [date, calories, proteinGrams]
+      properties:
+        date:
+          type: string
+        calories:
+          type: number
+        proteinGrams:
+          type: number
+        carbsGrams:
+          type: number
+        fatGrams:
+          type: number
+        fiberGrams:
+          type: number
+        waterMl:
+          type: number
+        vegServings:
+          type: number
+    WellnessTargets:
+      type: object
+      required: [calorieTarget, proteinTargetGrams, effectiveCalorieTarget, activityKcal]
+      properties:
+        calorieTarget:
+          type: integer
+        proteinTargetGrams:
+          type: integer
+        fiberTargetGrams:
+          type: integer
+        waterTargetMl:
+          type: integer
+        vegTargetServings:
+          type: integer
+        effectiveCalorieTarget:
+          type: integer
+        activityKcal:
+          type: integer
+    WellnessTodayEnvelope:
+      type: object
+      required: [date, targets, totals, wearables]
+      properties:
+        date:
+          type: string
+        targets:
+          $ref: "#/components/schemas/WellnessTargets"
+        totals:
+          $ref: "#/components/schemas/WellnessDailyTotals"
+        wearables:
+          type: array
+          items:
+            $ref: "#/components/schemas/WearableLink"

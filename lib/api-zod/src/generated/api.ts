@@ -365,3 +365,104 @@ export const PatchPreferencesResponse = zod.object({
     updatedAt: zod.coerce.date(),
   }),
 });
+
+/**
+ * @summary Get today's wellness summary (targets, totals, wearables, streaks)
+ */
+export const GetWellnessTodayResponse = zod.object({
+  date: zod.string(),
+  targets: zod.object({
+    calorieTarget: zod.number(),
+    proteinTargetGrams: zod.number(),
+    fiberTargetGrams: zod.number().optional(),
+    waterTargetMl: zod.number().optional(),
+    vegTargetServings: zod.number().optional(),
+    effectiveCalorieTarget: zod.number(),
+    activityKcal: zod.number(),
+  }),
+  totals: zod.object({
+    date: zod.string(),
+    calories: zod.number(),
+    proteinGrams: zod.number(),
+    carbsGrams: zod.number().optional(),
+    fatGrams: zod.number().optional(),
+    fiberGrams: zod.number().optional(),
+    waterMl: zod.number().optional(),
+    vegServings: zod.number().optional(),
+  }),
+  wearables: zod.array(
+    zod.object({
+      id: zod.string(),
+      userId: zod.string(),
+      provider: zod.enum(["apple_health", "google_fit"]),
+      connected: zod.boolean(),
+      lastSyncedAt: zod.coerce.date().nullish(),
+      lastActivityKcal: zod.number().nullish(),
+      lastSteps: zod.number().nullish(),
+    }),
+  ),
+});
+
+/**
+ * @summary Mark a wearable provider as connected for the signed-in user
+ */
+export const ConnectWearableBody = zod.object({
+  provider: zod.enum(["apple_health", "google_fit"]),
+});
+
+export const ConnectWearableResponse = zod.object({
+  link: zod.object({
+    id: zod.string(),
+    userId: zod.string(),
+    provider: zod.enum(["apple_health", "google_fit"]),
+    connected: zod.boolean(),
+    lastSyncedAt: zod.coerce.date().nullish(),
+    lastActivityKcal: zod.number().nullish(),
+    lastSteps: zod.number().nullish(),
+  }),
+});
+
+/**
+ * @summary Mark a wearable provider as disconnected for the signed-in user
+ */
+export const DisconnectWearableBody = zod.object({
+  provider: zod.enum(["apple_health", "google_fit"]),
+});
+
+export const DisconnectWearableResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Push today's activity (steps + active kcal) from a wearable
+ */
+export const syncWearableBodyActivityKcalMin = 0;
+export const syncWearableBodyActivityKcalMax = 3000;
+
+export const syncWearableBodyStepsMin = 0;
+export const syncWearableBodyStepsMax = 60000;
+
+export const SyncWearableBody = zod.object({
+  provider: zod.enum(["apple_health", "google_fit"]),
+  activityKcal: zod
+    .number()
+    .min(syncWearableBodyActivityKcalMin)
+    .max(syncWearableBodyActivityKcalMax),
+  steps: zod
+    .number()
+    .min(syncWearableBodyStepsMin)
+    .max(syncWearableBodyStepsMax)
+    .optional(),
+});
+
+export const SyncWearableResponse = zod.object({
+  link: zod.object({
+    id: zod.string(),
+    userId: zod.string(),
+    provider: zod.enum(["apple_health", "google_fit"]),
+    connected: zod.boolean(),
+    lastSyncedAt: zod.coerce.date().nullish(),
+    lastActivityKcal: zod.number().nullish(),
+    lastSteps: zod.number().nullish(),
+  }),
+});

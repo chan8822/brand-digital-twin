@@ -122,3 +122,75 @@ export interface PreferencesEnvelope {
 export interface PreferencesEnvelopeRequired {
   preferences: UserPreferences;
 }
+
+export type WearableProvider =
+  (typeof WearableProvider)[keyof typeof WearableProvider];
+
+export const WearableProvider = {
+  apple_health: "apple_health",
+  google_fit: "google_fit",
+} as const;
+
+export interface WearableConnectInput {
+  provider: WearableProvider;
+}
+
+export interface WearableSyncInput {
+  provider: WearableProvider;
+  /**
+   * @minimum 0
+   * @maximum 3000
+   */
+  activityKcal: number;
+  /**
+   * @minimum 0
+   * @maximum 60000
+   */
+  steps?: number;
+}
+
+export interface WearableLink {
+  id: string;
+  userId: string;
+  provider: WearableProvider;
+  connected: boolean;
+  lastSyncedAt?: string | null;
+  lastActivityKcal?: number | null;
+  lastSteps?: number | null;
+}
+
+export interface WearableLinkEnvelope {
+  link: WearableLink;
+}
+
+export interface OkEnvelope {
+  ok: boolean;
+}
+
+export interface WellnessDailyTotals {
+  date: string;
+  calories: number;
+  proteinGrams: number;
+  carbsGrams?: number;
+  fatGrams?: number;
+  fiberGrams?: number;
+  waterMl?: number;
+  vegServings?: number;
+}
+
+export interface WellnessTargets {
+  calorieTarget: number;
+  proteinTargetGrams: number;
+  fiberTargetGrams?: number;
+  waterTargetMl?: number;
+  vegTargetServings?: number;
+  effectiveCalorieTarget: number;
+  activityKcal: number;
+}
+
+export interface WellnessTodayEnvelope {
+  date: string;
+  targets: WellnessTargets;
+  totals: WellnessDailyTotals;
+  wearables: WearableLink[];
+}

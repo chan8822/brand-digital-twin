@@ -1,0 +1,27 @@
+kind = "mobile"
+previewPath = "/mobile/"
+title = "Tanmatra Mobile"
+version = "1.0.0"
+id = "artifacts/tanmatra-mobile"
+router = "expo-domain"
+
+[[integratedSkills]]
+name = "expo"
+version = "1.0.0"
+
+[[services]]
+ensurePreviewReachable = "/status"
+name = "expo"
+paths = [ "/mobile/" ]
+localPort = 19586
+
+[services.development]
+run = "pnpm --filter @workspace/tanmatra-mobile run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/tanmatra-mobile", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/tanmatra-mobile", "run", "serve" ]
+
+[services.env]
+PORT = "19586"
+BASE_PATH = "/mobile/"

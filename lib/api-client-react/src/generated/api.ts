@@ -18,9 +18,14 @@ import type {
 
 import type {
   HealthStatus,
+  OkEnvelope,
   PreferencesEnvelope,
   PreferencesEnvelopeRequired,
   PreferencesPatch,
+  WearableConnectInput,
+  WearableLinkEnvelope,
+  WearableSyncInput,
+  WellnessTodayEnvelope,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -353,4 +358,337 @@ export const usePatchPreferences = <
   TContext
 > => {
   return useMutation(getPatchPreferencesMutationOptions(options));
+};
+
+/**
+ * @summary Get today's wellness summary (targets, totals, wearables, streaks)
+ */
+export const getGetWellnessTodayUrl = () => {
+  return `/api/wellness/today`;
+};
+
+export const getWellnessToday = async (
+  options?: RequestInit,
+): Promise<WellnessTodayEnvelope> => {
+  return customFetch<WellnessTodayEnvelope>(getGetWellnessTodayUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetWellnessTodayQueryKey = () => {
+  return [`/api/wellness/today`] as const;
+};
+
+export const getGetWellnessTodayQueryOptions = <
+  TData = Awaited<ReturnType<typeof getWellnessToday>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getWellnessToday>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetWellnessTodayQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getWellnessToday>>
+  > = ({ signal }) => getWellnessToday({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getWellnessToday>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetWellnessTodayQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getWellnessToday>>
+>;
+export type GetWellnessTodayQueryError = ErrorType<void>;
+
+/**
+ * @summary Get today's wellness summary (targets, totals, wearables, streaks)
+ */
+
+export function useGetWellnessToday<
+  TData = Awaited<ReturnType<typeof getWellnessToday>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getWellnessToday>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetWellnessTodayQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Mark a wearable provider as connected for the signed-in user
+ */
+export const getConnectWearableUrl = () => {
+  return `/api/wellness/wearable/connect`;
+};
+
+export const connectWearable = async (
+  wearableConnectInput: WearableConnectInput,
+  options?: RequestInit,
+): Promise<WearableLinkEnvelope> => {
+  return customFetch<WearableLinkEnvelope>(getConnectWearableUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(wearableConnectInput),
+  });
+};
+
+export const getConnectWearableMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof connectWearable>>,
+    TError,
+    { data: BodyType<WearableConnectInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof connectWearable>>,
+  TError,
+  { data: BodyType<WearableConnectInput> },
+  TContext
+> => {
+  const mutationKey = ["connectWearable"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof connectWearable>>,
+    { data: BodyType<WearableConnectInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return connectWearable(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ConnectWearableMutationResult = NonNullable<
+  Awaited<ReturnType<typeof connectWearable>>
+>;
+export type ConnectWearableMutationBody = BodyType<WearableConnectInput>;
+export type ConnectWearableMutationError = ErrorType<void>;
+
+/**
+ * @summary Mark a wearable provider as connected for the signed-in user
+ */
+export const useConnectWearable = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof connectWearable>>,
+    TError,
+    { data: BodyType<WearableConnectInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof connectWearable>>,
+  TError,
+  { data: BodyType<WearableConnectInput> },
+  TContext
+> => {
+  return useMutation(getConnectWearableMutationOptions(options));
+};
+
+/**
+ * @summary Mark a wearable provider as disconnected for the signed-in user
+ */
+export const getDisconnectWearableUrl = () => {
+  return `/api/wellness/wearable/disconnect`;
+};
+
+export const disconnectWearable = async (
+  wearableConnectInput: WearableConnectInput,
+  options?: RequestInit,
+): Promise<OkEnvelope> => {
+  return customFetch<OkEnvelope>(getDisconnectWearableUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(wearableConnectInput),
+  });
+};
+
+export const getDisconnectWearableMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof disconnectWearable>>,
+    TError,
+    { data: BodyType<WearableConnectInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof disconnectWearable>>,
+  TError,
+  { data: BodyType<WearableConnectInput> },
+  TContext
+> => {
+  const mutationKey = ["disconnectWearable"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof disconnectWearable>>,
+    { data: BodyType<WearableConnectInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return disconnectWearable(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DisconnectWearableMutationResult = NonNullable<
+  Awaited<ReturnType<typeof disconnectWearable>>
+>;
+export type DisconnectWearableMutationBody = BodyType<WearableConnectInput>;
+export type DisconnectWearableMutationError = ErrorType<void>;
+
+/**
+ * @summary Mark a wearable provider as disconnected for the signed-in user
+ */
+export const useDisconnectWearable = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof disconnectWearable>>,
+    TError,
+    { data: BodyType<WearableConnectInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof disconnectWearable>>,
+  TError,
+  { data: BodyType<WearableConnectInput> },
+  TContext
+> => {
+  return useMutation(getDisconnectWearableMutationOptions(options));
+};
+
+/**
+ * @summary Push today's activity (steps + active kcal) from a wearable
+ */
+export const getSyncWearableUrl = () => {
+  return `/api/wellness/wearable/sync`;
+};
+
+export const syncWearable = async (
+  wearableSyncInput: WearableSyncInput,
+  options?: RequestInit,
+): Promise<WearableLinkEnvelope> => {
+  return customFetch<WearableLinkEnvelope>(getSyncWearableUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(wearableSyncInput),
+  });
+};
+
+export const getSyncWearableMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof syncWearable>>,
+    TError,
+    { data: BodyType<WearableSyncInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof syncWearable>>,
+  TError,
+  { data: BodyType<WearableSyncInput> },
+  TContext
+> => {
+  const mutationKey = ["syncWearable"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof syncWearable>>,
+    { data: BodyType<WearableSyncInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return syncWearable(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SyncWearableMutationResult = NonNullable<
+  Awaited<ReturnType<typeof syncWearable>>
+>;
+export type SyncWearableMutationBody = BodyType<WearableSyncInput>;
+export type SyncWearableMutationError = ErrorType<void>;
+
+/**
+ * @summary Push today's activity (steps + active kcal) from a wearable
+ */
+export const useSyncWearable = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof syncWearable>>,
+    TError,
+    { data: BodyType<WearableSyncInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof syncWearable>>,
+  TError,
+  { data: BodyType<WearableSyncInput> },
+  TContext
+> => {
+  return useMutation(getSyncWearableMutationOptions(options));
 };
