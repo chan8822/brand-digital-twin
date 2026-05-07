@@ -312,6 +312,10 @@ router.post("/subscriptions/:id/pause", async (req: Request, res: Response) => {
     res.status(404).json({ error: "not found" });
     return;
   }
+  if (sub.status !== "active") {
+    res.status(409).json({ error: "subscription is not active" });
+    return;
+  }
   const [updated] = await db
     .update(subscriptionsTable)
     .set({ status: "paused", pausedAt: new Date() })
