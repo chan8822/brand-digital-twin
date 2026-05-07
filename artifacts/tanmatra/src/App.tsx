@@ -39,6 +39,7 @@ import Appointments from "@/pages/Appointments";
 import RdConsole from "@/pages/RdConsole";
 import CheckoutAppointment from "@/pages/CheckoutAppointment";
 import AdminOpsDashboard from "@/pages/AdminOpsDashboard";
+import AdminAiRuns from "@/pages/AdminAiRuns";
 import GroupOrder from "@/pages/GroupOrder";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
@@ -103,6 +104,14 @@ export default function App() {
                       element={
                         <AdminGate>
                           <AdminOpsDashboard />
+                        </AdminGate>
+                      }
+                    />
+                    <Route
+                      path="/admin/ai-runs"
+                      element={
+                        <AdminGate>
+                          <AdminAiRuns />
                         </AdminGate>
                       }
                     />
