@@ -321,6 +321,15 @@ router.post("/subscriptions/:id/pause", async (req: Request, res: Response) => {
     .set({ status: "paused", pausedAt: new Date() })
     .where(eq(subscriptionsTable.id, subId))
     .returning();
+  await db
+    .update(subscriptionDeliveriesTable)
+    .set({ status: "paused" })
+    .where(
+      and(
+        eq(subscriptionDeliveriesTable.subscriptionId, subId),
+        eq(subscriptionDeliveriesTable.status, "upcoming"),
+      ),
+    );
   res.json({ subscription: updated });
 });
 
@@ -345,6 +354,15 @@ router.post(
       .set({ status: "active", pausedAt: null })
       .where(eq(subscriptionsTable.id, subId))
       .returning();
+    await db
+      .update(subscriptionDeliveriesTable)
+      .set({ status: "upcoming" })
+      .where(
+        and(
+          eq(subscriptionDeliveriesTable.subscriptionId, subId),
+          eq(subscriptionDeliveriesTable.status, "paused"),
+        ),
+      );
     res.json({ subscription: updated });
   },
 );

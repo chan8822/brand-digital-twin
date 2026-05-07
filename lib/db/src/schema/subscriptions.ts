@@ -17,7 +17,8 @@ export type DeliveryStatus =
   | "upcoming"
   | "skipped"
   | "delivered"
-  | "cancelled";
+  | "cancelled"
+  | "paused";
 export type CreditReason =
   | "skipped_delivery"
   | "redemption"
