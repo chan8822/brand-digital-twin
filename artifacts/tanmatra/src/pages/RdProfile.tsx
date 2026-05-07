@@ -101,7 +101,6 @@ export default function RdProfile() {
         kind,
         startAt: selected.startAt,
         endAt: selected.endAt,
-        pricePaise: price,
         userQuestion: question.trim() || undefined,
       });
       toast.success("Booking confirmed", {

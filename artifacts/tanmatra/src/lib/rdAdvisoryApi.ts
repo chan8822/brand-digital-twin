@@ -74,7 +74,6 @@ export interface BookInput {
   kind: AppointmentKind;
   startAt: string;
   endAt: string;
-  pricePaise: number;
   userQuestion?: string;
 }
 
@@ -170,4 +169,11 @@ export const rdAdvisoryApi = {
         body: JSON.stringify({ rdNotes, joinUrl }),
       },
     ),
+  consoleMe: () =>
+    request<{ rdSlug: string | null }>("/rd/console/me"),
+  consoleClaim: (rdSlug: string) =>
+    request<{ rdSlug: string }>("/rd/console/claim", {
+      method: "POST",
+      body: JSON.stringify({ rdSlug }),
+    }),
 };

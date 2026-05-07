@@ -40,28 +40,67 @@ function fmtDateTime(iso: string) {
 
 export default function RdConsole() {
   const rds = listRds();
-  const [rdSlug, setRdSlug] = useState(rds[0]?.profile.slug ?? "");
+  const [rdSlug, setRdSlug] = useState<string>("");
   const [appts, setAppts] = useState<RdAppointment[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [unauth, setUnauth] = useState(false);
+  const [forbidden, setForbidden] = useState(false);
+  const [loadingMe, setLoadingMe] = useState(true);
+  const [claiming, setClaiming] = useState(false);
+  const [claimSlug, setClaimSlug] = useState<string>(
+    rds[0]?.profile.slug ?? "",
+  );
+
+  // On mount, ask the server which RD slug the signed-in user is bound to.
+  useEffect(() => {
+    rdAdvisoryApi
+      .consoleMe()
+      .then((r) => {
+        setUnauth(false);
+        if (r.rdSlug) setRdSlug(r.rdSlug);
+      })
+      .catch((e) => {
+        if (String(e).includes("401")) setUnauth(true);
+      })
+      .finally(() => setLoadingMe(false));
+  }, []);
 
   const refresh = useCallback(async () => {
     if (!rdSlug) return;
     try {
       const r = await rdAdvisoryApi.consoleAppointments(rdSlug);
       setAppts(r.appointments);
-      setUnauth(false);
+      setForbidden(false);
       if (!selectedUserId && r.appointments[0]) {
         setSelectedUserId(r.appointments[0].userId);
       }
     } catch (e) {
-      if (String(e).includes("401")) setUnauth(true);
+      const msg = String(e);
+      if (msg.includes("401")) setUnauth(true);
+      else if (msg.includes("403")) setForbidden(true);
     }
   }, [rdSlug, selectedUserId]);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  async function claim() {
+    if (!claimSlug) return;
+    setClaiming(true);
+    try {
+      const r = await rdAdvisoryApi.consoleClaim(claimSlug);
+      setRdSlug(r.rdSlug);
+      toast.success("RD role claimed", { description: r.rdSlug });
+    } catch (e) {
+      const msg = String(e);
+      if (msg.includes("409"))
+        toast.error("Already claimed by another account");
+      else toast.error("Could not claim", { description: msg });
+    } finally {
+      setClaiming(false);
+    }
+  }
 
   const userIds = useMemo(
     () => Array.from(new Set(appts.map((a) => a.userId))),
@@ -80,6 +119,57 @@ export default function RdConsole() {
     );
   }
 
+  if (loadingMe) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-12 text-center text-clinical-zinc text-sm">
+        Loading…
+      </div>
+    );
+  }
+
+  if (!rdSlug) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-12 space-y-4">
+        <Badge className="bg-clinical-gold/15 text-clinical-gold border-clinical-gold/30 uppercase tracking-widest text-[10px]">
+          RD Console
+        </Badge>
+        <h1 className="font-serif text-2xl text-white">Claim your RD seat</h1>
+        <p className="text-xs text-clinical-zinc">
+          Each RD slug can be bound to a single account. Pick yours below to
+          unlock the console. Already claimed slugs cannot be re-bound from
+          here.
+        </p>
+        <select
+          value={claimSlug}
+          onChange={(e) => setClaimSlug(e.target.value)}
+          className="bg-clinical-surface border border-clinical-slate/30 text-xs rounded-md px-3 h-9 text-white w-full"
+        >
+          {rds.map(({ profile, member: m }) => (
+            <option key={profile.slug} value={profile.slug}>
+              I am {m.name} ({profile.slug})
+            </option>
+          ))}
+        </select>
+        <Button
+          onClick={claim}
+          disabled={claiming}
+          className="bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 text-xs h-9 w-full"
+        >
+          Claim this RD seat
+        </Button>
+      </div>
+    );
+  }
+
+  if (forbidden) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-12 text-center text-clinical-zinc text-sm">
+        You are signed in as a different RD account. Sign in with the right
+        account to view this console.
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
       <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
@@ -88,26 +178,12 @@ export default function RdConsole() {
             RD Console
           </Badge>
           <h1 className="font-serif text-3xl text-white">
-            {member?.name ?? "Select an RD"}
+            {member?.name ?? rdSlug}
           </h1>
           <p className="text-xs text-clinical-zinc mt-1">
             Internal view — appointment list, per-user notes, and inbox.
           </p>
         </div>
-        <select
-          value={rdSlug}
-          onChange={(e) => {
-            setRdSlug(e.target.value);
-            setSelectedUserId(null);
-          }}
-          className="bg-clinical-surface border border-clinical-slate/30 text-xs rounded-md px-3 h-9 text-white"
-        >
-          {rds.map(({ profile, member: m }) => (
-            <option key={profile.slug} value={profile.slug}>
-              View as {m.name}
-            </option>
-          ))}
-        </select>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-4">

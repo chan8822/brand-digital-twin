@@ -7,8 +7,32 @@ import {
   text,
   numeric,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { usersTable } from "./auth";
+
+/**
+ * Maps an authenticated user to a single RD slug. A user with a row here is
+ * authorised to act as that RD in the console (read clients' messages /
+ * progress / labs and post replies as the RD).
+ */
+export const rdUsersTable = pgTable(
+  "rd_users",
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    rdSlug: varchar("rd_slug", { length: 64 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("uq_rd_users_user").on(t.userId),
+    uniqueIndex("uq_rd_users_slug").on(t.rdSlug),
+  ],
+);
 
 export type AppointmentKind = "intro_15m" | "follow_up_30m" | "follow_up_45m";
 export type AppointmentStatus = "scheduled" | "completed" | "cancelled";
@@ -111,3 +135,4 @@ export type RdAppointment = typeof rdAppointmentsTable.$inferSelect;
 export type RdMessage = typeof rdMessagesTable.$inferSelect;
 export type RdProgressLog = typeof rdProgressLogsTable.$inferSelect;
 export type RdLabUpload = typeof rdLabUploadsTable.$inferSelect;
+export type RdUser = typeof rdUsersTable.$inferSelect;

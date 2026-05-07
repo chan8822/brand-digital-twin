@@ -7,9 +7,66 @@ import {
   rdMessagesTable,
   rdProgressLogsTable,
   rdLabUploadsTable,
+  rdUsersTable,
 } from "@workspace/db";
 
 const router: IRouter = Router();
+
+/**
+ * Server-side source of truth for RD pricing. The client may mirror this in
+ * `rdBookingData.ts` for display, but the server NEVER trusts a
+ * client-provided price — it computes price from rdSlug + kind here.
+ */
+const RD_PRICING: Record<string, Record<string, number>> = {
+  "rd-anjali-nair": {
+    intro_15m: 0,
+    follow_up_30m: 120000,
+    follow_up_45m: 180000,
+  },
+  "rd-vikram-sethi": {
+    intro_15m: 0,
+    follow_up_30m: 100000,
+    follow_up_45m: 150000,
+  },
+  "rd-kavya-menon": {
+    intro_15m: 0,
+    follow_up_30m: 90000,
+    follow_up_45m: 135000,
+  },
+};
+function priceFor(rdSlug: string, kind: string): number | null {
+  return RD_PRICING[rdSlug]?.[kind] ?? null;
+}
+
+/**
+ * Verify the signed-in user is mapped to `rdSlug` in `rd_users`. Returns true
+ * iff authorised; otherwise sends 403 and returns false.
+ */
+async function requireRdRole(
+  req: Request,
+  res: Response,
+  rdSlug: string,
+): Promise<boolean> {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "unauthorized" });
+    return false;
+  }
+  const rows = await db
+    .select({ id: rdUsersTable.id })
+    .from(rdUsersTable)
+    .where(
+      and(
+        eq(rdUsersTable.userId, req.user.id),
+        eq(rdUsersTable.rdSlug, rdSlug),
+      ),
+    )
+    .limit(1);
+  if (rows.length === 0) {
+    res.status(403).json({ error: "not authorised for this RD" });
+    return false;
+  }
+  return true;
+}
 
 function requireAuth(req: Request, res: Response): string | null {
   if (!req.isAuthenticated()) {
@@ -45,7 +102,6 @@ const bookSchema = z.object({
   kind: KIND,
   startAt: z.iso.datetime(),
   endAt: z.iso.datetime(),
-  pricePaise: z.number().int().min(0).max(1_000_000),
   userQuestion: z.string().trim().max(2000).optional(),
 });
 
@@ -128,7 +184,13 @@ router.post("/rd/appointments", async (req: Request, res: Response) => {
     res.status(400).json({ error: "invalid payload" });
     return;
   }
-  const { rdSlug, kind, startAt, endAt, pricePaise, userQuestion } = parsed.data;
+  const { rdSlug, kind, startAt, endAt, userQuestion } = parsed.data;
+  // Server-authoritative price — client cannot influence cost.
+  const pricePaise = priceFor(rdSlug, kind);
+  if (pricePaise == null) {
+    res.status(400).json({ error: "unknown rdSlug or kind" });
+    return;
+  }
   const start = new Date(startAt);
   const end = new Date(endAt);
   if (!(end > start) || start < new Date(Date.now() - 60_000)) {
@@ -215,17 +277,65 @@ router.post(
   },
 );
 
-// --- RD console (read-only of own RD inbox) ---
-// Note: in the absence of a roles table we let any signed-in user "view as RD"
-// for the demo console. Real-world: gate by an `is_rd` flag on usersTable.
+// --- RD console ---
+// All console routes require the signed-in user to be mapped to `rdSlug` in
+// `rd_users`. Use POST /rd/console/claim to bind your account to an RD slug.
+
+router.get("/rd/console/me", async (req: Request, res: Response) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const rows = await db
+    .select({ rdSlug: rdUsersTable.rdSlug })
+    .from(rdUsersTable)
+    .where(eq(rdUsersTable.userId, userId))
+    .limit(1);
+  res.json({ rdSlug: rows[0]?.rdSlug ?? null });
+});
+
+const claimSchema = z.object({ rdSlug: z.string().regex(RD_SLUG_RE) });
+router.post("/rd/console/claim", async (req: Request, res: Response) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const parsed = claimSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "invalid payload" });
+    return;
+  }
+  const { rdSlug } = parsed.data;
+  if (priceFor(rdSlug, "intro_15m") == null) {
+    res.status(400).json({ error: "unknown rdSlug" });
+    return;
+  }
+  const existing = await db
+    .select({ userId: rdUsersTable.userId })
+    .from(rdUsersTable)
+    .where(eq(rdUsersTable.rdSlug, rdSlug))
+    .limit(1);
+  if (existing.length > 0) {
+    if (existing[0]?.userId === userId) {
+      res.json({ rdSlug });
+      return;
+    }
+    res.status(409).json({ error: "rdSlug already claimed" });
+    return;
+  }
+  try {
+    await db.insert(rdUsersTable).values({ userId, rdSlug });
+  } catch {
+    res.status(409).json({ error: "rdSlug already claimed" });
+    return;
+  }
+  req.log.info({ userId, rdSlug }, "rd role claimed");
+  res.status(201).json({ rdSlug });
+});
 
 router.get("/rd/console/appointments", async (req: Request, res: Response) => {
-  if (!requireAuth(req, res)) return;
   const rdSlug = String(req.query["rdSlug"] ?? "");
   if (!RD_SLUG_RE.test(rdSlug)) {
     res.status(400).json({ error: "invalid rdSlug" });
     return;
   }
+  if (!(await requireRdRole(req, res, rdSlug))) return;
   const rows = await db
     .select()
     .from(rdAppointmentsTable)
@@ -235,12 +345,12 @@ router.get("/rd/console/appointments", async (req: Request, res: Response) => {
 });
 
 router.get("/rd/console/user/:userId", async (req: Request, res: Response) => {
-  if (!requireAuth(req, res)) return;
   const rdSlug = String(req.query["rdSlug"] ?? "");
   if (!RD_SLUG_RE.test(rdSlug)) {
     res.status(400).json({ error: "invalid rdSlug" });
     return;
   }
+  if (!(await requireRdRole(req, res, rdSlug))) return;
   const targetUserId = String(req.params["userId"] ?? "");
   if (!targetUserId) {
     res.status(400).json({ error: "missing userId" });
@@ -306,13 +416,13 @@ router.get("/rd/console/user/:userId", async (req: Request, res: Response) => {
 router.patch(
   "/rd/console/appointments/:id/notes",
   async (req: Request, res: Response) => {
-    if (!requireAuth(req, res)) return;
     const id = Number(req.params["id"]);
     const rdSlug = String(req.query["rdSlug"] ?? "");
     if (!Number.isInteger(id) || !RD_SLUG_RE.test(rdSlug)) {
       res.status(400).json({ error: "invalid id or rdSlug" });
       return;
     }
+    if (!(await requireRdRole(req, res, rdSlug))) return;
     const parsed = rdNotesSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: "invalid payload" });
@@ -370,12 +480,18 @@ router.post("/rd/messages", async (req: Request, res: Response) => {
   }
   const senderRole = parsed.data.asRole ?? "user";
   // Users can only post to their own thread; threadUserId is only respected
-  // for RD-console messages (asRole=rd).
-  const targetUserId =
-    senderRole === "rd" ? parsed.data.threadUserId ?? "" : userId;
-  if (senderRole === "rd" && !targetUserId) {
-    res.status(400).json({ error: "threadUserId required for asRole=rd" });
-    return;
+  // for RD-console messages (asRole=rd) AND requires the caller to be the
+  // claimed RD for that slug.
+  let targetUserId: string;
+  if (senderRole === "rd") {
+    if (!parsed.data.threadUserId) {
+      res.status(400).json({ error: "threadUserId required for asRole=rd" });
+      return;
+    }
+    if (!(await requireRdRole(req, res, parsed.data.rdSlug))) return;
+    targetUserId = parsed.data.threadUserId;
+  } else {
+    targetUserId = userId;
   }
   const [row] = await db
     .insert(rdMessagesTable)
