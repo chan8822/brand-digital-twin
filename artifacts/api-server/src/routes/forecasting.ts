@@ -163,9 +163,16 @@ router.get(
       res.status(400).json({ error: "invalid id" });
       return;
     }
-    const out = await exportPurchaseOrderCsv(id);
-    if (!out) {
-      res.status(404).json({ error: "not found" });
+    const allowDraft = req.query.allowDraft === "true";
+    const out = await exportPurchaseOrderCsv(id, { allowDraft });
+    if ("error" in out) {
+      if (out.error === "not-found") {
+        res.status(404).json({ error: "not found" });
+      } else {
+        res.status(409).json({
+          error: `PO is ${out.status}; only approved POs may be exported (pass allowDraft=true to override).`,
+        });
+      }
       return;
     }
     res.setHeader("Content-Type", "text/csv; charset=utf-8");

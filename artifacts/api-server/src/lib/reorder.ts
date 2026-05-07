@@ -133,13 +133,21 @@ function csvEscape(v: unknown): string {
 
 export async function exportPurchaseOrderCsv(
   purchaseOrderId: number,
-): Promise<{ csv: string; filename: string; po: { id: number; supplierName: string; status: string; totalPaise: number } } | null> {
+  opts: { allowDraft?: boolean } = {},
+): Promise<
+  | { csv: string; filename: string; po: { id: number; supplierName: string; status: string; totalPaise: number } }
+  | { error: "not-found" }
+  | { error: "not-approved"; status: string }
+> {
   const [po] = await db
     .select()
     .from(purchaseOrdersTable)
     .where(eq(purchaseOrdersTable.id, purchaseOrderId))
     .limit(1);
-  if (!po) return null;
+  if (!po) return { error: "not-found" };
+  if (!opts.allowDraft && po.status !== "approved") {
+    return { error: "not-approved", status: po.status };
+  }
   const lines = await db
     .select({
       qty: purchaseOrderLinesTable.qty,

@@ -351,13 +351,22 @@ const exportPurchaseOrderCsvTool = defineTool({
     "Export an approved (or draft) PO as CSV the buyer can email or attach. Returns the CSV string and a stable filename.",
   inputSchema: z.object({
     purchaseOrderId: z.number().int().positive(),
+    allowDraft: z.boolean().optional(),
     reasoning: z.string().min(3),
   }),
   authScope: "ops",
-  handler: async ({ purchaseOrderId, reasoning }, ctx) => {
-    const exported = await exportPurchaseOrderCsv(purchaseOrderId);
-    if (!exported) {
-      return { success: false as const, error: "PO not found" };
+  handler: async ({ purchaseOrderId, allowDraft, reasoning }, ctx) => {
+    const exported = await exportPurchaseOrderCsv(purchaseOrderId, {
+      allowDraft,
+    });
+    if ("error" in exported) {
+      return {
+        success: false as const,
+        error:
+          exported.error === "not-found"
+            ? "PO not found"
+            : `PO is ${exported.status}; only approved POs may be exported (set allowDraft:true to override).`,
+      };
     }
     await recordOpsAction({
       operatorId: ctx.userId,

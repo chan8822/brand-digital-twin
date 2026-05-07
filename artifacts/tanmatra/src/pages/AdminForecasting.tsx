@@ -80,6 +80,7 @@ export default function AdminForecasting() {
   const [stock, setStock] = useState<StockRow[]>([]);
   const [pos, setPos] = useState<PORow[]>([]);
   const [mape, setMape] = useState<MapeRow[]>([]);
+  const [mapeWindowDays, setMapeWindowDays] = useState<7 | 30>(30);
   const [snapshots, setSnapshots] = useState<SnapshotRow[]>([]);
   const [messages, setMessages] = useState<Msg[]>([
     {
@@ -112,7 +113,7 @@ export default function AdminForecasting() {
         fetch(`/api/forecasting/forecast?granularity=${granularity}`, { credentials: "include", headers: headers() }),
         fetch("/api/forecasting/stock", { credentials: "include", headers: headers() }),
         fetch("/api/forecasting/purchase-orders", { credentials: "include", headers: headers() }),
-        fetch("/api/forecasting/accuracy", { credentials: "include", headers: headers() }),
+        fetch(`/api/forecasting/accuracy?sinceDays=${mapeWindowDays}`, { credentials: "include", headers: headers() }),
         fetch("/api/forecasting/snapshots", { credentials: "include", headers: headers() }),
       ]);
       if (f.status === 403) {
@@ -133,7 +134,7 @@ export default function AdminForecasting() {
   useEffect(() => {
     void loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adminToken, granularity]);
+  }, [adminToken, granularity, mapeWindowDays]);
 
   const downloadPoCsv = async (id: number) => {
     try {
@@ -473,8 +474,24 @@ export default function AdminForecasting() {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Forecast accuracy (MAPE, last 30d)</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Forecast accuracy (MAPE)</CardTitle>
+            <div className="flex gap-1">
+              <Button
+                size="sm"
+                variant={mapeWindowDays === 7 ? "default" : "outline"}
+                onClick={() => setMapeWindowDays(7)}
+              >
+                Weekly
+              </Button>
+              <Button
+                size="sm"
+                variant={mapeWindowDays === 30 ? "default" : "outline"}
+                onClick={() => setMapeWindowDays(30)}
+              >
+                30d
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-72">
