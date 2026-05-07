@@ -15,9 +15,21 @@
     },
     "backgroundColor": "#050505",
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSHealthShareUsageDescription": "Tanmatra reads your daily steps and active calories from Apple Health to keep your wellness dashboard in sync.",
+        "NSHealthUpdateUsageDescription": "Tanmatra does not write to Apple Health."
+      },
+      "entitlements": {
+        "com.apple.developer.healthkit": true
+      }
     },
-    "android": {},
+    "android": {
+      "permissions": [
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_ACTIVE_CALORIES_BURNED"
+      ]
+    },
     "web": {
       "favicon": "./assets/images/icon.png"
     },
@@ -29,7 +41,15 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "react-native-health",
+        {
+          "healthSharePermission": "Tanmatra reads your daily steps and active calories from Apple Health to keep your wellness dashboard in sync.",
+          "healthUpdatePermission": "Tanmatra does not write to Apple Health."
+        }
+      ],
+      "react-native-health-connect"
     ],
     "experiments": {
       "typedRoutes": true,
