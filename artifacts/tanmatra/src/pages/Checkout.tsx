@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,9 @@ import { toast } from "sonner";
 import { formatPrice } from "@/lib/api/adapter";
 import { useCart, FREE_DELIVERY_THRESHOLD, DELIVERY_FEE } from "@/lib/cartContext";
 import { useOrders, generateOrderId } from "@/lib/ordersContext";
+import { loyaltyApi } from "@/lib/loyaltyApi";
+import { Switch } from "@/components/ui/switch";
+import { Sparkles } from "lucide-react";
 import {
   MapPin,
   CreditCard,
@@ -61,12 +64,32 @@ export default function Checkout() {
   const [customTip, setCustomTip] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [creditBalance, setCreditBalance] = useState(0);
+  const [applyCredits, setApplyCredits] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    loyaltyApi
+      .getCreditLedger()
+      .then((r) => {
+        if (alive) setCreditBalance(r.balancePaise);
+      })
+      .catch(() => {
+        if (alive) setCreditBalance(0);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const [newAddr, setNewAddr] = useState({ label: "", line1: "", line2: "", city: "", pincode: "", phone: "" });
 
   const effectiveTip = tipAmount === -1 ? Math.round((parseFloat(customTip) || 0) * 100) : tipAmount;
   const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
-  const razorpayTotal = subtotal + deliveryFee + effectiveTip;
+  const grossTotal = subtotal + deliveryFee + effectiveTip;
+  const creditApplied =
+    applyCredits && creditBalance > 0 ? Math.min(creditBalance, grossTotal) : 0;
+  const razorpayTotal = Math.max(0, grossTotal - creditApplied);
 
   const activeAddr = SAVED_ADDRESSES.find((a) => a.id === selectedAddress);
 
@@ -93,6 +116,16 @@ export default function Checkout() {
     await new Promise((r) => setTimeout(r, 1500));
 
     const orderId = generateOrderId();
+    if (creditApplied > 0) {
+      try {
+        const out = await loyaltyApi.redeemCredit(creditApplied, orderId, `Order ${orderId}`);
+        setCreditBalance(out.balancePaise);
+      } catch (e) {
+        toast.error("Could not apply credits");
+        setIsProcessing(false);
+        return;
+      }
+    }
     const placedAt = new Date().toISOString();
     const etaAt = new Date(Date.now() + 25 * 60 * 1000).toISOString();
 
@@ -360,6 +393,30 @@ export default function Checkout() {
                     Rider Tip
                   </span>
                   <span className="tabular-nums text-clinical-gold">{formatPrice(effectiveTip)}</span>
+                </div>
+              )}
+              {creditBalance > 0 && (
+                <div className="flex items-center justify-between gap-2 p-2 rounded-md border border-clinical-sage/30 bg-clinical-sage/5">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Sparkles className="w-3.5 h-3.5 text-clinical-sage shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-[11px] text-white">Apply credits</p>
+                      <p className="text-[9px] text-clinical-zinc">
+                        Wallet: {formatPrice(creditBalance)}
+                      </p>
+                    </div>
+                  </div>
+                  <Switch checked={applyCredits} onCheckedChange={setApplyCredits} />
+                </div>
+              )}
+              {creditApplied > 0 && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-clinical-sage flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" /> Credits applied
+                  </span>
+                  <span className="tabular-nums text-clinical-sage">
+                    -{formatPrice(creditApplied)}
+                  </span>
                 </div>
               )}
             </div>

@@ -22,6 +22,7 @@ import Track from "@/pages/Track";
 import Orders from "@/pages/Orders";
 import Subscribe from "@/pages/Subscribe";
 import Subscriptions from "@/pages/Subscriptions";
+import Rewards from "@/pages/Rewards";
 import Wellness from "@/pages/Wellness";
 import Performance from "@/pages/Performance";
 import Clinical from "@/pages/Clinical";
@@ -65,6 +66,7 @@ export default function App() {
                     <Route path="/orders" element={<Orders />} />
                     <Route path="/subscribe" element={<Subscribe />} />
                     <Route path="/subscriptions" element={<Subscriptions />} />
+                    <Route path="/rewards" element={<Rewards />} />
                     <Route path="/wellness" element={<Wellness />} />
                     <Route path="/performance" element={<Performance />} />
                     <Route path="/clinical" element={<Clinical />} />
