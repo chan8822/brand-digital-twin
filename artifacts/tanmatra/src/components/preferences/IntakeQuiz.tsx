@@ -37,6 +37,8 @@ interface QuizState {
   dislikedIngredients: string;
   calorieTarget: string;
   proteinTargetGrams: string;
+  carbsTargetGrams: string;
+  fatTargetGrams: string;
 }
 
 function initialState(prefs: UserPreferences | null): QuizState {
@@ -52,7 +54,18 @@ function initialState(prefs: UserPreferences | null): QuizState {
     proteinTargetGrams: prefs?.proteinTargetGrams
       ? String(prefs.proteinTargetGrams)
       : "",
+    carbsTargetGrams: prefs?.carbsTargetGrams
+      ? String(prefs.carbsTargetGrams)
+      : "",
+    fatTargetGrams: prefs?.fatTargetGrams ? String(prefs.fatTargetGrams) : "",
   };
+}
+
+function clampNum(v: string, lo: number, hi: number): number | null {
+  if (!v.trim()) return null;
+  const n = Math.round(Number(v));
+  if (!Number.isFinite(n)) return null;
+  return Math.max(lo, Math.min(hi, n));
 }
 
 const STEPS = ["Diet", "Goals", "Cuisine & Spice", "Allergens", "Targets"] as const;
@@ -98,12 +111,10 @@ export default function IntakeQuiz({ open, onOpenChange }: IntakeQuizProps) {
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean),
-      calorieTarget: state.calorieTarget
-        ? Math.max(800, Math.min(6000, Number(state.calorieTarget)))
-        : null,
-      proteinTargetGrams: state.proteinTargetGrams
-        ? Math.max(20, Math.min(400, Number(state.proteinTargetGrams)))
-        : null,
+      calorieTarget: clampNum(state.calorieTarget, 800, 6000),
+      proteinTargetGrams: clampNum(state.proteinTargetGrams, 20, 400),
+      carbsTargetGrams: clampNum(state.carbsTargetGrams, 0, 800),
+      fatTargetGrams: clampNum(state.fatTargetGrams, 0, 300),
       markQuizComplete: markComplete,
     };
     const out = await update(patch);
@@ -300,6 +311,46 @@ export default function IntakeQuiz({ open, onOpenChange }: IntakeQuizProps) {
 
           {step === 4 && (
             <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label className="text-clinical-label" htmlFor="carbs">
+                    Daily carbs (g)
+                  </Label>
+                  <Input
+                    id="carbs"
+                    type="number"
+                    inputMode="numeric"
+                    placeholder="220"
+                    value={state.carbsTargetGrams}
+                    onChange={(e) =>
+                      setState((s) => ({
+                        ...s,
+                        carbsTargetGrams: e.target.value,
+                      }))
+                    }
+                    className="bg-clinical-surface-elevated border-clinical-slate/30 text-sm"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-clinical-label" htmlFor="fat">
+                    Daily fat (g)
+                  </Label>
+                  <Input
+                    id="fat"
+                    type="number"
+                    inputMode="numeric"
+                    placeholder="60"
+                    value={state.fatTargetGrams}
+                    onChange={(e) =>
+                      setState((s) => ({
+                        ...s,
+                        fatTargetGrams: e.target.value,
+                      }))
+                    }
+                    className="bg-clinical-surface-elevated border-clinical-slate/30 text-sm"
+                  />
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label className="text-clinical-label" htmlFor="cal">

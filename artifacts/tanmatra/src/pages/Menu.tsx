@@ -20,6 +20,7 @@ import { usePreferences } from "@/lib/preferencesContext";
 import {
   evaluateDishForPreferences,
   rankDishesForPreferences,
+  findSmartSwap,
 } from "@/lib/preferencesMatch";
 import { toast } from "sonner";
 import {
@@ -403,9 +404,25 @@ export default function Menu() {
                 )}
 
               {match.warnings.length > 0 && (
-                <div className="flex items-start gap-1.5 text-[11px] text-orange-400">
-                  <ShieldAlert className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                  <span className="leading-tight">{match.warnings[0]}</span>
+                <div className="space-y-1.5">
+                  <div className="flex items-start gap-1.5 text-[11px] text-orange-400">
+                    <ShieldAlert className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    <span className="leading-tight">{match.warnings[0]}</span>
+                  </div>
+                  {(() => {
+                    const swap = findSmartSwap(item, preferences);
+                    if (!swap) return null;
+                    return (
+                      <Link
+                        to={`/dish/${swap.slug}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex items-center gap-1.5 text-[11px] text-clinical-gold hover:underline"
+                      >
+                        <SparklesIcon className="w-3 h-3" />
+                        Smart swap: {swap.name} →
+                      </Link>
+                    );
+                  })()}
                 </div>
               )}
               {match.warnings.length === 0 && match.reasons.length > 0 && (
