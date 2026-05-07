@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
@@ -412,25 +412,80 @@ function WearableCard({
   );
 }
 
+interface MobileSession {
+  id: string;
+  label: string;
+  createdAt: string | null;
+  expiresAt: string;
+}
+
 function PairMobileCard() {
   const [token, setToken] = useState<string | null>(null);
+  const [ttlMs, setTtlMs] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [sessions, setSessions] = useState<MobileSession[]>([]);
+  const [label, setLabel] = useState("");
+
+  const apiBase = `${import.meta.env.BASE_URL}api`;
+
+  async function loadSessions() {
+    try {
+      const res = await fetch(`${apiBase}/auth/mobile-sessions`, {
+        credentials: "include",
+      });
+      if (!res.ok) return;
+      const json = (await res.json()) as { sessions: MobileSession[] };
+      setSessions(json.sessions);
+    } catch {
+      // ignore
+    }
+  }
+
+  useEffect(() => {
+    loadSessions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function issueToken() {
     setBusy(true);
     try {
-      const res = await fetch(`${import.meta.env.BASE_URL}api/auth/mobile-pair`, {
+      const res = await fetch(`${apiBase}/auth/mobile-pair`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ label: label.trim() || undefined }),
       });
       if (!res.ok) throw new Error(`${res.status}`);
-      const json = (await res.json()) as { token: string };
+      const json = (await res.json()) as { token: string; ttlMs: number };
       setToken(json.token);
+      setTtlMs(json.ttlMs);
       setCopied(false);
+      loadSessions();
     } catch (e) {
       toast.error(`Could not issue token: ${(e as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function revoke(id: string | "all") {
+    setBusy(true);
+    try {
+      const res = await fetch(`${apiBase}/auth/mobile-sessions/revoke`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(id === "all" ? { all: true } : { id }),
+      });
+      if (!res.ok) throw new Error(`${res.status}`);
+      const json = (await res.json()) as { revoked: number };
+      toast.success(
+        json.revoked === 1 ? "Device revoked" : `${json.revoked} devices revoked`,
+      );
+      loadSessions();
+    } catch (e) {
+      toast.error(`Revoke failed: ${(e as Error).message}`);
     } finally {
       setBusy(false);
     }
@@ -473,17 +528,26 @@ function PairMobileCard() {
           <div className="space-y-3">
             <p className="text-[12px] text-clinical-slate leading-relaxed">
               Generate a pairing token, then paste it into the Tanmatra mobile
-              app on your device. Each token is a dedicated mobile session you
-              can revoke separately from your web sign-in.
+              app on your device. Each token is a dedicated mobile session
+              (valid {Math.round((ttlMs ?? 7 * 24 * 60 * 60 * 1000) / (24 * 60 * 60 * 1000))} days)
+              you can revoke separately from your web sign-in.
             </p>
-            <Button
-              size="sm"
-              disabled={busy}
-              onClick={issueToken}
-              className="bg-clinical-sage text-clinical-dark hover:bg-clinical-sage/90"
-            >
-              {busy ? "Generating…" : "Generate pairing token"}
-            </Button>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Device label (e.g. iPhone 15)"
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                className="flex-1 bg-clinical-dark border-clinical-slate/30 text-white placeholder:text-clinical-slate/60 text-sm"
+              />
+              <Button
+                size="sm"
+                disabled={busy}
+                onClick={issueToken}
+                className="bg-clinical-sage text-clinical-dark hover:bg-clinical-sage/90"
+              >
+                {busy ? "Generating…" : "Generate"}
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="space-y-3">
@@ -518,6 +582,56 @@ function PairMobileCard() {
               pairing field. Treat this token like a password — anyone with it
               can post activity as you.
             </p>
+          </div>
+        )}
+
+        {sessions.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-clinical-slate/15">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-[11px] uppercase tracking-widest text-clinical-slate">
+                Paired devices ({sessions.length})
+              </div>
+              {sessions.length > 1 && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={busy}
+                  onClick={() => revoke("all")}
+                  className="h-7 px-2 text-[11px] text-clinical-slate hover:text-white"
+                >
+                  Revoke all
+                </Button>
+              )}
+            </div>
+            <ul className="space-y-1">
+              {sessions.map((s) => (
+                <li
+                  key={s.id}
+                  className="flex items-center justify-between py-1.5 text-[12px]"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="text-white truncate">{s.label}</div>
+                    <div className="text-[10px] text-clinical-slate">
+                      {s.createdAt
+                        ? `Paired ${new Date(s.createdAt).toLocaleDateString()}`
+                        : `Expires ${new Date(s.expiresAt).toLocaleDateString()}`}
+                      {" · "}
+                      <span className="font-mono">{s.id}</span>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={busy}
+                    onClick={() => revoke(s.id)}
+                    className="h-7 px-2 text-clinical-slate hover:text-red-400"
+                    title="Revoke this device"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
       </CardContent>

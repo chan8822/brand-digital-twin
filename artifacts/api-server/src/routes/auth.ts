@@ -6,7 +6,8 @@ import {
   ExchangeMobileAuthorizationCodeResponse,
   LogoutMobileSessionResponse,
 } from "@workspace/api-zod";
-import { db, usersTable } from "@workspace/db";
+import { db, usersTable, sessionsTable } from "@workspace/db";
+import { and, gt, sql } from "drizzle-orm";
 import {
   clearSession,
   getOidcConfig,
@@ -269,6 +270,10 @@ router.post(
       return;
     }
     const user = req.user;
+    const label =
+      typeof req.body?.label === "string" && req.body.label.trim().length > 0
+        ? String(req.body.label).slice(0, 60)
+        : "Mobile device";
     const sessionData: SessionData = {
       user: {
         id: user.id,
@@ -278,9 +283,74 @@ router.post(
         profileImageUrl: user.profileImageUrl,
       },
       access_token: "",
+      kind: "mobile",
+      label,
+      createdAt: Date.now(),
     };
     const sid = await createSession(sessionData);
-    res.json({ token: sid });
+    res.json({ token: sid, ttlMs: SESSION_TTL });
+  },
+);
+
+router.get(
+  "/auth/mobile-sessions",
+  async (req: Request, res: Response) => {
+    if (!req.isAuthenticated()) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const userId = req.user.id;
+    const rows = await db
+      .select()
+      .from(sessionsTable)
+      .where(
+        and(
+          sql`${sessionsTable.sess}->>'kind' = 'mobile'`,
+          sql`${sessionsTable.sess}->'user'->>'id' = ${userId}`,
+          gt(sessionsTable.expire, new Date()),
+        ),
+      );
+    const sessions = rows.map((r) => {
+      const sess = r.sess as unknown as SessionData;
+      return {
+        id: r.sid.slice(0, 8),
+        label: sess.label ?? "Mobile device",
+        createdAt: sess.createdAt
+          ? new Date(sess.createdAt).toISOString()
+          : null,
+        expiresAt: r.expire.toISOString(),
+      };
+    });
+    res.json({ sessions });
+  },
+);
+
+router.post(
+  "/auth/mobile-sessions/revoke",
+  async (req: Request, res: Response) => {
+    if (!req.isAuthenticated()) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const userId = req.user.id;
+    const id = typeof req.body?.id === "string" ? req.body.id : "";
+    const all = req.body?.all === true;
+    if (!id && !all) {
+      res.status(400).json({ error: "id or all required" });
+      return;
+    }
+    const conditions = [
+      sql`${sessionsTable.sess}->>'kind' = 'mobile'`,
+      sql`${sessionsTable.sess}->'user'->>'id' = ${userId}`,
+    ];
+    if (!all) {
+      conditions.push(sql`left(${sessionsTable.sid}, 8) = ${id}`);
+    }
+    const result = await db
+      .delete(sessionsTable)
+      .where(and(...conditions))
+      .returning({ sid: sessionsTable.sid });
+    res.json({ revoked: result.length });
   },
 );
 

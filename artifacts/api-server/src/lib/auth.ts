@@ -14,6 +14,9 @@ export interface SessionData {
   access_token: string;
   refresh_token?: string;
   expires_at?: number;
+  kind?: "web" | "mobile";
+  label?: string;
+  createdAt?: number;
 }
 
 let oidcConfig: client.Configuration | null = null;
