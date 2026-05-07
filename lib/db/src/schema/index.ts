@@ -14,3 +14,4 @@ export * from "./groupOrders";
 export * from "./wellness";
 export * from "./aiRuns";
 export * from "./ops";
+export * from "./forecasting";

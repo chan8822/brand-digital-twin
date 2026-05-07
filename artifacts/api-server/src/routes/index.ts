@@ -13,6 +13,7 @@ import groupOrdersRouter from "./groupOrders";
 import wellnessRouter from "./wellness";
 import aiRunsRouter from "./aiRuns";
 import opsAgentRouter from "./opsAgent";
+import forecastingRouter from "./forecasting";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(groupOrdersRouter);
 router.use(wellnessRouter);
 router.use(aiRunsRouter);
 router.use(opsAgentRouter);
+router.use(forecastingRouter);
 
 export default router;

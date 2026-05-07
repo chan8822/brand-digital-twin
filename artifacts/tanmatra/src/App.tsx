@@ -41,6 +41,7 @@ import CheckoutAppointment from "@/pages/CheckoutAppointment";
 import AdminOpsDashboard from "@/pages/AdminOpsDashboard";
 import AdminAiRuns from "@/pages/AdminAiRuns";
 import AdminOpsAgent from "@/pages/AdminOpsAgent";
+import AdminForecasting from "@/pages/AdminForecasting";
 import GroupOrder from "@/pages/GroupOrder";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
@@ -121,6 +122,14 @@ export default function App() {
                       element={
                         <AdminGate>
                           <AdminOpsAgent />
+                        </AdminGate>
+                      }
+                    />
+                    <Route
+                      path="/admin/forecasting"
+                      element={
+                        <AdminGate>
+                          <AdminForecasting />
                         </AdminGate>
                       }
                     />
