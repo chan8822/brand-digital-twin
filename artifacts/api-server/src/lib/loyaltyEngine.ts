@@ -4,6 +4,7 @@ import {
   db,
   loyaltyConfigTable,
   notificationsTable,
+  orderClaimsTable,
   referralRedemptionsTable,
   subscriptionDeliveriesTable,
   subscriptionsTable,
@@ -213,12 +214,37 @@ async function ensureNotification(
  * (userId, dedupeKey) on notifications prevents duplicates, and the whole
  * thing runs in a transaction with an advisory lock per redemption row.
  */
+export type AwardReferralResult =
+  | { awarded: true; redemptionId: number }
+  | {
+      awarded: false;
+      reason:
+        | "no_pending_referral"
+        | "order_already_claimed"
+        | "no_qualifying_activity"
+        | "already_awarded";
+    };
+
 export async function awardPendingReferral(args: {
   refereeUserId: string;
   orderId: string;
-}): Promise<{ awarded: boolean; redemptionId?: number }> {
+}): Promise<AwardReferralResult> {
   const config = await getLoyaltyConfig();
   return db.transaction(async (tx) => {
+    // 1. Idempotency + replay guard: each (user, orderId) can only ever
+    //    be presented once. Concurrent duplicates lose to unique index.
+    const [claim] = await tx
+      .insert(orderClaimsTable)
+      .values({ userId: args.refereeUserId, orderId: args.orderId })
+      .onConflictDoNothing({
+        target: [orderClaimsTable.userId, orderClaimsTable.orderId],
+      })
+      .returning();
+    if (!claim) {
+      return { awarded: false, reason: "order_already_claimed" } as const;
+    }
+
+    // 2. Find the pending redemption for this user (if any).
     const [pending] = await tx
       .select()
       .from(referralRedemptionsTable)
@@ -228,7 +254,22 @@ export async function awardPendingReferral(args: {
           isNull(referralRedemptionsTable.awardedAt),
         ),
       );
-    if (!pending) return { awarded: false };
+    if (!pending) {
+      return { awarded: false, reason: "no_pending_referral" } as const;
+    }
+
+    // 3. Server-side gate: require some real engagement. Since order
+    //    persistence is mocked client-side in this artifact, the
+    //    strongest server-validated signal is having at least one
+    //    subscription created (which goes through /subscriptions).
+    const [activity] = await tx
+      .select({ n: count() })
+      .from(subscriptionsTable)
+      .where(eq(subscriptionsTable.userId, args.refereeUserId));
+    if (Number(activity?.n ?? 0) === 0) {
+      return { awarded: false, reason: "no_qualifying_activity" } as const;
+    }
+
     await tx.execute(
       sql`select pg_advisory_xact_lock(hashtextextended(${"referral:" + pending.id}, 0))`,
     );
@@ -241,7 +282,9 @@ export async function awardPendingReferral(args: {
           isNull(referralRedemptionsTable.awardedAt),
         ),
       );
-    if (!stillPending) return { awarded: false };
+    if (!stillPending) {
+      return { awarded: false, reason: "already_awarded" } as const;
+    }
     const expiresAt = addDays(new Date(), config.referralExpiryDays);
     await issueCredit(
       {
@@ -490,6 +533,87 @@ export async function runLoyaltyEngineForUser(userId: string): Promise<{
   const protein = await checkProteinStreak(userId);
   if (protein) out.push(protein);
   return { notifications: out };
+}
+
+/**
+ * Returns per-subscription loyalty progress so the UI can show
+ * "X / N to next free meal" and the premium-unlock state without
+ * duplicating the threshold logic.
+ */
+export async function getSubscriptionLoyaltyProgress(
+  userId: string,
+): Promise<
+  Array<{
+    subscriptionId: number;
+    deliveredCount: number;
+    freeEveryN: number;
+    deliveriesUntilFree: number;
+    premiumUnlockAt: number;
+    deliveriesUntilPremium: number;
+    premiumUnlocked: boolean;
+  }>
+> {
+  const config = await getLoyaltyConfig();
+  const subs = await db
+    .select({ id: subscriptionsTable.id })
+    .from(subscriptionsTable)
+    .where(eq(subscriptionsTable.userId, userId));
+  const out = [];
+  for (const sub of subs) {
+    const [row] = await db
+      .select({ n: count() })
+      .from(subscriptionDeliveriesTable)
+      .where(
+        and(
+          eq(subscriptionDeliveriesTable.subscriptionId, sub.id),
+          eq(subscriptionDeliveriesTable.status, "delivered"),
+        ),
+      );
+    const delivered = Number(row?.n ?? 0);
+    const inCycle = delivered % config.loyaltyFreeEveryN;
+    out.push({
+      subscriptionId: sub.id,
+      deliveredCount: delivered,
+      freeEveryN: config.loyaltyFreeEveryN,
+      deliveriesUntilFree:
+        inCycle === 0 ? config.loyaltyFreeEveryN : config.loyaltyFreeEveryN - inCycle,
+      premiumUnlockAt: config.premiumUnlockDeliveries,
+      deliveriesUntilPremium: Math.max(
+        0,
+        config.premiumUnlockDeliveries - delivered,
+      ),
+      premiumUnlocked: delivered >= config.premiumUnlockDeliveries,
+    });
+  }
+  return out;
+}
+
+/**
+ * Sweep loyalty rules for all users with any engagement signal
+ * (subscriptions, profile dates, or referral state). Idempotent via
+ * notification dedupe keys + per-redemption awardedAt guards.
+ */
+export async function runLoyaltyEngineForAll(): Promise<{
+  scanned: number;
+  triggered: number;
+}> {
+  const rows = await db.execute<{ user_id: string }>(
+    sql`select distinct user_id from (
+      select user_id from ${subscriptionsTable}
+      union select user_id from ${userProfileTable}
+      union select referee_user_id as user_id from ${referralRedemptionsTable}
+    ) u`,
+  );
+  let triggered = 0;
+  for (const r of rows.rows ?? []) {
+    try {
+      const out = await runLoyaltyEngineForUser(r.user_id);
+      triggered += out.notifications.length;
+    } catch {
+      // best-effort sweep; continue
+    }
+  }
+  return { scanned: rows.rows?.length ?? 0, triggered };
 }
 
 export async function listNotifications(userId: string): Promise<Notification[]> {

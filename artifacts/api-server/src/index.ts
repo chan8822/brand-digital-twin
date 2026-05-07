@@ -3,6 +3,7 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { initRealtime } from "./lib/realtime";
 import { startWorkers } from "./lib/queue";
+import { startLoyaltyScheduler } from "./lib/loyaltyScheduler";
 
 const rawPort = process.env["PORT"];
 
@@ -21,6 +22,7 @@ if (Number.isNaN(port) || port <= 0) {
 const httpServer = createServer(app);
 initRealtime(httpServer);
 startWorkers();
+startLoyaltyScheduler();
 
 httpServer.listen(port, (err?: Error) => {
   if (err) {

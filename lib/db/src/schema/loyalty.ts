@@ -150,6 +150,23 @@ export const userProfileTable = pgTable("user_profile", {
     .$onUpdate(() => new Date()),
 });
 
+export const orderClaimsTable = pgTable(
+  "loyalty_order_claims",
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    orderId: varchar("order_id", { length: 64 }).notNull(),
+    claimedAt: timestamp("claimed_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("uniq_loyalty_order_claims").on(table.userId, table.orderId),
+  ],
+);
+
 export const loyaltyConfigTable = pgTable("loyalty_config", {
   id: integer("id").primaryKey(),
   referrerAwardPaise: integer("referrer_award_paise").notNull(),

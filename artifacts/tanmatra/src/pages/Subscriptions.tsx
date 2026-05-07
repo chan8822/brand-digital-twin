@@ -36,6 +36,17 @@ import {
   type SubscriptionMember,
   type MealCredit,
 } from "@/lib/subscriptionsApi";
+import { loyaltyApi } from "@/lib/loyaltyApi";
+
+interface LoyaltyProgress {
+  subscriptionId: number;
+  deliveredCount: number;
+  freeEveryN: number;
+  deliveriesUntilFree: number;
+  premiumUnlockAt: number;
+  deliveriesUntilPremium: number;
+  premiumUnlocked: boolean;
+}
 
 interface Detail {
   subscription: Subscription;
@@ -99,6 +110,7 @@ export default function Subscriptions() {
   });
   const [loading, setLoading] = useState(true);
   const [unauthorized, setUnauthorized] = useState(false);
+  const [progress, setProgress] = useState<Record<number, LoyaltyProgress>>({});
   const [reschedDelivery, setReschedDelivery] =
     useState<SubscriptionDelivery | null>(null);
   const [reschedDate, setReschedDate] = useState("");
@@ -108,12 +120,16 @@ export default function Subscriptions() {
 
   const refreshList = useCallback(async () => {
     try {
-      const [list, c] = await Promise.all([
+      const [list, c, p] = await Promise.all([
         subscriptionsApi.list(),
         subscriptionsApi.credits(),
+        loyaltyApi.getLoyaltyProgress().catch(() => ({ progress: [] })),
       ]);
       setSubs(list.subscriptions);
       setCredits({ balance: c.balance, rows: c.credits });
+      setProgress(
+        Object.fromEntries(p.progress.map((row) => [row.subscriptionId, row])),
+      );
       if (list.subscriptions.length > 0 && activeId === null) {
         setActiveId(list.subscriptions[0].id);
       }
@@ -255,6 +271,80 @@ export default function Subscriptions() {
           );
         })}
       </div>
+
+      {/* Loyalty progress per subscription */}
+      {subs.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {subs.map((s) => {
+            const pr = progress[s.id];
+            if (!pr) return null;
+            const cycleDone = pr.freeEveryN - pr.deliveriesUntilFree;
+            const cyclePct = Math.min(100, (cycleDone / pr.freeEveryN) * 100);
+            const premPct = Math.min(
+              100,
+              (pr.deliveredCount / pr.premiumUnlockAt) * 100,
+            );
+            return (
+              <Card
+                key={s.id}
+                className="bg-clinical-surface border-clinical-slate/20"
+              >
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-white">
+                      {CADENCE_LABEL[s.cadence]} plan · loyalty
+                    </p>
+                    {pr.premiumUnlocked && (
+                      <Badge className="bg-clinical-gold/15 text-clinical-gold border-clinical-gold/40 text-[10px]">
+                        Premium unlocked
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-[10px] text-clinical-zinc uppercase tracking-wide">
+                      <span>Next free meal</span>
+                      <span>
+                        {cycleDone}/{pr.freeEveryN}
+                      </span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-clinical-dark overflow-hidden">
+                      <div
+                        className="h-full bg-clinical-gold transition-all"
+                        style={{ width: `${cyclePct}%` }}
+                      />
+                    </div>
+                    <p className="text-[10px] text-clinical-sage">
+                      {pr.deliveriesUntilFree} more deliver
+                      {pr.deliveriesUntilFree === 1 ? "y" : "ies"} to your next free
+                      meal
+                    </p>
+                  </div>
+                  {!pr.premiumUnlocked && (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[10px] text-clinical-zinc uppercase tracking-wide">
+                        <span>Premium tier</span>
+                        <span>
+                          {pr.deliveredCount}/{pr.premiumUnlockAt}
+                        </span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-clinical-dark overflow-hidden">
+                        <div
+                          className="h-full bg-clinical-sage transition-all"
+                          style={{ width: `${premPct}%` }}
+                        />
+                      </div>
+                      <p className="text-[10px] text-clinical-zinc">
+                        {pr.deliveriesUntilPremium} deliveries to unlock chef
+                        specials
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
 
       {detail && <DetailView
         detail={detail}

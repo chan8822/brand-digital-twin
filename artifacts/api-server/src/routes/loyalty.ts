@@ -14,6 +14,7 @@ import {
   awardPendingReferral,
   getCreditBalancePaise,
   getLoyaltyConstantsSnapshot,
+  getSubscriptionLoyaltyProgress,
   listNotifications,
   redeemCreditAtomic,
   runLoyaltyEngineForUser,
@@ -265,6 +266,13 @@ router.post(
     res.json({ notification: updated });
   },
 );
+
+router.get("/loyalty/progress", async (req: Request, res: Response) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const progress = await getSubscriptionLoyaltyProgress(userId);
+  res.json({ progress });
+});
 
 router.post("/loyalty/run", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
