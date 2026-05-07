@@ -177,4 +177,8 @@ export const rdAdvisoryApi = {
       method: "POST",
       body: JSON.stringify({ rdSlug, adminToken }),
     }),
+  slots: (rdSlug: string, kind: AppointmentKind) =>
+    request<{ slots: Array<{ startAt: string; endAt: string }> }>(
+      `/rd/slots?rdSlug=${encodeURIComponent(rdSlug)}&kind=${encodeURIComponent(kind)}`,
+    ),
 };

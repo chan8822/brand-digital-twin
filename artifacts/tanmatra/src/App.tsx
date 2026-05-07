@@ -37,6 +37,7 @@ import RdDirectory from "@/pages/RdDirectory";
 import RdProfile from "@/pages/RdProfile";
 import Appointments from "@/pages/Appointments";
 import RdConsole from "@/pages/RdConsole";
+import CheckoutAppointment from "@/pages/CheckoutAppointment";
 import AdminOpsDashboard from "@/pages/AdminOpsDashboard";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
@@ -92,6 +93,10 @@ export default function App() {
                     <Route path="/rd/:slug" element={<RdProfile />} />
                     <Route path="/appointments" element={<Appointments />} />
                     <Route path="/rd-console" element={<RdConsole />} />
+                    <Route
+                      path="/checkout-appointment"
+                      element={<CheckoutAppointment />}
+                    />
                     <Route
                       path="/admin/ops"
                       element={

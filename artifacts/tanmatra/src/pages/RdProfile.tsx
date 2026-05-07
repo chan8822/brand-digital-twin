@@ -7,7 +7,6 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   APPOINTMENT_KIND_META,
   formatRupees,
-  generateSlots,
   getRdMember,
   getRdProfile,
   priceForKind,
@@ -45,30 +44,31 @@ export default function RdProfile() {
   const member = getRdMember(slug);
 
   const [kind, setKind] = useState<AppointmentKind>("intro_15m");
-  const [taken, setTaken] = useState<Array<{ startAt: string; endAt: string }>>(
-    [],
-  );
+  const [slots, setSlots] = useState<SlotOption[]>([]);
   const [selected, setSelected] = useState<SlotOption | null>(null);
   const [question, setQuestion] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  // Fetch slots from the canonical server endpoint (not local generation),
+  // so booking always references the same office-hour windows + taken set
+  // the server will validate against.
   useEffect(() => {
     if (!profile) return;
+    let alive = true;
     rdAdvisoryApi
-      .availability(profile.slug)
-      .then((r) => setTaken(r.taken))
-      .catch(() => setTaken([]));
-  }, [profile]);
+      .slots(profile.slug, kind)
+      .then((r) => {
+        if (alive) setSlots(r.slots.slice(0, 60));
+      })
+      .catch(() => {
+        if (alive) setSlots([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [profile, kind]);
 
   const meta = APPOINTMENT_KIND_META[kind];
-  const slots = useMemo(() => {
-    if (!profile) return [];
-    return generateSlots({
-      rdSlug: profile.slug,
-      durationMin: meta.durationMin,
-      taken,
-    }).slice(0, 60);
-  }, [profile, meta.durationMin, taken]);
 
   const grouped = useMemo(() => {
     const out: Record<string, SlotOption[]> = {};
@@ -94,6 +94,22 @@ export default function RdProfile() {
 
   async function confirmBooking() {
     if (!selected || !profile) return;
+    // Paid follow-ups are routed through the existing checkout-style
+    // confirm-and-pay screen. Free intros book directly.
+    if (price > 0) {
+      navigate("/checkout-appointment", {
+        state: {
+          rdSlug: profile.slug,
+          kind,
+          startAt: selected.startAt,
+          endAt: selected.endAt,
+          pricePaise: price,
+          userQuestion: question.trim() || undefined,
+          rdName: member?.name,
+        },
+      });
+      return;
+    }
     setSubmitting(true);
     try {
       const { appointment } = await rdAdvisoryApi.book({
@@ -103,24 +119,9 @@ export default function RdProfile() {
         endAt: selected.endAt,
         userQuestion: question.trim() || undefined,
       });
-      // Server settles paid kinds via an internal HMAC-signed webhook
-      // before responding, so paymentStatus is already "paid" or "free"
-      // here. A "pending" response means the payment processor secret is
-      // not configured on the server.
-      if (appointment.paymentStatus === "pending") {
-        toast.error("Booking held — payment not configured", {
-          description: "The server's payment processor is not set up.",
-        });
-      } else {
-        toast.success(
-          appointment.paymentStatus === "paid"
-            ? "Payment received"
-            : "Booking confirmed",
-          {
-            description: `${meta.label} with ${member?.name.split(" ").slice(-1)[0]} on ${formatDay(appointment.startAt)} at ${formatTime(appointment.startAt)}.`,
-          },
-        );
-      }
+      toast.success("Booking confirmed", {
+        description: `${meta.label} with ${member?.name.split(" ").slice(-1)[0]} on ${formatDay(appointment.startAt)} at ${formatTime(appointment.startAt)}.`,
+      });
       navigate("/appointments");
     } catch (err) {
       const msg = String(err);
@@ -132,8 +133,8 @@ export default function RdProfile() {
         toast.error("Slot just taken", {
           description: "Please pick another time — that slot was booked.",
         });
-        const r = await rdAdvisoryApi.availability(profile.slug);
-        setTaken(r.taken);
+        const r = await rdAdvisoryApi.slots(profile.slug, kind);
+        setSlots(r.slots.slice(0, 60));
         setSelected(null);
       } else {
         toast.error("Could not book", { description: msg });

@@ -75,6 +75,40 @@ function hmsToMin(hm: string): number {
 }
 type Window = { dayOfWeek: number; startMinute: number; endMinute: number };
 
+const IST_TZ = "Asia/Kolkata";
+const IST_PARTS = new Intl.DateTimeFormat("en-GB", {
+  timeZone: IST_TZ,
+  weekday: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+const DOW_MAP: Record<string, number> = {
+  Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+};
+/** Decompose a Date into IST {year,month,day,dow,minutes-of-day}. */
+function istParts(d: Date): {
+  y: number; m: number; day: number; dow: number; min: number;
+} {
+  const parts = IST_PARTS.formatToParts(d);
+  const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+  return {
+    y: Number(map["year"]),
+    m: Number(map["month"]),
+    day: Number(map["day"]),
+    dow: DOW_MAP[map["weekday"] ?? "Sun"] ?? 0,
+    min: Number(map["hour"]) * 60 + Number(map["minute"]),
+  };
+}
+/** Convert IST wall-clock {y,m,d,minutes} to a UTC Date. */
+function istToUtc(y: number, m: number, day: number, min: number): Date {
+  // IST is UTC+5:30, no DST.
+  return new Date(Date.UTC(y, m - 1, day, 0, min - 330));
+}
+
 /**
  * Resolve an RD's office-hour windows. Prefers rows in `rd_availability`;
  * falls back to STATIC_HOURS. Returns an empty array for unknown RDs.
@@ -117,16 +151,16 @@ function isInsideWindow(
   end: Date,
   windows: Window[],
 ): boolean {
-  const dow = start.getDay();
-  const startMin = start.getHours() * 60 + start.getMinutes();
-  const endMin = end.getHours() * 60 + end.getMinutes();
-  // Reject sessions crossing midnight; office hours never wrap.
-  if (end.getDate() !== start.getDate() || endMin <= startMin) return false;
+  // All RD office hours are expressed in IST; convert both bounds via the
+  // canonical Asia/Kolkata timezone so that booking validation is stable
+  // regardless of the server's local TZ.
+  const s = istParts(start);
+  const e = istParts(end);
+  if (s.y !== e.y || s.m !== e.m || s.day !== e.day) return false;
+  if (e.min <= s.min) return false;
   return windows.some(
     (w) =>
-      w.dayOfWeek === dow &&
-      startMin >= w.startMinute &&
-      endMin <= w.endMinute,
+      w.dayOfWeek === s.dow && s.min >= w.startMinute && e.min <= w.endMinute,
   );
 }
 
@@ -355,20 +389,21 @@ router.get("/rd/slots", async (req: Request, res: Response) => {
   ]);
   const minStart = new Date(now.getTime() + 60 * 60 * 1000);
   const slots: Array<{ startAt: string; endAt: string }> = [];
+  // Walk forward by IST calendar days, not server-local days, so that the
+  // window-of-the-week matching is stable.
+  const todayIst = istParts(now);
   for (let i = 0; i < daysAhead; i++) {
-    const day = new Date(now);
-    day.setDate(now.getDate() + i);
-    const dow = day.getDay();
-    for (const w of windows.filter((x) => x.dayOfWeek === dow)) {
+    const probe = new Date(
+      Date.UTC(todayIst.y, todayIst.m - 1, todayIst.day + i, 12, 0, 0),
+    );
+    const p = istParts(probe);
+    for (const w of windows.filter((x) => x.dayOfWeek === p.dow)) {
       let cursor = w.startMinute;
       while (cursor + durationMin <= w.endMinute) {
-        const s = new Date(day);
-        s.setHours(0, cursor, 0, 0);
+        const s = istToUtc(p.y, p.m, p.day, cursor);
         const e = new Date(s.getTime() + durationMin * 60_000);
         if (s >= minStart && e <= horizon) {
-          const conflict = taken.some(
-            (t) => s < t.endAt && e > t.startAt,
-          );
+          const conflict = taken.some((t) => s < t.endAt && e > t.startAt);
           if (!conflict) {
             slots.push({
               startAt: s.toISOString(),
