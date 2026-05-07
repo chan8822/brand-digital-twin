@@ -8,3 +8,4 @@ export * from "./recipes";
 export * from "./subscriptions";
 export * from "./loyalty";
 export * from "./preferences";
+export * from "./rdAdvisory";

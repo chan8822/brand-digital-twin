@@ -33,6 +33,10 @@ import Team from "@/pages/Team";
 import TeamMember from "@/pages/TeamMember";
 import RdPlans from "@/pages/RdPlans";
 import RdPlanDetail from "@/pages/RdPlanDetail";
+import RdDirectory from "@/pages/RdDirectory";
+import RdProfile from "@/pages/RdProfile";
+import Appointments from "@/pages/Appointments";
+import RdConsole from "@/pages/RdConsole";
 import AdminOpsDashboard from "@/pages/AdminOpsDashboard";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
@@ -84,6 +88,10 @@ export default function App() {
                     <Route path="/team/:slug" element={<TeamMember />} />
                     <Route path="/plans" element={<RdPlans />} />
                     <Route path="/plans/:slug" element={<RdPlanDetail />} />
+                    <Route path="/rd" element={<RdDirectory />} />
+                    <Route path="/rd/:slug" element={<RdProfile />} />
+                    <Route path="/appointments" element={<Appointments />} />
+                    <Route path="/rd-console" element={<RdConsole />} />
                     <Route
                       path="/admin/ops"
                       element={

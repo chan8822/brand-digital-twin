@@ -7,6 +7,7 @@ import opsRouter from "./ops";
 import subscriptionsRouter from "./subscriptions";
 import loyaltyRouter from "./loyalty";
 import preferencesRouter from "./preferences";
+import rdAdvisoryRouter from "./rdAdvisory";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use("/ops", opsRouter);
 router.use(subscriptionsRouter);
 router.use(loyaltyRouter);
 router.use(preferencesRouter);
+router.use(rdAdvisoryRouter);
 
 export default router;

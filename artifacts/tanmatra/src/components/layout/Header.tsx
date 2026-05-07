@@ -12,6 +12,7 @@ import {
   SlidersHorizontal,
   Users,
   Stethoscope,
+  HeartHandshake,
   Menu as MenuIcon,
   X,
 } from "lucide-react";
@@ -30,6 +31,8 @@ export default function Header() {
     { path: "/", label: "Home", icon: Home },
     { path: "/menu", label: "Menu", icon: Utensils },
     { path: "/plans", label: "RD Plans", icon: Stethoscope },
+    { path: "/rd", label: "Book RD", icon: HeartHandshake },
+    { path: "/appointments", label: "Care", icon: CalendarClock },
     { path: "/orders", label: "Orders", icon: Package },
     { path: "/subscriptions", label: "My Plans", icon: CalendarClock },
     { path: "/rewards", label: "Rewards", icon: Sparkles },
