@@ -72,18 +72,117 @@ export interface SupportChatRequest {
   message: string;
   history: Array<{ role: "user" | "agent"; text: string }>;
 }
+export interface SupportToolCall {
+  name: string;
+  args?: unknown;
+  result?: unknown;
+}
 export interface SupportChatResponse {
   text: string;
-  toolCalls?: Array<{ name: string; args?: unknown; result?: unknown }>;
+  toolCalls?: SupportToolCall[];
   escalated?: boolean;
+  refusalReason?: string;
 }
 
-export function useSupportAgentChat() {
-  return useMutation({
-    mutationFn: (vars: SupportChatRequest) =>
-      api<SupportChatResponse>(`/support-agent/chat`, {
-        method: "POST",
-        body: JSON.stringify(vars),
-      }),
+/**
+ * NDJSON streaming events emitted by POST /support-agent/chat.
+ * The client reads them line-by-line; `text-delta` events drive
+ * incremental rendering while `finish` carries the final tool-call
+ * metadata that Admin Ops uses for risk gating.
+ */
+export type SupportStreamEvent =
+  | { type: "text-delta"; delta: string }
+  | { type: "tool-call"; name: string; args?: unknown }
+  | { type: "tool-result"; name: string; result?: unknown }
+  | {
+      type: "finish";
+      text: string;
+      toolCalls: SupportToolCall[];
+      escalated: boolean;
+      refusalReason?: string;
+    }
+  | { type: "error"; message: string };
+
+export interface SupportStreamHandlers {
+  onDelta?: (delta: string) => void;
+  onToolCall?: (call: { name: string; args?: unknown }) => void;
+  onToolResult?: (call: { name: string; result?: unknown }) => void;
+  signal?: AbortSignal;
+}
+
+/**
+ * POST a chat turn and stream the agent's reply. Resolves with the
+ * final `finish` payload once the stream ends.
+ */
+export async function streamSupportAgentChat(
+  vars: SupportChatRequest,
+  handlers: SupportStreamHandlers = {},
+): Promise<SupportChatResponse> {
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+  const res = await fetch(`${base}/api/support-agent/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(vars),
+    credentials: "include",
+    signal: handlers.signal,
   });
+  if (!res.ok || !res.body) {
+    throw new Error(`support-agent stream failed: ${res.status}`);
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+  let final: SupportChatResponse | null = null;
+  const dispatch = (line: string): void => {
+    if (!line) return;
+    let evt: SupportStreamEvent;
+    try {
+      evt = JSON.parse(line) as SupportStreamEvent;
+    } catch {
+      return;
+    }
+    switch (evt.type) {
+      case "text-delta":
+        handlers.onDelta?.(evt.delta);
+        break;
+      case "tool-call":
+        handlers.onToolCall?.({ name: evt.name, args: evt.args });
+        break;
+      case "tool-result":
+        handlers.onToolResult?.({ name: evt.name, result: evt.result });
+        break;
+      case "finish":
+        final = {
+          text: evt.text,
+          toolCalls: evt.toolCalls,
+          escalated: evt.escalated,
+          refusalReason: evt.refusalReason,
+        };
+        break;
+      case "error":
+        throw new Error(evt.message);
+    }
+  };
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    let nl = buf.indexOf("\n");
+    while (nl !== -1) {
+      const line = buf.slice(0, nl).trim();
+      buf = buf.slice(nl + 1);
+      nl = buf.indexOf("\n");
+      dispatch(line);
+    }
+  }
+  // Flush the decoder and process any trailing line that was not
+  // newline-terminated (server should always end with a newline, but
+  // be defensive against chunk-boundary truncation).
+  buf += decoder.decode();
+  for (const line of buf.split("\n")) dispatch(line.trim());
+  if (!final) {
+    throw new Error("support-agent stream ended without finish event");
+  }
+  return final;
 }

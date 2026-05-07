@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useSupportAgentChat } from "@/lib/queries";
+import { streamSupportAgentChat } from "@/lib/queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,7 +28,8 @@ export default function SupportAgentWidget() {
     },
   ]);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const chatMutation = useSupportAgentChat();
+  const [streaming, setStreaming] = useState(false);
+  const streamingIndexRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -37,42 +38,83 @@ export default function SupportAgentWidget() {
   }, [messages]);
 
   const handleSend = async () => {
-    if (!input.trim() || chatMutation.isPending) return;
+    if (!input.trim() || streaming) return;
     const userMsg: ChatMessage = {
       role: "user",
       text: input.trim(),
       timestamp: new Date().toLocaleTimeString(),
     };
-    setMessages((prev) => [...prev, userMsg]);
+    // Append the user message AND a blank agent placeholder we will fill
+    // as deltas stream in.
+    let placeholderIdx = -1;
+    setMessages((prev) => {
+      const next = [...prev, userMsg, {
+        role: "agent" as const,
+        text: "",
+        timestamp: new Date().toLocaleTimeString(),
+      }];
+      placeholderIdx = next.length - 1;
+      streamingIndexRef.current = placeholderIdx;
+      return next;
+    });
     setInput("");
+    setStreaming(true);
 
     try {
-      const result = await chatMutation.mutateAsync({
-        message: userMsg.text,
-        history: messages.map((m) => ({ role: m.role, text: m.text })),
+      const result = await streamSupportAgentChat(
+        {
+          message: userMsg.text,
+          history: messages.map((m) => ({ role: m.role, text: m.text })),
+        },
+        {
+          onDelta: (delta) => {
+            setMessages((prev) => {
+              const idx = streamingIndexRef.current;
+              if (idx == null) return prev;
+              const copy = prev.slice();
+              const cur = copy[idx];
+              if (!cur) return prev;
+              copy[idx] = { ...cur, text: cur.text + delta };
+              return copy;
+            });
+          },
+        },
+      );
+      setMessages((prev) => {
+        const idx = streamingIndexRef.current;
+        if (idx == null) return prev;
+        const copy = prev.slice();
+        const cur = copy[idx];
+        if (!cur) return prev;
+        copy[idx] = {
+          ...cur,
+          text: result.text,
+          toolCalls: result.toolCalls?.map((tc) => ({
+            name: tc.name,
+            result: tc.result,
+          })),
+          escalated: result.escalated,
+        };
+        return copy;
       });
-
-      const agentMsg: ChatMessage = {
-        role: "agent",
-        text: result.text,
-        toolCalls: (result as any).toolCalls,
-        escalated: (result as any).escalated,
-        timestamp: new Date().toLocaleTimeString(),
-      };
-      setMessages((prev) => [...prev, agentMsg]);
-
-      if ((result as any).escalated) {
+      if (result.escalated) {
         toast.info("Conversation escalated to human support. ETA: 15 minutes.");
       }
     } catch {
-      setMessages((prev) => [
-        ...prev,
-        {
+      setMessages((prev) => {
+        const idx = streamingIndexRef.current;
+        if (idx == null) return prev;
+        const copy = prev.slice();
+        copy[idx] = {
           role: "agent",
           text: "Connection issue. Please try again or contact support directly.",
           timestamp: new Date().toLocaleTimeString(),
-        },
-      ]);
+        };
+        return copy;
+      });
+    } finally {
+      streamingIndexRef.current = null;
+      setStreaming(false);
     }
   };
 
@@ -158,14 +200,17 @@ export default function SupportAgentWidget() {
                   )}
                 </div>
               ))}
-              {chatMutation.isPending && (
-                <div className="flex gap-2">
-                  <div className="w-6 h-6 rounded-full bg-[#D4AF37]/10 flex items-center justify-center">
-                    <Bot className="w-3 h-3 text-[#D4AF37] animate-bounce" />
+              {streaming &&
+                messages[streamingIndexRef.current ?? -1]?.text === "" && (
+                  <div className="flex gap-2">
+                    <div className="w-6 h-6 rounded-full bg-[#D4AF37]/10 flex items-center justify-center">
+                      <Bot className="w-3 h-3 text-[#D4AF37] animate-bounce" />
+                    </div>
+                    <div className="bg-muted rounded-lg px-3 py-2 text-sm text-muted-foreground">
+                      Thinking...
+                    </div>
                   </div>
-                  <div className="bg-muted rounded-lg px-3 py-2 text-sm text-muted-foreground">Thinking...</div>
-                </div>
-              )}
+                )}
             </div>
           </ScrollArea>
 
@@ -182,7 +227,7 @@ export default function SupportAgentWidget() {
               <Button
                 size="icon"
                 onClick={handleSend}
-                disabled={!input.trim() || chatMutation.isPending}
+                disabled={!input.trim() || streaming}
                 aria-label="Send message"
               >
                 <Send className="w-4 h-4" />

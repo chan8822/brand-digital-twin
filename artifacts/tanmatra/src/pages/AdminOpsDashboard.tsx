@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useSupportAgentChat } from "@/lib/queries";
+import { streamSupportAgentChat, type SupportToolCall } from "@/lib/queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,7 +34,7 @@ import {
 interface ChatMessage {
   role: "user" | "agent";
   text: string;
-  toolCalls?: Array<{ name: string; result: any }>;
+  toolCalls?: SupportToolCall[];
   escalated?: boolean;
   timestamp: string;
   id: string;
@@ -69,7 +69,8 @@ export default function AdminOpsDashboard() {
     Array<PendingAction & { approved: boolean; decidedAt: string }>
   >([]);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const chatMutation = useSupportAgentChat();
+  const [streaming, setStreaming] = useState(false);
+  const streamingIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -78,7 +79,7 @@ export default function AdminOpsDashboard() {
   }, [messages]);
 
   const parsePendingActions = useCallback(
-    (_agentText: string, toolCalls?: any[]): PendingAction[] => {
+    (_agentText: string, toolCalls?: SupportToolCall[]): PendingAction[] => {
       const actions: PendingAction[] = [];
       if (!toolCalls) return actions;
       for (const tc of toolCalls) {
@@ -101,8 +102,8 @@ export default function AdminOpsDashboard() {
           actions.push({
             id: generateId(),
             actionType,
-            description: `${tc.name}: ${JSON.stringify(tc.args ?? tc.parameters ?? {})}`,
-            parameters: tc.args ?? tc.parameters ?? {},
+            description: `${tc.name}: ${JSON.stringify(tc.args ?? {})}`,
+            parameters: (tc.args as Record<string, unknown>) ?? {},
             riskScore,
             requestedAt: new Date().toISOString(),
           });
@@ -114,56 +115,90 @@ export default function AdminOpsDashboard() {
   );
 
   const handleSend = async () => {
-    if (!input.trim() || chatMutation.isPending) return;
+    if (!input.trim() || streaming) return;
     const userMsg: ChatMessage = {
       role: "user",
       text: input.trim(),
       timestamp: new Date().toLocaleTimeString(),
       id: generateId(),
     };
-    setMessages((prev) => [...prev, userMsg]);
+    const placeholderId = generateId();
+    streamingIdRef.current = placeholderId;
+    setMessages((prev) => [
+      ...prev,
+      userMsg,
+      {
+        role: "agent",
+        text: "",
+        timestamp: new Date().toLocaleTimeString(),
+        id: placeholderId,
+      },
+    ]);
     setInput("");
+    setStreaming(true);
 
     try {
-      const result = await chatMutation.mutateAsync({
-        message: userMsg.text,
-        history: messages
-          .filter((m) => m.role === "user" || m.role === "agent")
-          .map((m) => ({ role: m.role, text: m.text })),
-      });
+      const result = await streamSupportAgentChat(
+        {
+          message: userMsg.text,
+          history: messages
+            .filter((m) => m.role === "user" || m.role === "agent")
+            .map((m) => ({ role: m.role, text: m.text })),
+        },
+        {
+          onDelta: (delta) => {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === placeholderId ? { ...m, text: m.text + delta } : m,
+              ),
+            );
+          },
+        },
+      );
 
-      const newActions = parsePendingActions(result.text, (result as any).toolCalls);
+      // Risk gating runs off the final tool-call metadata, exactly as
+      // before — only the transport changed (NDJSON stream → finish event).
+      const newActions = parsePendingActions(result.text, result.toolCalls);
       if (newActions.length > 0) {
         setPendingActions((prev) => [...prev, ...newActions]);
-        const highestRisk = newActions.sort((a, b) => b.riskScore - a.riskScore)[0];
-        if (highestRisk.riskScore >= 0.7) {
+        const highestRisk = newActions.sort(
+          (a, b) => b.riskScore - a.riskScore,
+        )[0];
+        if (highestRisk && highestRisk.riskScore >= 0.7) {
           setConfirmDialog(highestRisk);
         }
       }
 
-      const agentMsg: ChatMessage = {
-        role: "agent",
-        text: result.text,
-        toolCalls: (result as any).toolCalls,
-        escalated: (result as any).escalated,
-        timestamp: new Date().toLocaleTimeString(),
-        id: generateId(),
-      };
-      setMessages((prev) => [...prev, agentMsg]);
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === placeholderId
+            ? {
+                ...m,
+                text: result.text,
+                toolCalls: result.toolCalls,
+                escalated: result.escalated,
+              }
+            : m,
+        ),
+      );
 
-      if ((result as any).escalated) {
+      if (result.escalated) {
         toast.info("Escalated to human support. Ticket created.");
       }
-    } catch (err) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "agent",
-          text: "Ops Agent connection failed. Please retry or escalate to on-call engineer.",
-          timestamp: new Date().toLocaleTimeString(),
-          id: generateId(),
-        },
-      ]);
+    } catch {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === placeholderId
+            ? {
+                ...m,
+                text: "Ops Agent connection failed. Please retry or escalate to on-call engineer.",
+              }
+            : m,
+        ),
+      );
+    } finally {
+      streamingIdRef.current = null;
+      setStreaming(false);
     }
   };
 
@@ -248,7 +283,7 @@ export default function AdminOpsDashboard() {
                               <Wrench className="w-3 h-3" />
                               <span className="font-mono">{tc.name}</span>
                               {isDestructive && <ShieldAlert className="w-3 h-3 text-orange-400" />}
-                              {"success" in (tc.result ?? {}) && tc.result.success ? (
+                              {(tc.result as { success?: boolean } | undefined)?.success ? (
                                 <CheckCircle2 className="w-3 h-3 text-green-500" />
                               ) : (
                                 <XCircle className="w-3 h-3 text-red-500" />
@@ -273,14 +308,18 @@ export default function AdminOpsDashboard() {
                   )}
                 </div>
               ))}
-              {chatMutation.isPending && (
-                <div className="flex gap-2">
-                  <div className="w-6 h-6 rounded-full bg-[#D4AF37]/10 flex items-center justify-center">
-                    <Bot className="w-3 h-3 text-[#D4AF37] animate-bounce" />
+              {streaming &&
+                messages.find((m) => m.id === streamingIdRef.current)?.text ===
+                  "" && (
+                  <div className="flex gap-2">
+                    <div className="w-6 h-6 rounded-full bg-[#D4AF37]/10 flex items-center justify-center">
+                      <Bot className="w-3 h-3 text-[#D4AF37] animate-bounce" />
+                    </div>
+                    <div className="bg-muted rounded-lg px-3 py-2 text-sm text-muted-foreground">
+                      Analyzing...
+                    </div>
                   </div>
-                  <div className="bg-muted rounded-lg px-3 py-2 text-sm text-muted-foreground">Analyzing...</div>
-                </div>
-              )}
+                )}
             </div>
           </ScrollArea>
 
@@ -297,7 +336,7 @@ export default function AdminOpsDashboard() {
               <Button
                 size="icon"
                 onClick={handleSend}
-                disabled={!input.trim() || chatMutation.isPending}
+                disabled={!input.trim() || streaming}
                 aria-label="Send message"
               >
                 <Send className="w-4 h-4" />

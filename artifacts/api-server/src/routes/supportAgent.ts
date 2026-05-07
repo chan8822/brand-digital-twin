@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { generateText, stepCountIs, tool, type ModelMessage } from "ai";
+import { streamText, stepCountIs, tool, type ModelMessage } from "ai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { db, ordersTable, ridersTable, deliveryEventsTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
@@ -171,6 +171,33 @@ const SEVERE_ALLERGY_PATTERNS = [
   /\blife.?threat/i,
 ];
 
+/**
+ * NDJSON event stream protocol for the chat endpoint. Each line is a JSON
+ * object of one of these shapes:
+ *   { type: "text-delta", delta: string }
+ *   { type: "tool-call", name: string, args?: unknown }
+ *   { type: "tool-result", name: string, result?: unknown }
+ *   { type: "finish", text: string,
+ *       toolCalls: Array<{ name; args?; result? }>,
+ *       escalated: boolean, refusalReason?: string }
+ *   { type: "error", message: string }
+ *
+ * The Admin Ops dashboard relies on the `finish` event for risk-gating
+ * (toolCalls + escalated). The Support widget renders text incrementally
+ * from text-delta events.
+ */
+function writeEvent(res: Response, event: object): void {
+  res.write(`${JSON.stringify(event)}\n`);
+}
+
+function startStream(res: Response): void {
+  res.status(200);
+  res.setHeader("Content-Type", "application/x-ndjson; charset=utf-8");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.flushHeaders?.();
+}
+
 router.post("/support-agent/chat", async (req: Request, res: Response) => {
   const body = req.body as ChatBody;
   if (!body?.message || typeof body.message !== "string") {
@@ -180,27 +207,40 @@ router.post("/support-agent/chat", async (req: Request, res: Response) => {
 
   const message = body.message.trim();
 
+  // Local short-circuits: emit the refusal text as a single delta + finish
+  // so the client UI behaves identically to a real model stream.
   const refusalMatch = REFUSAL_PATTERNS.find((p) => p.re.test(message));
   if (refusalMatch) {
-    res.json({
+    startStream(res);
+    writeEvent(res, { type: "text-delta", delta: HARD_REFUSAL_TEXT });
+    writeEvent(res, {
+      type: "finish",
       text: HARD_REFUSAL_TEXT,
       toolCalls: [],
       escalated: true,
       refusalReason: refusalMatch.reason,
     });
+    res.end();
     return;
   }
 
   if (SEVERE_ALLERGY_PATTERNS.some((re) => re.test(message))) {
-    res.json({
-      text:
-        "Severe allergy concerns are handled by our care team — never by chat. Please tap Call Support before placing or modifying any order. I'm escalating this conversation now.",
+    const text =
+      "Severe allergy concerns are handled by our care team — never by chat. Please tap Call Support before placing or modifying any order. I'm escalating this conversation now.";
+    startStream(res);
+    writeEvent(res, { type: "text-delta", delta: text });
+    writeEvent(res, {
+      type: "finish",
+      text,
       toolCalls: [],
       escalated: true,
       refusalReason: "severe_allergy",
     });
+    res.end();
     return;
   }
+
+  startStream(res);
 
   try {
     const messages: ModelMessage[] = [
@@ -211,7 +251,7 @@ router.post("/support-agent/chat", async (req: Request, res: Response) => {
       { role: "user", content: message },
     ];
 
-    const result = await generateText({
+    const result = streamText({
       model,
       system: SYSTEM_INSTRUCTION,
       messages,
@@ -220,28 +260,72 @@ router.post("/support-agent/chat", async (req: Request, res: Response) => {
     });
 
     const toolCalls: Array<{ name: string; args?: unknown; result?: unknown }> = [];
-    for (const step of result.steps) {
-      for (const tc of step.toolCalls) {
-        const matchingResult = step.toolResults.find((r) => r.toolCallId === tc.toolCallId);
-        toolCalls.push({
-          name: tc.toolName,
-          args: tc.input,
-          result: matchingResult ? (matchingResult as unknown as { output: unknown }).output : undefined,
-        });
+    let fullText = "";
+
+    // Iterate the unified stream so we can forward text deltas immediately
+    // AND collect tool-call metadata that the Ops dashboard depends on.
+    for await (const part of result.fullStream) {
+      switch (part.type) {
+        case "text-delta": {
+          // AI SDK v6 names this property `text` on text-delta parts.
+          const delta = (part as unknown as { text?: string; delta?: string })
+            .text ?? (part as { delta?: string }).delta ?? "";
+          if (delta) {
+            fullText += delta;
+            writeEvent(res, { type: "text-delta", delta });
+          }
+          break;
+        }
+        case "tool-call": {
+          toolCalls.push({ name: part.toolName, args: part.input });
+          writeEvent(res, {
+            type: "tool-call",
+            name: part.toolName,
+            args: part.input,
+          });
+          break;
+        }
+        case "tool-result": {
+          const out = (part as unknown as { output?: unknown }).output;
+          // Attach the result onto the most recent matching tool-call entry.
+          for (let i = toolCalls.length - 1; i >= 0; i--) {
+            const c = toolCalls[i];
+            if (c && c.name === part.toolName && c.result === undefined) {
+              c.result = out;
+              break;
+            }
+          }
+          writeEvent(res, {
+            type: "tool-result",
+            name: part.toolName,
+            result: out,
+          });
+          break;
+        }
+        case "error": {
+          throw (part as { error: unknown }).error;
+        }
+        default:
+          break;
       }
     }
 
-    const text = result.text || "I'm not sure how to help with that.";
+    const text = fullText || "I'm not sure how to help with that.";
     const escalated = /escalate|human|specialist|care team/i.test(text);
-
-    res.json({ text, toolCalls, escalated });
+    writeEvent(res, { type: "finish", text, toolCalls, escalated });
+    res.end();
   } catch (err) {
     req.log.error({ err }, "support-agent error");
-    res.status(500).json({
-      text: "I'm having trouble reaching our systems right now. Please try again in a moment.",
+    const fallback =
+      "I'm having trouble reaching our systems right now. Please try again in a moment.";
+    writeEvent(res, { type: "error", message: fallback });
+    writeEvent(res, {
+      type: "finish",
+      text: fallback,
       toolCalls: [],
       escalated: false,
     });
+    res.end();
   }
 });
 
