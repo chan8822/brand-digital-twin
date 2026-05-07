@@ -85,6 +85,16 @@ router.post("/delivery/schedule-advance", async (req: Request, res: Response) =>
   }
   const { orderId, step, delayMs } = parsed.data;
   const queued = await scheduleOrderAdvance(orderId, step, delayMs);
+  // Without Redis the queue is disabled; for the delivered step we still need
+  // to auto-log nutrition so the wellness dashboard stays in sync.
+  if (!queued && step === "delivered") {
+    try {
+      const { autoLogDeliveredOrder } = await import("../lib/wellnessAutoLog");
+      await autoLogDeliveredOrder(orderId);
+    } catch (err) {
+      req.log.error({ err, orderId }, "wellness auto-log fallback failed");
+    }
+  }
   res.json({ ok: true, queued });
 });
 

@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import MacroOverlay from "@/components/dish/MacroOverlay";
+import { WeeklySummaryCard } from "@/pages/Wellness";
 import SegmentToggle from "@/components/layout/SegmentToggle";
 import { useOrders } from "@/lib/ordersContext";
 import { useCart } from "@/lib/cartContext";
@@ -248,6 +249,13 @@ export default function Home() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ═══════════════ WELLNESS WEEKLY SUMMARY ═══════════════ */}
+      <section className="py-8 border-b border-clinical-slate/15">
+        <div className="max-w-7xl mx-auto px-4">
+          <WeeklySummaryCard />
         </div>
       </section>
 

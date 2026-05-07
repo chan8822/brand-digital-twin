@@ -10,6 +10,7 @@ import preferencesRouter from "./preferences";
 import rdAdvisoryRouter from "./rdAdvisory";
 import bundlesRouter from "./bundles";
 import groupOrdersRouter from "./groupOrders";
+import wellnessRouter from "./wellness";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use(preferencesRouter);
 router.use(rdAdvisoryRouter);
 router.use(bundlesRouter);
 router.use(groupOrdersRouter);
+router.use(wellnessRouter);
 
 export default router;

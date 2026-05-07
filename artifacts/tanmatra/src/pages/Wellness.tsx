@@ -1,127 +1,824 @@
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import MacroOverlay from "@/components/dish/MacroOverlay";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import SegmentToggle from "@/components/layout/SegmentToggle";
-import { Link } from "react-router";
-import { HeartPulse, Leaf, Sparkles, ShieldCheck } from "lucide-react";
+import {
+  Apple,
+  Activity,
+  Award,
+  Droplets,
+  Flame,
+  Leaf,
+  Plus,
+  RefreshCw,
+  Trash2,
+  Wheat,
+  HeartPulse,
+} from "lucide-react";
+import { toast } from "sonner";
+import {
+  wellnessApi,
+  type DayTotals,
+  type WellnessTodayResponse,
+  type WellnessWeekResponse,
+} from "@/lib/wellnessApi";
 
-const FEATURED = [
-  { id: 1, name: "Activated Charcoal Smoothie", image: "https://images.unsplash.com/photo-1570696516188-ade861b84a49?w=800&q=80", price: 5000, slug: "activated-charcoal-smoothie", macros: { protein: 3, carbs: 22, fat: 4, fiber: 2, calories: 140 }, rdVerified: true, description: "Detox smoothie with activated charcoal, banana, almond milk." },
-  { id: 102, name: "Signature Quinoa Salad", image: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&q=80", price: 9000, slug: "signature-quinoa-salad", macros: { protein: 12, carbs: 12, fat: 14, fiber: 6, calories: 220 }, rdVerified: true, description: "Quinoa, cucumber, tomato, pomegranate with olive-oil dressing." },
-  { id: 97, name: "Power House Smoothie", image: "https://images.unsplash.com/photo-1570696516188-ade861b84a49?w=800&q=80", price: 8000, slug: "power-house-smoothie", macros: { protein: 15, carbs: 22, fat: 4, fiber: 2, calories: 140 }, rdVerified: true, description: "Banana, oats, almonds, peanut butter, and whey protein." },
-];
+function clampPct(value: number, target: number): number {
+  if (target <= 0) return 0;
+  return Math.max(0, Math.min(100, Math.round((value / target) * 100)));
+}
 
-const PILLARS = [
-  { icon: Leaf, title: "Anti-Inflammatory", desc: "Polyphenol-rich ingredients selected to reduce systemic inflammation markers." },
-  { icon: Sparkles, title: "Micronutrient Density", desc: "Every meal delivers >80% RDA of 12+ essential vitamins and minerals." },
-  { icon: ShieldCheck, title: "Gut Health Optimized", desc: "Prebiotic fiber and fermented components support microbiome diversity." },
-];
+interface RingProps {
+  label: string;
+  value: number;
+  target: number;
+  unit: string;
+  color: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
 
-function formatPrice(p: number) { return `Rs.${(p/100).toFixed(0)}`; }
+function Ring({ label, value, target, unit, color, icon: Icon }: RingProps) {
+  const pct = clampPct(value, target);
+  const radius = 44;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (pct / 100) * circumference;
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <div className="relative w-28 h-28">
+        <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+          <circle
+            cx="50"
+            cy="50"
+            r={radius}
+            stroke="currentColor"
+            strokeWidth="8"
+            fill="none"
+            className="text-clinical-slate/20"
+          />
+          <circle
+            cx="50"
+            cy="50"
+            r={radius}
+            stroke="currentColor"
+            strokeWidth="8"
+            fill="none"
+            strokeDasharray={circumference}
+            strokeDashoffset={offset}
+            strokeLinecap="round"
+            className={color}
+          />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <Icon className={`w-4 h-4 ${color}`} />
+          <div className="text-white font-semibold text-sm mt-1">
+            {Math.round(value)}
+            <span className="text-clinical-slate text-[10px] ml-0.5">
+              /{Math.round(target)}
+            </span>
+          </div>
+          <div className="text-[9px] uppercase tracking-wider text-clinical-slate">
+            {unit}
+          </div>
+        </div>
+      </div>
+      <div className="text-xs uppercase tracking-widest text-clinical-slate">
+        {label}
+      </div>
+    </div>
+  );
+}
+
+function WeekBars({
+  data,
+  field,
+  target,
+  color,
+  label,
+  unit,
+}: {
+  data: DayTotals[];
+  field: keyof DayTotals;
+  target: number;
+  color: string;
+  label: string;
+  unit: string;
+}) {
+  const max = Math.max(target, ...data.map((d) => Number(d[field] ?? 0)));
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-xs uppercase tracking-widest text-clinical-slate">
+          {label}
+        </div>
+        <div className="text-[10px] text-clinical-slate">
+          target {target} {unit}
+        </div>
+      </div>
+      <div className="flex items-end gap-2 h-24">
+        {data.map((d) => {
+          const v = Number(d[field] ?? 0);
+          const pct = max > 0 ? (v / max) * 100 : 0;
+          const hit = v >= target;
+          const day = new Date(d.date + "T00:00:00").toLocaleDateString(
+            undefined,
+            { weekday: "narrow" },
+          );
+          return (
+            <div
+              key={d.date}
+              className="flex-1 flex flex-col items-center gap-1"
+            >
+              <div className="w-full h-full flex items-end">
+                <div
+                  className={`w-full rounded-t ${hit ? color : "bg-clinical-slate/40"}`}
+                  style={{ height: `${Math.max(4, pct)}%` }}
+                  title={`${d.date}: ${Math.round(v)} ${unit}`}
+                />
+              </div>
+              <div className="text-[10px] text-clinical-slate">{day}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+const WATER_PRESETS = [200, 250, 500];
+
+function ManualLogDialog({ onSaved }: { onSaved: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({
+    label: "",
+    calories: 0,
+    proteinGrams: 0,
+    carbsGrams: 0,
+    fatGrams: 0,
+    fiberGrams: 0,
+    vegServings: 0,
+  });
+  const [saving, setSaving] = useState(false);
+
+  async function submit() {
+    if (!form.label.trim()) {
+      toast.error("Add a label so you remember what this was");
+      return;
+    }
+    setSaving(true);
+    try {
+      await wellnessApi.log(form);
+      toast.success("Logged");
+      setForm({
+        label: "",
+        calories: 0,
+        proteinGrams: 0,
+        carbsGrams: 0,
+        fatGrams: 0,
+        fiberGrams: 0,
+        vegServings: 0,
+      });
+      setOpen(false);
+      onSaved();
+    } catch (e) {
+      toast.error(`Failed to log: ${(e as Error).message}`);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button
+          size="sm"
+          className="bg-clinical-sage text-clinical-dark hover:bg-clinical-sage/90"
+        >
+          <Plus className="w-4 h-4 mr-1" /> Log meal
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="bg-clinical-dark border border-clinical-slate/30 text-white">
+        <DialogHeader>
+          <DialogTitle>Log a meal or snack</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label className="text-clinical-slate text-xs uppercase tracking-widest">
+              What was it?
+            </Label>
+            <Input
+              value={form.label}
+              onChange={(e) => setForm({ ...form, label: e.target.value })}
+              placeholder="e.g. Greek yoghurt with berries"
+              className="bg-clinical-slate/10 border-clinical-slate/30 text-white"
+            />
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              ["calories", "kcal"],
+              ["proteinGrams", "Protein g"],
+              ["fiberGrams", "Fiber g"],
+              ["carbsGrams", "Carbs g"],
+              ["fatGrams", "Fat g"],
+              ["vegServings", "Veg servings"],
+            ].map(([k, lbl]) => (
+              <div key={k}>
+                <Label className="text-clinical-slate text-[10px] uppercase tracking-widest">
+                  {lbl}
+                </Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={
+                    (form as unknown as Record<string, number>)[k as string]
+                  }
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      [k as string]: Math.max(0, Number(e.target.value) || 0),
+                    })
+                  }
+                  className="bg-clinical-slate/10 border-clinical-slate/30 text-white"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+        <DialogFooter>
+          <Button
+            variant="ghost"
+            onClick={() => setOpen(false)}
+            className="text-clinical-slate"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={submit}
+            disabled={saving}
+            className="bg-clinical-sage text-clinical-dark hover:bg-clinical-sage/90"
+          >
+            {saving ? "Saving…" : "Save log"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function WearableCard({
+  data,
+  refresh,
+}: {
+  data: WellnessTodayResponse;
+  refresh: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const apple = data.wearables.find((w) => w.provider === "apple_health");
+  const gfit = data.wearables.find((w) => w.provider === "google_fit");
+
+  async function connect(provider: "apple_health" | "google_fit") {
+    setBusy(true);
+    try {
+      await wellnessApi.connectWearable(provider);
+      toast.success(
+        `${provider === "apple_health" ? "Apple Health" : "Google Fit"} linked (web preview)`,
+      );
+      refresh();
+    } catch (e) {
+      toast.error(`Connect failed: ${(e as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function sync(provider: "apple_health" | "google_fit") {
+    setBusy(true);
+    try {
+      // Web cannot read native HealthKit/Fit data; simulate a daily activity
+      // bump in the 200-450 kcal range so the dashboard reflects movement.
+      const activityKcal = 200 + Math.floor(Math.random() * 250);
+      const steps = 4000 + Math.floor(Math.random() * 6000);
+      await wellnessApi.syncWearable(provider, activityKcal, steps);
+      toast.success(`Synced (+${activityKcal} kcal target)`);
+      refresh();
+    } catch (e) {
+      toast.error(`Sync failed: ${(e as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function row(
+    name: string,
+    provider: "apple_health" | "google_fit",
+    link: typeof apple,
+  ) {
+    const linked = link?.connected;
+    return (
+      <div className="flex items-center justify-between py-2 border-b border-clinical-slate/15 last:border-b-0">
+        <div className="flex items-center gap-2">
+          <Activity className="w-4 h-4 text-clinical-sage" />
+          <div>
+            <div className="text-sm text-white">{name}</div>
+            <div className="text-[11px] text-clinical-slate">
+              {linked
+                ? link?.lastSyncedAt
+                  ? `Last sync ${new Date(link.lastSyncedAt).toLocaleString()} · +${link.lastActivityKcal ?? 0} kcal`
+                  : "Linked — pull to sync"
+                : "Not connected"}
+            </div>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          {linked ? (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy}
+              onClick={() => sync(provider)}
+              className="border-clinical-slate/40 text-clinical-slate hover:text-white"
+            >
+              <RefreshCw className="w-3.5 h-3.5 mr-1" /> Sync
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              disabled={busy}
+              onClick={() => connect(provider)}
+              className="bg-clinical-sage text-clinical-dark hover:bg-clinical-sage/90"
+            >
+              Connect
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Card className="bg-clinical-slate/5 border border-clinical-slate/20">
+      <CardContent className="p-5">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <div className="text-xs uppercase tracking-widest text-clinical-slate">
+              Activity sync
+            </div>
+            <div className="text-white text-sm mt-1">
+              Wearables adjust your calorie target based on movement.
+            </div>
+          </div>
+          <Badge className="bg-clinical-slate/15 text-clinical-slate border-clinical-slate/30">
+            Web preview
+          </Badge>
+        </div>
+        {row("Apple Health", "apple_health", apple)}
+        {row("Google Fit", "google_fit", gfit)}
+      </CardContent>
+    </Card>
+  );
+}
+
+function StreakBadge({
+  label,
+  current,
+  best,
+  icon: Icon,
+}: {
+  label: string;
+  current: number;
+  best: number;
+  icon: React.ComponentType<{ className?: string }>;
+}) {
+  return (
+    <Card className="bg-clinical-slate/5 border border-clinical-slate/20">
+      <CardContent className="p-4 flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-clinical-sage/15 flex items-center justify-center border border-clinical-sage/25">
+          <Icon className="w-5 h-5 text-clinical-sage" />
+        </div>
+        <div>
+          <div className="text-xs uppercase tracking-widest text-clinical-slate">
+            {label}
+          </div>
+          <div className="text-white text-lg font-semibold">
+            {current} day{current === 1 ? "" : "s"}
+          </div>
+          <div className="text-[11px] text-clinical-slate">
+            Best {best} day{best === 1 ? "" : "s"}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function Wellness() {
+  const qc = useQueryClient();
+
+  const todayQ = useQuery({
+    queryKey: ["wellness", "today"],
+    queryFn: () => wellnessApi.today(),
+    retry: false,
+  });
+  const weekQ = useQuery({
+    queryKey: ["wellness", "week"],
+    queryFn: () => wellnessApi.week(),
+    retry: false,
+  });
+
+  const unauth =
+    (todayQ.error && String(todayQ.error).includes("401")) ||
+    (weekQ.error && String(weekQ.error).includes("401"));
+
+  function refreshAll() {
+    qc.invalidateQueries({ queryKey: ["wellness"] });
+  }
+
+  async function logWater(ml: number) {
+    try {
+      await wellnessApi.water(ml);
+      toast.success(`+${ml} ml water`);
+      refreshAll();
+    } catch (e) {
+      toast.error(`Failed: ${(e as Error).message}`);
+    }
+  }
+
+  async function deleteLog(id: number) {
+    try {
+      await wellnessApi.deleteLog(id);
+      toast.success("Removed");
+      refreshAll();
+    } catch (e) {
+      toast.error(`Failed: ${(e as Error).message}`);
+    }
+  }
+
+  const data = todayQ.data;
+  const week = weekQ.data;
+
   return (
     <div className="min-h-screen bg-clinical-dark">
       <SegmentToggle />
 
-      {/* Hero */}
-      <section className="relative py-16 border-b border-clinical-slate/20">
+      <section className="border-b border-clinical-slate/20 py-10">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
-            <div className="space-y-5">
-              <div className="flex items-center gap-2">
-                <div className="w-10 h-10 rounded-xl bg-clinical-sage/15 flex items-center justify-center border border-clinical-sage/25">
-                  <HeartPulse className="w-5 h-5 text-clinical-sage" />
+          <div className="flex items-end justify-between flex-wrap gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-9 h-9 rounded-xl bg-clinical-sage/15 flex items-center justify-center border border-clinical-sage/25">
+                  <HeartPulse className="w-4 h-4 text-clinical-sage" />
                 </div>
                 <Badge className="bg-clinical-sage/15 text-clinical-sage border-clinical-sage/30 text-[10px] tracking-widest uppercase">
-                  Wellness Protocol
+                  Wellness Dashboard
                 </Badge>
               </div>
-              <h1 className="text-clinical-h1 text-white">
-                Preventive Nutrition for <span className="text-clinical-sage">Longevity</span>
+              <h1 className="text-3xl md:text-4xl text-white font-semibold">
+                Today's nutrition
               </h1>
-              <p className="text-sm text-clinical-zinc leading-relaxed max-w-md">
-                Clinically formulated meals designed for disease prevention, cellular health, and
-                sustained daily vitality. Each dish prioritizes anti-inflammatory compounds,
-                micronutrient density, and gut microbiome support.
+              <p className="text-clinical-slate text-sm mt-1">
+                Auto-logged from delivered orders. Manual entries and water
+                count too.
               </p>
-              <div className="flex gap-3">
-                <div className="text-center">
-                  <p className="tabular-nums text-2xl font-bold text-clinical-sage">85%</p>
-                  <p className="text-clinical-label mt-0.5">Anti-oxidant Score</p>
-                </div>
-                <div className="w-px bg-clinical-slate/30" />
-                <div className="text-center">
-                  <p className="tabular-nums text-2xl font-bold text-clinical-sage">12g+</p>
-                  <p className="text-clinical-label mt-0.5">Fiber per Meal</p>
-                </div>
-                <div className="w-px bg-clinical-slate/30" />
-                <div className="text-center">
-                  <p className="tabular-nums text-2xl font-bold text-clinical-sage">&lt;400</p>
-                  <p className="text-clinical-label mt-0.5">Avg kcal</p>
-                </div>
-              </div>
             </div>
-            <div className="relative">
-              <img src="/dishes/smoothie-bowl.jpg" alt="Wellness nutrition" className="rounded-2xl border border-clinical-sage/20 aspect-[4/3] object-cover" />
-              <div className="absolute -bottom-4 -left-4 bg-clinical-surface border border-clinical-sage/20 rounded-xl p-4 shadow-clinical max-w-[240px]">
-                <p className="text-[10px] text-clinical-sage font-medium uppercase tracking-wider mb-1">Protocol Outcome</p>
-                <p className="text-xs text-clinical-zinc">Reduced inflammatory markers (CRP, IL-6) within 4 weeks of adherence.</p>
-              </div>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={refreshAll}
+                className="text-clinical-slate hover:text-white"
+              >
+                <RefreshCw className="w-4 h-4 mr-1" /> Refresh
+              </Button>
+              <ManualLogDialog onSaved={refreshAll} />
             </div>
           </div>
-        </div>
-      </section>
 
-      {/* Pillars */}
-      <section className="py-12 border-b border-clinical-slate/20">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {PILLARS.map((p) => (
-              <Card key={p.title} className="bg-clinical-sage/5 border-clinical-sage/15">
-                <CardContent className="p-5 space-y-3">
-                  <div className="w-9 h-9 rounded-lg bg-clinical-sage/15 flex items-center justify-center border border-clinical-sage/25">
-                    <p.icon className="w-4 h-4 text-clinical-sage" />
-                  </div>
-                  <h3 className="text-sm font-semibold text-white">{p.title}</h3>
-                  <p className="text-xs text-clinical-zinc leading-relaxed">{p.desc}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Featured Meals */}
-      <section className="py-16">
-        <div className="max-w-7xl mx-auto px-4 space-y-8">
-          <div>
-            <p className="text-clinical-label mb-2">Protocol Menu</p>
-            <h2 className="text-clinical-h2 text-white">Wellness Offerings</h2>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {FEATURED.map((meal) => (
-              <Link to={`/dish/${meal.slug}`} key={meal.id}>
-                <Card className="bg-clinical-surface border-clinical-slate/20 hover:border-clinical-sage/40 transition-all overflow-hidden group">
-                  <div className="relative aspect-[4/3] overflow-hidden">
-                    <img src={meal.image} alt={meal.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#050505]/80 via-transparent to-transparent" />
-                    <div className="absolute top-3 left-3 flex gap-1.5">
-                      {meal.rdVerified && <Badge className="bg-clinical-sage/80 text-white border-0 text-[9px]"><ShieldCheck className="w-2.5 h-2.5 mr-0.5" />RD</Badge>}
-                    </div>
-                    <div className="absolute top-3 right-3"><Badge className="bg-clinical-gold/90 text-[#050505] border-0 font-bold tabular-nums">{formatPrice(meal.price)}</Badge></div>
-                    <div className="absolute bottom-3 left-3"><MacroOverlay macros={meal.macros} compact /></div>
-                  </div>
-                  <CardContent className="p-4 space-y-1.5">
-                    <h3 className="text-sm font-semibold text-white group-hover:text-clinical-sage transition-colors">{meal.name}</h3>
-                    <p className="text-xs text-clinical-zinc line-clamp-2">{meal.description}</p>
+          {unauth ? (
+            <Card className="mt-6 bg-clinical-slate/5 border border-clinical-slate/20">
+              <CardContent className="p-6 text-clinical-slate text-sm">
+                Sign in to track your daily nutrition, water, and streaks.
+              </CardContent>
+            </Card>
+          ) : !data ? (
+            <Card className="mt-6 bg-clinical-slate/5 border border-clinical-slate/20">
+              <CardContent className="p-6 text-clinical-slate text-sm">
+                Loading your dashboard…
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card className="bg-clinical-slate/5 border border-clinical-slate/20">
+                  <CardContent className="p-5 flex justify-center">
+                    <Ring
+                      label="Calories"
+                      value={data.totals.calories}
+                      target={
+                        data.targets.effectiveCalorieTarget ??
+                        data.targets.calorieTarget
+                      }
+                      unit="kcal"
+                      color="text-clinical-sage"
+                      icon={Flame}
+                    />
                   </CardContent>
                 </Card>
-              </Link>
-            ))}
-          </div>
+                <Card className="bg-clinical-slate/5 border border-clinical-slate/20">
+                  <CardContent className="p-5 flex justify-center">
+                    <Ring
+                      label="Protein"
+                      value={data.totals.proteinGrams}
+                      target={data.targets.proteinTargetGrams}
+                      unit="g"
+                      color="text-amber-400"
+                      icon={Apple}
+                    />
+                  </CardContent>
+                </Card>
+                <Card className="bg-clinical-slate/5 border border-clinical-slate/20">
+                  <CardContent className="p-5 flex justify-center">
+                    <Ring
+                      label="Fiber"
+                      value={data.totals.fiberGrams}
+                      target={data.targets.fiberTargetGrams}
+                      unit="g"
+                      color="text-emerald-400"
+                      icon={Wheat}
+                    />
+                  </CardContent>
+                </Card>
+                <Card className="bg-clinical-slate/5 border border-clinical-slate/20">
+                  <CardContent className="p-5 flex flex-col items-center gap-3">
+                    <Ring
+                      label="Water"
+                      value={data.totals.waterMl}
+                      target={data.targets.waterTargetMl}
+                      unit="ml"
+                      color="text-sky-400"
+                      icon={Droplets}
+                    />
+                    <div className="flex gap-1">
+                      {WATER_PRESETS.map((ml) => (
+                        <Button
+                          key={ml}
+                          size="sm"
+                          variant="outline"
+                          onClick={() => logWater(ml)}
+                          className="border-sky-400/40 text-sky-300 hover:text-white hover:bg-sky-400/10 px-2 h-7 text-[11px]"
+                        >
+                          +{ml}
+                        </Button>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {(data.targets.activityKcal ?? 0) > 0 && (
+                <div className="mt-3 text-xs text-clinical-slate">
+                  Activity bump: +{data.targets.activityKcal} kcal added to
+                  today's calorie target from your wearable.
+                </div>
+              )}
+
+              <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <StreakBadge
+                  label="Protein streak"
+                  current={data.streaks.protein?.currentDays ?? 0}
+                  best={data.streaks.protein?.bestDays ?? 0}
+                  icon={Award}
+                />
+                <StreakBadge
+                  label="Veg-forward streak"
+                  current={data.streaks.veg?.currentDays ?? 0}
+                  best={data.streaks.veg?.bestDays ?? 0}
+                  icon={Leaf}
+                />
+                <Card className="bg-clinical-slate/5 border border-clinical-slate/20">
+                  <CardContent className="p-4">
+                    <div className="text-xs uppercase tracking-widest text-clinical-slate">
+                      Today's logs
+                    </div>
+                    <div className="text-white text-lg font-semibold mt-1">
+                      {data.logs.length} entries
+                    </div>
+                    <div className="text-[11px] text-clinical-slate">
+                      {
+                        data.logs.filter((l) => l.source === "auto_order")
+                          .length
+                      }{" "}
+                      from delivered orders
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </>
+          )}
         </div>
       </section>
+
+      {data && week && (
+        <section className="border-b border-clinical-slate/20 py-10">
+          <div className="max-w-7xl mx-auto px-4">
+            <h2 className="text-white text-xl font-semibold mb-4">
+              Last 7 days
+            </h2>
+            <Card className="bg-clinical-slate/5 border border-clinical-slate/20">
+              <CardContent className="p-5 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <WeekBars
+                  data={week.days}
+                  field="calories"
+                  target={
+                    week.targets.effectiveCalorieTarget ??
+                    week.targets.calorieTarget
+                  }
+                  color="bg-clinical-sage"
+                  label="Calories"
+                  unit="kcal"
+                />
+                <WeekBars
+                  data={week.days}
+                  field="proteinGrams"
+                  target={week.targets.proteinTargetGrams}
+                  color="bg-amber-400"
+                  label="Protein"
+                  unit="g"
+                />
+                <WeekBars
+                  data={week.days}
+                  field="fiberGrams"
+                  target={week.targets.fiberTargetGrams}
+                  color="bg-emerald-400"
+                  label="Fiber"
+                  unit="g"
+                />
+                <WeekBars
+                  data={week.days}
+                  field="waterMl"
+                  target={week.targets.waterTargetMl}
+                  color="bg-sky-400"
+                  label="Water"
+                  unit="ml"
+                />
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+      )}
+
+      {data && (
+        <section className="border-b border-clinical-slate/20 py-10">
+          <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card className="bg-clinical-slate/5 border border-clinical-slate/20">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-xs uppercase tracking-widest text-clinical-slate">
+                    Today's entries
+                  </div>
+                  <ManualLogDialog onSaved={refreshAll} />
+                </div>
+                {data.logs.length === 0 ? (
+                  <div className="text-clinical-slate text-sm py-6 text-center">
+                    Nothing logged yet today. Order a meal or add one manually.
+                  </div>
+                ) : (
+                  <ul className="divide-y divide-clinical-slate/15">
+                    {data.logs.map((log) => (
+                      <li
+                        key={log.id}
+                        className="py-3 flex items-center justify-between"
+                      >
+                        <div>
+                          <div className="text-white text-sm">{log.label}</div>
+                          <div className="text-[11px] text-clinical-slate">
+                            {log.source === "auto_order"
+                              ? "From delivered order"
+                              : log.source === "water"
+                                ? "Water"
+                                : "Manual"}{" "}
+                            · {log.calories} kcal · P{log.proteinGrams}g · F
+                            {log.fiberGrams}g
+                            {log.waterMl > 0 ? ` · ${log.waterMl} ml` : ""}
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => deleteLog(log.id)}
+                          className="text-clinical-slate hover:text-white"
+                          aria-label="Delete log"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+            <WearableCard data={data} refresh={refreshAll} />
+          </div>
+        </section>
+      )}
     </div>
+  );
+}
+
+export function WeeklySummaryCard() {
+  const weekQ = useQuery({
+    queryKey: ["wellness", "week"],
+    queryFn: () => wellnessApi.week(),
+    retry: false,
+  });
+  const week: WellnessWeekResponse | undefined = weekQ.data;
+
+  const summary = useMemo(() => {
+    if (!week) return null;
+    const totals = week.days.reduce(
+      (acc, d) => ({
+        calories: acc.calories + d.calories,
+        protein: acc.protein + d.proteinGrams,
+        fiber: acc.fiber + d.fiberGrams,
+        water: acc.water + d.waterMl,
+      }),
+      { calories: 0, protein: 0, fiber: 0, water: 0 },
+    );
+    const proteinHits = week.days.filter(
+      (d) => d.proteinGrams >= week.targets.proteinTargetGrams,
+    ).length;
+    return { totals, proteinHits, days: week.days.length };
+  }, [week]);
+
+  // Hide silently when not signed in or no data
+  useEffect(() => {}, []);
+  if (!week || !summary) return null;
+
+  return (
+    <Card className="bg-clinical-slate/5 border border-clinical-slate/20">
+      <CardContent className="p-5">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <div className="text-xs uppercase tracking-widest text-clinical-slate">
+              Your week so far
+            </div>
+            <div className="text-white text-lg font-semibold">
+              {summary.proteinHits}/{summary.days} protein-target days
+            </div>
+          </div>
+          <Link
+            to="/wellness"
+            className="text-clinical-sage text-xs uppercase tracking-widest hover:underline"
+          >
+            Open dashboard
+          </Link>
+        </div>
+        <div className="grid grid-cols-4 gap-3 text-center">
+          <div>
+            <div className="text-white font-semibold">
+              {Math.round(summary.totals.calories / Math.max(1, summary.days))}
+            </div>
+            <div className="text-[10px] uppercase tracking-widest text-clinical-slate">
+              avg kcal
+            </div>
+          </div>
+          <div>
+            <div className="text-white font-semibold">
+              {Math.round(summary.totals.protein / Math.max(1, summary.days))}g
+            </div>
+            <div className="text-[10px] uppercase tracking-widest text-clinical-slate">
+              avg protein
+            </div>
+          </div>
+          <div>
+            <div className="text-white font-semibold">
+              {Math.round(summary.totals.fiber / Math.max(1, summary.days))}g
+            </div>
+            <div className="text-[10px] uppercase tracking-widest text-clinical-slate">
+              avg fiber
+            </div>
+          </div>
+          <div>
+            <div className="text-white font-semibold">
+              {Math.round(summary.totals.water / Math.max(1, summary.days))} ml
+            </div>
+            <div className="text-[10px] uppercase tracking-widest text-clinical-slate">
+              avg water
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

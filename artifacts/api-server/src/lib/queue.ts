@@ -48,6 +48,15 @@ const orderPipelineProcessor: Processor<OrderPipelineJob> = async (job) => {
   await db.insert(deliveryEventsTable).values({ orderId, event: eventName });
   await db.update(ordersTable).set({ status: step }).where(eq(ordersTable.id, orderId));
   logger.info({ orderId, step }, "order pipeline step advanced");
+  // Auto-log nutrition for the user's wellness dashboard on delivery.
+  if (step === "delivered") {
+    try {
+      const { autoLogDeliveredOrder } = await import("./wellnessAutoLog");
+      await autoLogDeliveredOrder(orderId);
+    } catch (err) {
+      logger.error({ err, orderId }, "wellness auto-log failed");
+    }
+  }
   // Hook for socket fanout — late-bound to avoid import cycle.
   try {
     const { emitDeliveryEvent } = await import("./realtime");
