@@ -14,6 +14,13 @@ import {
   summarizeForPreview,
   updatePrice,
 } from "../../menu";
+import {
+  ALL_COPY_FIELDS,
+  applyCopyToItem,
+  detectMissingFields,
+  generateCopyForItem,
+  type CopyField,
+} from "../../menuCopy";
 
 const CMS_PROMPT = definePrompt({
   name: "cms-agent",
@@ -28,13 +35,22 @@ YOUR SCOPE — you MAY help with:
 - Setting an item's image URL (upload_image)
 - Listing items / inspecting state (list_menu_items)
 - Bulk-toggling availability across a filtered set (bulk_toggle_availability)
+- Generating menu copy + tags + macro estimates (generate_menu_copy)
+- Bulk-regenerating missing copy fields (bulk_regenerate_copy)
 
 OUT OF SCOPE — refuse politely:
 - Anything customer-facing or order/operations work
-- Copywriting / auto-tagging beyond what the editor explicitly types
-  (a separate agent will handle that)
 - Photo enhancement (a separate agent will handle that)
 - Permanent deletion of items
+
+COPYWRITING RULES:
+- Copy generation is a TWO-STEP flow: first call generate_menu_copy
+  (returns a draft), then read the draft back to the editor and ask
+  which fields to accept. Apply accepted fields by calling
+  generate_menu_copy with apply: true and accepted set to the chosen
+  fields.
+- Macro estimates are ESTIMATES, never facts. Always say so.
+- Allergens come from a fixed allowed list — never invent new ones.
 
 CONFIRMATION RULES — non-negotiable:
 - EVERY mutating tool call has a two-step flow:
@@ -481,6 +497,263 @@ const bulkToggle = defineTool({
   },
 });
 
+const COPY_FIELD_ENUM = z.enum([
+  "name",
+  "description",
+  "longDescription",
+  "allergens",
+  "cuisineTags",
+  "vibeTags",
+  "seoTitle",
+  "seoDescription",
+  "macros",
+]);
+
+const generateCopy = defineTool({
+  name: "generate_menu_copy",
+  description:
+    "Generate or apply menu copy, tags, allergens, and macro estimates for one item. Two-step flow: call without apply to get a draft, then call again with apply: true and accepted: { ...fields } to persist. Allergens and macros are validated against a safe whitelist; macros are flagged as estimates. ALWAYS provide reasoning.",
+  inputSchema: z.object({
+    slug: z.string().min(1).max(128),
+    fields: z.array(COPY_FIELD_ENUM).min(1).optional(),
+    apply: z.boolean().default(false),
+    accepted: z
+      .object({
+        name: z.string().max(200).optional(),
+        description: z.string().max(2000).optional(),
+        longDescription: z.string().max(2000).optional(),
+        allergens: z.array(z.string().max(64)).optional(),
+        cuisineTags: z.array(z.string().max(64)).optional(),
+        vibeTags: z.array(z.string().max(64)).optional(),
+        seoTitle: z.string().max(200).optional(),
+        seoDescription: z.string().max(500).optional(),
+        macros: z
+          .object({
+            kcal: z.number().int().min(0).max(3000),
+            proteinG: z.number().int().min(0).max(200),
+            carbsG: z.number().int().min(0).max(400),
+            fatG: z.number().int().min(0).max(200),
+          })
+          .optional(),
+      })
+      .optional(),
+    reasoning: REASONING,
+  }),
+  authScope: "catalog",
+  handler: async (input, ctx) => {
+    const item = await findBySlug(input.slug);
+    if (!item) {
+      return { success: false as const, error: `slug not found: ${input.slug}` };
+    }
+    if (input.apply) {
+      if (!input.accepted || Object.keys(input.accepted).length === 0) {
+        return {
+          success: false as const,
+          error: "apply: true requires accepted: { ...fields }",
+        };
+      }
+      try {
+        const updated = await applyCopyToItem(
+          input.slug,
+          input.accepted,
+          ctx.userId,
+        );
+        await recordOpsAction({
+          operatorId: ctx.userId,
+          agent: ctx.agent,
+          action: "cms_accept_copy",
+          params: {
+            slug: input.slug,
+            fields: Object.keys(input.accepted),
+          },
+          beforeState: { name: item.name, description: item.description },
+          afterState: updated
+            ? { name: updated.name, description: updated.description }
+            : null,
+          status: "success",
+          reasoning: input.reasoning,
+        });
+        return {
+          success: true as const,
+          applied: Object.keys(input.accepted),
+          item: updated,
+        };
+      } catch (err) {
+        await recordOpsAction({
+          operatorId: ctx.userId,
+          agent: ctx.agent,
+          action: "cms_accept_copy",
+          params: { slug: input.slug, fields: Object.keys(input.accepted) },
+          beforeState: null,
+          afterState: null,
+          status: "error",
+          reasoning: `${input.reasoning} | ${(err as Error).message}`,
+        });
+        return { success: false as const, error: (err as Error).message };
+      }
+    }
+    const fields = (input.fields ?? ALL_COPY_FIELDS) as CopyField[];
+    try {
+      const draft = await generateCopyForItem(item, fields);
+      await recordOpsAction({
+        operatorId: ctx.userId,
+        agent: ctx.agent,
+        action: "cms_generate_copy",
+        params: { slug: input.slug, fields },
+        beforeState: null,
+        afterState: { warnings: draft.warnings, modelId: draft.modelId },
+        status: "success",
+        reasoning: input.reasoning,
+      });
+      return {
+        success: true as const,
+        draft,
+        macrosEstimateNotice:
+          "Macros are model estimates — please double-check before publishing.",
+        confirmRequired: true as const,
+      };
+    } catch (err) {
+      await recordOpsAction({
+        operatorId: ctx.userId,
+        agent: ctx.agent,
+        action: "cms_generate_copy",
+        params: { slug: input.slug, fields },
+        beforeState: null,
+        afterState: null,
+        status: "error",
+        reasoning: `${input.reasoning} | ${(err as Error).message}`,
+      });
+      return { success: false as const, error: (err as Error).message };
+    }
+  },
+});
+
+const bulkRegenerateCopy = defineTool({
+  name: "bulk_regenerate_copy",
+  description:
+    "Regenerate missing copy fields for many items. Two-step flow: first call without confirm to see the impact list, then with confirm: true to run. Caps at 25 items per run. ALWAYS provide reasoning.",
+  inputSchema: z.object({
+    category: z.string().optional(),
+    kitchenLocation: z.string().optional(),
+    missingOnly: z.boolean().default(true),
+    fields: z.array(COPY_FIELD_ENUM).min(1).optional(),
+    confirm: z.boolean().default(false),
+    slugs: z.array(z.string()).optional(),
+    reasoning: REASONING,
+  }),
+  authScope: "catalog",
+  handler: async (input, ctx) => {
+    if (
+      !input.category &&
+      !input.kitchenLocation &&
+      !input.slugs?.length
+    ) {
+      return {
+        success: false as const,
+        error:
+          "bulk regen requires at least one filter (category, kitchenLocation, or slugs)",
+      };
+    }
+    const all = await listMenuItems({
+      category: input.category,
+      kitchenLocation: input.kitchenLocation,
+      slugs: input.slugs,
+    });
+    const requested = (input.fields ?? null) as CopyField[] | null;
+    const targets = all
+      .map((it) => {
+        const missing = detectMissingFields(it);
+        const fields = requested
+          ? requested.filter((f) =>
+              input.missingOnly ? missing.includes(f) : true,
+            )
+          : input.missingOnly
+            ? missing
+            : ALL_COPY_FIELDS;
+        return { item: it, fields };
+      })
+      .filter((t) => t.fields.length > 0)
+      .slice(0, 25);
+
+    if (!input.confirm) {
+      return {
+        success: true as const,
+        preview: {
+          matched: targets.length,
+          examples: targets.slice(0, 5).map((t) => ({
+            slug: t.item.slug,
+            name: t.item.name,
+            fields: t.fields,
+          })),
+          totalAcrossAll: all.length,
+          cappedAt25: all.length > 25,
+        },
+        confirmRequired: true as const,
+      };
+    }
+
+    const results: Array<{
+      slug: string;
+      ok: boolean;
+      applied?: string[];
+      error?: string;
+    }> = [];
+    for (const t of targets) {
+      try {
+        const draft = await generateCopyForItem(t.item, t.fields);
+        // Auto-apply only the validated fields the model returned.
+        const accepted: Record<string, unknown> = {};
+        for (const f of t.fields) {
+          const v = (draft.proposed as Record<string, unknown>)[f];
+          if (v !== undefined && v !== null) accepted[f] = v;
+        }
+        if (Object.keys(accepted).length === 0) {
+          results.push({ slug: t.item.slug, ok: false, error: "empty draft" });
+          continue;
+        }
+        await applyCopyToItem(t.item.slug, accepted, ctx.userId);
+        results.push({
+          slug: t.item.slug,
+          ok: true,
+          applied: Object.keys(accepted),
+        });
+      } catch (err) {
+        results.push({
+          slug: t.item.slug,
+          ok: false,
+          error: (err as Error).message,
+        });
+      }
+    }
+    await recordOpsAction({
+      operatorId: ctx.userId,
+      agent: ctx.agent,
+      action: "cms_bulk_regenerate_copy",
+      params: {
+        category: input.category,
+        kitchenLocation: input.kitchenLocation,
+        slugs: input.slugs,
+        fields: input.fields,
+        missingOnly: input.missingOnly,
+      },
+      beforeState: { matched: targets.length },
+      afterState: {
+        succeeded: results.filter((r) => r.ok).length,
+        failed: results.filter((r) => !r.ok).length,
+      },
+      status: "success",
+      reasoning: input.reasoning,
+    });
+    return {
+      success: true as const,
+      attempted: targets.length,
+      succeeded: results.filter((r) => r.ok).length,
+      failed: results.filter((r) => !r.ok).length,
+      results,
+    };
+  },
+});
+
 registerAgent({
   name: "cms",
   description:
@@ -495,5 +768,7 @@ registerAgent({
     toggleAvailability,
     uploadImage,
     bulkToggle,
+    generateCopy,
+    bulkRegenerateCopy,
   ],
 });

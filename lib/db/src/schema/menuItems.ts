@@ -34,6 +34,21 @@ export const menuItemsTable = pgTable(
     availabilityWindow: jsonb("availability_window").$type<string[]>(),
     tags: jsonb("tags").$type<string[]>(),
     imageUrl: text("image_url"),
+    longDescription: text("long_description"),
+    allergens: jsonb("allergens").$type<string[]>(),
+    cuisineTags: jsonb("cuisine_tags").$type<string[]>(),
+    vibeTags: jsonb("vibe_tags").$type<string[]>(),
+    seoTitle: varchar("seo_title", { length: 200 }),
+    seoDescription: text("seo_description"),
+    macros: jsonb("macros").$type<{
+      kcal: number;
+      proteinG: number;
+      carbsG: number;
+      fatG: number;
+    } | null>(),
+    macrosAreEstimate: boolean("macros_are_estimate").notNull().default(true),
+    copyGeneratedAt: timestamp("copy_generated_at", { withTimezone: true }),
+    copyGeneratedBy: varchar("copy_generated_by", { length: 64 }),
     unavailableReason: text("unavailable_reason"),
     unavailableUntil: timestamp("unavailable_until", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })

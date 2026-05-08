@@ -10,6 +10,13 @@ import {
   updatePrice,
   updateItem,
 } from "../lib/menu";
+import {
+  ALL_COPY_FIELDS,
+  applyCopyToItem,
+  detectMissingFields,
+  generateCopyForItem,
+  type CopyField,
+} from "../lib/menuCopy";
 import { recordOpsAction } from "../lib/opsAudit";
 
 const router: IRouter = Router();
@@ -287,6 +294,130 @@ router.post("/menu/items/:slug/image", async (req: Request, res: Response) => {
     reasoning: "image set via REST",
   });
   res.json({ item });
+});
+
+const copyFieldEnum = z.enum([
+  "name",
+  "description",
+  "longDescription",
+  "allergens",
+  "cuisineTags",
+  "vibeTags",
+  "seoTitle",
+  "seoDescription",
+  "macros",
+]);
+
+router.post(
+  "/menu/items/:slug/generate-copy",
+  async (req: Request, res: Response) => {
+    if (!requireCatalog(req, res)) return;
+    const sp = slugParam.safeParse(req.params);
+    const bp = z
+      .object({ fields: z.array(copyFieldEnum).min(1).optional() })
+      .safeParse(req.body ?? {});
+    if (!sp.success || !bp.success) {
+      res.status(400).json({ error: "invalid payload" });
+      return;
+    }
+    const item = await findBySlug(sp.data.slug);
+    if (!item) {
+      res.status(404).json({ error: "not found" });
+      return;
+    }
+    const fields = (bp.data.fields ?? ALL_COPY_FIELDS) as CopyField[];
+    try {
+      const draft = await generateCopyForItem(item, fields);
+      await recordOpsAction({
+        operatorId: req.user?.id ?? null,
+        agent: "cms-rest",
+        action: "cms_generate_copy",
+        params: { slug: sp.data.slug, fields },
+        beforeState: null,
+        afterState: { warnings: draft.warnings, modelId: draft.modelId },
+        status: "success",
+        reasoning: "copy draft generated",
+      });
+      res.json({ draft });
+    } catch (err) {
+      await recordOpsAction({
+        operatorId: req.user?.id ?? null,
+        agent: "cms-rest",
+        action: "cms_generate_copy",
+        params: { slug: sp.data.slug, fields },
+        beforeState: null,
+        afterState: null,
+        status: "error",
+        reasoning: (err as Error).message,
+      });
+      res.status(502).json({ error: (err as Error).message });
+    }
+  },
+);
+
+const acceptCopySchema = z.object({
+  name: z.string().min(1).max(200).optional(),
+  description: z.string().max(2000).optional(),
+  longDescription: z.string().max(2000).optional(),
+  allergens: z.array(z.string().max(64)).optional(),
+  cuisineTags: z.array(z.string().max(64)).optional(),
+  vibeTags: z.array(z.string().max(64)).optional(),
+  seoTitle: z.string().max(200).optional(),
+  seoDescription: z.string().max(500).optional(),
+  macros: z
+    .object({
+      kcal: z.number().int().min(0).max(3000),
+      proteinG: z.number().int().min(0).max(200),
+      carbsG: z.number().int().min(0).max(400),
+      fatG: z.number().int().min(0).max(200),
+    })
+    .optional(),
+});
+
+router.post("/menu/items/:slug/copy", async (req: Request, res: Response) => {
+  if (!requireCatalog(req, res)) return;
+  const sp = slugParam.safeParse(req.params);
+  const bp = acceptCopySchema.safeParse(req.body);
+  if (!sp.success || !bp.success) {
+    res.status(400).json({ error: "invalid payload" });
+    return;
+  }
+  const before = await findBySlug(sp.data.slug);
+  if (!before) {
+    res.status(404).json({ error: "not found" });
+    return;
+  }
+  const item = await applyCopyToItem(
+    sp.data.slug,
+    bp.data,
+    req.user?.id ?? null,
+  );
+  await recordOpsAction({
+    operatorId: req.user?.id ?? null,
+    agent: "cms-rest",
+    action: "cms_accept_copy",
+    params: { slug: sp.data.slug, fields: Object.keys(bp.data) },
+    beforeState: { name: before.name, description: before.description },
+    afterState: item
+      ? { name: item.name, description: item.description }
+      : null,
+    status: "success",
+    reasoning: "copy accepted via REST",
+  });
+  res.json({ item });
+});
+
+router.get("/menu/copy/missing", async (req: Request, res: Response) => {
+  if (!requireCatalog(req, res)) return;
+  const items = await listMenuItems({});
+  const out = items
+    .map((it) => ({
+      slug: it.slug,
+      name: it.name,
+      missing: detectMissingFields(it),
+    }))
+    .filter((x) => x.missing.length > 0);
+  res.json({ items: out, total: out.length });
 });
 
 export default router;

@@ -2,9 +2,10 @@ import { and, asc, eq, ilike, inArray, sql } from "drizzle-orm";
 import {
   db,
   menuItemsTable,
-  type InsertMenuItem,
   type MenuItem,
 } from "@workspace/db";
+
+type InsertMenuItem = typeof menuItemsTable.$inferInsert;
 
 export type AvailabilitySlot = "breakfast" | "lunch" | "dinner" | "all_day";
 
