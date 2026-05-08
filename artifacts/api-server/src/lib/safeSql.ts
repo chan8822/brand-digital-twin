@@ -139,6 +139,10 @@ const FORBIDDEN_SUBSTRINGS = [
   // matches unquoted lowercase identifiers) wouldn't catch. All safe_*
   // views are unquoted lowercase, so callers never need quoted identifiers.
   '"',
+  // Functions that execute dynamic SQL or read raw files/cross-database
+  // data — defense in depth on top of the role-based privilege boundary.
+  "dblink", "xpath", "query_to_xml", "query_to_json",
+  "current_setting", "set_config", "format(",
 ];
 const FORBIDDEN_LEADING_KEYWORDS = [
   "insert", "update", "delete", "drop", "alter", "create", "truncate",
@@ -274,17 +278,49 @@ export function hasFromCommaJoin(s: string): boolean {
   return false;
 }
 
+// Postgres role used for executing user/NL-generated SQL. It is granted
+// SELECT on the safe_* views ONLY. All analytics queries SET LOCAL ROLE to
+// this identity inside the read-only transaction, so even if the regex
+// validator missed a payload, Postgres itself enforces "no access to base
+// tables" because the role has no privileges on them.
+export const SAFE_ROLE = "safe_analytics_reader";
+
 export async function ensureSafeViews(): Promise<void> {
   // Idempotent: run on startup. Each view selects only the explicitly listed
   // columns from its source table. CREATE OR REPLACE means we can edit the
   // SAFE_SCHEMA above and a server restart updates the views.
   const client = await pool.connect();
   try {
+    // Create the locked-down reader role and make the application user a
+    // member so SET LOCAL ROLE will succeed inside runSafeSql.
+    try {
+      await client.query(
+        `do $$ begin
+           if not exists (select 1 from pg_roles where rolname = '${SAFE_ROLE}') then
+             create role ${SAFE_ROLE} nologin nosuperuser noinherit nocreatedb nocreaterole;
+           end if;
+         end $$;`,
+      );
+      await client.query(
+        `do $$ begin
+           execute 'grant ${SAFE_ROLE} to ' || quote_ident(current_user);
+         exception when others then null;
+         end $$;`,
+      );
+      // Strip any incidental privileges that might exist on base tables
+      // for this role (defensive — should be a no-op on a fresh role).
+      await client.query(`revoke all on all tables in schema public from ${SAFE_ROLE}`);
+      await client.query(`revoke all on schema public from ${SAFE_ROLE}`);
+      await client.query(`grant usage on schema public to ${SAFE_ROLE}`);
+    } catch (err) {
+      logger.warn({ err }, "safe role bootstrap failed (continuing without role boundary)");
+    }
     for (const t of SAFE_SCHEMA) {
       const cols = t.columns.map((c) => `"${c.name}"`).join(", ");
       const ddl = `create or replace view ${t.name} as select ${cols} from ${t.source}`;
       try {
         await client.query(ddl);
+        await client.query(`grant select on ${t.name} to ${SAFE_ROLE}`);
       } catch (err) {
         // The source table may not exist yet (e.g. nps_responses before its
         // first migration); log and continue so the rest of the pack works.
@@ -307,6 +343,13 @@ export async function runSafeSql(sqlIn: string): Promise<SafeSqlResult> {
     await client.query("begin read only");
     try {
       await client.query(`set local statement_timeout = ${STATEMENT_TIMEOUT_MS}`);
+      // Privilege boundary: switch to the safe reader role for this
+      // transaction. The role only has SELECT on safe_* views, so any
+      // attempt to reference a base table (even via tricks the regex
+      // validator missed) will fail with a permission error.
+      await client.query(`set local role ${SAFE_ROLE}`).catch((err) => {
+        logger.warn({ err }, "set local role failed; falling back to validator-only");
+      });
       const wrapped = `select * from (${sql}) as _safe limit ${MAX_ROWS + 1}`;
       const result = await client.query(wrapped);
       const truncated = result.rows.length > MAX_ROWS;
