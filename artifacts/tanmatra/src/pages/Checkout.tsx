@@ -20,6 +20,7 @@ import { formatPrice } from "@/lib/api/adapter";
 import { useCart, FREE_DELIVERY_THRESHOLD, DELIVERY_FEE } from "@/lib/cartContext";
 import { useOrders, generateOrderId } from "@/lib/ordersContext";
 import { loyaltyApi } from "@/lib/loyaltyApi";
+import { corporateApi, type CompanySubsidy } from "@/lib/corporateApi";
 import { Switch } from "@/components/ui/switch";
 import { Sparkles } from "lucide-react";
 import {
@@ -36,6 +37,9 @@ import {
   AlertTriangle,
   CalendarClock,
   Tag,
+  Building2 as Building2Icon,
+  Gift,
+  Ticket,
 } from "lucide-react";
 
 interface SavedAddress {
@@ -69,6 +73,10 @@ export default function Checkout() {
   const [creditBalance, setCreditBalance] = useState(0);
   const [applyCredits, setApplyCredits] = useState(true);
   const [preorderTomorrow, setPreorderTomorrow] = useState(false);
+  const [subsidy, setSubsidy] = useState<CompanySubsidy | null>(null);
+  const [applySubsidy, setApplySubsidy] = useState(true);
+  const [voucherCode, setVoucherCode] = useState("");
+  const [redeemingVoucher, setRedeemingVoucher] = useState(false);
 
   // Default scheduled time: tomorrow 12:30 in the user's locale.
   const tomorrowSlot = (() => {
@@ -109,7 +117,52 @@ export default function Checkout() {
     applyCredits && creditBalance > 0
       ? Math.min(creditBalance, discountedSubtotal)
       : 0;
-  const razorpayTotal = Math.max(0, grossTotal - creditApplied);
+  const remainingAfterCredit = Math.max(0, grossTotal - creditApplied);
+  const subsidyAvailable =
+    applySubsidy && subsidy?.active ? Math.min(subsidy.subsidyPaise ?? 0, remainingAfterCredit) : 0;
+  const razorpayTotal = Math.max(0, remainingAfterCredit - subsidyAvailable);
+
+  useEffect(() => {
+    let alive = true;
+    corporateApi
+      .getSubsidy(discountedSubtotal)
+      .then((r) => {
+        if (alive) setSubsidy(r);
+      })
+      .catch(() => {
+        if (alive) setSubsidy(null);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [discountedSubtotal]);
+
+  const handleRedeemVoucher = async () => {
+    if (!voucherCode.trim()) {
+      toast.error("Enter a voucher code");
+      return;
+    }
+    setRedeemingVoucher(true);
+    try {
+      const r = await corporateApi.redeemVoucher(voucherCode.trim());
+      toast.success(`Voucher applied: +${formatPrice(r.creditedPaise)}`);
+      setVoucherCode("");
+      // Refresh credit balance so it shows up in summary
+      const ledger = await loyaltyApi.getCreditLedger();
+      setCreditBalance(ledger.balancePaise);
+    } catch (e) {
+      const msg = String((e as Error).message);
+      toast.error(
+        msg.includes("404")
+          ? "Voucher not found"
+          : msg.includes("409")
+            ? "Voucher already redeemed"
+            : "Could not redeem voucher",
+      );
+    } finally {
+      setRedeemingVoucher(false);
+    }
+  };
 
   const activeAddr = SAVED_ADDRESSES.find((a) => a.id === selectedAddress);
 
@@ -197,6 +250,25 @@ export default function Checkout() {
       toast.error("Could not finalize order — please try again");
       setIsProcessing(false);
       return;
+    }
+
+    // Charge the company subsidy AFTER the order is finalized server-side.
+    // The subsidy reduces the employee's out-of-pocket without changing the
+    // order amount itself; it's tracked separately for usage reporting.
+    if (subsidyAvailable > 0 && subsidy?.active && subsidy.company) {
+      try {
+        // Use the server-returned charged amount, NOT the requested amount —
+        // the server may charge less under contention or stale budget data.
+        const charge = await corporateApi.chargeSubsidy(
+          subsidy.company.id,
+          subsidyAvailable,
+          orderId,
+        );
+        finalTotal = Math.max(0, finalTotal - (charge.chargedPaise ?? 0));
+      } catch {
+        // Non-fatal: order is placed, just log a soft warning.
+        toast.warning("Company subsidy could not be applied to this order");
+      }
     }
 
     addOrder({
@@ -540,6 +612,58 @@ export default function Checkout() {
                   </span>
                 </div>
               )}
+
+              {subsidy?.active && subsidy.company && (
+                <div className="rounded-lg border border-clinical-slate/30 bg-clinical-dark/40 p-2.5 space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 text-[11px] text-white">
+                      <Building2Icon className="w-3.5 h-3.5 text-clinical-gold" />
+                      <span className="font-medium">{subsidy.company.name} subsidy</span>
+                    </div>
+                    <Switch checked={applySubsidy} onCheckedChange={setApplySubsidy} />
+                  </div>
+                  <p className="text-[10px] text-clinical-zinc">
+                    {formatPrice(subsidy.remainingPaise ?? 0)} of{" "}
+                    {formatPrice(subsidy.monthlyBudgetPaise ?? 0)} left this month
+                  </p>
+                  {subsidyAvailable > 0 && (
+                    <div className="flex justify-between text-xs pt-0.5">
+                      <span className="text-clinical-sage flex items-center gap-1">
+                        <Building2Icon className="w-3 h-3" /> Company pays
+                      </span>
+                      <span className="tabular-nums text-clinical-sage">
+                        -{formatPrice(subsidyAvailable)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="rounded-lg border border-clinical-slate/30 bg-clinical-dark/40 p-2.5 space-y-1.5">
+                <div className="flex items-center gap-1.5 text-[11px] text-white">
+                  <Ticket className="w-3.5 h-3.5 text-clinical-gold" />
+                  <span className="font-medium">Have a voucher?</span>
+                </div>
+                <div className="flex gap-1.5">
+                  <input
+                    type="text"
+                    value={voucherCode}
+                    onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+                    placeholder="VOUCHER CODE"
+                    className="flex-1 min-w-0 h-8 rounded-md bg-clinical-dark border border-clinical-slate/30 px-2 text-[11px] text-white placeholder:text-clinical-zinc/60 tracking-wider uppercase focus:outline-none focus:border-clinical-gold/60"
+                    disabled={redeemingVoucher}
+                  />
+                  <Button
+                    type="button"
+                    onClick={handleRedeemVoucher}
+                    disabled={redeemingVoucher || !voucherCode.trim()}
+                    className="h-8 px-3 text-[11px] bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90"
+                  >
+                    <Gift className="w-3 h-3 mr-1" />
+                    {redeemingVoucher ? "..." : "Redeem"}
+                  </Button>
+                </div>
+              </div>
             </div>
 
             <Separator className="bg-clinical-slate/20" />

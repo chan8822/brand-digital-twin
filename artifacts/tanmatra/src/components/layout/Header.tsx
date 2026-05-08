@@ -15,6 +15,8 @@ import {
   HeartHandshake,
   BookOpen,
   Flag,
+  Building2,
+  Gift,
   Menu as MenuIcon,
   X,
 } from "lucide-react";
@@ -42,6 +44,8 @@ export default function Header() {
     { path: "/rewards", label: "Rewards", icon: Sparkles },
     { path: "/preferences", label: "Preferences", icon: SlidersHorizontal },
     { path: "/team", label: "Team", icon: Users },
+    { path: "/corporate", label: "Corporate", icon: Building2 },
+    { path: "/vouchers", label: "Vouchers", icon: Gift },
     { path: "/track", label: "Track", icon: MapPin },
   ];
 

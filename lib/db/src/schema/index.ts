@@ -29,3 +29,4 @@ export * from "./supportTickets";
 export * from "./contentRecipes";
 export * from "./challenges";
 export * from "./rdApplications";
+export * from "./corporate";

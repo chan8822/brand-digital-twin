@@ -23,6 +23,7 @@ import supportTicketsRouter from "./supportTickets";
 import recipesRouter from "./recipes";
 import challengesRouter from "./challenges";
 import rdPartnersRouter from "./rdPartners";
+import corporateRouter from "./corporate";
 
 const router: IRouter = Router();
 
@@ -50,5 +51,6 @@ router.use(supportTicketsRouter);
 router.use(recipesRouter);
 router.use(challengesRouter);
 router.use(rdPartnersRouter);
+router.use(corporateRouter);
 
 export default router;

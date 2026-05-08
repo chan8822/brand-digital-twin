@@ -55,6 +55,11 @@ import RecipeDetail from "@/pages/RecipeDetail";
 import Challenges from "@/pages/Challenges";
 import ChallengeDetail from "@/pages/ChallengeDetail";
 import Login from "@/pages/Login";
+import Corporate from "@/pages/Corporate";
+import CorporateAdmin from "@/pages/CorporateAdmin";
+import CorporateInvite from "@/pages/CorporateInvite";
+import OfficeLunch from "@/pages/OfficeLunch";
+import Vouchers from "@/pages/Vouchers";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -191,6 +196,11 @@ export default function App() {
                     <Route path="/recipes/:slug" element={<RecipeDetail />} />
                     <Route path="/challenges" element={<Challenges />} />
                     <Route path="/challenges/:slug" element={<ChallengeDetail />} />
+                    <Route path="/corporate" element={<Corporate />} />
+                    <Route path="/corporate/invite/:token" element={<CorporateInvite />} />
+                    <Route path="/corporate/:slug" element={<CorporateAdmin />} />
+                    <Route path="/office-lunch/:id" element={<OfficeLunch />} />
+                    <Route path="/vouchers" element={<Vouchers />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
