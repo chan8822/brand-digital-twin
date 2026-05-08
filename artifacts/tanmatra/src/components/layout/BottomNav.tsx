@@ -155,6 +155,7 @@ const MORE_GROUPS: { title: string; items: MoreLink[] }[] = [
     title: "Account",
     items: [
       { to: "/account", label: "Account hub", icon: UserCircle, desc: "Profile, plan & benefits" },
+      { to: "/account/addresses", label: "Address book", icon: MapPin, desc: "Saved delivery addresses" },
       { to: "/preferences", label: "Preferences", icon: SlidersHorizontal },
       { to: "/rewards", label: "Rewards", icon: Sparkle },
       { to: "/vouchers", label: "Vouchers", icon: Gift },

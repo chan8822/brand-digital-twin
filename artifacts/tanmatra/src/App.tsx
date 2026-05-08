@@ -30,6 +30,7 @@ import WeeklyPlanner from "@/pages/WeeklyPlanner";
 import Rewards from "@/pages/Rewards";
 import Preferences from "@/pages/Preferences";
 import Account from "@/pages/Account";
+import Addresses from "@/pages/Addresses";
 import Wellness from "@/pages/Wellness";
 import Performance from "@/pages/Performance";
 import Clinical from "@/pages/Clinical";
@@ -131,6 +132,7 @@ export default function App() {
                     <Route path="/rewards" element={<Rewards />} />
                     <Route path="/preferences" element={<Preferences />} />
                     <Route path="/account" element={<Account />} />
+                    <Route path="/account/addresses" element={<Addresses />} />
                     <Route path="/wellness" element={<Wellness />} />
                     <Route path="/performance" element={<Performance />} />
                     <Route path="/clinical" element={<Clinical />} />

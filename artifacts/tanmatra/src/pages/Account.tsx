@@ -12,6 +12,7 @@ import {
   Crown,
   Package,
   Calendar,
+  MapPin,
   SignIn,
   SignOut,
   CaretRight,
@@ -100,6 +101,12 @@ const SECTIONS: SectionLink[] = [
     label: "Order history",
     desc: "Past & upcoming orders",
     icon: Package,
+  },
+  {
+    to: "/account/addresses",
+    label: "Address book",
+    desc: "Saved delivery addresses",
+    icon: MapPin,
   },
   {
     to: "/rewards",
