@@ -100,6 +100,19 @@ export const SAFE_SCHEMA: SafeTable[] = [
     ],
   },
   {
+    name: "safe_support_messages",
+    source: "messages",
+    description:
+      "Customer-side support chat messages (role='user' only is the typical filter). content is the raw message text.",
+    columns: [
+      { name: "id", type: "int" },
+      { name: "conversation_id", type: "int" },
+      { name: "role", type: "text" },
+      { name: "content", type: "text" },
+      { name: "created_at", type: "timestamptz" },
+    ],
+  },
+  {
     name: "safe_nps_responses",
     source: "nps_responses",
     description: "Customer NPS responses (0-10) with optional comment.",

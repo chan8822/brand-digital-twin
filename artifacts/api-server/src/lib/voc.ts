@@ -23,10 +23,14 @@ async function loadDocuments(start: Date, end: Date): Promise<SourceDoc[]> {
         where created_at >= ${start} and created_at < ${end}
         limit ${MAX_DOCS}`,
   );
-  // Customer-side support messages are not part of the curated safe schema
-  // by design — the messages table contains free-text support content that
-  // may include PII. We intentionally skip it here and rely on reviews and
-  // NPS comments, both of which ARE in the safe view layer.
+  const supportP = db
+    .execute<{ content: string | null }>(
+      sql`select content from safe_support_messages
+          where role = 'user'
+            and created_at >= ${start} and created_at < ${end}
+          limit ${MAX_DOCS}`,
+    )
+    .catch(() => ({ rows: [] as Array<{ content: string | null }> }));
   const npsP = db
     .execute<{ comment: string | null; score: number }>(
       sql`select comment, score from safe_nps_responses
@@ -34,11 +38,14 @@ async function loadDocuments(start: Date, end: Date): Promise<SourceDoc[]> {
           limit ${MAX_DOCS}`,
     )
     .catch(() => ({ rows: [] as Array<{ comment: string | null; score: number }> }));
-  const [reviews, npsRows] = await Promise.all([reviewsP, npsP]);
+  const [reviews, supportRows, npsRows] = await Promise.all([reviewsP, supportP, npsP]);
   const docs: SourceDoc[] = [
     ...reviews.rows
       .filter((r) => r.body && r.body.trim().length > 5)
       .map((r) => ({ source: "review" as const, body: r.body as string, rating: r.rating ?? undefined })),
+    ...supportRows.rows
+      .filter((r) => r.content && r.content.trim().length > 5)
+      .map((r) => ({ source: "support" as const, body: r.content as string })),
     ...npsRows.rows
       .filter((r) => r.comment && r.comment.trim().length > 5)
       .map((r) => ({
