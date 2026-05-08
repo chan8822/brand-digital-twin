@@ -331,8 +331,8 @@ export async function generateCopyForItem(
   item: MenuItem,
   fields: CopyField[] = ALL_COPY_FIELDS,
 ): Promise<CopyDraft> {
-  if (!process.env["GOOGLE_API_KEY"] && !process.env["AI_INTEGRATIONS_GEMINI_API_KEY"]) {
-    throw new Error("Gemini integration not configured");
+  if (!process.env["GOOGLE_API_KEY"]) {
+    throw new Error("GOOGLE_API_KEY not configured");
   }
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
