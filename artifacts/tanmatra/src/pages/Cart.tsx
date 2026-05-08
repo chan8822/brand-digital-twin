@@ -84,7 +84,7 @@ export default function Cart() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto p-4 grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-500">
+    <div className="max-w-5xl mx-auto p-4 pb-40 lg:pb-4 grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-500">
       <div className="lg:col-span-2 space-y-4">
         <div className="flex items-center justify-between">
           <div>
@@ -180,14 +180,14 @@ export default function Cart() {
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="h-7 w-7 text-clinical-zinc hover:text-red-400 shrink-0"
+                        className="h-9 w-9 sm:h-7 sm:w-7 text-clinical-zinc hover:text-red-400 shrink-0"
                         onClick={() => {
                           removeItem(item.lineId);
                           toast.success("Item removed from Nutrition Plan");
                         }}
                         aria-label={`Remove ${item.name}`}
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
                       </Button>
                     </div>
 
@@ -204,27 +204,27 @@ export default function Cart() {
                     <div className="flex items-end justify-between gap-3">
                       <MacroOverlay macros={item.macros} rdVerified={item.rdVerified} compact />
 
-                      <div className="flex items-center gap-1.5 shrink-0">
+                      <div className="flex items-center gap-1 shrink-0 rounded-md border border-clinical-slate/30 bg-clinical-dark/40">
                         <Button
                           size="icon"
-                          variant="outline"
-                          className="h-7 w-7 border-clinical-slate/30 text-clinical-zinc"
+                          variant="ghost"
+                          className="h-9 w-9 sm:h-8 sm:w-8 text-clinical-zinc rounded-r-none"
                           onClick={() => updateQty(item.lineId, -1)}
                           aria-label="Decrease quantity"
                         >
-                          <Minus className="w-3 h-3" />
+                          <Minus className="w-4 h-4 sm:w-3 sm:h-3" />
                         </Button>
-                        <span className="tabular-nums text-sm font-semibold text-white w-5 text-center">
+                        <span className="tabular-nums text-sm font-semibold text-white w-6 text-center">
                           {item.quantity}
                         </span>
                         <Button
                           size="icon"
-                          variant="outline"
-                          className="h-7 w-7 border-clinical-slate/30 text-clinical-zinc"
+                          variant="ghost"
+                          className="h-9 w-9 sm:h-8 sm:w-8 text-clinical-zinc rounded-l-none"
                           onClick={() => updateQty(item.lineId, 1)}
                           aria-label="Increase quantity"
                         >
-                          <Plus className="w-3 h-3" />
+                          <Plus className="w-4 h-4 sm:w-3 sm:h-3" />
                         </Button>
                       </div>
                     </div>
@@ -268,7 +268,7 @@ export default function Cart() {
         </div>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-4 hidden lg:block">
         <Card className="bg-clinical-surface border-clinical-slate/20 sticky top-20">
           <CardContent className="p-5 space-y-4">
             <h2 className="text-sm font-semibold text-white flex items-center gap-2">
@@ -317,6 +317,30 @@ export default function Cart() {
             </p>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Mobile sticky bottom action bar (sits above the bottom nav) */}
+      <div
+        className="lg:hidden fixed left-0 right-0 z-30 px-3 pb-2 pointer-events-none"
+        style={{ bottom: "calc(4rem + env(safe-area-inset-bottom))" }}
+      >
+        <div className="pointer-events-auto rounded-xl border border-clinical-slate/40 bg-clinical-surface/95 backdrop-blur-xl shadow-2xl p-3 flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] text-clinical-zinc leading-none">
+              {totalQuantity} item{totalQuantity === 1 ? "" : "s"} · {deliveryFee === 0 ? "FREE delivery" : `+ ${formatPrice(deliveryFee)} delivery`}
+            </p>
+            <p className="tabular-nums text-lg font-bold text-clinical-gold leading-tight mt-0.5">
+              {formatPrice(total)}
+            </p>
+          </div>
+          <Button
+            onClick={() => navigate("/checkout")}
+            className="h-12 px-5 bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold gap-2 shrink-0"
+          >
+            Checkout
+            <ArrowRight className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
     </div>
   );

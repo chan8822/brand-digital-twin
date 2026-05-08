@@ -431,7 +431,7 @@ export default function Checkout() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-4 grid grid-cols-1 lg:grid-cols-5 gap-6 animate-in fade-in duration-500">
+    <div className="max-w-4xl mx-auto p-4 pb-40 lg:pb-4 grid grid-cols-1 lg:grid-cols-5 gap-6 animate-in fade-in duration-500">
       <div className="lg:col-span-3 space-y-5">
         <Card className="bg-clinical-surface border-clinical-slate/20">
           <CardContent className="p-5 space-y-4">
@@ -1008,7 +1008,7 @@ export default function Checkout() {
 
             <Button
               onClick={() => setConfirmOpen(true)}
-              className="w-full bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold h-11 shadow-clinical gap-2"
+              className="hidden lg:flex w-full bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold h-11 shadow-clinical gap-2"
             >
               <CreditCard className="w-4 h-4" />
               Review & Pay {formatPrice(razorpayTotal)}
@@ -1020,6 +1020,35 @@ export default function Checkout() {
             </p>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Mobile sticky bottom action bar (sits above the bottom nav) */}
+      <div
+        className="lg:hidden fixed left-0 right-0 z-30 px-3 pb-2 pointer-events-none"
+        style={{ bottom: "calc(4rem + env(safe-area-inset-bottom))" }}
+      >
+        <div className="pointer-events-auto rounded-xl border border-clinical-slate/40 bg-clinical-surface/95 backdrop-blur-xl shadow-2xl p-3 flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] text-clinical-zinc leading-none truncate">
+              {fulfillmentType === "pickup" ? "Self-collect" : deliveryFee === 0 ? "FREE delivery" : `+ ${formatPrice(deliveryFee)} delivery`}
+              {preorderDiscount > 0 && ` · -${formatPrice(preorderDiscount)} preorder`}
+              {pickupDiscount > 0 && ` · -${formatPrice(pickupDiscount)} pickup`}
+              {creditApplied > 0 && ` · -${formatPrice(creditApplied)} credits`}
+              {subsidyAvailable > 0 && ` · -${formatPrice(subsidyAvailable)} company`}
+              {effectiveTip > 0 && ` · +${formatPrice(effectiveTip)} tip`}
+            </p>
+            <p className="tabular-nums text-lg font-bold text-clinical-gold leading-tight mt-0.5">
+              {formatPrice(razorpayTotal)}
+            </p>
+          </div>
+          <Button
+            onClick={() => setConfirmOpen(true)}
+            className="h-12 px-4 bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold gap-2 shrink-0"
+          >
+            <CreditCard className="w-4 h-4" />
+            Review & Pay
+          </Button>
+        </div>
       </div>
 
       {/* Payment confirmation dialog */}
