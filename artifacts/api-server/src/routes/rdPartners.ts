@@ -15,6 +15,7 @@ import {
   verifyWhatsappOtp,
 } from "../lib/whatsapp";
 import { notifyOpsOfApplication } from "../lib/rdPartnersNotify";
+import { sendRdWelcomePacket } from "../lib/rdPartnersWelcome";
 
 const router: IRouter = Router();
 
@@ -574,17 +575,27 @@ router.patch(
     }
     if (d.adminNotes !== undefined) updates["adminNotes"] = d.adminNotes;
 
+    // Snapshot the row pre-update so we can detect *first-time*
+    // transitions (e.g. status moving to approved, slug being assigned
+    // for the first time). This prevents duplicate welcome packets on
+    // repeated PATCHes that just edit notes.
+    const priorRow = (
+      await db
+        .select({
+          status: rdApplicationsTable.status,
+          linkedUserId: rdApplicationsTable.linkedUserId,
+          linkedRdSlug: rdApplicationsTable.linkedRdSlug,
+        })
+        .from(rdApplicationsTable)
+        .where(eq(rdApplicationsTable.id, id))
+        .limit(1)
+    )[0];
+
     if (d.provisionRdSlug && d.status === "approved") {
       // Reserve the slug in rd_users, attached to the linked user when
       // available. If the slug is already claimed by *another* user we
       // bail out with 409 and don't change application status.
-      const linkedUser = (
-        await db
-          .select({ linkedUserId: rdApplicationsTable.linkedUserId })
-          .from(rdApplicationsTable)
-          .where(eq(rdApplicationsTable.id, id))
-          .limit(1)
-      )[0]?.linkedUserId;
+      const linkedUser = priorRow?.linkedUserId;
       if (!linkedUser) {
         res.status(400).json({
           error:
@@ -627,7 +638,34 @@ router.patch(
       { applicationId: id, updates, by: req.user?.id ?? "token" },
       "rd_partners.application.updated",
     );
-    res.json({ ok: true, row: updated[0] });
+
+    // On the *first* approval + slug provisioning, send the welcome
+    // packet (WhatsApp template to the verified opt-in number, if any,
+    // plus a welcome email to the application email). We gate on the
+    // pre-update snapshot so that repeated PATCHes (e.g. ops editing
+    // notes after approval) don't re-send onboarding messages.
+    // Failures are logged but do not fail the admin write — the row
+    // update is the source of truth, the packet is best-effort.
+    let welcome: Awaited<
+      ReturnType<typeof sendRdWelcomePacket>
+    > | null = null;
+    const isFirstApproval =
+      d.status === "approved" &&
+      !!d.provisionRdSlug &&
+      (priorRow?.status !== "approved" ||
+        priorRow?.linkedRdSlug !== d.provisionRdSlug);
+    if (isFirstApproval) {
+      try {
+        welcome = await sendRdWelcomePacket(updated[0], d.provisionRdSlug!);
+      } catch (err) {
+        req.log.error(
+          { err: (err as Error).message, applicationId: id },
+          "rd_partners.welcome_packet.failed",
+        );
+      }
+    }
+
+    res.json({ ok: true, row: updated[0], welcome });
   },
 );
 

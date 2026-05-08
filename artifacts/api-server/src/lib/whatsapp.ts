@@ -107,6 +107,78 @@ export async function sendWhatsappOtp(
   }
 }
 
+/**
+ * Send a freeform WhatsApp message via Twilio's Messages API. Used for
+ * non-OTP transactional messages (e.g. partner welcome packet).
+ *
+ * Required env (production):
+ *   TWILIO_ACCOUNT_SID
+ *   TWILIO_AUTH_TOKEN
+ *   TWILIO_WHATSAPP_FROM   (e.g. "whatsapp:+14155238886")
+ *
+ * In dev / when creds are missing, this logs the message body and
+ * returns ok with `mock: true` so callers can still treat the send as
+ * delivered for analytics purposes.
+ */
+export interface SendWhatsappMessageResult {
+  ok: boolean;
+  mock?: boolean;
+  sid?: string;
+  error?: string;
+}
+
+export async function sendWhatsappMessage(
+  number: WhatsappE164,
+  body: string,
+): Promise<SendWhatsappMessageResult> {
+  const sid = process.env["TWILIO_ACCOUNT_SID"];
+  const token = process.env["TWILIO_AUTH_TOKEN"];
+  const from = process.env["TWILIO_WHATSAPP_FROM"];
+  if (!sid || !token || !from) {
+    if (!mockAllowed()) {
+      logger.error(
+        { e164: number.e164 },
+        "whatsapp.message.no_twilio_creds_in_production",
+      );
+      return { ok: false, error: "WhatsApp messaging is not configured" };
+    }
+    logger.info(
+      { e164: number.e164, body },
+      "whatsapp.message.mock_send",
+    );
+    return { ok: true, mock: true };
+  }
+  const url = `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`;
+  const params = new URLSearchParams({
+    To: `whatsapp:${number.e164}`,
+    From: from.startsWith("whatsapp:") ? from : `whatsapp:${from}`,
+    Body: body,
+  });
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${sid}:${token}`).toString("base64")}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: params,
+    });
+    if (!res.ok) {
+      const txt = await res.text();
+      logger.warn(
+        { status: res.status, txt },
+        "whatsapp.message.send_failed",
+      );
+      return { ok: false, error: `twilio send failed: ${res.status}` };
+    }
+    const json = (await res.json()) as { sid?: string };
+    return { ok: true, sid: json.sid };
+  } catch (err) {
+    logger.warn({ err }, "whatsapp.message.send_error");
+    return { ok: false, error: (err as Error).message };
+  }
+}
+
 interface VerifyOtpResult {
   ok: boolean;
   error?: string;
