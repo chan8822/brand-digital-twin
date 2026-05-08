@@ -331,7 +331,7 @@ export async function generateCopyForItem(
   item: MenuItem,
   fields: CopyField[] = ALL_COPY_FIELDS,
 ): Promise<CopyDraft> {
-  if (!process.env["AI_INTEGRATIONS_GEMINI_API_KEY"]) {
+  if (!process.env["GEMINI_API_KEY"] && !process.env["AI_INTEGRATIONS_GEMINI_API_KEY"]) {
     throw new Error("Gemini integration not configured");
   }
   const ctrl = new AbortController();

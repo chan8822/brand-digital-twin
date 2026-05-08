@@ -1,23 +1,26 @@
 import { GoogleGenAI, Modality } from "@google/genai";
 
-if (!process.env.AI_INTEGRATIONS_GEMINI_BASE_URL) {
-  throw new Error(
-    "AI_INTEGRATIONS_GEMINI_BASE_URL must be set. Did you forget to provision the Gemini AI integration?",
-  );
-}
+const userKey = process.env.GEMINI_API_KEY;
+const proxyKey = process.env.AI_INTEGRATIONS_GEMINI_API_KEY;
+const proxyBaseUrl = process.env.AI_INTEGRATIONS_GEMINI_BASE_URL;
 
-if (!process.env.AI_INTEGRATIONS_GEMINI_API_KEY) {
+const apiKey = userKey || proxyKey;
+if (!apiKey) {
   throw new Error(
-    "AI_INTEGRATIONS_GEMINI_API_KEY must be set. Did you forget to provision the Gemini AI integration?",
+    "GEMINI_API_KEY (preferred) or AI_INTEGRATIONS_GEMINI_API_KEY must be set.",
   );
 }
 
 export const ai = new GoogleGenAI({
-  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY,
-  httpOptions: {
-    apiVersion: "",
-    baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL,
-  },
+  apiKey,
+  ...(userKey
+    ? {}
+    : {
+        httpOptions: {
+          apiVersion: "",
+          baseUrl: proxyBaseUrl,
+        },
+      }),
 });
 
 export async function generateImage(

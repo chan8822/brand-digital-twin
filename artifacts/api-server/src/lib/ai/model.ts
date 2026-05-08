@@ -1,15 +1,19 @@
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 
-const apiKey = process.env["AI_INTEGRATIONS_GEMINI_API_KEY"];
-const baseURL = process.env["AI_INTEGRATIONS_GEMINI_BASE_URL"];
+const userKey = process.env["GEMINI_API_KEY"];
+const proxyKey = process.env["AI_INTEGRATIONS_GEMINI_API_KEY"];
+const proxyBaseURL = process.env["AI_INTEGRATIONS_GEMINI_BASE_URL"];
 
-if (!apiKey || !baseURL) {
+const apiKey = userKey || proxyKey;
+if (!apiKey) {
   throw new Error(
-    "AI_INTEGRATIONS_GEMINI_API_KEY and AI_INTEGRATIONS_GEMINI_BASE_URL must be set",
+    "GEMINI_API_KEY (preferred) or AI_INTEGRATIONS_GEMINI_API_KEY must be set",
   );
 }
 
-const provider = createGoogleGenerativeAI({ apiKey, baseURL });
+const provider = userKey
+  ? createGoogleGenerativeAI({ apiKey })
+  : createGoogleGenerativeAI({ apiKey, baseURL: proxyBaseURL });
 
 export const DEFAULT_MODEL_ID = "gemini-2.5-flash";
 
