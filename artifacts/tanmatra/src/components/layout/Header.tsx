@@ -30,7 +30,7 @@ export default function Header() {
     { path: "/meal-planner", label: "Plan", icon: Calendar, match: ["/meal-planner", "/subscriptions", "/plans", "/rd", "/appointments", "/subscribe"] },
     { path: "/orders", label: "Orders", icon: Package, match: ["/orders", "/track"] },
     { path: "/challenges", label: "Community", icon: UsersThree, match: ["/challenges", "/wellness", "/performance", "/clinical", "/corporate", "/team"] },
-    { path: "/preferences", label: "Account", icon: UserCircle, match: ["/preferences", "/rewards", "/vouchers", "/premium", "/login"] },
+    { path: "/account", label: "Account", icon: UserCircle, match: ["/account", "/preferences", "/rewards", "/vouchers", "/premium", "/login"] },
   ];
 
   const isGroupActive = (matchPaths: string[]) =>

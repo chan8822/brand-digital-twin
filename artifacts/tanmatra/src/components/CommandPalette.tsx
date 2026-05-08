@@ -31,6 +31,7 @@ import {
   Notepad,
   SignIn,
   PaintBrush,
+  UserCircle,
   type Icon,
 } from "@phosphor-icons/react";
 import { useMenuCatalog } from "@/lib/menuData";
@@ -76,6 +77,7 @@ const NAV_ROUTES: RouteEntry[] = [
   { label: "Corporate", to: "/corporate", icon: Buildings, group: "Community", keywords: "office team" },
   { label: "Team", to: "/team", icon: Users, group: "Community" },
 
+  { label: "Account hub", to: "/account", icon: UserCircle, group: "Account", keywords: "profile sign out logout" },
   { label: "Sign in", to: "/login", icon: SignIn, group: "Account" },
   { label: "Preferences & health profile", to: "/preferences", icon: SlidersHorizontal, group: "Account", keywords: "diet allergies targets" },
   { label: "Rewards", to: "/rewards", icon: Sparkle, group: "Account" },

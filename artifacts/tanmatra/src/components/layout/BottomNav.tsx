@@ -91,10 +91,11 @@ const PRIMARY: NavItem[] = [
       p.startsWith("/team"),
   },
   {
-    to: "/preferences",
+    to: "/account",
     label: "Account",
     icon: UserCircle,
     match: (p) =>
+      p.startsWith("/account") ||
       p.startsWith("/preferences") ||
       p.startsWith("/rewards") ||
       p.startsWith("/vouchers") ||
@@ -153,6 +154,7 @@ const MORE_GROUPS: { title: string; items: MoreLink[] }[] = [
   {
     title: "Account",
     items: [
+      { to: "/account", label: "Account hub", icon: UserCircle, desc: "Profile, plan & benefits" },
       { to: "/preferences", label: "Preferences", icon: SlidersHorizontal },
       { to: "/rewards", label: "Rewards", icon: Sparkle },
       { to: "/vouchers", label: "Vouchers", icon: Gift },
