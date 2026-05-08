@@ -25,11 +25,20 @@ async function tick(): Promise<void> {
     const week = lastFullWeek();
     const wbr = await generateWbr(week);
     const themes = await extractWeeklyVoc(week.weekStart, week.weekEnd);
-    // Publish at most once per ISO week, on the configured DOW. publishWbr
-    // is idempotent via wbr_reports.published_at so multiple ticks the same
-    // Monday — or a process restart on Monday — never duplicate the post.
+    // Publish at most once per ISO week. We attempt on the configured DOW
+    // and on every subsequent day of the same week as a backfill — so a
+    // failed Monday Slack post (network error, missing webhook later wired
+    // up, etc.) still gets delivered the same week. publishWbr is
+    // idempotent via wbr_reports.published_at so successful prior delivery
+    // is never duplicated.
     let published: { delivered: boolean; channel: string; alreadyPublished: boolean } | null = null;
-    if (new Date().getUTCDay() === PUBLISH_DOW) {
+    const todayDow = new Date().getUTCDay();
+    const sameWeekBackfill =
+      todayDow === PUBLISH_DOW ||
+      (todayDow > PUBLISH_DOW && !wbr.publishedAt) ||
+      // Sunday (0) wraps before Monday (1) — treat as not-yet-window.
+      (PUBLISH_DOW === 1 && todayDow >= 2 && !wbr.publishedAt);
+    if (sameWeekBackfill) {
       published = await publishWbr(wbr);
     }
     logger.info(

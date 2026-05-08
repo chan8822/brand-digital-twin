@@ -221,7 +221,7 @@ router.post("/analytics/wbr/:id/publish", async (req: Request, res: Response) =>
     return;
   }
   try {
-    const report = await (await import("../lib/wbr")).getWbrReport(id);
+    const report = await getWbrReport(id);
     if (!report) {
       res.status(404).json({ error: "report not found" });
       return;

@@ -63,8 +63,11 @@ export async function publishWbr(
   let delivered = false;
   let channel: "slack" | "log" = "log";
   if (!url) {
-    logger.info({ wbrId: report.id, payload }, "wbr publish: no webhook configured, recording log marker");
-    channel = "log";
+    // Log-only fallback: do NOT mark as published. If a webhook is wired
+    // up later in the same week, the next scheduler tick should still be
+    // able to deliver the real Slack post.
+    logger.info({ wbrId: report.id, payload }, "wbr publish: no webhook configured, log-only (not marked published)");
+    return { delivered: false, channel: "log", alreadyPublished: false };
   } else {
     channel = "slack";
     try {
