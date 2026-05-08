@@ -6,6 +6,7 @@ import { startWorkers } from "./lib/queue";
 import { startLoyaltyScheduler } from "./lib/loyaltyScheduler";
 import { startAnomalyScheduler } from "./lib/anomalyScheduler";
 import { startAnomalyDigestSender } from "./lib/anomalyDigestSender";
+import { startReviewSummarizerScheduler } from "./lib/menuEngineeringScheduler";
 
 const rawPort = process.env["PORT"];
 
@@ -27,6 +28,7 @@ startWorkers();
 startLoyaltyScheduler();
 startAnomalyScheduler();
 startAnomalyDigestSender();
+startReviewSummarizerScheduler();
 
 httpServer.listen(port, (err?: Error) => {
   if (err) {

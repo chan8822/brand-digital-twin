@@ -17,6 +17,7 @@ import {
 } from "@workspace/db";
 import { DEFAULT_MODEL_ID, getModel } from "./ai/model";
 import { logger } from "./logger";
+import { findBySlug, updatePrice } from "./menu";
 import { recordOpsAction } from "./opsAudit";
 
 // ---- Domain helpers ----------------------------------------------------------
@@ -632,19 +633,30 @@ export async function approvePricingSuggestion(
   // Updating menu_items.pricePaise here changes admin/CMS displays and any
   // future catalog-DB-driven flows, but does NOT yet affect checkout totals.
   // Tracked as a follow-up to unify pricing source-of-truth.
+  // Reuse the existing CMS price-change flow (lib/menu.updatePrice) so the
+  // audit trail and any future hooks fire identically to a manual edit. We
+  // only mutate when the suggestion targets the global price ("all/all").
   let appliedPricePaise: number | undefined;
   if (updated.zone === "all" && updated.daypart === "all") {
-    const [item] = await db
-      .select({ pricePaise: menuItemsTable.pricePaise })
-      .from(menuItemsTable)
-      .where(eq(menuItemsTable.slug, updated.slug))
-      .limit(1);
-    if (item) {
-      await db
-        .update(menuItemsTable)
-        .set({ pricePaise: updated.suggestedPaise })
-        .where(eq(menuItemsTable.slug, updated.slug));
-      appliedPricePaise = updated.suggestedPaise;
+    const before = await findBySlug(updated.slug);
+    if (before) {
+      const item = await updatePrice(updated.slug, updated.suggestedPaise);
+      appliedPricePaise = item?.pricePaise;
+      await recordOpsAction({
+        operatorId,
+        agent: "menu-engineering",
+        action: "cms_update_price",
+        params: {
+          slug: updated.slug,
+          pricePaise: updated.suggestedPaise,
+          source: "menu_engineering_suggestion",
+          suggestionId: id,
+        },
+        beforeState: { pricePaise: before.pricePaise },
+        afterState: { pricePaise: item?.pricePaise ?? null },
+        status: "success",
+        reasoning: "approved menu engineering pricing suggestion",
+      });
     }
   }
   await recordOpsAction({

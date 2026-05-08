@@ -317,10 +317,51 @@ export default function AdminMenuEngineering() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Dish matrix</CardTitle>
+          <CardTitle>Popularity × Margin matrix</CardTitle>
         </CardHeader>
         <CardContent>
-          <ScrollArea className="max-h-[480px]">
+          {/* Scatter plot: x = popularity, y = margin. Quadrants are split at
+              the median (50/100 in normalised score), so visually you can
+              see stars (top-right), puzzles (top-left), plowhorses (bottom-
+              right), and dogs (bottom-left). */}
+          <div className="relative w-full h-[360px] border rounded bg-muted/20 mb-4">
+            <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 pointer-events-none">
+              <div className="border-r border-b border-dashed border-muted-foreground/40 flex items-start justify-start p-2 text-[11px] text-amber-600 font-medium">
+                Puzzles (high margin · low demand)
+              </div>
+              <div className="border-b border-dashed border-muted-foreground/40 flex items-start justify-end p-2 text-[11px] text-emerald-600 font-medium">
+                Stars (high margin · high demand)
+              </div>
+              <div className="border-r border-dashed border-muted-foreground/40 flex items-end justify-start p-2 text-[11px] text-rose-600 font-medium">
+                Dogs (low margin · low demand)
+              </div>
+              <div className="flex items-end justify-end p-2 text-[11px] text-sky-600 font-medium">
+                Plowhorses (low margin · high demand)
+              </div>
+            </div>
+            {filteredStats.map((s) => {
+              const x = Math.max(0, Math.min(100, s.popularityScore));
+              const y = Math.max(0, Math.min(100, s.marginScore));
+              return (
+                <div
+                  key={`dot-${s.id}`}
+                  title={`${s.name} · pop ${x} · margin ${y} · ${s.classification}`}
+                  className={`absolute w-3 h-3 rounded-full -translate-x-1/2 translate-y-1/2 border border-white ${CLASS_COLOR[s.classification]}`}
+                  style={{
+                    left: `${x}%`,
+                    bottom: `${y}%`,
+                  }}
+                />
+              );
+            })}
+            <div className="absolute bottom-1 left-1 text-[10px] text-muted-foreground">
+              Popularity →
+            </div>
+            <div className="absolute top-1 right-1 text-[10px] text-muted-foreground">
+              ↑ Margin
+            </div>
+          </div>
+          <ScrollArea className="max-h-[420px]">
             <div className="space-y-2">
               {filteredStats.map((s) => {
                 const summary = summaryBySlug.get(s.slug);
