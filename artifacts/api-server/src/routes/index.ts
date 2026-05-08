@@ -22,6 +22,7 @@ import analyticsRouter from "./analytics";
 import supportTicketsRouter from "./supportTickets";
 import recipesRouter from "./recipes";
 import challengesRouter from "./challenges";
+import rdPartnersRouter from "./rdPartners";
 
 const router: IRouter = Router();
 
@@ -48,5 +49,6 @@ router.use(analyticsRouter);
 router.use(supportTicketsRouter);
 router.use(recipesRouter);
 router.use(challengesRouter);
+router.use(rdPartnersRouter);
 
 export default router;

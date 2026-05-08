@@ -46,6 +46,9 @@ import AdminForecasting from "@/pages/AdminForecasting";
 import AdminMenuEngineering from "@/pages/AdminMenuEngineering";
 import AdminAnalytics from "@/pages/AdminAnalytics";
 import AdminSupportTickets from "@/pages/AdminSupportTickets";
+import RdPartnersLanding from "@/pages/RdPartnersLanding";
+import RdPartnersWizard from "@/pages/RdPartnersWizard";
+import AdminRdApplications from "@/pages/AdminRdApplications";
 import GroupOrder from "@/pages/GroupOrder";
 import Recipes from "@/pages/Recipes";
 import RecipeDetail from "@/pages/RecipeDetail";
@@ -170,6 +173,16 @@ export default function App() {
                       element={
                         <AdminGate>
                           <AdminSupportTickets />
+                        </AdminGate>
+                      }
+                    />
+                    <Route path="/rd-partners" element={<RdPartnersLanding />} />
+                    <Route path="/rd-partners/apply" element={<RdPartnersWizard />} />
+                    <Route
+                      path="/admin/rd-applications"
+                      element={
+                        <AdminGate>
+                          <AdminRdApplications />
                         </AdminGate>
                       }
                     />

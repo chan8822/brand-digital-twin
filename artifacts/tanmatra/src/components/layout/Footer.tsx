@@ -15,12 +15,13 @@ const FOOTER_LINKS = {
     { label: "Clinical Protocol", href: "/clinical" },
   ],
   clinical: [
-    { label: "RD Advisory Board", href: "/rd-board" },
+    { label: "For Dietitians", href: "/rd-partners" },
     { label: "Health Assessment", href: "/health-quiz" },
     { label: "Ops Dashboard", href: "/admin/ops" },
     { label: "Menu Engineering", href: "/admin/menu-engineering" },
     { label: "Analytics", href: "/admin/analytics" },
     { label: "Support Inbox", href: "/admin/support-tickets" },
+    { label: "RD Applications", href: "/admin/rd-applications" },
   ],
   legal: [
     { label: "Privacy Policy", href: "/privacy" },
