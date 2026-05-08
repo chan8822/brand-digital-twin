@@ -31,7 +31,7 @@ export async function explainAnomalyWithAI(
   args: ExplainArgs,
 ): Promise<Explanation | null> {
   if (process.env["ANOMALY_AI_EXPLAINER_DISABLED"] === "1") return null;
-  if (!process.env["GEMINI_API_KEY"] && !process.env["AI_INTEGRATIONS_GEMINI_API_KEY"]) return null;
+  if (!process.env["GOOGLE_API_KEY"] && !process.env["AI_INTEGRATIONS_GEMINI_API_KEY"]) return null;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
