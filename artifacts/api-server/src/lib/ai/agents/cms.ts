@@ -360,7 +360,7 @@ const toggleAvailability = defineTool({
 const uploadImage = defineTool({
   name: "upload_image",
   description:
-    "Set a menu item's image URL (the editor uploads/hosts the file separately and pastes the URL). TWO-STEP: call without confirm:true to preview before/after URLs; call again with confirm:true to commit. ALWAYS provide `reasoning`.",
+    "Set a menu item's image URL. The URL may be one returned by the in-console uploader (POST /menu/uploads) or an external URL the editor has pasted. TWO-STEP: call without confirm:true to preview before/after URLs; call again with confirm:true to commit. ALWAYS provide `reasoning`.",
   inputSchema: z.object({
     slug: z.string().min(1).max(128),
     imageUrl: z.string().url(),

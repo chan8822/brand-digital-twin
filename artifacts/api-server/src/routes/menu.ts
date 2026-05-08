@@ -1,4 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
+import multer from "multer";
 import { z } from "zod/v4";
 import {
   bulkSetAvailability,
@@ -10,6 +11,7 @@ import {
   updatePrice,
   updateItem,
 } from "../lib/menu";
+import { saveAssetBytes } from "../lib/imageStorage";
 import { getMergedCatalog } from "../lib/menuResolver";
 import {
   ALL_COPY_FIELDS,
@@ -279,6 +281,67 @@ router.post(
     res.json({ item });
   },
 );
+
+// Editor file uploads — accepts a multipart image, persists it to object
+// storage, and returns a public URL the editor (or the CMS agent's
+// upload_image tool) can paste back into a menu item. Image bytes are
+// validated for mime type and size; the chat tool flow is unchanged.
+const ALLOWED_UPLOAD_MIMES = new Set([
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+]);
+
+const uploadImageMw = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024, files: 1 },
+  fileFilter: (_req, file, cb) => {
+    if (ALLOWED_UPLOAD_MIMES.has(file.mimetype.toLowerCase())) cb(null, true);
+    else cb(new Error("only jpeg, png, or webp images are allowed"));
+  },
+}).single("file");
+
+router.post("/menu/uploads", (req: Request, res: Response) => {
+  if (!requireCatalog(req, res)) return;
+  uploadImageMw(req, res, async (err: unknown) => {
+    if (err) {
+      const msg = err instanceof Error ? err.message : "upload failed";
+      res.status(400).json({ error: msg });
+      return;
+    }
+    const file = (req as Request & { file?: Express.Multer.File }).file;
+    if (!file || file.size === 0) {
+      res.status(400).json({ error: "missing file" });
+      return;
+    }
+    try {
+      const stored = await saveAssetBytes({
+        slug: "uploads",
+        kind: "upload",
+        buffer: file.buffer,
+        mimeType: file.mimetype.toLowerCase(),
+      });
+      await recordOpsAction({
+        operatorId: req.user?.id ?? null,
+        agent: "cms-rest",
+        action: "cms_upload_file",
+        params: {
+          originalName: file.originalname,
+          mimeType: file.mimetype,
+          bytes: file.size,
+        },
+        beforeState: null,
+        afterState: { url: stored.publicUrl },
+        status: "success",
+        reasoning: "editor uploaded an image via /menu/uploads",
+      });
+      res.json({ url: stored.publicUrl, bytes: file.size });
+    } catch (e) {
+      res.status(500).json({ error: (e as Error).message });
+    }
+  });
+});
 
 router.post("/menu/items/:slug/image", async (req: Request, res: Response) => {
   if (!requireCatalog(req, res)) return;

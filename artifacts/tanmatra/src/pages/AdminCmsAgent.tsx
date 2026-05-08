@@ -243,6 +243,11 @@ export default function AdminCmsAgent() {
   >(null);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkError, setBulkError] = useState<string | null>(null);
+  const [photoSlug, setPhotoSlug] = useState<string>("");
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [adminToken, setAdminToken] = useState<string>(() =>
     typeof window === "undefined"
       ? ""
@@ -429,6 +434,45 @@ export default function AdminCmsAgent() {
       setBulkError((err as Error).message);
     } finally {
       setBulkBusy(false);
+    }
+  };
+
+  const uploadPhotoFile = async (file: File) => {
+    if (!photoSlug) {
+      setPhotoError("pick an item first");
+      return;
+    }
+    setPhotoBusy(true);
+    setPhotoError(null);
+    setPhotoUrl(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/menu/uploads", {
+        method: "POST",
+        credentials: "include",
+        headers: authedHeaders(),
+        body: fd,
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(j.error ?? `HTTP ${res.status}`);
+      }
+      const j = (await res.json()) as { url: string };
+      setPhotoUrl(j.url);
+      // Hand off to the agent — same upload_image two-step preview/confirm
+      // flow as if the editor had pasted the URL themselves.
+      const slug = photoSlug;
+      const name =
+        items.find((it) => it.slug === slug)?.name ?? slug;
+      await sendText(
+        `I just uploaded a new photo for "${name}" (slug: ${slug}). Please attach this URL using upload_image: ${j.url}. Preview first.`,
+      );
+    } catch (err) {
+      setPhotoError((err as Error).message);
+    } finally {
+      setPhotoBusy(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -698,6 +742,56 @@ export default function AdminCmsAgent() {
                     );
                   })}
                 </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Upload menu photo</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-xs text-muted-foreground">
+              Pick an item, then drop in a JPG/PNG/WebP (≤10MB). The photo
+              uploads to storage and the assistant will preview attaching it
+              before committing — same confirmation flow as a pasted URL.
+            </p>
+            <div className="flex flex-wrap gap-2 items-center">
+              <select
+                className="flex-1 min-w-[180px] border rounded-md px-2 py-1 text-sm bg-background"
+                value={photoSlug}
+                onChange={(e) => setPhotoSlug(e.target.value)}
+                disabled={photoBusy}
+              >
+                <option value="">Select an item…</option>
+                {items.map((it) => (
+                  <option key={it.slug} value={it.slug}>
+                    {it.name} ({it.slug})
+                  </option>
+                ))}
+              </select>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                disabled={photoBusy || !photoSlug}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void uploadPhotoFile(f);
+                }}
+                className="text-xs"
+              />
+            </div>
+            {photoBusy && (
+              <div className="text-xs text-muted-foreground">Uploading…</div>
+            )}
+            {photoError && (
+              <div className="text-sm text-destructive">{photoError}</div>
+            )}
+            {photoUrl && (
+              <div className="text-xs text-muted-foreground break-all">
+                Uploaded: <span className="font-mono">{photoUrl}</span>
               </div>
             )}
           </CardContent>
