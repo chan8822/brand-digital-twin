@@ -5,6 +5,34 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface DishRationaleRequest {
+  /**
+   * @minItems 1
+   * @maxItems 12
+   */
+  dishIds: number[];
+}
+
+export type DishRationaleSource =
+  (typeof DishRationaleSource)[keyof typeof DishRationaleSource];
+
+export const DishRationaleSource = {
+  cache: "cache",
+  generated: "generated",
+  fallback: "fallback",
+} as const;
+
+export interface DishRationale {
+  dishId: number;
+  rationale: string;
+  expanded: string;
+  source: DishRationaleSource;
+}
+
+export interface DishRationaleEnvelope {
+  rationales: DishRationale[];
+}
+
 export interface HealthStatus {
   status: string;
 }

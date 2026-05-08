@@ -1097,3 +1097,33 @@ export const PatchAdminRdApplicationResponse = zod.object({
   ok: zod.boolean(),
   row: zod.record(zod.string(), zod.unknown()).optional(),
 });
+
+/**
+ * Returns one rationale per requested dishId. Cached per
+(user, dish, brief-version) — only newly seen dishes (or dishes
+whose user brief moved) are sent to the model. On generation
+failure, a generic macro-based rationale is returned with
+source = "fallback".
+
+ * @summary Batch-generate "why this meal" rationales for the signed-in user
+ */
+
+export const getDishRationalesBodyDishIdsMax = 12;
+
+export const GetDishRationalesBody = zod.object({
+  dishIds: zod
+    .array(zod.number().min(1))
+    .min(1)
+    .max(getDishRationalesBodyDishIdsMax),
+});
+
+export const GetDishRationalesResponse = zod.object({
+  rationales: zod.array(
+    zod.object({
+      dishId: zod.number(),
+      rationale: zod.string(),
+      expanded: zod.string(),
+      source: zod.enum(["cache", "generated", "fallback"]),
+    }),
+  ),
+});

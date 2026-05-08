@@ -21,6 +21,8 @@ import type {
   AdminRdApplicationPatchResult,
   AdminRdApplicationsList,
   ChallengePostInput,
+  DishRationaleEnvelope,
+  DishRationaleRequest,
   DishReviewInput,
   GetChallenge200,
   GetRecipe200,
@@ -2542,4 +2544,96 @@ export const usePatchAdminRdApplication = <
   TContext
 > => {
   return useMutation(getPatchAdminRdApplicationMutationOptions(options));
+};
+
+/**
+ * Returns one rationale per requested dishId. Cached per
+(user, dish, brief-version) — only newly seen dishes (or dishes
+whose user brief moved) are sent to the model. On generation
+failure, a generic macro-based rationale is returned with
+source = "fallback".
+
+ * @summary Batch-generate "why this meal" rationales for the signed-in user
+ */
+export const getGetDishRationalesUrl = () => {
+  return `/api/dish-rationales`;
+};
+
+export const getDishRationales = async (
+  dishRationaleRequest: DishRationaleRequest,
+  options?: RequestInit,
+): Promise<DishRationaleEnvelope> => {
+  return customFetch<DishRationaleEnvelope>(getGetDishRationalesUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(dishRationaleRequest),
+  });
+};
+
+export const getGetDishRationalesMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof getDishRationales>>,
+    TError,
+    { data: BodyType<DishRationaleRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof getDishRationales>>,
+  TError,
+  { data: BodyType<DishRationaleRequest> },
+  TContext
+> => {
+  const mutationKey = ["getDishRationales"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof getDishRationales>>,
+    { data: BodyType<DishRationaleRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return getDishRationales(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GetDishRationalesMutationResult = NonNullable<
+  Awaited<ReturnType<typeof getDishRationales>>
+>;
+export type GetDishRationalesMutationBody = BodyType<DishRationaleRequest>;
+export type GetDishRationalesMutationError = ErrorType<void>;
+
+/**
+ * @summary Batch-generate "why this meal" rationales for the signed-in user
+ */
+export const useGetDishRationales = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof getDishRationales>>,
+    TError,
+    { data: BodyType<DishRationaleRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof getDishRationales>>,
+  TError,
+  { data: BodyType<DishRationaleRequest> },
+  TContext
+> => {
+  return useMutation(getGetDishRationalesMutationOptions(options));
 };

@@ -24,6 +24,8 @@ tags:
     description: RD partner & advisory onboarding wizard (public)
   - name: team-profiles
     description: Public chef & RD profiles for trust & transparency
+  - name: dish-rationales
+    description: AI-generated "why this meal" rationales for recommended dishes
 paths:
   /recipes:
     get:
@@ -623,8 +625,67 @@ paths:
           description: rdSlug already claimed by another user
         "412":
           description: Provisioning requires a linked user account
+  /dish-rationales:
+    post:
+      operationId: getDishRationales
+      tags: [dish-rationales]
+      summary: Batch-generate "why this meal" rationales for the signed-in user
+      description: |
+        Returns one rationale per requested dishId. Cached per
+        (user, dish, brief-version) — only newly seen dishes (or dishes
+        whose user brief moved) are sent to the model. On generation
+        failure, a generic macro-based rationale is returned with
+        source = "fallback".
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DishRationaleRequest"
+      responses:
+        "200":
+          description: Rationales (one per requested dishId)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DishRationaleEnvelope"
+        "400":
+          description: Invalid payload
+        "401":
+          description: Unauthorized
 components:
   schemas:
+    DishRationaleRequest:
+      type: object
+      required: [dishIds]
+      properties:
+        dishIds:
+          type: array
+          minItems: 1
+          maxItems: 12
+          items:
+            type: integer
+            minimum: 1
+    DishRationaleSource:
+      type: string
+      enum: [cache, generated, fallback]
+    DishRationale:
+      type: object
+      required: [dishId, rationale, expanded, source]
+      properties:
+        dishId: { type: integer }
+        rationale: { type: string }
+        expanded: { type: string }
+        source:
+          $ref: "#/components/schemas/DishRationaleSource"
+    DishRationaleEnvelope:
+      type: object
+      required: [rationales]
+      properties:
+        rationales:
+          type: array
+          items:
+            $ref: "#/components/schemas/DishRationale"
     HealthStatus:
       type: object
       properties:

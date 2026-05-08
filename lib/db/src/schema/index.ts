@@ -38,3 +38,4 @@ export * from "./corporate";
 export * from "./addons";
 export * from "./premium";
 export * from "./marketplace";
+export * from "./dishRationales";

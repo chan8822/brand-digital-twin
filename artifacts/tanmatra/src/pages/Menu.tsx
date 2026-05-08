@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useDishRationales, type DishRationale } from "@/lib/dishRationaleApi";
 import { useSearchParams } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -206,6 +207,30 @@ export default function Menu() {
 
   const lifestyleTag =
     lifestyle !== "all" ? LIFESTYLE_TAGS[lifestyle as Exclude<Lifestyle, "all">] : null;
+
+  // Lazy "why this meal" rationales for the visible dishes. Only enabled
+  // when the user has a saved taste profile (otherwise the rationale has
+  // little to tie to). The hook silently no-ops on 401.
+  const visibleDishIds = useMemo(
+    () => filtered.slice(0, 12).map((r) => r.dish.id),
+    [filtered],
+  );
+  // Fingerprint the user's brief so the rationale cache is dropped when
+  // preferences change (server's brief-hash invalidation already handles
+  // freshness on the wire — this just stops the client from showing a
+  // stale cached value while the new one is fetched).
+  const briefFingerprint = useMemo(
+    () =>
+      preferences
+        ? `${preferences.userId}:${preferences.updatedAt}`
+        : "anon",
+    [preferences],
+  );
+  const { byId: rationalesById } = useDishRationales(
+    visibleDishIds,
+    Boolean(preferences),
+    briefFingerprint,
+  );
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-8">
@@ -611,6 +636,9 @@ export default function Menu() {
                 </div>
               )}
 
+              <WhyThisMealRow rationale={rationalesById.get(item.id)} />
+
+
               {/* Action buttons */}
               <div className="mt-auto pt-2 flex gap-2">
                 <Link to={`/dish/${item.slug}`} className="flex-1">
@@ -669,6 +697,36 @@ export default function Menu() {
           </article>
         ))}
       </div>
+    </div>
+  );
+}
+
+function WhyThisMealRow({ rationale }: { rationale: DishRationale | undefined }) {
+  const [open, setOpen] = useState(false);
+  if (!rationale) return null;
+  return (
+    <div className="rounded-md border border-clinical-gold/20 bg-clinical-gold/[0.04] px-2.5 py-1.5">
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setOpen((v) => !v);
+        }}
+        className="w-full flex items-start gap-1.5 text-left"
+        aria-expanded={open}
+      >
+        <SparklesIcon className="w-3 h-3 mt-0.5 text-clinical-gold shrink-0" />
+        <span className="flex-1 text-[11px] leading-snug text-clinical-zinc">
+          <span className="text-clinical-gold font-semibold uppercase tracking-[0.1em] text-[9px] mr-1">
+            Why this meal
+          </span>
+          {open ? rationale.expanded : rationale.rationale}
+        </span>
+        <span className="text-[10px] text-clinical-zinc/60 shrink-0">
+          {open ? "Less" : "More"}
+        </span>
+      </button>
     </div>
   );
 }
