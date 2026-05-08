@@ -4,10 +4,13 @@ import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   b2bPlannerApi,
   type SalesAccountRow,
 } from "@/lib/b2bPlannerApi";
+
+const ADMIN_TOKEN_KEY = "tanmatra:admin-token:v1";
 
 const RISK_COLOR: Record<string, string> = {
   critical: "bg-rose-500/20 text-rose-300 border-rose-500/40",
@@ -20,6 +23,19 @@ export default function AdminSalesConsole() {
   const [rows, setRows] = useState<SalesAccountRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [recomputing, setRecomputing] = useState<string | null>(null);
+  const [adminToken, setAdminToken] = useState<string>(() =>
+    typeof window === "undefined"
+      ? ""
+      : window.localStorage.getItem(ADMIN_TOKEN_KEY) ?? "",
+  );
+
+  const saveAdminToken = (val: string) => {
+    setAdminToken(val);
+    if (typeof window !== "undefined") {
+      if (val) window.localStorage.setItem(ADMIN_TOKEN_KEY, val);
+      else window.localStorage.removeItem(ADMIN_TOKEN_KEY);
+    }
+  };
 
   const refresh = async () => {
     try {
@@ -33,7 +49,8 @@ export default function AdminSalesConsole() {
   };
   useEffect(() => {
     refresh();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminToken]);
 
   const recompute = async (slug: string) => {
     setRecomputing(slug);
@@ -66,6 +83,24 @@ export default function AdminSalesConsole() {
           act fast.
         </p>
       </div>
+
+      <Card>
+        <CardContent className="flex flex-col gap-2 p-4 md:flex-row md:items-center md:gap-3">
+          <label className="text-xs text-clinical-zinc md:w-40">
+            Admin token
+          </label>
+          <Input
+            type="password"
+            placeholder="x-admin-token"
+            value={adminToken}
+            onChange={(e) => saveAdminToken(e.target.value)}
+            className="md:flex-1"
+          />
+          <p className="text-xs text-clinical-zinc">
+            Stored locally; sent as <code>x-admin-token</code> on /sales/* calls.
+          </p>
+        </CardContent>
+      </Card>
 
       <div className="flex flex-wrap gap-2 text-sm">
         {(["critical", "at_risk", "watch", "healthy"] as const).map((k) => (

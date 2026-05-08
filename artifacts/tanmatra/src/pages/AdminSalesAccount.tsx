@@ -9,11 +9,14 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
   b2bPlannerApi,
+  downloadQbrExport,
   type AccountHealthSnapshot,
   type QbrDraft,
   type QbrSection,
   type SalesAccountRow,
 } from "@/lib/b2bPlannerApi";
+
+const ADMIN_TOKEN_KEY = "tanmatra:admin-token:v1";
 
 export default function AdminSalesAccount() {
   const { slug = "" } = useParams<{ slug: string }>();
@@ -191,15 +194,20 @@ export default function AdminSalesAccount() {
                   <Button size="sm" onClick={saveQbr} disabled={busy === "save"}>
                     {busy === "save" ? "Saving…" : "Save edits"}
                   </Button>
-                  <a
-                    href={b2bPlannerApi.exportQbrUrl(qbr.id)}
-                    target="_blank"
-                    rel="noreferrer"
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={async () => {
+                      try {
+                        await downloadQbrExport(qbr.id);
+                        await refresh();
+                      } catch (err) {
+                        toast.error((err as Error).message);
+                      }
+                    }}
                   >
-                    <Button size="sm" variant="outline">
-                      Export .md
-                    </Button>
-                  </a>
+                    Export .md
+                  </Button>
                 </>
               )}
             </div>

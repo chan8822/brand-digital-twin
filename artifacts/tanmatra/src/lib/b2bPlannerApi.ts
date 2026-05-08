@@ -3,14 +3,34 @@
  * Mirrors `routes/b2bPlanner.ts` on the server.
  */
 const API_BASE = `${import.meta.env.BASE_URL}api`;
-const ADMIN_TOKEN_KEY = "tanmatra:admin:v1";
+const ADMIN_TOKEN_KEY = "tanmatra:admin-token:v1";
 
 function adminHeaders(): Record<string, string> {
   const token =
     typeof window === "undefined"
       ? null
-      : window.localStorage.getItem(`${ADMIN_TOKEN_KEY}:token`);
+      : window.localStorage.getItem(ADMIN_TOKEN_KEY);
   return token ? { "x-admin-token": token } : {};
+}
+
+export async function downloadQbrExport(id: number): Promise<void> {
+  const res = await fetch(`${API_BASE}/sales/qbr/${id}/export`, {
+    credentials: "include",
+    headers: { ...adminHeaders() },
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`${res.status}: ${text || res.statusText}`);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `qbr-${id}.md`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 async function req<T>(
