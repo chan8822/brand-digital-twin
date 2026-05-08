@@ -63,16 +63,24 @@ export async function notifyOpsOfApplication(
     "rd_partners.application.submitted",
   );
   if (!to) return { delivered: false, to, channel: "log" };
-  const { text, html } = formatBody(app);
-  const result = await sendMail({
-    to,
-    subject: `[RD partners] New ${app.path} application — ${app.fullName} (#${app.id})`,
-    text,
-    html,
-  });
-  return {
-    delivered: result.delivered,
-    to,
-    channel: result.delivered ? "email" : "log",
-  };
+  try {
+    const { text, html } = formatBody(app);
+    const result = await sendMail({
+      to,
+      subject: `[RD partners] New ${app.path} application — ${app.fullName} (#${app.id})`,
+      text,
+      html,
+    });
+    return {
+      delivered: result.delivered,
+      to,
+      channel: result.delivered ? "email" : "log",
+    };
+  } catch (err) {
+    logger.error(
+      { err: (err as Error).message, applicationId: app.id, to },
+      "rd_partners.application.notify_failed",
+    );
+    return { delivered: false, to, channel: "log" };
+  }
 }
