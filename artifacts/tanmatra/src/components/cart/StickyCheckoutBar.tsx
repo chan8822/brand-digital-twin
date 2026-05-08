@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ShoppingCart, ArrowRight } from "@phosphor-icons/react";
 import { useCart } from "@/lib/cartContext";
 import { formatCurrency } from "@/lib/utils";
@@ -18,6 +18,7 @@ const HIDE_ON = [
 export default function StickyCheckoutBar() {
   const { items, totalQuantity, subtotal } = useCart();
   const { pathname } = useLocation();
+  const prefersReducedMotion = useReducedMotion();
 
   const visible =
     items.length > 0 && !HIDE_ON.some((re) => re.test(pathname));
@@ -27,10 +28,13 @@ export default function StickyCheckoutBar() {
       {visible && (
         <motion.div
           key="sticky-checkout"
-          initial={{ y: 24, opacity: 0 }}
+          initial={prefersReducedMotion ? { opacity: 0 } : { y: 24, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 24, opacity: 0 }}
-          transition={{ duration: DURATION.base, ease: EASE.standard }}
+          exit={prefersReducedMotion ? { opacity: 0 } : { y: 24, opacity: 0 }}
+          transition={{
+            duration: prefersReducedMotion ? 0 : DURATION.base,
+            ease: EASE.standard,
+          }}
           role="region"
           aria-label="Cart summary"
           className="fixed inset-x-0 z-30 px-3 sm:px-6 bottom-[calc(56px+env(safe-area-inset-bottom))] md:bottom-6 pointer-events-none"
