@@ -24,21 +24,53 @@ export default function MacroOverlay({ macros, rdVerified = false, compact = fal
   const fatPct = Math.round((macros.fat / total) * 100);
 
   if (compact) {
+    // Each chip gets its own dark backdrop so contrast is preserved when this
+    // row is layered over a bright dish photo (e.g. quinoa salad). Each chip
+    // also carries an aria-label expanding the single-letter code so screen
+    // readers announce "12 grams of protein" instead of "P 12g".
+    const chip =
+      "text-clinical-data text-[10px] flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#050505]/70 backdrop-blur-sm";
     return (
-      <div className="flex items-center gap-2 flex-wrap">
+      <div
+        className="flex items-center gap-1.5 flex-wrap"
+        role="group"
+        aria-label="Macro nutrients"
+      >
         {rdVerified && (
-          <Badge variant="outline" className="h-5 px-1.5 text-[9px] border-clinical-sage/40 text-clinical-sage gap-0.5 bg-clinical-sage/10">
-            <ShieldCheck className="w-2.5 h-2.5" />
+          <Badge
+            variant="outline"
+            className="h-5 px-1.5 text-[9px] border-clinical-sage/40 text-clinical-sage gap-0.5 bg-clinical-sage/10"
+            aria-label="Verified by Tanmatra Registered Dietitian advisory board"
+          >
+            <ShieldCheck className="w-2.5 h-2.5" aria-hidden="true" />
             RD
           </Badge>
         )}
-        <span className="text-clinical-data text-[10px] text-clinical-zinc flex items-center gap-1">
-          <Flame className="w-2.5 h-2.5 text-orange-400" />
-          {macros.calories} kcal
+        <span
+          className={`${chip} text-clinical-zinc`}
+          aria-label={`${macros.calories} kilocalories`}
+        >
+          <Flame className="w-2.5 h-2.5 text-orange-400" aria-hidden="true" />
+          <span aria-hidden="true">{macros.calories} kcal</span>
         </span>
-        <span className="text-clinical-data text-[10px] text-clinical-blue">P {macros.protein}g</span>
-        <span className="text-clinical-data text-[10px] text-clinical-gold">C {macros.carbs}g</span>
-        <span className="text-clinical-data text-[10px] text-clinical-sage">F {macros.fat}g</span>
+        <span
+          className={`${chip} text-clinical-blue`}
+          aria-label={`${macros.protein} grams of protein`}
+        >
+          <span aria-hidden="true">P {macros.protein}g</span>
+        </span>
+        <span
+          className={`${chip} text-clinical-gold`}
+          aria-label={`${macros.carbs} grams of carbohydrates`}
+        >
+          <span aria-hidden="true">C {macros.carbs}g</span>
+        </span>
+        <span
+          className={`${chip} text-clinical-sage`}
+          aria-label={`${macros.fat} grams of fat`}
+        >
+          <span aria-hidden="true">F {macros.fat}g</span>
+        </span>
       </div>
     );
   }

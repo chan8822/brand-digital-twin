@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
+import { Check, AlertCircle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -109,6 +110,15 @@ export default function IntakeQuiz({ open, onOpenChange }: IntakeQuizProps) {
   const [step, setStep] = useState(0);
   const [state, setState] = useState<QuizState>(() => initialState(preferences));
   const [saving, setSaving] = useState(false);
+  // Stable ids so each Label can be aria-labelledby for its corresponding
+  // radiogroup / group, instead of relying on visual proximity alone.
+  const dietId = useId();
+  const goalId = useId();
+  const actId = useId();
+  const cuisineId = useId();
+  const spiceId = useId();
+  const allergenId = useId();
+  const targetsHintId = useId();
 
   useEffect(() => {
     if (open) {
@@ -183,22 +193,39 @@ export default function IntakeQuiz({ open, onOpenChange }: IntakeQuizProps) {
         <div className="space-y-4 py-2">
           {step === 0 && (
             <div className="space-y-3">
-              <Label className="text-clinical-label">Dietary style</Label>
-              <div className="grid grid-cols-1 gap-2">
-                {(Object.keys(DIETARY_STYLE_LABEL) as DietaryStyle[]).map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() => setState((s) => ({ ...s, dietaryStyle: d }))}
-                    className={`text-left text-xs px-3 py-2 rounded-md border ${
-                      state.dietaryStyle === d
-                        ? "border-clinical-gold/50 bg-clinical-gold/10 text-clinical-gold"
-                        : "border-clinical-slate/30 text-clinical-zinc hover:text-white"
-                    }`}
-                  >
-                    {DIETARY_STYLE_LABEL[d]}
-                  </button>
-                ))}
+              <Label className="text-clinical-label" id={dietId}>
+                Dietary style
+              </Label>
+              <div
+                className="grid grid-cols-1 gap-2"
+                role="radiogroup"
+                aria-labelledby={dietId}
+              >
+                {(Object.keys(DIETARY_STYLE_LABEL) as DietaryStyle[]).map((d) => {
+                  const active = state.dietaryStyle === d;
+                  return (
+                    <button
+                      key={d}
+                      type="button"
+                      role="radio"
+                      aria-checked={active}
+                      onClick={() => setState((s) => ({ ...s, dietaryStyle: d }))}
+                      className={`text-left text-xs px-3 py-2 rounded-md border flex items-center gap-2 ${
+                        active
+                          ? "border-clinical-gold/60 bg-clinical-gold/10 text-clinical-gold"
+                          : "border-clinical-slate/30 text-clinical-zinc hover:text-white"
+                      }`}
+                    >
+                      {active && (
+                        <Check
+                          className="w-3.5 h-3.5 shrink-0"
+                          aria-hidden="true"
+                        />
+                      )}
+                      <span>{DIETARY_STYLE_LABEL[d]}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -206,43 +233,71 @@ export default function IntakeQuiz({ open, onOpenChange }: IntakeQuizProps) {
           {step === 1 && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-clinical-label">Wellness goal</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  {(Object.keys(GOAL_LABEL) as WellnessGoal[]).map((g) => (
-                    <button
-                      key={g}
-                      type="button"
-                      onClick={() => setState((s) => ({ ...s, goal: g }))}
-                      className={`text-xs px-3 py-2 rounded-md border ${
-                        state.goal === g
-                          ? "border-clinical-gold/50 bg-clinical-gold/10 text-clinical-gold"
-                          : "border-clinical-slate/30 text-clinical-zinc hover:text-white"
-                      }`}
-                    >
-                      {GOAL_LABEL[g]}
-                    </button>
-                  ))}
+                <Label className="text-clinical-label" id={goalId}>
+                  Wellness goal
+                </Label>
+                <div
+                  className="grid grid-cols-2 gap-2"
+                  role="radiogroup"
+                  aria-labelledby={goalId}
+                >
+                  {(Object.keys(GOAL_LABEL) as WellnessGoal[]).map((g) => {
+                    const active = state.goal === g;
+                    return (
+                      <button
+                        key={g}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        onClick={() => setState((s) => ({ ...s, goal: g }))}
+                        className={`text-xs px-3 py-2 rounded-md border inline-flex items-center justify-center gap-1.5 ${
+                          active
+                            ? "border-clinical-gold/60 bg-clinical-gold/10 text-clinical-gold"
+                            : "border-clinical-slate/30 text-clinical-zinc hover:text-white"
+                        }`}
+                      >
+                        {active && (
+                          <Check className="w-3 h-3 shrink-0" aria-hidden="true" />
+                        )}
+                        {GOAL_LABEL[g]}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
               <div className="space-y-2">
-                <Label className="text-clinical-label">Activity level</Label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(Object.keys(ACTIVITY_LABEL) as ActivityLevel[]).map((a) => (
-                    <button
-                      key={a}
-                      type="button"
-                      onClick={() =>
-                        setState((s) => ({ ...s, activityLevel: a }))
-                      }
-                      className={`text-xs px-3 py-2 rounded-md border ${
-                        state.activityLevel === a
-                          ? "border-clinical-gold/50 bg-clinical-gold/10 text-clinical-gold"
-                          : "border-clinical-slate/30 text-clinical-zinc hover:text-white"
-                      }`}
-                    >
-                      {ACTIVITY_LABEL[a]}
-                    </button>
-                  ))}
+                <Label className="text-clinical-label" id={actId}>
+                  Activity level
+                </Label>
+                <div
+                  className="grid grid-cols-3 gap-2"
+                  role="radiogroup"
+                  aria-labelledby={actId}
+                >
+                  {(Object.keys(ACTIVITY_LABEL) as ActivityLevel[]).map((a) => {
+                    const active = state.activityLevel === a;
+                    return (
+                      <button
+                        key={a}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        onClick={() =>
+                          setState((s) => ({ ...s, activityLevel: a }))
+                        }
+                        className={`text-xs px-3 py-2 rounded-md border inline-flex items-center justify-center gap-1.5 ${
+                          active
+                            ? "border-clinical-gold/60 bg-clinical-gold/10 text-clinical-gold"
+                            : "border-clinical-slate/30 text-clinical-zinc hover:text-white"
+                        }`}
+                      >
+                        {active && (
+                          <Check className="w-3 h-3 shrink-0" aria-hidden="true" />
+                        )}
+                        {ACTIVITY_LABEL[a]}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -251,23 +306,31 @@ export default function IntakeQuiz({ open, onOpenChange }: IntakeQuizProps) {
           {step === 2 && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-clinical-label">
+                <Label className="text-clinical-label" id={cuisineId}>
                   Cuisines you enjoy (pick any)
                 </Label>
-                <div className="flex flex-wrap gap-2">
+                <div
+                  className="flex flex-wrap gap-2"
+                  role="group"
+                  aria-labelledby={cuisineId}
+                >
                   {CUISINE_OPTIONS.map((c) => {
                     const active = state.cuisines.includes(c);
                     return (
                       <button
                         key={c}
                         type="button"
+                        aria-pressed={active}
                         onClick={() => toggleArr("cuisines", c)}
-                        className={`text-xs px-3 py-1.5 rounded-full border capitalize ${
+                        className={`text-xs px-3 py-1.5 rounded-full border capitalize inline-flex items-center gap-1.5 ${
                           active
-                            ? "border-clinical-gold/50 bg-clinical-gold/10 text-clinical-gold"
+                            ? "border-clinical-gold/60 bg-clinical-gold/10 text-clinical-gold"
                             : "border-clinical-slate/30 text-clinical-zinc hover:text-white"
                         }`}
                       >
+                        {active && (
+                          <Check className="w-3 h-3 shrink-0" aria-hidden="true" />
+                        )}
                         {c}
                       </button>
                     );
@@ -275,22 +338,36 @@ export default function IntakeQuiz({ open, onOpenChange }: IntakeQuizProps) {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label className="text-clinical-label">Spice tolerance</Label>
-                <div className="grid grid-cols-4 gap-2">
-                  {(Object.keys(SPICE_LABEL) as SpiceLevel[]).map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => setState((st) => ({ ...st, spiceLevel: s }))}
-                      className={`text-xs px-2 py-2 rounded-md border ${
-                        state.spiceLevel === s
-                          ? "border-clinical-gold/50 bg-clinical-gold/10 text-clinical-gold"
-                          : "border-clinical-slate/30 text-clinical-zinc hover:text-white"
-                      }`}
-                    >
-                      {SPICE_LABEL[s]}
-                    </button>
-                  ))}
+                <Label className="text-clinical-label" id={spiceId}>
+                  Spice tolerance
+                </Label>
+                <div
+                  className="grid grid-cols-4 gap-2"
+                  role="radiogroup"
+                  aria-labelledby={spiceId}
+                >
+                  {(Object.keys(SPICE_LABEL) as SpiceLevel[]).map((s) => {
+                    const active = state.spiceLevel === s;
+                    return (
+                      <button
+                        key={s}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        onClick={() => setState((st) => ({ ...st, spiceLevel: s }))}
+                        className={`text-xs px-2 py-2 rounded-md border inline-flex items-center justify-center gap-1 ${
+                          active
+                            ? "border-clinical-gold/60 bg-clinical-gold/10 text-clinical-gold"
+                            : "border-clinical-slate/30 text-clinical-zinc hover:text-white"
+                        }`}
+                      >
+                        {active && (
+                          <Check className="w-3 h-3 shrink-0" aria-hidden="true" />
+                        )}
+                        {SPICE_LABEL[s]}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -299,23 +376,43 @@ export default function IntakeQuiz({ open, onOpenChange }: IntakeQuizProps) {
           {step === 3 && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-clinical-label">
+                <Label className="text-clinical-label" id={allergenId}>
                   Allergens (we'll block these)
                 </Label>
-                <div className="flex flex-wrap gap-2">
+                <div
+                  className="flex flex-wrap gap-2"
+                  role="group"
+                  aria-labelledby={allergenId}
+                >
                   {ALLERGEN_OPTIONS.map((a) => {
                     const active = state.allergens.includes(a);
                     return (
                       <button
                         key={a}
                         type="button"
-                        onClick={() => toggleArr("allergens", a)}
-                        className={`text-xs px-3 py-1.5 rounded-full border capitalize ${
+                        aria-pressed={active}
+                        aria-label={
                           active
-                            ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                            ? `Blocking ${a} — tap to allow`
+                            : `${a} — tap to block`
+                        }
+                        onClick={() => toggleArr("allergens", a)}
+                        className={`text-xs px-3 py-1.5 rounded-full border capitalize inline-flex items-center gap-1.5 ${
+                          active
+                            ? "border-orange-500/60 bg-orange-500/10 text-orange-400"
                             : "border-clinical-slate/30 text-clinical-zinc hover:text-white"
                         }`}
                       >
+                        {/* Icon makes the "blocked" state distinguishable
+                            without relying on the orange-vs-gold color
+                            difference, which can be invisible to users with
+                            red/green color-vision deficiency. */}
+                        {active && (
+                          <AlertCircle
+                            className="w-3 h-3 shrink-0"
+                            aria-hidden="true"
+                          />
+                        )}
                         {a}
                       </button>
                     );
@@ -353,7 +450,10 @@ export default function IntakeQuiz({ open, onOpenChange }: IntakeQuizProps) {
                     id="carbs"
                     type="number"
                     inputMode="numeric"
+                    min={0}
+                    max={800}
                     placeholder="220"
+                    aria-describedby={targetsHintId}
                     value={state.carbsTargetGrams}
                     onChange={(e) =>
                       setState((s) => ({
@@ -372,7 +472,10 @@ export default function IntakeQuiz({ open, onOpenChange }: IntakeQuizProps) {
                     id="fat"
                     type="number"
                     inputMode="numeric"
+                    min={0}
+                    max={300}
                     placeholder="60"
+                    aria-describedby={targetsHintId}
                     value={state.fatTargetGrams}
                     onChange={(e) =>
                       setState((s) => ({
@@ -393,7 +496,10 @@ export default function IntakeQuiz({ open, onOpenChange }: IntakeQuizProps) {
                     id="cal"
                     type="number"
                     inputMode="numeric"
+                    min={800}
+                    max={6000}
                     placeholder="2000"
+                    aria-describedby={targetsHintId}
                     value={state.calorieTarget}
                     onChange={(e) =>
                       setState((s) => ({ ...s, calorieTarget: e.target.value }))
@@ -409,7 +515,10 @@ export default function IntakeQuiz({ open, onOpenChange }: IntakeQuizProps) {
                     id="pro"
                     type="number"
                     inputMode="numeric"
+                    min={20}
+                    max={400}
                     placeholder="120"
+                    aria-describedby={targetsHintId}
                     value={state.proteinTargetGrams}
                     onChange={(e) =>
                       setState((s) => ({
@@ -438,9 +547,14 @@ export default function IntakeQuiz({ open, onOpenChange }: IntakeQuizProps) {
               >
                 Calculate for me — based on goal &amp; activity
               </button>
-              <p className="text-[11px] text-clinical-zinc/70">
-                Optional — leave blank if you're not tracking macros yet. You
-                can edit any time from Preferences.
+              <p
+                id={targetsHintId}
+                className="text-[11px] text-clinical-zinc/70"
+              >
+                Optional — leave blank if you're not tracking macros yet. Out-of-range
+                values are clamped on save (calories 800-6000, protein 20-400 g,
+                carbs 0-800 g, fat 0-300 g). You can edit any time from
+                Preferences.
               </p>
             </div>
           )}

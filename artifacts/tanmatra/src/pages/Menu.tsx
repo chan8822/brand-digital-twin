@@ -749,13 +749,41 @@ export default function Menu() {
                 {item.description}
               </p>
 
-              {/* Macro chips */}
-              <div className="flex flex-wrap gap-1.5">
-                <MacroChip label="CAL" value={`${item.macros.calories}`} />
-                <MacroChip label="PRO" value={`${item.macros.protein}g`} />
-                <MacroChip label="C" value={`${item.macros.carbs}g`} />
-                <MacroChip label="F" value={`${item.macros.fat}g`} />
-                <MacroChip label="GI" value={item.glycaemicIndex} />
+              {/* Macro chips — labels are abbreviated visually (CAL / PRO / C
+                  / F / GI) so they fit on small screens, but every chip
+                  carries an aria-label expanding the abbreviation so screen
+                  readers announce them as full words instead of single
+                  letters. */}
+              <div
+                className="flex flex-wrap gap-1.5"
+                role="group"
+                aria-label={`Nutrition for ${item.name}`}
+              >
+                <MacroChip
+                  label="CAL"
+                  value={`${item.macros.calories}`}
+                  ariaLabel={`${item.macros.calories} kilocalories`}
+                />
+                <MacroChip
+                  label="PRO"
+                  value={`${item.macros.protein}g`}
+                  ariaLabel={`${item.macros.protein} grams of protein`}
+                />
+                <MacroChip
+                  label="C"
+                  value={`${item.macros.carbs}g`}
+                  ariaLabel={`${item.macros.carbs} grams of carbohydrates`}
+                />
+                <MacroChip
+                  label="F"
+                  value={`${item.macros.fat}g`}
+                  ariaLabel={`${item.macros.fat} grams of fat`}
+                />
+                <MacroChip
+                  label="GI"
+                  value={item.glycaemicIndex}
+                  ariaLabel={`Glycaemic index ${item.glycaemicIndex}`}
+                />
               </div>
 
               <div className="text-[10px] uppercase tracking-[0.12em] text-clinical-zinc/60 font-semibold">
@@ -910,13 +938,33 @@ function WhyThisMealRow({ rationale }: { rationale: DishRationale | undefined })
   );
 }
 
-function MacroChip({ label, value }: { label: string; value: string }) {
+function MacroChip({
+  label,
+  value,
+  ariaLabel,
+}: {
+  label: string;
+  value: string;
+  ariaLabel?: string;
+}) {
   return (
-    <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-clinical-surface border border-clinical-slate/20">
-      <span className="text-[9px] uppercase tracking-[0.12em] text-clinical-zinc/70 font-semibold">
+    <div
+      className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-clinical-surface border border-clinical-slate/20"
+      aria-label={ariaLabel ?? `${label} ${value}`}
+      role="group"
+    >
+      <span
+        className="text-[9px] uppercase tracking-[0.12em] text-clinical-zinc/70 font-semibold"
+        aria-hidden="true"
+      >
         {label}
       </span>
-      <span className="text-[11px] tabular-nums text-clinical-gold font-medium">{value}</span>
+      <span
+        className="text-[11px] tabular-nums text-clinical-gold font-medium"
+        aria-hidden="true"
+      >
+        {value}
+      </span>
     </div>
   );
 }

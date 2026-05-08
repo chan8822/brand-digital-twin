@@ -612,7 +612,11 @@ export default function Home() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {FEATURED_MEALS.map((meal, i) => (
-              <Link to={`/dish/${meal.slug}`} key={meal.id}>
+              <Link
+                to={`/dish/${meal.slug}`}
+                key={meal.id}
+                aria-label={`${meal.name} — ${formatPrice(meal.price)}, ${meal.macros.calories} kilocalories${meal.rdVerified ? ", Registered Dietitian verified" : ""}. Open dish details.`}
+              >
                 <Card className="group bg-clinical-surface border-clinical-slate/20 hover:border-clinical-gold/30 transition-all duration-300 hover:shadow-clinical overflow-hidden">
                   <div className="relative aspect-[4/3] overflow-hidden">
                     <img src={meal.image} alt={meal.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading={i < 3 ? "eager" : "lazy"} />
