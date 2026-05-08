@@ -83,7 +83,7 @@ export default function Menu() {
   const [lifestyle, setLifestyle] = useState<Lifestyle>("all");
   const [query, setQuery] = useState("");
   const [hideBlocked, setHideBlocked] = useState(true);
-  const { addItem } = useCart();
+  const { addItem, addBundleSlug } = useCart();
   const { preferences } = usePreferences();
   const [searchParams] = useSearchParams();
   const groupCode = searchParams.get("group");
@@ -97,9 +97,6 @@ export default function Menu() {
       groupOrdersApi
         .addItem(groupCode, {
           dishId: item.id,
-          name: item.name,
-          image: item.image,
-          unitPrice: item.price,
           quantity: 1,
           customizations: [],
         })
@@ -160,6 +157,10 @@ export default function Menu() {
     if (added === 0) {
       toast.error("This bundle is currently unavailable");
     } else {
+      // Record the slug so the server can re-validate at finalize and
+      // apply the authoritative bundle discount (client-side per-line
+      // pricing is just for cart UX).
+      addBundleSlug(bundle.slug);
       toast.success(`${bundle.name} added`, {
         description: `${added} item${added === 1 ? "" : "s"} for ${formatPrice(bundle.pricePaise)}`,
       });

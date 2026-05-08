@@ -7,6 +7,7 @@ import {
   groupOrdersTable,
   type GroupOrderLine,
 } from "@workspace/db";
+import { getDishById } from "@workspace/menu-catalog";
 
 const MAX_LINES_PER_GROUP = 50;
 
@@ -80,11 +81,11 @@ router.get("/group-orders/:code", async (req: Request, res: Response) => {
   res.json({ group: row });
 });
 
+// Server-canonical item schema. Name/image/unitPrice are looked up from
+// the menu catalog so a participant cannot tamper with what other
+// members see (or what the host sees at checkout preview).
 const itemSchema = z.object({
   dishId: z.number().int().positive(),
-  name: z.string().min(1).max(128),
-  image: z.string().max(512),
-  unitPrice: z.number().int().nonnegative(),
   quantity: z.number().int().positive().max(20),
   customizations: z.array(z.string().max(64)).max(10).default([]),
 });
@@ -96,6 +97,17 @@ router.post("/group-orders/:code/items", async (req: Request, res: Response) => 
   const parsed = itemSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "invalid payload" });
+    return;
+  }
+  // Resolve canonical dish from catalog. Reject unknown/unavailable dishes
+  // here so we never persist tampered or stale lines.
+  const dish = getDishById(parsed.data.dishId);
+  if (!dish) {
+    res.status(404).json({ error: "dish not found" });
+    return;
+  }
+  if (!dish.isAvailable) {
+    res.status(409).json({ error: "dish unavailable" });
     return;
   }
   // Serialize concurrent reads/writes to the same group's items array.
@@ -121,10 +133,10 @@ router.post("/group-orders/:code/items", async (req: Request, res: Response) => 
       }
       const line: GroupOrderLine = {
         lineId: `gline-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        dishId: parsed.data.dishId,
-        name: parsed.data.name,
-        image: parsed.data.image,
-        unitPrice: parsed.data.unitPrice,
+        dishId: dish.id,
+        name: dish.name,
+        image: dish.image,
+        unitPrice: dish.price,
         quantity: parsed.data.quantity,
         customizations: parsed.data.customizations,
         addedBy: auth.id,
@@ -204,24 +216,45 @@ router.post("/group-orders/:code/close", async (req: Request, res: Response) => 
   const auth = requireAuth(req, res);
   if (!auth) return;
   const code = String(req.params.code ?? "").toUpperCase();
-  const [existing] = await db
-    .select()
-    .from(groupOrdersTable)
-    .where(eq(groupOrdersTable.code, code));
-  if (!existing) {
-    res.status(404).json({ error: "group not found" });
-    return;
+  // Take the same per-group advisory lock as add-item so an in-flight
+  // add cannot land between our read and the status flip. Whatever the
+  // close response contains is therefore the final, authoritative item
+  // list — the host can't lose lines added milliseconds before close.
+  try {
+    const out = await db.transaction(async (tx) => {
+      await tx.execute(
+        sql`select pg_advisory_xact_lock(hashtextextended(${"group:" + code}, 0))`,
+      );
+      const [existing] = await tx
+        .select()
+        .from(groupOrdersTable)
+        .where(eq(groupOrdersTable.code, code));
+      if (!existing) return { error: "not_found" as const };
+      if (existing.hostUserId !== auth.id) {
+        return { error: "forbidden" as const };
+      }
+      if (existing.status === "closed") {
+        return { group: existing };
+      }
+      const [updated] = await tx
+        .update(groupOrdersTable)
+        .set({ status: "closed", closedAt: new Date() })
+        .where(eq(groupOrdersTable.code, code))
+        .returning();
+      return { group: updated };
+    });
+    if ("error" in out) {
+      const status = out.error === "not_found" ? 404 : 403;
+      const message =
+        out.error === "not_found" ? "group not found" : "only host can close";
+      res.status(status).json({ error: message });
+      return;
+    }
+    res.json({ group: out.group });
+  } catch (err) {
+    req.log.error({ err }, "group close failed");
+    res.status(500).json({ error: "close failed" });
   }
-  if (existing.hostUserId !== auth.id) {
-    res.status(403).json({ error: "only host can close" });
-    return;
-  }
-  const [updated] = await db
-    .update(groupOrdersTable)
-    .set({ status: "closed", closedAt: new Date() })
-    .where(eq(groupOrdersTable.code, code))
-    .returning();
-  res.json({ group: updated });
 });
 
 export default router;

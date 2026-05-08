@@ -123,11 +123,13 @@ export const loyaltyApi = {
     };
     applyCreditsPaise?: number;
     scheduledFor?: string;
+    bundleSlugs?: string[];
   }) =>
     request<{
       orderId: string;
       serverOrderId: number;
       grossPaise: number;
+      bundleDiscountPaise: number;
       preorderDiscountPaise: number;
       redeemedPaise: number;
       finalPaise: number;

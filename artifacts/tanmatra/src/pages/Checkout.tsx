@@ -58,7 +58,7 @@ const TIP_PRESETS = [0, 2000, 5000, 10000];
 
 export default function Checkout() {
   const navigate = useNavigate();
-  const { items, subtotal, clear } = useCart();
+  const { items, bundleSlugs, subtotal, clear } = useCart();
   const { addOrder } = useOrders();
   const [selectedAddress, setSelectedAddress] = useState("addr-1");
   const [showNewAddress, setShowNewAddress] = useState(false);
@@ -187,6 +187,7 @@ export default function Checkout() {
         },
         applyCreditsPaise: creditApplied > 0 ? creditApplied : undefined,
         scheduledFor: preorderTomorrow ? tomorrowSlot.toISOString() : undefined,
+        bundleSlugs: bundleSlugs.length > 0 ? bundleSlugs : undefined,
       });
       // Add delivery + tip on top of the server-validated meal total.
       finalTotal = out.finalPaise + deliveryFee + effectiveTip;

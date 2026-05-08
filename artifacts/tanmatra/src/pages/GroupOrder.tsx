@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { formatPrice } from "@/lib/api/adapter";
 import { useGroupOrder, groupOrdersApi } from "@/lib/queries";
 import { useCart } from "@/lib/cartContext";
+import { getDishById } from "@workspace/menu-catalog";
 import {
   Users,
   Copy,
@@ -66,25 +67,39 @@ export default function GroupOrder() {
     }
     setClosing(true);
     try {
-      // Server enforces "host only"; non-hosts will get 403.
-      await groupOrdersApi.close(code);
-      // Move all group items into the host's cart and head to checkout.
+      // Server enforces "host only"; non-hosts will get 403. Use the
+      // close response as source of truth — it includes any item added
+      // since our last poll.
+      const { group: closed } = await groupOrdersApi.close(code);
       clear();
-      for (const it of group.items) {
+      let unresolved = 0;
+      for (const it of closed.items) {
+        // Resolve canonical dish metadata from the catalog so cart
+        // preference checks, macros, and routing all work correctly.
+        const dish = getDishById(it.dishId);
+        if (!dish) {
+          unresolved++;
+          continue;
+        }
         addItem({
-          dishId: it.dishId,
-          slug: `dish-${it.dishId}`,
-          name: it.name,
-          image: it.image,
-          basePrice: it.unitPrice,
-          unitPrice: it.unitPrice,
+          dishId: dish.id,
+          slug: dish.slug,
+          name: dish.name,
+          image: dish.image,
+          basePrice: dish.price,
+          unitPrice: dish.price,
           quantity: it.quantity,
-          kitchen: "continental",
-          isVeg: true,
-          rdVerified: false,
-          macros: { protein: 0, carbs: 0, fat: 0, fiber: 0, calories: 0 },
+          kitchen: dish.kitchen,
+          isVeg: dish.isVeg,
+          rdVerified: dish.rdVerified,
+          macros: dish.macros,
           customizations: it.customizations,
         });
+      }
+      if (unresolved > 0) {
+        toast.warning(
+          `${unresolved} item${unresolved === 1 ? "" : "s"} could not be transferred`,
+        );
       }
       toast.success(`Group order ${code} closed — proceed to checkout`);
       navigate("/checkout");

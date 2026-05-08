@@ -79,9 +79,6 @@ export const groupOrdersApi = {
     code: string,
     item: {
       dishId: number;
-      name: string;
-      image: string;
-      unitPrice: number;
       quantity: number;
       customizations?: string[];
     },

@@ -1,5 +1,6 @@
 import { and, asc, count, desc, eq, isNull, sql } from "drizzle-orm";
 import {
+  bundlesTable,
   creditLedgerTable,
   db,
   loyaltyConfigTable,
@@ -15,6 +16,7 @@ import {
   type Notification,
   type NotificationKind,
 } from "@workspace/db";
+import { inArray } from "drizzle-orm";
 import { getDishById } from "@workspace/menu-catalog";
 import type { PgTransaction } from "drizzle-orm/pg-core";
 
@@ -374,10 +376,12 @@ export async function finalizeOrder(args: {
   address?: FinalizeOrderAddress;
   applyCreditsPaise?: number;
   scheduledFor?: Date | null;
+  bundleSlugs?: string[];
 }): Promise<{
   orderId: string;
   serverOrderId: number;
   grossPaise: number;
+  bundleDiscountPaise: number;
   preorderDiscountPaise: number;
   redeemedPaise: number;
   finalPaise: number;
@@ -404,15 +408,81 @@ export async function finalizeOrder(args: {
   if (grossPaise <= 0) {
     throw new Error("order total must be positive");
   }
+  // Bundle discount: for each requested bundle slug, verify every dish
+  // in that bundle is present in the cart in sufficient quantity. If
+  // valid, apply the bundle's (originalPricePaise - pricePaise) saving.
+  // We track a per-dish "remaining qty" budget so the same line cannot
+  // satisfy two overlapping bundles. Unknown / unsatisfied bundles are
+  // silently dropped — never throw, since stale client state shouldn't
+  // block checkout.
+  let bundleDiscountPaise = 0;
+  // Preserve multiplicity: a client that bought the same combo twice
+  // sends the slug twice and gets two discounts (assuming the cart has
+  // enough stock). We dedupe only for the catalog lookup.
+  const requestedSlugs = (args.bundleSlugs ?? []).filter(
+    (s) => typeof s === "string" && s.length > 0,
+  );
+  if (requestedSlugs.length > 0) {
+    const uniqueSlugs = Array.from(new Set(requestedSlugs));
+    const bundleRows = await db
+      .select()
+      .from(bundlesTable)
+      .where(inArray(bundlesTable.slug, uniqueSlugs));
+    const bundleBySlug = new Map(bundleRows.map((b) => [b.slug, b]));
+    const remaining = new Map<number, number>();
+    for (const it of args.items) {
+      remaining.set(
+        it.id,
+        (remaining.get(it.id) ?? 0) + Math.max(0, Math.floor(it.qty)),
+      );
+    }
+    // Apply each requested instance independently. If a bundle row has
+    // duplicate dish IDs, the frequency map ensures we only accept it
+    // when the cart has enough of each component to cover the duplicates.
+    // Apply higher-savings bundles first so overlapping bundles resolve
+    // deterministically and in the user's favor.
+    const expanded = requestedSlugs
+      .map((s) => bundleBySlug.get(s))
+      .filter((b): b is NonNullable<typeof b> => Boolean(b));
+    expanded.sort(
+      (a, b) =>
+        (b.originalPricePaise - b.pricePaise) -
+        (a.originalPricePaise - a.pricePaise),
+    );
+    for (const b of expanded) {
+      const dishIds = Array.isArray(b.dishIds) ? b.dishIds : [];
+      if (dishIds.length === 0) continue;
+      const required = new Map<number, number>();
+      for (const id of dishIds) {
+        required.set(id, (required.get(id) ?? 0) + 1);
+      }
+      let satisfiable = true;
+      for (const [id, need] of required) {
+        if ((remaining.get(id) ?? 0) < need) {
+          satisfiable = false;
+          break;
+        }
+      }
+      if (!satisfiable) continue;
+      for (const [id, need] of required) {
+        remaining.set(id, (remaining.get(id) ?? 0) - need);
+      }
+      const saving = Math.max(0, b.originalPricePaise - b.pricePaise);
+      bundleDiscountPaise += saving;
+    }
+    // Cap so a malformed catalog can never push the order negative.
+    bundleDiscountPaise = Math.min(bundleDiscountPaise, grossPaise);
+  }
+  const grossAfterBundles = grossPaise - bundleDiscountPaise;
   // Pre-order discount: 5% off the meal subtotal when scheduled for the
   // future. Floored to whole paise; never negative.
   const isScheduled =
     args.scheduledFor instanceof Date &&
     args.scheduledFor.getTime() > Date.now();
   const preorderDiscountPaise = isScheduled
-    ? Math.floor((grossPaise * PREORDER_DISCOUNT_BPS) / 10_000)
+    ? Math.floor((grossAfterBundles * PREORDER_DISCOUNT_BPS) / 10_000)
     : 0;
-  const discountedGross = grossPaise - preorderDiscountPaise;
+  const discountedGross = grossAfterBundles - preorderDiscountPaise;
   const requested = Math.max(0, Math.floor(args.applyCreditsPaise ?? 0));
   return db.transaction(async (tx) => {
     // 1. Persist a real server-side order row, idempotent on
@@ -486,6 +556,7 @@ export async function finalizeOrder(args: {
         orderId: args.orderId,
         serverOrderId,
         grossPaise: existing?.grossPaise ?? discountedGross,
+        bundleDiscountPaise,
         preorderDiscountPaise,
         redeemedPaise: existing?.redeemedPaise ?? 0,
         finalPaise: existing?.finalPaise ?? discountedGross,
@@ -557,6 +628,7 @@ export async function finalizeOrder(args: {
       orderId: args.orderId,
       serverOrderId,
       grossPaise: discountedGross,
+      bundleDiscountPaise,
       preorderDiscountPaise,
       redeemedPaise: redeemed,
       finalPaise,

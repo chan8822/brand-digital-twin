@@ -246,6 +246,7 @@ const finalizeOrderSchema = z.object({
     .optional(),
   applyCreditsPaise: z.number().int().nonnegative().max(10_000_000).optional(),
   scheduledFor: z.string().datetime().optional(),
+  bundleSlugs: z.array(z.string().min(1).max(64)).max(10).optional(),
 });
 
 router.post("/orders/finalize", async (req: Request, res: Response) => {
