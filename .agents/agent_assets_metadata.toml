@@ -1,5 +1,4 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "PCqMtBjeHeqQPUOuaesOJ"
@@ -12,3 +11,9 @@ id = "QKenDr9C2vH9BQGgTof7k"
 uri = "file://artifacts/tanmatra-mobile/assets/images/icon.png"
 type = "image"
 title = "tanmatra mobile icon"
+
+[[outputs]]
+id = "y_niAHRjgQFcnkZcuuZO8"
+uri = "file://.local/audits/customer-journey-ux-audit.md"
+type = "text"
+title = "Customer Journey UX Audit"
