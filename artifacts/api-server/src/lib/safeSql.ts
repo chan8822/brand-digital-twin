@@ -134,6 +134,11 @@ const ALLOWED_TABLE_NAMES = new Set(SAFE_SCHEMA.map((t) => t.name));
 // word starts a SQL statement form, not a column reference.
 const FORBIDDEN_SUBSTRINGS = [
   "pg_", "information_schema", ";--", "/*", "*/", "\\copy", "lo_",
+  // Double-quoted identifiers would let a caller reference base tables like
+  // "orders" or "users" that the FROM/JOIN allowlist regex (which only
+  // matches unquoted lowercase identifiers) wouldn't catch. All safe_*
+  // views are unquoted lowercase, so callers never need quoted identifiers.
+  '"',
 ];
 const FORBIDDEN_LEADING_KEYWORDS = [
   "insert", "update", "delete", "drop", "alter", "create", "truncate",
