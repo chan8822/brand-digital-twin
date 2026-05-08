@@ -17,6 +17,7 @@ import forecastingRouter from "./forecasting";
 import menuRouter from "./menu";
 import menuAssetsRouter from "./menuAssets";
 import cmsAgentRouter from "./cmsAgent";
+import menuEngineeringRouter from "./menuEngineering";
 
 const router: IRouter = Router();
 
@@ -38,5 +39,6 @@ router.use(forecastingRouter);
 router.use(menuRouter);
 router.use(menuAssetsRouter);
 router.use(cmsAgentRouter);
+router.use(menuEngineeringRouter);
 
 export default router;

@@ -18,6 +18,7 @@ const FOOTER_LINKS = {
     { label: "RD Advisory Board", href: "/rd-board" },
     { label: "Health Assessment", href: "/health-quiz" },
     { label: "Ops Dashboard", href: "/admin/ops" },
+    { label: "Menu Engineering", href: "/admin/menu-engineering" },
   ],
   legal: [
     { label: "Privacy Policy", href: "/privacy" },

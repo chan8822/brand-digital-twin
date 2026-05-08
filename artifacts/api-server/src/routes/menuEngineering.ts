@@ -1,0 +1,323 @@
+import { Router, type IRouter, type Request, type Response } from "express";
+import { z } from "zod/v4";
+import {
+  approvePricingSuggestion,
+  buildPricingSuggestionsForRun,
+  dismissPricingSuggestion,
+  getLatestRun,
+  getRunStats,
+  listPendingSuggestions,
+  listSuggestionsForSlug,
+  runMenuEngineering,
+} from "../lib/menuEngineering";
+import {
+  createReview,
+  getSummariesForActiveMenu,
+  getSummary,
+  listReviews,
+  summarizeAllReviews,
+  summarizeReviewsForSlug,
+} from "../lib/dishReviews";
+
+const router: IRouter = Router();
+
+function isCatalogRequest(req: Request): boolean {
+  const adminToken = process.env["RD_ADMIN_TOKEN"];
+  const headerToken = req.header("x-admin-token");
+  if (adminToken && headerToken && headerToken === adminToken) return true;
+  const opsAllow = (process.env["OPS_USER_IDS"] ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const catalogAllow = (process.env["CATALOG_USER_IDS"] ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (
+    req.isAuthenticated() &&
+    (catalogAllow.includes(req.user.id) || opsAllow.includes(req.user.id))
+  ) {
+    return true;
+  }
+  return false;
+}
+
+function requireCatalog(req: Request, res: Response): boolean {
+  if (isCatalogRequest(req)) return true;
+  res.status(403).json({ error: "catalog scope required" });
+  return false;
+}
+
+function userId(req: Request): string | null {
+  return req.isAuthenticated() ? (req.user.id ?? null) : null;
+}
+
+function sendError(res: Response, err: unknown): void {
+  const msg = err instanceof Error ? err.message : String(err);
+  const lower = msg.toLowerCase();
+  let code = 500;
+  if (lower.includes("not found")) code = 404;
+  else if (lower.includes("already decided") || lower.includes("invalid"))
+    code = 400;
+  res.status(code).json({ error: msg });
+}
+
+// ---- Menu engineering --------------------------------------------------------
+
+router.get(
+  "/menu-engineering/matrix",
+  async (req: Request, res: Response) => {
+    if (!requireCatalog(req, res)) return;
+    try {
+      const run = await getLatestRun();
+      if (!run) {
+        res.json({ run: null, stats: [], summaries: [] });
+        return;
+      }
+      const [stats, summaryMap] = await Promise.all([
+        getRunStats(run.id),
+        getSummariesForActiveMenu(),
+      ]);
+      res.json({
+        run,
+        stats,
+        summaries: [...summaryMap.values()],
+      });
+    } catch (err) {
+      sendError(res, err);
+    }
+  },
+);
+
+const runBody = z
+  .object({ sinceDays: z.number().int().min(1).max(180).optional() })
+  .default({});
+
+router.post("/menu-engineering/run", async (req: Request, res: Response) => {
+  if (!requireCatalog(req, res)) return;
+  const parsed = runBody.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    res.status(400).json({ error: "invalid payload" });
+    return;
+  }
+  try {
+    const result = await runMenuEngineering({
+      sinceDays: parsed.data.sinceDays,
+      operatorId: userId(req),
+    });
+    res.json(result);
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+router.get(
+  "/menu-engineering/dish/:slug",
+  async (req: Request, res: Response) => {
+    if (!requireCatalog(req, res)) return;
+    const slug = String(req.params["slug"] ?? "");
+    if (!slug) {
+      res.status(400).json({ error: "missing slug" });
+      return;
+    }
+    try {
+      const run = await getLatestRun();
+      const stats = run
+        ? (await getRunStats(run.id)).filter((s) => s.slug === slug)
+        : [];
+      const [suggestions, reviews, summary] = await Promise.all([
+        listSuggestionsForSlug(slug),
+        listReviews(slug, 50),
+        getSummary(slug),
+      ]);
+      res.json({
+        run,
+        stat: stats[0] ?? null,
+        suggestions,
+        reviews,
+        summary,
+      });
+    } catch (err) {
+      sendError(res, err);
+    }
+  },
+);
+
+// ---- Pricing suggestions -----------------------------------------------------
+
+router.get(
+  "/menu-engineering/pricing-suggestions",
+  async (req: Request, res: Response) => {
+    if (!requireCatalog(req, res)) return;
+    const runIdRaw = req.query["runId"];
+    const runIdNum = runIdRaw ? Number(runIdRaw) : NaN;
+    try {
+      const rows = await listPendingSuggestions(
+        Number.isFinite(runIdNum) ? runIdNum : undefined,
+      );
+      res.json({ rows });
+    } catch (err) {
+      sendError(res, err);
+    }
+  },
+);
+
+const buildBody = z.object({ runId: z.number().int().positive().optional() });
+
+router.post(
+  "/menu-engineering/pricing-suggestions/run",
+  async (req: Request, res: Response) => {
+    if (!requireCatalog(req, res)) return;
+    const parsed = buildBody.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      res.status(400).json({ error: "invalid payload" });
+      return;
+    }
+    try {
+      let runId = parsed.data.runId;
+      if (!runId) {
+        const latest = await getLatestRun();
+        if (!latest) {
+          res
+            .status(400)
+            .json({ error: "run a menu engineering pass first" });
+          return;
+        }
+        runId = latest.id;
+      }
+      const rows = await buildPricingSuggestionsForRun(runId, userId(req));
+      res.json({ rows });
+    } catch (err) {
+      sendError(res, err);
+    }
+  },
+);
+
+const idParam = z.object({ id: z.coerce.number().int().positive() });
+
+router.post(
+  "/menu-engineering/pricing-suggestions/:id/approve",
+  async (req: Request, res: Response) => {
+    if (!requireCatalog(req, res)) return;
+    const sp = idParam.safeParse(req.params);
+    if (!sp.success) {
+      res.status(400).json({ error: "invalid id" });
+      return;
+    }
+    try {
+      const out = await approvePricingSuggestion(sp.data.id, userId(req));
+      res.json(out);
+    } catch (err) {
+      sendError(res, err);
+    }
+  },
+);
+
+router.post(
+  "/menu-engineering/pricing-suggestions/:id/dismiss",
+  async (req: Request, res: Response) => {
+    if (!requireCatalog(req, res)) return;
+    const sp = idParam.safeParse(req.params);
+    if (!sp.success) {
+      res.status(400).json({ error: "invalid id" });
+      return;
+    }
+    try {
+      const out = await dismissPricingSuggestion(sp.data.id, userId(req));
+      res.json(out);
+    } catch (err) {
+      sendError(res, err);
+    }
+  },
+);
+
+// ---- Reviews -----------------------------------------------------------------
+
+const createReviewBody = z.object({
+  slug: z.string().min(1).max(128),
+  rating: z.number().int().min(1).max(5),
+  body: z.string().max(2000).default(""),
+});
+
+// Customer-facing: any authenticated user can leave a review.
+router.post("/dish-reviews", async (req: Request, res: Response) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "login required" });
+    return;
+  }
+  const parsed = createReviewBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "invalid payload" });
+    return;
+  }
+  try {
+    const review = await createReview({
+      userId: req.user.id,
+      slug: parsed.data.slug,
+      rating: parsed.data.rating,
+      body: parsed.data.body,
+    });
+    res.json({ review });
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+router.get("/dish-reviews/:slug", async (req: Request, res: Response) => {
+  const slug = String(req.params["slug"] ?? "");
+  if (!slug) {
+    res.status(400).json({ error: "missing slug" });
+    return;
+  }
+  try {
+    const [reviews, summary] = await Promise.all([
+      listReviews(slug, 50),
+      getSummary(slug),
+    ]);
+    // Public endpoint — strip reviewer userId so we don't leak who said what.
+    // Catalog-scoped endpoints (the dish detail view) get the full row.
+    const publicReviews = reviews.map((r) => ({
+      id: r.id,
+      slug: r.slug,
+      rating: r.rating,
+      body: r.body,
+      createdAt: r.createdAt,
+    }));
+    res.json({ reviews: publicReviews, summary });
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+router.post(
+  "/dish-reviews/:slug/summarize",
+  async (req: Request, res: Response) => {
+    if (!requireCatalog(req, res)) return;
+    const slug = String(req.params["slug"] ?? "");
+    if (!slug) {
+      res.status(400).json({ error: "missing slug" });
+      return;
+    }
+    try {
+      const summary = await summarizeReviewsForSlug(slug);
+      res.json({ summary });
+    } catch (err) {
+      sendError(res, err);
+    }
+  },
+);
+
+router.post(
+  "/dish-reviews/summarize-all",
+  async (req: Request, res: Response) => {
+    if (!requireCatalog(req, res)) return;
+    try {
+      const out = await summarizeAllReviews();
+      res.json(out);
+    } catch (err) {
+      sendError(res, err);
+    }
+  },
+);
+
+export default router;

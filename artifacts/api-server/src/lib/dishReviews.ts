@@ -1,0 +1,230 @@
+import { and, desc, eq, sql } from "drizzle-orm";
+import { generateText } from "ai";
+import {
+  db,
+  dishReviewSummariesTable,
+  dishReviewsTable,
+  menuItemsTable,
+  type DishReview,
+  type DishReviewSummary,
+} from "@workspace/db";
+import { DEFAULT_MODEL_ID, getModel } from "./ai/model";
+import { logger } from "./logger";
+
+// Customer reviews are slug-keyed so they're independent of menu_items
+// edits/deletes. Ratings are 1..5 inclusive; body is bounded.
+export interface CreateReviewInput {
+  userId: string | null;
+  slug: string;
+  rating: number;
+  body: string;
+}
+
+export async function createReview(
+  input: CreateReviewInput,
+): Promise<DishReview> {
+  const rating = Math.max(1, Math.min(5, Math.round(input.rating)));
+  const body = input.body.trim().slice(0, 2000);
+  const [row] = await db
+    .insert(dishReviewsTable)
+    .values({
+      userId: input.userId,
+      slug: input.slug,
+      rating,
+      body,
+      sentiment: null,
+    })
+    .returning();
+  if (!row) throw new Error("failed to insert review");
+  return row;
+}
+
+export async function listReviews(
+  slug: string,
+  limit = 50,
+): Promise<DishReview[]> {
+  return db
+    .select()
+    .from(dishReviewsTable)
+    .where(eq(dishReviewsTable.slug, slug))
+    .orderBy(desc(dishReviewsTable.createdAt))
+    .limit(Math.max(1, Math.min(200, limit)));
+}
+
+export async function getSummary(
+  slug: string,
+): Promise<DishReviewSummary | null> {
+  const [row] = await db
+    .select()
+    .from(dishReviewSummariesTable)
+    .where(eq(dishReviewSummariesTable.slug, slug))
+    .limit(1);
+  return row ?? null;
+}
+
+export async function getSummariesForSlugs(
+  slugs: string[],
+): Promise<Map<string, DishReviewSummary>> {
+  if (slugs.length === 0) return new Map();
+  const rows = await db
+    .select()
+    .from(dishReviewSummariesTable);
+  const wanted = new Set(slugs);
+  return new Map(rows.filter((r) => wanted.has(r.slug)).map((r) => [r.slug, r]));
+}
+
+interface ReviewSummaryFields {
+  mostLoved: string;
+  commonGripe: string;
+  trend: "improving" | "declining" | "stable";
+}
+
+const SUMMARIZER_TIMEOUT_MS = 8_000;
+const MIN_REVIEWS = 3;
+
+// Ask the model to extract three small fields from the recent reviews.
+// Falls back to a deterministic, frequency-based summary if the model fails.
+async function summarizeWithModel(
+  reviews: DishReview[],
+): Promise<ReviewSummaryFields> {
+  const fallback = (): ReviewSummaryFields => {
+    const positives = reviews.filter((r) => r.rating >= 4);
+    const negatives = reviews.filter((r) => r.rating <= 2);
+    return {
+      mostLoved:
+        positives[0]?.body.slice(0, 140) ??
+        "Customers haven't called out a clear favourite yet.",
+      commonGripe:
+        negatives[0]?.body.slice(0, 140) ??
+        "No common complaints in recent reviews.",
+      trend: "stable",
+    };
+  };
+  const slim = reviews.slice(0, 40).map((r) => ({
+    rating: r.rating,
+    body: r.body.slice(0, 280),
+    daysAgo: Math.round(
+      (Date.now() - new Date(r.createdAt).getTime()) / 86_400_000,
+    ),
+  }));
+  const prompt = `You are summarising customer reviews for a single dish at Tanmatra.
+Read the JSON list of reviews below. Return STRICT JSON with exactly these
+fields and no others:
+
+{
+  "mostLoved": "one short phrase (<=80 chars) describing what customers love most, or empty string",
+  "commonGripe": "one short phrase (<=80 chars) describing the most common complaint, or empty string",
+  "trend": "improving" | "declining" | "stable"
+}
+
+Rules: plain English. No marketing fluff. No medical claims. If there is no
+clear signal, use empty strings and trend "stable".
+
+Reviews:
+${JSON.stringify(slim, null, 2)}`;
+  try {
+    const result = await Promise.race([
+      generateText({ model: getModel(), prompt }),
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error("review summary timeout")),
+          SUMMARIZER_TIMEOUT_MS,
+        ),
+      ),
+    ]);
+    const text = result.text.trim().replace(/^```json\s*|```\s*$/g, "");
+    const parsed = JSON.parse(text) as Partial<ReviewSummaryFields>;
+    const trend: ReviewSummaryFields["trend"] =
+      parsed.trend === "improving" || parsed.trend === "declining"
+        ? parsed.trend
+        : "stable";
+    return {
+      mostLoved: String(parsed.mostLoved ?? "").slice(0, 200),
+      commonGripe: String(parsed.commonGripe ?? "").slice(0, 200),
+      trend,
+    };
+  } catch (err) {
+    logger.warn({ err }, "review summarizer fell back to template");
+    return fallback();
+  }
+}
+
+export async function summarizeReviewsForSlug(
+  slug: string,
+): Promise<DishReviewSummary | null> {
+  const reviews = await listReviews(slug, 100);
+  if (reviews.length < MIN_REVIEWS) {
+    // Not enough signal — wipe any stale summary so the UI shows empty state.
+    await db
+      .delete(dishReviewSummariesTable)
+      .where(eq(dishReviewSummariesTable.slug, slug));
+    return null;
+  }
+  const fields = await summarizeWithModel(reviews);
+  const avgX10 = Math.round(
+    (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length) * 10,
+  );
+  const [row] = await db
+    .insert(dishReviewSummariesTable)
+    .values({
+      slug,
+      mostLoved: fields.mostLoved,
+      commonGripe: fields.commonGripe,
+      trend: fields.trend,
+      sampleSize: reviews.length,
+      averageRating: avgX10,
+      modelId: DEFAULT_MODEL_ID,
+      generatedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: dishReviewSummariesTable.slug,
+      set: {
+        mostLoved: fields.mostLoved,
+        commonGripe: fields.commonGripe,
+        trend: fields.trend,
+        sampleSize: reviews.length,
+        averageRating: avgX10,
+        modelId: DEFAULT_MODEL_ID,
+        generatedAt: new Date(),
+      },
+    })
+    .returning();
+  return row ?? null;
+}
+
+// Summarize every slug that has reviews. Returns counts only — keeps the
+// caller log small even when many dishes are summarized.
+export async function summarizeAllReviews(): Promise<{
+  attempted: number;
+  summarized: number;
+}> {
+  const rows = await db
+    .select({
+      slug: dishReviewsTable.slug,
+      n: sql<number>`count(*)::int`.as("n"),
+    })
+    .from(dishReviewsTable)
+    .groupBy(dishReviewsTable.slug);
+  let summarized = 0;
+  for (const r of rows) {
+    if (r.n < MIN_REVIEWS) continue;
+    try {
+      const out = await summarizeReviewsForSlug(r.slug);
+      if (out) summarized += 1;
+    } catch (err) {
+      logger.error({ err, slug: r.slug }, "review summarize failed");
+    }
+  }
+  return { attempted: rows.length, summarized };
+}
+
+// Used by the menu engineering dashboard to attach a summary chip to dishes.
+export async function getSummariesForActiveMenu(): Promise<
+  Map<string, DishReviewSummary>
+> {
+  const items = await db
+    .select({ slug: menuItemsTable.slug })
+    .from(menuItemsTable)
+    .where(and(eq(menuItemsTable.isAvailable, true)));
+  return getSummariesForSlugs(items.map((i) => i.slug));
+}

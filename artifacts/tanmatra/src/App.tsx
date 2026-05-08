@@ -43,6 +43,7 @@ import AdminAiRuns from "@/pages/AdminAiRuns";
 import AdminOpsAgent from "@/pages/AdminOpsAgent";
 import AdminCmsAgent from "@/pages/AdminCmsAgent";
 import AdminForecasting from "@/pages/AdminForecasting";
+import AdminMenuEngineering from "@/pages/AdminMenuEngineering";
 import GroupOrder from "@/pages/GroupOrder";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
@@ -139,6 +140,14 @@ export default function App() {
                       element={
                         <AdminGate>
                           <AdminForecasting />
+                        </AdminGate>
+                      }
+                    />
+                    <Route
+                      path="/admin/menu-engineering"
+                      element={
+                        <AdminGate>
+                          <AdminMenuEngineering />
                         </AdminGate>
                       }
                     />
