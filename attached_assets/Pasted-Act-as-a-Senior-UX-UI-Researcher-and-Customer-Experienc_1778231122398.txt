@@ -1,0 +1,29 @@
+Act as a Senior UX/UI Researcher and Customer Experience (CX) Auditor. Your task is to conduct a comprehensive audit of "Tanmatra", a Clinical-Grade Precision Nutrition platform. 
+
+Tanmatra offers RD-verified meals, 60-second metabolic assessments, cohort challenges, and specialized nutritional protocols (Wellness, Performance, and Clinical). 
+
+Your goal is to evaluate the end-to-end customer experience to ensure the platform is highly user-friendly, easy to navigate, and structurally guided. Users should never feel lost about their next action. Furthermore, ensure that the customer journeys serve both the user's health goals and the business's conversion goals.
+
+Please structure your audit report across the following critical dimensions:
+
+1. Information Architecture (IA) & Navigation
+- Evaluate the main navigation (Menu, Recipes, Challenges, RD Plans, Orders, Subscriptions, Track, Cart). Is the cognitive load too high?
+- Assess the categorization of the three core protocols: Wellness, Performance, and Clinical. Are they clearly differentiated for the user?
+- How intuitive is it to move between exploring meals, checking out, and managing subscriptions or preferences?
+
+2. Onboarding & Guided User Journeys
+Analyze the flow and guidance for the following key user journeys:
+- Journey A (The Assessment Flow): A new user arrives and takes the "60-second metabolic assessment". Is there a clear call-to-action (CTA)? Are the next steps post-assessment obvious and personalized?
+- Journey B (The E-commerce Flow): A user browsing the "Curated Selection" wants to add a meal (e.g., Aglio Olio or Signature Quinoa Salad) to their Cart and check out. Are macro-nutrient details (Protein, Carbs, Fats, Calories) presented clearly without overwhelming the user?
+- Journey C (The Clinical/Service Flow): A user attempting to "Book RD" or join a "Cohort Challenge" (e.g., 14-Day Anti-Inflammatory Reset). Is the value proposition clear, and is the booking/joining process frictionless?
+
+3. Clarity, Trust, and Cognitive Load
+- Evaluate the use of clinical and medical terminology (e.g., "Mifflin-St Jeor BMR Engine", "Macro-Nutrient Precision", "ADA compliant"). Does it build trust, or does it risk confusing the average user?
+- Assess visual hierarchy and signposting. Does the user always know where they are, what step they are on, and how to go back or get help?
+
+4. Business & User Goal Alignment
+- Are the primary business drivers (Assessments, Subscriptions, and RD consultations) strategically placed without feeling aggressively pushy?
+- Do users have a seamless transition from one-off orders to recurring "My Plans/Subscriptions"?
+
+5. Actionable Recommendations
+- Provide a prioritized list of UX/UI improvements (High/Medium/Low impact) to reduce friction, improve pathfinding, and prevent users from feeling lost or abandoning their journey.
