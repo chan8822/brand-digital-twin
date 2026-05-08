@@ -35,6 +35,7 @@ import {
   rdAuditLogTable,
   rdClientSummariesTable,
   rdMessagesTable,
+  type AdherenceEvent,
   rdPlanProposalsTable,
   rdUsersTable,
   mealPlansTable,
@@ -47,6 +48,7 @@ import {
   draftPlanForReview,
   detectAdherenceForPlan,
   buildNudgeText,
+  rewriteNudge,
   shouldEscalateToRd,
 } from "../lib/rdCopilot";
 
@@ -818,8 +820,7 @@ router.post(
       return;
     }
 
-    let body = parsed.data.body ?? "";
-    let event = null as null | typeof adherenceEventsTable.$inferSelect;
+    let event: AdherenceEvent | null = null;
     if (parsed.data.eventId) {
       const [row] = await db
         .select()
@@ -836,8 +837,41 @@ router.post(
         return;
       }
       event = row;
-      if (!body) body = buildNudgeText(row);
     }
+
+    // RD-typed text always wins. Otherwise: when an event drives the
+    // nudge, ask Gemini to rewrite the deterministic baseline as a
+    // coach-style message, falling back to the baseline on failure.
+    let body = parsed.data.body?.trim() ?? "";
+    let baseline: string | null = null;
+    let nudgeModel: string | null = null;
+    let usedFallback: boolean | null = null;
+    let fallbackReason: string | undefined;
+    let rdAuthored = body.length > 0;
+
+    if (!body && event) {
+      baseline = buildNudgeText(event);
+      const [summaryRow] = await db
+        .select({ summary: rdClientSummariesTable.summary })
+        .from(rdClientSummariesTable)
+        .where(
+          and(
+            eq(rdClientSummariesTable.userId, userId),
+            eq(rdClientSummariesTable.rdSlug, rdSlug),
+          ),
+        )
+        .limit(1);
+      const rewrite = await rewriteNudge({
+        event,
+        clientSummary: summaryRow?.summary ?? null,
+        rdSlug,
+      });
+      body = rewrite.text;
+      nudgeModel = rewrite.model;
+      usedFallback = rewrite.usedFallback;
+      fallbackReason = rewrite.fallbackReason;
+    }
+
     if (!body) {
       res.status(400).json({ error: "body or eventId required" });
       return;
@@ -866,8 +900,27 @@ router.post(
       messageId: result.id,
       eventId: event?.id ?? null,
       eventKind: event?.kind ?? null,
+      // Record both the deterministic baseline and the message that was
+      // actually sent so quality review can compare AI rewrites against
+      // the template they replaced.
+      baseline,
+      sentBody: body,
+      model: nudgeModel,
+      usedFallback,
+      fallbackReason: fallbackReason ?? null,
+      rdAuthored,
     });
-    res.json({ message: result });
+    res.json({
+      message: result,
+      nudge: event
+        ? {
+            baseline,
+            model: nudgeModel,
+            usedFallback,
+            rdAuthored,
+          }
+        : null,
+    });
   },
 );
 

@@ -11,3 +11,5 @@ export {
   MISSED_PROTEIN_RATIO,
 } from "./adherence";
 export type { AdherenceScanResult } from "./adherence";
+export { rewriteNudge } from "./nudgeWriter";
+export type { RewriteNudgeInput, RewriteNudgeResult } from "./nudgeWriter";
