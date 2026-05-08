@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm/sql";
 import {
   db,
   supportTicketsTable,
+  supportEvalExamplesTable,
   ordersTable,
   aiRunsTable,
   SUPPORT_CATEGORIES,
@@ -360,6 +361,38 @@ export async function processNewTicket(
   return draftReply(ticketId);
 }
 
+async function appendEvalExample(
+  ticket: SupportTicket,
+  label: "accepted" | "rejected",
+  finalReply: string | null,
+): Promise<void> {
+  try {
+    await db.insert(supportEvalExamplesTable).values({
+      ticketId: ticket.id,
+      label,
+      subject: ticket.subject,
+      body: ticket.body,
+      aiCategory: ticket.category ?? null,
+      aiPriority: ticket.priority ?? null,
+      aiTeam: ticket.team ?? null,
+      humanCategory: ticket.humanCategory ?? null,
+      humanPriority: ticket.humanPriority ?? null,
+      humanTeam: ticket.humanTeam ?? null,
+      aiDraft: ticket.draftReply ?? null,
+      finalReply,
+      rejectionReason: ticket.rejectionReason ?? null,
+      modelId: DEFAULT_MODEL_ID,
+      triageRunId: ticket.triageRunId ?? null,
+      draftRunId: ticket.draftRunId ?? null,
+    });
+  } catch (err) {
+    logger.warn(
+      { err, ticketId: ticket.id, label },
+      "support_eval_examples insert failed",
+    );
+  }
+}
+
 export async function sendReply(
   ticketId: number,
   reply: string,
@@ -385,10 +418,14 @@ export async function sendReply(
   const finalPriority =
     humanLabels?.priority ?? (existing.priority as SupportPriority | null);
   const finalTeam = humanLabels?.team ?? (existing.team as SupportTeam | null);
+  const safeReply = reply.slice(0, 8000);
+  // Status-transition guard: only move into 'sent' from a non-terminal
+  // state. Terminal tickets (already sent / rejected / resolved) must
+  // not be silently overwritten.
   const [updated] = await db
     .update(supportTicketsTable)
     .set({
-      sentReply: reply.slice(0, 8000),
+      sentReply: safeReply,
       sentBy: agentUserId,
       sentAt: new Date(),
       status: "sent",
@@ -396,9 +433,22 @@ export async function sendReply(
       humanPriority: finalPriority ?? null,
       humanTeam: finalTeam ?? null,
     })
-    .where(eq(supportTicketsTable.id, ticketId))
+    .where(
+      and(
+        eq(supportTicketsTable.id, ticketId),
+        notInArray(supportTicketsTable.status, [
+          "sent",
+          "rejected",
+          "resolved",
+        ]),
+      ),
+    )
     .returning();
-  return updated ?? null;
+  if (!updated) return null;
+  // Write-through to the eval dataset so accepted sends become labelled
+  // positive examples we can replay against future model versions.
+  await appendEvalExample(updated, "accepted", safeReply);
+  return updated;
 }
 
 export async function rejectDraft(
@@ -406,6 +456,7 @@ export async function rejectDraft(
   reason: string,
   agentUserId: string | null,
 ): Promise<SupportTicket | null> {
+  // Status-transition guard mirrors sendReply.
   const [updated] = await db
     .update(supportTicketsTable)
     .set({
@@ -414,9 +465,22 @@ export async function rejectDraft(
       rejectedAt: new Date(),
       status: "rejected",
     })
-    .where(eq(supportTicketsTable.id, ticketId))
+    .where(
+      and(
+        eq(supportTicketsTable.id, ticketId),
+        notInArray(supportTicketsTable.status, [
+          "sent",
+          "rejected",
+          "resolved",
+        ]),
+      ),
+    )
     .returning();
-  return updated ?? null;
+  if (!updated) return null;
+  // Write-through to the eval dataset: rejected drafts are the most
+  // valuable signal for the support agent's regression set.
+  await appendEvalExample(updated, "rejected", null);
+  return updated;
 }
 
 export async function listTickets(opts: {
