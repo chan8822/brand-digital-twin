@@ -6,6 +6,7 @@
   "scripts": {
     "hello": "tsx ./src/hello.ts",
     "seed-ops-data": "tsx ./src/seed-ops-data.ts",
+    "eval-menu-copy": "tsx ./src/eval-menu-copy.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

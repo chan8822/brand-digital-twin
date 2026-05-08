@@ -387,7 +387,7 @@ router.post("/menu/items/:slug/copy", async (req: Request, res: Response) => {
     res.status(404).json({ error: "not found" });
     return;
   }
-  const item = await applyCopyToItem(
+  const { item, warnings } = await applyCopyToItem(
     sp.data.slug,
     bp.data,
     req.user?.id ?? null,
@@ -399,12 +399,15 @@ router.post("/menu/items/:slug/copy", async (req: Request, res: Response) => {
     params: { slug: sp.data.slug, fields: Object.keys(bp.data) },
     beforeState: { name: before.name, description: before.description },
     afterState: item
-      ? { name: item.name, description: item.description }
+      ? { name: item.name, description: item.description, warnings }
       : null,
     status: "success",
-    reasoning: "copy accepted via REST",
+    reasoning:
+      warnings.length > 0
+        ? `copy accepted via REST; sanitised: ${warnings.join("; ")}`
+        : "copy accepted via REST",
   });
-  res.json({ item });
+  res.json({ item, warnings });
 });
 
 router.get("/menu/copy/missing", async (req: Request, res: Response) => {

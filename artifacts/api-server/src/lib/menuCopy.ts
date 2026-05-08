@@ -61,7 +61,7 @@ hype-y, never medical claims. Avoid words: "magical", "miracle", "best ever",
 "detox", "cure", "boost". Prefer simple sensory language and honest sourcing
 notes. Indian-English spelling. Keep promises modest and specific.`;
 
-const ALLOWED_ALLERGENS = [
+export const ALLOWED_ALLERGENS = [
   "milk",
   "egg",
   "wheat",
@@ -75,6 +75,57 @@ const ALLOWED_ALLERGENS = [
   "mustard",
   "sulphites",
 ];
+
+export const ALLOWED_CUISINE_TAGS = [
+  "north_indian",
+  "south_indian",
+  "pan_asian",
+  "mediterranean",
+  "continental",
+  "mexican",
+  "thai",
+  "italian",
+  "indo_chinese",
+  "gujarati",
+  "bengali",
+  "kerala",
+];
+
+export const ALLOWED_VIBE_TAGS = [
+  "comfort",
+  "light",
+  "post_workout",
+  "monsoon",
+  "summer_cool",
+  "festive",
+  "kids_friendly",
+  "office_lunch",
+  "late_night",
+  "immunity",
+  "gut_friendly",
+  "high_protein",
+  "low_carb",
+];
+
+function sanitizeTagList(
+  raw: string[] | undefined,
+  allowed: string[],
+  max: number,
+): { values: string[]; warnings: string[] } {
+  if (!raw) return { values: [], warnings: [] };
+  const warnings: string[] = [];
+  const out: string[] = [];
+  for (const t of raw) {
+    const norm = t.toLowerCase().trim().replace(/\s+/g, "_");
+    if (!allowed.includes(norm)) {
+      warnings.push(`dropped unknown tag "${t}"`);
+      continue;
+    }
+    if (!out.includes(norm)) out.push(norm);
+    if (out.length >= max) break;
+  }
+  return { values: out, warnings };
+}
 
 function buildPrompt(item: MenuItem, fields: CopyField[]): string {
   const knownIngredients = (item.tags ?? []).join(", ") || "(not provided)";
@@ -223,12 +274,22 @@ export function sanitizeCopy(
     if (v) proposed.seoDescription = v;
   }
   if (want("cuisineTags")) {
-    const v = arrOfStrings(o["cuisineTags"], 3);
-    if (v) proposed.cuisineTags = v;
+    const r = sanitizeTagList(
+      arrOfStrings(o["cuisineTags"], 8),
+      ALLOWED_CUISINE_TAGS,
+      3,
+    );
+    proposed.cuisineTags = r.values;
+    warnings.push(...r.warnings);
   }
   if (want("vibeTags")) {
-    const v = arrOfStrings(o["vibeTags"], 4);
-    if (v) proposed.vibeTags = v;
+    const r = sanitizeTagList(
+      arrOfStrings(o["vibeTags"], 8),
+      ALLOWED_VIBE_TAGS,
+      4,
+    );
+    proposed.vibeTags = r.values;
+    warnings.push(...r.warnings);
   }
   if (want("allergens")) {
     const result = sanitizeAllergens(arrOfStrings(o["allergens"], 8), item.isVeg);
@@ -314,27 +375,80 @@ export type AcceptCopyInput = Partial<{
   macros: MacrosEstimate;
 }>;
 
+export interface ApplyResult {
+  item: MenuItem | null;
+  warnings: string[];
+}
+
+// Sanitises an editor-accepted patch BEFORE writing. Every list-typed field is
+// re-validated against its whitelist (allergens, cuisine tags, vibe tags) so
+// even direct REST callers cannot inject unsafe values. Returns the sanitised
+// patch plus any warnings about dropped values.
+export function sanitizeAcceptedPatch(
+  patch: AcceptCopyInput,
+  isVeg: boolean,
+): { patch: AcceptCopyInput; warnings: string[] } {
+  const out: AcceptCopyInput = {};
+  const warnings: string[] = [];
+  if (patch.name !== undefined) out.name = patch.name;
+  if (patch.description !== undefined) out.description = patch.description;
+  if (patch.longDescription !== undefined)
+    out.longDescription = patch.longDescription;
+  if (patch.seoTitle !== undefined) out.seoTitle = patch.seoTitle;
+  if (patch.seoDescription !== undefined)
+    out.seoDescription = patch.seoDescription;
+  if (patch.allergens !== undefined) {
+    const r = sanitizeAllergens(patch.allergens, isVeg);
+    out.allergens = r.allergens;
+    warnings.push(...r.warnings);
+  }
+  if (patch.cuisineTags !== undefined) {
+    const r = sanitizeTagList(patch.cuisineTags, ALLOWED_CUISINE_TAGS, 3);
+    out.cuisineTags = r.values;
+    warnings.push(...r.warnings);
+  }
+  if (patch.vibeTags !== undefined) {
+    const r = sanitizeTagList(patch.vibeTags, ALLOWED_VIBE_TAGS, 4);
+    out.vibeTags = r.values;
+    warnings.push(...r.warnings);
+  }
+  if (patch.macros !== undefined) {
+    const m = safeMacros(patch.macros);
+    if (m) out.macros = m;
+    else warnings.push("rejected out-of-range macros on apply");
+  }
+  return { patch: out, warnings };
+}
+
 export async function applyCopyToItem(
   slug: string,
   patch: AcceptCopyInput,
   operatorId: string | null,
-): Promise<MenuItem | null> {
+): Promise<ApplyResult> {
+  const item = await db
+    .select()
+    .from(menuItemsTable)
+    .where(eq(menuItemsTable.slug, slug))
+    .limit(1)
+    .then((r) => r[0] ?? null);
+  if (!item) return { item: null, warnings: [] };
+  const { patch: clean, warnings } = sanitizeAcceptedPatch(patch, item.isVeg);
   const set: Record<string, unknown> = {};
-  if (patch.name !== undefined) set["name"] = patch.name;
-  if (patch.description !== undefined) set["description"] = patch.description;
-  if (patch.longDescription !== undefined)
-    set["longDescription"] = patch.longDescription;
-  if (patch.allergens !== undefined) set["allergens"] = patch.allergens;
-  if (patch.cuisineTags !== undefined) set["cuisineTags"] = patch.cuisineTags;
-  if (patch.vibeTags !== undefined) set["vibeTags"] = patch.vibeTags;
-  if (patch.seoTitle !== undefined) set["seoTitle"] = patch.seoTitle;
-  if (patch.seoDescription !== undefined)
-    set["seoDescription"] = patch.seoDescription;
-  if (patch.macros !== undefined) {
-    set["macros"] = patch.macros;
+  if (clean.name !== undefined) set["name"] = clean.name;
+  if (clean.description !== undefined) set["description"] = clean.description;
+  if (clean.longDescription !== undefined)
+    set["longDescription"] = clean.longDescription;
+  if (clean.allergens !== undefined) set["allergens"] = clean.allergens;
+  if (clean.cuisineTags !== undefined) set["cuisineTags"] = clean.cuisineTags;
+  if (clean.vibeTags !== undefined) set["vibeTags"] = clean.vibeTags;
+  if (clean.seoTitle !== undefined) set["seoTitle"] = clean.seoTitle;
+  if (clean.seoDescription !== undefined)
+    set["seoDescription"] = clean.seoDescription;
+  if (clean.macros !== undefined) {
+    set["macros"] = clean.macros;
     set["macrosAreEstimate"] = true;
   }
-  if (Object.keys(set).length === 0) return null;
+  if (Object.keys(set).length === 0) return { item, warnings };
   set["copyGeneratedAt"] = new Date();
   set["copyGeneratedBy"] = operatorId ?? "system";
   const [row] = await db
@@ -342,7 +456,7 @@ export async function applyCopyToItem(
     .set(set)
     .where(eq(menuItemsTable.slug, slug))
     .returning();
-  return row ?? null;
+  return { item: row ?? null, warnings };
 }
 
 export function detectMissingFields(item: MenuItem): CopyField[] {

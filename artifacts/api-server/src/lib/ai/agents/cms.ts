@@ -553,7 +553,7 @@ const generateCopy = defineTool({
         };
       }
       try {
-        const updated = await applyCopyToItem(
+        const { item: updated, warnings } = await applyCopyToItem(
           input.slug,
           input.accepted,
           ctx.userId,
@@ -568,15 +568,19 @@ const generateCopy = defineTool({
           },
           beforeState: { name: item.name, description: item.description },
           afterState: updated
-            ? { name: updated.name, description: updated.description }
+            ? { name: updated.name, description: updated.description, warnings }
             : null,
           status: "success",
-          reasoning: input.reasoning,
+          reasoning:
+            warnings.length > 0
+              ? `${input.reasoning} | sanitised: ${warnings.join("; ")}`
+              : input.reasoning,
         });
         return {
           success: true as const,
           applied: Object.keys(input.accepted),
           item: updated,
+          warnings,
         };
       } catch (err) {
         await recordOpsAction({
@@ -696,6 +700,7 @@ const bulkRegenerateCopy = defineTool({
       slug: string;
       ok: boolean;
       applied?: string[];
+      warnings?: string[];
       error?: string;
     }> = [];
     for (const t of targets) {
@@ -711,11 +716,16 @@ const bulkRegenerateCopy = defineTool({
           results.push({ slug: t.item.slug, ok: false, error: "empty draft" });
           continue;
         }
-        await applyCopyToItem(t.item.slug, accepted, ctx.userId);
+        const { warnings: applyWarnings } = await applyCopyToItem(
+          t.item.slug,
+          accepted,
+          ctx.userId,
+        );
         results.push({
           slug: t.item.slug,
           ok: true,
           applied: Object.keys(accepted),
+          ...(applyWarnings.length > 0 ? { warnings: applyWarnings } : {}),
         });
       } catch (err) {
         results.push({
