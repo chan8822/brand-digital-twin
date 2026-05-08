@@ -618,6 +618,9 @@ export async function finalizeOrder(args: {
       })
       .onConflictDoNothing({
         target: [ordersTable.userId, ordersTable.externalOrderId],
+        // Match the partial unique index on orders so Postgres can plan
+        // the conflict spec (without this it errors at plan time).
+        where: sql`${ordersTable.externalOrderId} is not null`,
       })
       .returning();
 
