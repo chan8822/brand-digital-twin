@@ -42,25 +42,43 @@ export async function createReview(
 
   // Moderation hook — same pattern as challenge posts. Audit row is
   // always written; visibility flips only on a 'hidden' verdict.
+  // Both text and photo are screened independently so a photo-only
+  // review still goes through the safety pipeline.
+  let hidden = false;
+  const mod = await import("./community/moderation");
   if (body) {
-    const { screenContent } = await import("./community/moderation");
     try {
-      const decision = await screenContent({
+      const decision = await mod.screenContent({
         text: body,
         contentType: "dish_review",
         contentId: row.id,
         userId: input.userId,
       });
-      if (decision.decision === "hidden") {
-        await db
-          .update(dishReviewsTable)
-          .set({ hidden: 1 })
-          .where(eq(dishReviewsTable.id, row.id));
-        return { ...row, hidden: 1 };
-      }
+      if (decision.decision === "hidden") hidden = true;
     } catch {
       // never block content creation on moderation failure
     }
+  }
+  if (photoUrl) {
+    try {
+      const decision = await mod.screenPhoto({
+        photoUrl,
+        contentType: "dish_review",
+        contentId: row.id,
+        userId: input.userId,
+        caption: body,
+      });
+      if (decision.decision === "hidden") hidden = true;
+    } catch {
+      // never block content creation on photo moderation failure
+    }
+  }
+  if (hidden) {
+    await db
+      .update(dishReviewsTable)
+      .set({ hidden: 1 })
+      .where(eq(dishReviewsTable.id, row.id));
+    return { ...row, hidden: 1 };
   }
   return row;
 }

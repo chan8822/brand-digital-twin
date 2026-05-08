@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { pickCohortsForPreferences } from "./cohorts";
 import {
+  applyDeterministicPhotoPolicy,
   applyDeterministicPolicy,
   decisionFromSeverity,
 } from "./moderation";
@@ -165,5 +166,29 @@ describe("computeProgress", () => {
       calorieFloor: null,
     });
     assert.equal(r.count, 1);
+  });
+});
+
+describe("applyDeterministicPhotoPolicy", () => {
+  it("allows benign https photo url", () => {
+    const r = applyDeterministicPhotoPolicy(
+      "https://images.example.com/dish.jpg",
+    );
+    assert.equal(decisionFromSeverity(r.severity), "allowed");
+  });
+  it("hides non-http urls", () => {
+    const r = applyDeterministicPhotoPolicy("javascript:alert(1)");
+    assert.equal(decisionFromSeverity(r.severity), "hidden");
+    assert.ok(r.categories.includes("spam"));
+  });
+  it("flags messenger media urls", () => {
+    const r = applyDeterministicPhotoPolicy(
+      "https://t.me/some/photo.jpg",
+    );
+    assert.equal(decisionFromSeverity(r.severity), "flagged");
+  });
+  it("treats empty url as no-op", () => {
+    const r = applyDeterministicPhotoPolicy("   ");
+    assert.equal(decisionFromSeverity(r.severity), "allowed");
   });
 });

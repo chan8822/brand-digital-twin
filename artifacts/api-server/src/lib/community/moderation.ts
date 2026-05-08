@@ -9,7 +9,7 @@
  * runs first (cheap + always-on), Gemini-based pass adds nuance when
  * available. Either pass can flag/hide; the union wins.
  */
-import { generateText } from "ai";
+import { generateText, type ModelMessage } from "ai";
 import {
   db,
   moderationDecisionsTable,
@@ -22,6 +22,8 @@ import { DEFAULT_MODEL_ID, getModel } from "../ai/model";
 import { logger } from "../logger";
 
 const TIMEOUT_MS = 6_000;
+const PHOTO_TIMEOUT_MS = 12_000;
+const MAX_PHOTO_BYTES = 6 * 1024 * 1024;
 
 const HIDE_THRESHOLD = 4; // severity >= 4 hides immediately
 const FLAG_THRESHOLD = 2; // severity >= 2 flags for human review
@@ -247,6 +249,164 @@ export async function screenContent(
       usedFallback,
     },
     "moderation decision",
+  );
+  return row;
+}
+
+export interface ScreenPhotoInput {
+  photoUrl: string;
+  contentType: ModerationContentType;
+  contentId: number;
+  userId: string | null;
+  /** Optional accompanying text — purely for the audit snapshot. */
+  caption?: string;
+}
+
+/**
+ * Cheap, no-network safety pass on a photo URL. We can catch obviously
+ * unsafe URL shapes (non-http, very long blob URLs, telegram/whatsapp
+ * media) before paying for a model call.
+ */
+export function applyDeterministicPhotoPolicy(photoUrl: string): {
+  severity: number;
+  categories: ModerationCategory[];
+  rationale: string;
+} {
+  const url = photoUrl.trim();
+  if (!url) {
+    return { severity: 0, categories: [], rationale: "empty url" };
+  }
+  if (!/^https?:\/\//i.test(url)) {
+    return {
+      severity: 4,
+      categories: ["spam", "other"],
+      rationale: "non-http photo url",
+    };
+  }
+  if (/(telegram\.me|whatsapp\.com|t\.me|wa\.me)/i.test(url)) {
+    return {
+      severity: 3,
+      categories: ["spam"],
+      rationale: "messenger photo url",
+    };
+  }
+  return { severity: 0, categories: [], rationale: "" };
+}
+
+async function fetchPhotoBytes(url: string): Promise<{
+  bytes: Uint8Array;
+  mimeType: string;
+} | null> {
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), PHOTO_TIMEOUT_MS);
+    const r = await fetch(url, { signal: ctrl.signal });
+    clearTimeout(timer);
+    if (!r.ok) return null;
+    const ct = r.headers.get("content-type") || "image/jpeg";
+    if (!ct.toLowerCase().startsWith("image/")) return null;
+    const buf = await r.arrayBuffer();
+    if (buf.byteLength > MAX_PHOTO_BYTES) return null;
+    return { bytes: new Uint8Array(buf), mimeType: ct.split(";")[0]!.trim() };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Screen a user-submitted photo URL. Always writes one
+ * `moderation_decisions` row with `contentType="challenge_photo"`,
+ * even when the AI pass is unavailable, so the audit trail is intact.
+ */
+export async function screenPhoto(
+  input: ScreenPhotoInput,
+): Promise<ModerationDecisionRow> {
+  const det = applyDeterministicPhotoPolicy(input.photoUrl);
+
+  let aiSeverity = 0;
+  let aiCats: ModerationCategory[] = [];
+  let aiRationale = "";
+  let model = "deterministic";
+  let usedFallback = true;
+
+  const fetched = await fetchPhotoBytes(input.photoUrl);
+  if (fetched) {
+    try {
+      const messages: ModelMessage[] = [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text:
+                'Moderate this user-submitted photo for a nutrition app. ' +
+                'Return STRICT JSON {"severity":0..5,"categories":string[],' +
+                '"rationale":string}. Categories from: harassment, hate, ' +
+                'self_harm, spam, medical_misinfo, off_topic, pii, sexual, ' +
+                'other. Severity: 0 fine food/lifestyle photo, 1 borderline, ' +
+                '2-3 needs human review, 4-5 must be hidden (nudity, gore, ' +
+                'graphic violence, hateful imagery).',
+            },
+            { type: "image", image: fetched.bytes, mediaType: fetched.mimeType },
+          ],
+        },
+      ];
+      const { text } = await Promise.race([
+        generateText({ model: getModel(), messages, temperature: 0 }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("timeout")), PHOTO_TIMEOUT_MS),
+        ),
+      ]);
+      const v = safeParseAiJson(text);
+      if (v) {
+        aiSeverity = v.severity;
+        aiCats = v.categories;
+        aiRationale = v.rationale;
+        model = DEFAULT_MODEL_ID;
+        usedFallback = false;
+      }
+    } catch (err) {
+      logger.warn(
+        { err: (err as Error).message, contentType: input.contentType },
+        "photo moderation: AI fallback",
+      );
+    }
+  }
+
+  const severity = Math.max(det.severity, aiSeverity);
+  const categories = [...new Set([...det.categories, ...aiCats])];
+  const decision = decisionFromSeverity(severity);
+  const rationale = [det.rationale, aiRationale].filter(Boolean).join(" | ");
+  const snapshot = `[photo] ${input.photoUrl}${
+    input.caption ? `\n${input.caption}` : ""
+  }`;
+
+  const [row] = await db
+    .insert(moderationDecisionsTable)
+    .values({
+      contentType: "challenge_photo",
+      contentId: input.contentId,
+      userId: input.userId,
+      decision,
+      severity,
+      categories,
+      rationale: rationale.slice(0, 4000),
+      actor: "ai",
+      model,
+      snapshot: snapshot.slice(0, 4000),
+    })
+    .returning();
+  if (!row) throw new Error("failed to write photo moderation decision");
+  logger.info(
+    {
+      decision,
+      severity,
+      contentType: input.contentType,
+      contentId: input.contentId,
+      photoFetched: Boolean(fetched),
+      usedFallback,
+    },
+    "photo moderation decision",
   );
   return row;
 }
