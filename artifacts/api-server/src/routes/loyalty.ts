@@ -247,6 +247,11 @@ const finalizeOrderSchema = z.object({
   applyCreditsPaise: z.number().int().nonnegative().max(10_000_000).optional(),
   scheduledFor: z.string().datetime().optional(),
   bundleSlugs: z.array(z.string().min(1).max(64)).max(10).optional(),
+  deliverySlotId: z.number().int().positive().nullable().optional(),
+  pickupLocationId: z.number().int().positive().nullable().optional(),
+  fulfillmentType: z.enum(["delivery", "pickup"]).optional(),
+  ecoPackagingOptIn: z.boolean().optional(),
+  deliveryInstructions: z.string().max(512).nullable().optional(),
 });
 
 router.post("/orders/finalize", async (req: Request, res: Response) => {
@@ -267,6 +272,20 @@ router.post("/orders/finalize", async (req: Request, res: Response) => {
     res.json(out);
   } catch (err) {
     req.log.error({ err }, "finalize order failed");
+    const msg = err instanceof Error ? err.message : "";
+    if (msg === "delivery slot full") {
+      res.status(409).json({ error: msg });
+      return;
+    }
+    if (
+      msg === "delivery slot required" ||
+      msg === "delivery slot not found" ||
+      msg === "pickup location required" ||
+      msg === "pickup location unavailable"
+    ) {
+      res.status(400).json({ error: msg });
+      return;
+    }
     res.status(500).json({ error: "finalize failed" });
   }
 });

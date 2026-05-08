@@ -124,12 +124,18 @@ export const loyaltyApi = {
     applyCreditsPaise?: number;
     scheduledFor?: string;
     bundleSlugs?: string[];
+    deliverySlotId?: number | null;
+    pickupLocationId?: number | null;
+    fulfillmentType?: "delivery" | "pickup";
+    ecoPackagingOptIn?: boolean;
+    deliveryInstructions?: string | null;
   }) =>
     request<{
       orderId: string;
       serverOrderId: number;
       grossPaise: number;
       bundleDiscountPaise: number;
+      pickupDiscountPaise: number;
       preorderDiscountPaise: number;
       redeemedPaise: number;
       finalPaise: number;

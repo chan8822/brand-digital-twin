@@ -45,6 +45,7 @@ export const subscriptionsTable = pgTable(
       .notNull(),
     mealsPerDelivery: integer("meals_per_delivery").notNull(),
     deliveryWindow: varchar("delivery_window", { length: 32 }).notNull(),
+    preferredSlotId: integer("preferred_slot_id"),
     status: varchar("status", { length: 16 })
       .$type<SubscriptionStatus>()
       .notNull()

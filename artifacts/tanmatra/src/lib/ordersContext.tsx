@@ -13,6 +13,13 @@ export interface PastOrder {
   total: number;
   scheduledFor?: string;
   preorderDiscount?: number;
+  pickupDiscount?: number;
+  fulfillmentType?: "delivery" | "pickup";
+  pickupLocationName?: string;
+  deliverySlotLabel?: string;
+  ecoPackagingOptIn?: boolean;
+  deliveryInstructions?: string;
+  serverOrderId?: number;
   address: {
     label: string;
     line1: string;

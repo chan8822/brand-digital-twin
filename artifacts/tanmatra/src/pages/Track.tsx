@@ -23,7 +23,12 @@ import {
   MapPin,
   AlertTriangle,
   ClipboardList,
+  Leaf,
+  NotebookPen,
+  Store,
+  CalendarClock,
 } from "lucide-react";
+import { fulfillmentApi, type PackagingReturnRow } from "@/lib/fulfillmentApi";
 
 const STEPS = [
   { status: "placed", label: "Placed", icon: CheckCircle2 },
@@ -65,6 +70,91 @@ function statusToStepIndex(status: string): number {
 
 function formatAbsoluteTime(iso: string): string {
   return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function PackagingReturnCard({
+  orderServerId,
+  delivered,
+}: {
+  orderServerId: number | undefined;
+  delivered: boolean;
+}) {
+  const [row, setRow] = useState<PackagingReturnRow | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!orderServerId) return;
+    let alive = true;
+    fulfillmentApi
+      .listPackagingReturns()
+      .then((r) => {
+        if (!alive) return;
+        const match = r.returns.find((x) => x.orderId === orderServerId) ?? null;
+        setRow(match);
+      })
+      .catch(() => setRow(null));
+    return () => {
+      alive = false;
+    };
+  }, [orderServerId]);
+
+  const status = row?.status ?? "opted_in";
+  const credit = row?.creditPaise ?? 2000;
+
+  async function confirmReturn() {
+    if (!orderServerId || busy) return;
+    setBusy(true);
+    try {
+      const r = await fulfillmentApi.confirmPackagingReturn(orderServerId);
+      setRow(r.packagingReturn);
+      toast.success(
+        r.alreadyCredited
+          ? "Container return already credited"
+          : `Rs.${(credit / 100).toFixed(0)} credit added — thanks for returning!`,
+      );
+    } catch {
+      toast.error("Could not confirm return — please try again");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card className="border-l-4 border-l-clinical-sage">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Leaf className="w-4 h-4 text-clinical-sage" />
+          Reusable Eco Packaging
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2 text-xs">
+        {status === "credited" ? (
+          <p className="text-clinical-sage">
+            Rs.{(credit / 100).toFixed(0)} credit applied to your account. Thanks for closing the loop.
+          </p>
+        ) : status === "returned" ? (
+          <p className="text-clinical-sage">
+            Return logged — credit will appear shortly.
+          </p>
+        ) : (
+          <>
+            <p className="text-clinical-zinc">
+              Hand the clean container back to the rider on your next order, or drop it at a partner pickup point. We'll add Rs.{(credit / 100).toFixed(0)} to your wallet.
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={!delivered || busy || !orderServerId}
+              onClick={confirmReturn}
+              className="border-clinical-sage/40 text-clinical-sage hover:bg-clinical-sage/10"
+            >
+              {delivered ? "I've returned the container" : "Available after delivery"}
+            </Button>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function Track() {
@@ -369,15 +459,22 @@ export default function Track() {
         </Card>
       )}
 
-      {/* Delivery address */}
+      {/* Delivery address / pickup point */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-sm flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-clinical-gold" />
-            Delivery Address
+            {order.fulfillmentType === "pickup" ? (
+              <Store className="w-4 h-4 text-clinical-gold" />
+            ) : (
+              <MapPin className="w-4 h-4 text-clinical-gold" />
+            )}
+            {order.fulfillmentType === "pickup" ? "Pickup at" : "Delivery Address"}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-1 text-xs">
+          {order.fulfillmentType === "pickup" && order.pickupLocationName && (
+            <p className="text-white font-medium">{order.pickupLocationName}</p>
+          )}
           <p className="text-white font-medium">{order.address.label}</p>
           <p className="text-clinical-zinc">
             {order.address.line1}
@@ -385,10 +482,35 @@ export default function Track() {
           </p>
           <p className="text-clinical-zinc flex items-center gap-1.5 pt-0.5">
             <Phone className="w-3 h-3" />
-            Rider will call {order.address.phone}
+            {order.fulfillmentType === "pickup"
+              ? `We'll text ${order.address.phone} when it's ready`
+              : `Rider will call ${order.address.phone}`}
           </p>
+          {order.deliverySlotLabel && (
+            <p className="text-clinical-zinc flex items-center gap-1.5 pt-0.5">
+              <CalendarClock className="w-3 h-3" />
+              Window: {order.deliverySlotLabel}
+            </p>
+          )}
+          {order.deliveryInstructions && (
+            <div className="mt-2 p-2 rounded-md bg-clinical-dark border border-clinical-slate/20">
+              <p className="text-[10px] text-clinical-zinc uppercase tracking-wider flex items-center gap-1">
+                <NotebookPen className="w-3 h-3" /> Notes for rider
+              </p>
+              <p className="text-xs text-white mt-1 whitespace-pre-wrap">
+                {order.deliveryInstructions}
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {order.ecoPackagingOptIn && (
+        <PackagingReturnCard
+          orderServerId={order.serverOrderId}
+          delivered={order.status === "delivered"}
+        />
+      )}
 
       {/* Timeline (server events) */}
       <Card>

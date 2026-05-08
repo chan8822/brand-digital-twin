@@ -3,11 +3,15 @@ import {
   bundlesTable,
   creditLedgerTable,
   db,
+  deliverySlotsTable,
   loyaltyConfigTable,
   notificationsTable,
   orderClaimsTable,
   ordersTable,
+  packagingReturnsTable,
+  pickupLocationsTable,
   referralRedemptionsTable,
+  slotReservationsTable,
   subscriptionDeliveriesTable,
   subscriptionsTable,
   userProfileTable,
@@ -377,11 +381,17 @@ export async function finalizeOrder(args: {
   applyCreditsPaise?: number;
   scheduledFor?: Date | null;
   bundleSlugs?: string[];
+  deliverySlotId?: number | null;
+  pickupLocationId?: number | null;
+  fulfillmentType?: "delivery" | "pickup";
+  ecoPackagingOptIn?: boolean;
+  deliveryInstructions?: string | null;
 }): Promise<{
   orderId: string;
   serverOrderId: number;
   grossPaise: number;
   bundleDiscountPaise: number;
+  pickupDiscountPaise: number;
   preorderDiscountPaise: number;
   redeemedPaise: number;
   finalPaise: number;
@@ -475,7 +485,45 @@ export async function finalizeOrder(args: {
     // Cap so a malformed catalog can never push the order negative.
     bundleDiscountPaise = Math.min(bundleDiscountPaise, grossPaise);
   }
-  const grossAfterBundles = grossPaise - bundleDiscountPaise;
+  // Fulfillment invariants: a delivery order must reserve a real slot, and
+  // a pickup order must point at an active partner location. We fail fast
+  // with structured errors so the route can map them to user-friendly
+  // 4xx responses instead of a generic 500.
+  const fulfillmentType = args.fulfillmentType === "pickup" ? "pickup" : "delivery";
+  if (fulfillmentType === "delivery" && !args.deliverySlotId) {
+    throw new Error("delivery slot required");
+  }
+  if (fulfillmentType === "pickup" && !args.pickupLocationId) {
+    throw new Error("pickup location required");
+  }
+  if (fulfillmentType === "delivery" && args.deliverySlotId) {
+    const [slot] = await db
+      .select({ id: deliverySlotsTable.id })
+      .from(deliverySlotsTable)
+      .where(eq(deliverySlotsTable.id, args.deliverySlotId))
+      .limit(1);
+    if (!slot) throw new Error("delivery slot not found");
+  }
+  // Pickup discount — choosing self-pickup at a partner location swaps the
+  // rider hop for a flat per-order discount sourced from the location row.
+  let pickupDiscountPaise = 0;
+  let pickupLocation: typeof pickupLocationsTable.$inferSelect | null = null;
+  if (fulfillmentType === "pickup" && args.pickupLocationId) {
+    const [loc] = await db
+      .select()
+      .from(pickupLocationsTable)
+      .where(eq(pickupLocationsTable.id, args.pickupLocationId))
+      .limit(1);
+    if (!loc || !loc.active) {
+      throw new Error("pickup location unavailable");
+    }
+    pickupLocation = loc;
+    pickupDiscountPaise = Math.min(
+      Math.max(0, loc.discountPaise ?? 0),
+      Math.max(0, grossPaise - bundleDiscountPaise),
+    );
+  }
+  const grossAfterBundles = grossPaise - bundleDiscountPaise - pickupDiscountPaise;
   // Pre-order discount: 5% off the meal subtotal when scheduled for the
   // future. Floored to whole paise; never negative.
   const isScheduled =
@@ -504,6 +552,12 @@ export async function finalizeOrder(args: {
         pincode: args.address?.pincode ?? null,
         phone: args.address?.phone ?? null,
         scheduledFor: isScheduled ? args.scheduledFor! : null,
+        deliverySlotId: fulfillmentType === "delivery" ? args.deliverySlotId ?? null : null,
+        pickupLocationId: pickupLocation?.id ?? null,
+        fulfillmentType,
+        ecoPackagingOptIn:
+          args.ecoPackagingOptIn && fulfillmentType === "delivery" ? 1 : 0,
+        deliveryInstructions: args.deliveryInstructions ?? null,
       })
       .onConflictDoNothing({
         target: [ordersTable.userId, ordersTable.externalOrderId],
@@ -559,6 +613,7 @@ export async function finalizeOrder(args: {
         serverOrderId,
         grossPaise: existing?.grossPaise ?? discountedGross,
         bundleDiscountPaise,
+        pickupDiscountPaise,
         preorderDiscountPaise,
         redeemedPaise: existing?.redeemedPaise ?? 0,
         finalPaise: existing?.finalPaise ?? discountedGross,
@@ -569,6 +624,43 @@ export async function finalizeOrder(args: {
           reason: "order_already_claimed",
         } as const,
       };
+    }
+
+    // 2b. Side effects gated on a fresh claim — running these on duplicate
+    //     finalize calls would double-reserve slots and double-issue eco
+    //     credit. Unique indexes on `slot_reservations(order_id)` and
+    //     `packaging_returns(order_id)` are the belt-and-suspenders.
+    if (args.deliverySlotId && fulfillmentType === "delivery") {
+      const reserved = await tx
+        .update(deliverySlotsTable)
+        .set({ reservedCount: sql`${deliverySlotsTable.reservedCount} + 1` })
+        .where(
+          and(
+            eq(deliverySlotsTable.id, args.deliverySlotId),
+            sql`${deliverySlotsTable.reservedCount} < ${deliverySlotsTable.capacity}`,
+          ),
+        )
+        .returning({ id: deliverySlotsTable.id });
+      if (reserved.length === 0) {
+        throw new Error("delivery slot full");
+      }
+      await tx.insert(slotReservationsTable).values({
+        slotId: args.deliverySlotId,
+        userId: args.userId,
+        orderId: serverOrderId,
+        kind: "order",
+      });
+    }
+    if (args.ecoPackagingOptIn && fulfillmentType === "delivery") {
+      await tx
+        .insert(packagingReturnsTable)
+        .values({
+          userId: args.userId,
+          orderId: serverOrderId,
+          status: "opted_in",
+          creditPaise: 2000,
+        })
+        .onConflictDoNothing({ target: packagingReturnsTable.orderId });
     }
 
     // 3. Optional credit redemption, atomic with the order + claim.
@@ -631,6 +723,7 @@ export async function finalizeOrder(args: {
       serverOrderId,
       grossPaise: discountedGross,
       bundleDiscountPaise,
+      pickupDiscountPaise,
       preorderDiscountPaise,
       redeemedPaise: redeemed,
       finalPaise,

@@ -21,8 +21,14 @@ import { useCart, FREE_DELIVERY_THRESHOLD, DELIVERY_FEE } from "@/lib/cartContex
 import { useOrders, generateOrderId } from "@/lib/ordersContext";
 import { loyaltyApi } from "@/lib/loyaltyApi";
 import { corporateApi, type CompanySubsidy } from "@/lib/corporateApi";
+import {
+  fulfillmentApi,
+  type DeliverySlotOption,
+  type PickupLocationOption,
+} from "@/lib/fulfillmentApi";
 import { Switch } from "@/components/ui/switch";
-import { Sparkles } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Sparkles, Leaf, Store, Truck, NotebookPen } from "lucide-react";
 import {
   MapPin,
   CreditCard,
@@ -77,6 +83,14 @@ export default function Checkout() {
   const [applySubsidy, setApplySubsidy] = useState(true);
   const [voucherCode, setVoucherCode] = useState("");
   const [redeemingVoucher, setRedeemingVoucher] = useState(false);
+  const [fulfillmentType, setFulfillmentType] = useState<"delivery" | "pickup">("delivery");
+  const [slots, setSlots] = useState<DeliverySlotOption[]>([]);
+  const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
+  const [pickupLocations, setPickupLocations] = useState<PickupLocationOption[]>([]);
+  const [selectedPickupId, setSelectedPickupId] = useState<number | null>(null);
+  const [ecoPackagingOptIn, setEcoPackagingOptIn] = useState(false);
+  const [deliveryInstructions, setDeliveryInstructions] = useState("");
+  const [savedInstructions, setSavedInstructions] = useState<Record<string, string>>({});
 
   // Default scheduled time: tomorrow 12:30 in the user's locale.
   const tomorrowSlot = (() => {
@@ -89,6 +103,48 @@ export default function Checkout() {
   const preorderDiscount = preorderTomorrow
     ? Math.floor((subtotal * PREORDER_BPS) / 10_000)
     : 0;
+
+  useEffect(() => {
+    let alive = true;
+    void fulfillmentApi
+      .listSlots()
+      .then((r) => {
+        if (alive) setSlots(r.slots);
+      })
+      .catch(() => {
+        if (alive) setSlots([]);
+      });
+    void fulfillmentApi
+      .listPickupLocations()
+      .then((r) => {
+        if (alive) setPickupLocations(r.locations);
+      })
+      .catch(() => {
+        if (alive) setPickupLocations([]);
+      });
+    void fulfillmentApi
+      .listInstructions()
+      .then((r) => {
+        if (!alive) return;
+        const map: Record<string, string> = {};
+        for (const it of r.instructions) map[it.addressLabel] = it.instructions;
+        setSavedInstructions(map);
+      })
+      .catch(() => {
+        /* not signed in or none yet */
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // Hydrate the instructions field from the persisted value for the
+  // currently-selected saved address.
+  const activeAddrLabel = SAVED_ADDRESSES.find((a) => a.id === selectedAddress)?.label;
+  useEffect(() => {
+    if (!activeAddrLabel) return;
+    setDeliveryInstructions(savedInstructions[activeAddrLabel] ?? "");
+  }, [activeAddrLabel, savedInstructions]);
 
   useEffect(() => {
     let alive = true;
@@ -108,8 +164,15 @@ export default function Checkout() {
   const [newAddr, setNewAddr] = useState({ label: "", line1: "", line2: "", city: "", pincode: "", phone: "" });
 
   const effectiveTip = tipAmount === -1 ? Math.round((parseFloat(customTip) || 0) * 100) : tipAmount;
-  const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
-  const discountedSubtotal = subtotal - preorderDiscount;
+  const selectedPickup =
+    fulfillmentType === "pickup"
+      ? pickupLocations.find((p) => p.id === selectedPickupId) ?? null
+      : null;
+  const pickupDiscount = selectedPickup?.discountPaise ?? 0;
+  // Pickup orders skip delivery fee entirely; otherwise the existing free-over-threshold rule.
+  const deliveryFee =
+    fulfillmentType === "pickup" ? 0 : subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
+  const discountedSubtotal = Math.max(0, subtotal - preorderDiscount - pickupDiscount);
   const grossTotal = discountedSubtotal + deliveryFee + effectiveTip;
   // Server only redeems against the (discounted) meal subtotal; cap here too
   // so the UI total matches the server final total exactly.
@@ -222,6 +285,7 @@ export default function Checkout() {
     // (client-supplied amounts cannot underprice the order).
     let finalTotal = grossTotal;
     let referralAwarded = false;
+    let serverOrderIdFromFinalize: number | undefined;
     try {
       const out = await loyaltyApi.finalizeOrder({
         orderId,
@@ -241,13 +305,53 @@ export default function Checkout() {
         applyCreditsPaise: creditApplied > 0 ? creditApplied : undefined,
         scheduledFor: preorderTomorrow ? tomorrowSlot.toISOString() : undefined,
         bundleSlugs: bundleSlugs.length > 0 ? bundleSlugs : undefined,
+        fulfillmentType,
+        deliverySlotId: fulfillmentType === "delivery" ? selectedSlotId : null,
+        pickupLocationId: fulfillmentType === "pickup" ? selectedPickupId : null,
+        ecoPackagingOptIn: fulfillmentType === "delivery" && ecoPackagingOptIn,
+        deliveryInstructions: deliveryInstructions.trim() || null,
       });
+      // Persist the per-address instructions so the next order on this
+      // saved address pre-fills with the same note. We always upsert,
+      // including empty strings, so the user can clear stale notes.
+      if (activeAddr) {
+        const trimmed = deliveryInstructions.trim();
+        const previous = savedInstructions[activeAddr.label] ?? "";
+        if (trimmed !== previous) {
+          try {
+            await fulfillmentApi.upsertInstructions(activeAddr.label, trimmed);
+            setSavedInstructions((prev) => ({
+              ...prev,
+              [activeAddr.label]: trimmed,
+            }));
+          } catch {
+            // non-fatal: order is already placed
+          }
+        }
+      }
       // Add delivery + tip on top of the server-validated meal total.
       finalTotal = out.finalPaise + deliveryFee + effectiveTip;
       setCreditBalance(out.balancePaise);
       referralAwarded = out.referral.awarded;
-    } catch {
-      toast.error("Could not finalize order — please try again");
+      serverOrderIdFromFinalize = out.serverOrderId;
+    } catch (err) {
+      const msg = String((err as Error).message);
+      if (msg.includes("delivery slot full")) {
+        toast.error("That delivery slot is full — please pick another window");
+        try {
+          const r = await fulfillmentApi.listSlots();
+          setSlots(r.slots);
+        } catch {
+          /* noop */
+        }
+        setSelectedSlotId(null);
+      } else if (msg.includes("delivery slot required")) {
+        toast.error("Please pick a delivery window before placing the order");
+      } else if (msg.includes("pickup location required") || msg.includes("pickup location unavailable")) {
+        toast.error("Please choose a pickup partner to continue");
+      } else {
+        toast.error("Could not finalize order — please try again");
+      }
       setIsProcessing(false);
       return;
     }
@@ -271,6 +375,18 @@ export default function Checkout() {
       }
     }
 
+    const selectedSlot = slots.find((s) => s.id === selectedSlotId);
+    const slotLabel = selectedSlot
+      ? `${new Date(selectedSlot.startsAt).toLocaleString([], {
+          weekday: "short",
+          hour: "numeric",
+          minute: "2-digit",
+        })} – ${new Date(selectedSlot.endsAt).toLocaleTimeString([], {
+          hour: "numeric",
+          minute: "2-digit",
+        })}`
+      : undefined;
+
     addOrder({
       orderId,
       placedAt,
@@ -283,6 +399,13 @@ export default function Checkout() {
       total: finalTotal,
       scheduledFor: preorderTomorrow ? tomorrowSlot.toISOString() : undefined,
       preorderDiscount: preorderTomorrow ? preorderDiscount : undefined,
+      pickupDiscount: pickupDiscount > 0 ? pickupDiscount : undefined,
+      fulfillmentType,
+      pickupLocationName: selectedPickup?.name,
+      deliverySlotLabel: fulfillmentType === "delivery" ? slotLabel : undefined,
+      ecoPackagingOptIn: fulfillmentType === "delivery" && ecoPackagingOptIn,
+      deliveryInstructions: deliveryInstructions.trim() || undefined,
+      serverOrderId: serverOrderIdFromFinalize,
       address: {
         label: activeAddr.label,
         line1: activeAddr.line1,
@@ -371,6 +494,35 @@ export default function Checkout() {
               </div>
             </RadioGroup>
 
+            <div className="pt-2 border-t border-clinical-slate/20 space-y-2">
+              <div className="flex items-center gap-2">
+                <NotebookPen className="w-3.5 h-3.5 text-clinical-gold" />
+                <Label className="text-xs font-medium text-white">
+                  Notes for the rider
+                </Label>
+                {activeAddrLabel && savedInstructions[activeAddrLabel] && (
+                  <Badge
+                    variant="outline"
+                    className="text-[9px] h-4 px-1 ml-auto border-clinical-sage/40 text-clinical-sage"
+                  >
+                    Saved for this address
+                  </Badge>
+                )}
+              </div>
+              <Textarea
+                value={deliveryInstructions}
+                onChange={(e) => setDeliveryInstructions(e.target.value)}
+                placeholder="e.g. Gate code 4421, leave at door, call on arrival"
+                maxLength={512}
+                className="text-xs bg-clinical-dark border-clinical-slate/30 min-h-[60px]"
+              />
+              <p className="text-[10px] text-clinical-zinc">
+                We'll remember these notes for{" "}
+                <span className="text-white">{activeAddrLabel ?? "this address"}</span>{" "}
+                so you don't have to type them again.
+              </p>
+            </div>
+
             {showNewAddress && (
               <div className="space-y-3 p-3 rounded-lg bg-clinical-dark border border-clinical-slate/20">
                 <p className="text-xs font-medium text-white">New Address</p>
@@ -384,6 +536,168 @@ export default function Checkout() {
                 </div>
                 <Input placeholder="Address line 1 (street, building)" value={newAddr.line1} onChange={(e) => setNewAddr({ ...newAddr, line1: e.target.value })} className="h-9 text-xs bg-clinical-surface border-clinical-slate/30" />
                 <Input placeholder="Address line 2 (apt, floor — optional)" value={newAddr.line2} onChange={(e) => setNewAddr({ ...newAddr, line2: e.target.value })} className="h-9 text-xs bg-clinical-surface border-clinical-slate/30" />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="bg-clinical-surface border-clinical-slate/20">
+          <CardContent className="p-5 space-y-4">
+            <div className="flex items-center gap-2">
+              <Truck className="w-4 h-4 text-clinical-gold" />
+              <h2 className="text-sm font-semibold text-white">Get it your way</h2>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setFulfillmentType("delivery")}
+                className={`p-3 rounded-lg border text-left transition-all ${
+                  fulfillmentType === "delivery"
+                    ? "border-clinical-gold/50 bg-clinical-gold/5"
+                    : "border-clinical-slate/20 hover:border-clinical-slate/40"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Truck className="w-3.5 h-3.5 text-clinical-gold" />
+                  <span className="text-xs font-medium text-white">Doorstep delivery</span>
+                </div>
+                <p className="text-[10px] text-clinical-zinc mt-1">
+                  Reserve a 30-minute window
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setFulfillmentType("pickup")}
+                disabled={pickupLocations.length === 0}
+                className={`p-3 rounded-lg border text-left transition-all disabled:opacity-50 ${
+                  fulfillmentType === "pickup"
+                    ? "border-clinical-gold/50 bg-clinical-gold/5"
+                    : "border-clinical-slate/20 hover:border-clinical-slate/40"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Store className="w-3.5 h-3.5 text-clinical-gold" />
+                  <span className="text-xs font-medium text-white">Partner pickup</span>
+                </div>
+                <p className="text-[10px] text-clinical-sage mt-1">
+                  Save up to Rs.{Math.max(0, ...pickupLocations.map((p) => p.discountPaise)) / 100 || 30}
+                </p>
+              </button>
+            </div>
+
+            {fulfillmentType === "delivery" && (
+              <div className="space-y-2">
+                <p className="text-[10px] text-clinical-zinc uppercase tracking-wider">
+                  Pick a delivery slot
+                </p>
+                {slots.length === 0 ? (
+                  <p className="text-xs text-clinical-zinc">Loading available windows…</p>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-56 overflow-y-auto pr-1">
+                    {slots.map((slot) => {
+                      const start = new Date(slot.startsAt);
+                      const end = new Date(slot.endsAt);
+                      const day = start.toLocaleDateString([], {
+                        weekday: "short",
+                      });
+                      const window = `${start.toLocaleTimeString([], {
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })} – ${end.toLocaleTimeString([], {
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}`;
+                      const selected = selectedSlotId === slot.id;
+                      return (
+                        <button
+                          key={slot.id}
+                          type="button"
+                          disabled={slot.full}
+                          onClick={() => setSelectedSlotId(slot.id)}
+                          className={`p-2 rounded-md border text-left text-[11px] transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+                            selected
+                              ? "border-clinical-gold/60 bg-clinical-gold/10 text-white"
+                              : "border-clinical-slate/20 text-clinical-zinc hover:border-clinical-slate/40"
+                          }`}
+                        >
+                          <div className="font-medium text-white">{day}</div>
+                          <div className="tabular-nums">{window}</div>
+                          <div className="text-[9px] mt-0.5">
+                            {slot.full
+                              ? "Full"
+                              : `${slot.remaining} left`}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {fulfillmentType === "pickup" && (
+              <div className="space-y-2">
+                <p className="text-[10px] text-clinical-zinc uppercase tracking-wider">
+                  Choose a pickup partner
+                </p>
+                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                  {pickupLocations.map((loc) => {
+                    const selected = selectedPickupId === loc.id;
+                    return (
+                      <button
+                        key={loc.id}
+                        type="button"
+                        onClick={() => setSelectedPickupId(loc.id)}
+                        className={`w-full p-3 rounded-lg border text-left transition-all ${
+                          selected
+                            ? "border-clinical-gold/50 bg-clinical-gold/5"
+                            : "border-clinical-slate/20 hover:border-clinical-slate/40"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Store className="w-3 h-3 text-clinical-gold" />
+                          <span className="text-xs font-medium text-white">
+                            {loc.name}
+                          </span>
+                          <Badge
+                            variant="outline"
+                            className="ml-auto text-[9px] h-4 px-1 border-clinical-sage/40 text-clinical-sage"
+                          >
+                            -Rs.{(loc.discountPaise / 100).toFixed(0)}
+                          </Badge>
+                        </div>
+                        <p className="text-[10px] text-clinical-zinc mt-1">
+                          {loc.addressLine}, {loc.city} {loc.pincode}
+                        </p>
+                        {loc.hours && (
+                          <p className="text-[10px] text-clinical-zinc">
+                            Open {loc.hours}
+                          </p>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {fulfillmentType === "delivery" && (
+              <div className="flex items-center justify-between gap-3 p-3 rounded-lg border border-clinical-sage/30 bg-clinical-sage/5">
+                <div className="flex items-start gap-2 min-w-0">
+                  <Leaf className="w-4 h-4 text-clinical-sage shrink-0 mt-0.5" />
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-white">
+                      Reusable eco packaging
+                    </p>
+                    <p className="text-[10px] text-clinical-zinc">
+                      Return clean containers on your next order to earn Rs.20 credit
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={ecoPackagingOptIn}
+                  onCheckedChange={setEcoPackagingOptIn}
+                />
               </div>
             )}
           </CardContent>
@@ -573,10 +887,26 @@ export default function Checkout() {
                   </span>
                 </div>
               )}
+              {pickupDiscount > 0 && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-clinical-sage flex items-center gap-1">
+                    <Store className="w-3 h-3" /> Partner pickup
+                  </span>
+                  <span className="tabular-nums text-clinical-sage">
+                    -{formatPrice(pickupDiscount)}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between text-xs">
-                <span className="text-clinical-zinc">Delivery</span>
+                <span className="text-clinical-zinc">
+                  {fulfillmentType === "pickup" ? "Pickup" : "Delivery"}
+                </span>
                 <span className={deliveryFee === 0 ? "text-clinical-sage text-xs" : "tabular-nums text-white"}>
-                  {deliveryFee === 0 ? "FREE" : formatPrice(deliveryFee)}
+                  {fulfillmentType === "pickup"
+                    ? "Self-collect"
+                    : deliveryFee === 0
+                      ? "FREE"
+                      : formatPrice(deliveryFee)}
                 </span>
               </div>
               {effectiveTip > 0 && (
