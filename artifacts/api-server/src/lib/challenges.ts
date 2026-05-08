@@ -1,10 +1,12 @@
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 import {
   db,
   challengesTable,
   challengeMembersTable,
   challengePostsTable,
+  challengeCheckInsTable,
   type Challenge,
+  type ChallengeCheckIn,
   type ChallengePost,
 } from "@workspace/db";
 
@@ -264,6 +266,94 @@ const SEED_CHALLENGES: Array<Omit<Challenge, "id" | "createdAt">> = [
   },
 ];
 
+export interface PublicCheckIn {
+  id: number;
+  title: string;
+  scheduledAt: Date;
+  joinUrl: string;
+}
+
+export async function listUpcomingCheckIns(
+  challengeId: number,
+  limit = 10,
+): Promise<PublicCheckIn[]> {
+  const rows = await db
+    .select()
+    .from(challengeCheckInsTable)
+    .where(
+      and(
+        eq(challengeCheckInsTable.challengeId, challengeId),
+        sql`${challengeCheckInsTable.scheduledAt} >= now() - interval '1 hour'`,
+      ),
+    )
+    .orderBy(asc(challengeCheckInsTable.scheduledAt))
+    .limit(Math.max(1, Math.min(50, limit)));
+  return rows.map((r: ChallengeCheckIn) => ({
+    id: r.id,
+    title: r.title,
+    scheduledAt: r.scheduledAt,
+    joinUrl: r.joinUrl,
+  }));
+}
+
+interface SeedCheckIn {
+  title: string;
+  offsetDays: number;
+  hour: number;
+  joinUrl: string;
+}
+
+const SEED_CHECK_INS: Record<string, SeedCheckIn[]> = {
+  "21-day-high-protein-reset": [
+    {
+      title: "Week 1 kickoff with Dr. Anika",
+      offsetDays: 1,
+      hour: 18,
+      joinUrl: "https://meet.tanmatra.health/rd/anika-protein-w1",
+    },
+    {
+      title: "Mid-programme protein review",
+      offsetDays: 10,
+      hour: 18,
+      joinUrl: "https://meet.tanmatra.health/rd/anika-protein-w2",
+    },
+  ],
+  "14-day-anti-inflammatory": [
+    {
+      title: "Anti-inflammatory primer with Dr. Meera",
+      offsetDays: 4,
+      hour: 19,
+      joinUrl: "https://meet.tanmatra.health/rd/meera-antiinf-w1",
+    },
+    {
+      title: "Halfway gut & joint check-in",
+      offsetDays: 10,
+      hour: 19,
+      joinUrl: "https://meet.tanmatra.health/rd/meera-antiinf-w2",
+    },
+  ],
+  "30-day-balanced-loss": [
+    {
+      title: "Goal-setting call with Dr. Anika",
+      offsetDays: 8,
+      hour: 18,
+      joinUrl: "https://meet.tanmatra.health/rd/anika-loss-w1",
+    },
+    {
+      title: "Week 2 macro tune-up",
+      offsetDays: 15,
+      hour: 18,
+      joinUrl: "https://meet.tanmatra.health/rd/anika-loss-w2",
+    },
+    {
+      title: "Final review and next steps",
+      offsetDays: 35,
+      hour: 18,
+      joinUrl: "https://meet.tanmatra.health/rd/anika-loss-w4",
+    },
+  ],
+};
+
 let seeded = false;
 export async function ensureChallengeSeeds(): Promise<void> {
   if (seeded) return;
@@ -272,6 +362,27 @@ export async function ensureChallengeSeeds(): Promise<void> {
       .insert(challengesTable)
       .values(c)
       .onConflictDoNothing({ target: challengesTable.slug });
+  }
+  // Seed check-ins (idempotent: only insert if none exist for the challenge).
+  const now = Date.now();
+  for (const [slug, items] of Object.entries(SEED_CHECK_INS)) {
+    const challenge = await getChallengeBySlug(slug);
+    if (!challenge) continue;
+    const [existing] = await db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(challengeCheckInsTable)
+      .where(eq(challengeCheckInsTable.challengeId, challenge.id));
+    if ((existing?.n ?? 0) > 0) continue;
+    for (const item of items) {
+      const at = new Date(now + item.offsetDays * 86_400_000);
+      at.setUTCHours(item.hour, 30, 0, 0);
+      await db.insert(challengeCheckInsTable).values({
+        challengeId: challenge.id,
+        title: item.title,
+        scheduledAt: at,
+        joinUrl: item.joinUrl,
+      });
+    }
   }
   seeded = true;
 }

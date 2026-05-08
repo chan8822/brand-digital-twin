@@ -9,6 +9,7 @@ import {
   leaveChallenge,
   listChallenges,
   listPosts,
+  listUpcomingCheckIns,
   listPostsForModeration,
   setPostHidden,
 } from "../lib/challenges";
@@ -42,7 +43,10 @@ router.get("/challenges/:slug", async (req: Request, res: Response) => {
     joined = await isMember(challenge.id, req.user.id);
   }
   const posts = await listPosts(challenge.id, 100);
-  res.json({ challenge, joined, posts });
+  const checkIns = joined
+    ? await listUpcomingCheckIns(challenge.id, 20)
+    : [];
+  res.json({ challenge, joined, posts, checkIns });
 });
 
 router.post("/challenges/:slug/join", async (req: Request, res: Response) => {

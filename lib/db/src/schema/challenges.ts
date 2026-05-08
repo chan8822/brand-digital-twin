@@ -71,6 +71,24 @@ export const challengePostsTable = pgTable(
   (t) => [index("idx_challenge_posts").on(t.challengeId, t.createdAt)],
 );
 
+export const challengeCheckInsTable = pgTable(
+  "challenge_check_ins",
+  {
+    id: serial("id").primaryKey(),
+    challengeId: integer("challenge_id")
+      .notNull()
+      .references(() => challengesTable.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 200 }).notNull(),
+    scheduledAt: timestamp("scheduled_at", { withTimezone: true }).notNull(),
+    joinUrl: varchar("join_url", { length: 512 }).notNull().default(""),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("idx_challenge_check_ins").on(t.challengeId, t.scheduledAt)],
+);
+
 export type Challenge = typeof challengesTable.$inferSelect;
 export type ChallengeMember = typeof challengeMembersTable.$inferSelect;
 export type ChallengePost = typeof challengePostsTable.$inferSelect;
+export type ChallengeCheckIn = typeof challengeCheckInsTable.$inferSelect;

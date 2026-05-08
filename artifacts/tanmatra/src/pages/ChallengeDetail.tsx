@@ -14,11 +14,13 @@ import {
 import { toast } from "sonner";
 import {
   ArrowLeft,
+  Bell,
   CalendarDays,
   Flag,
   MessageSquare,
   Sparkles,
   Users,
+  Video,
 } from "lucide-react";
 
 function formatRelative(iso: string): string {
@@ -31,6 +33,32 @@ function formatRelative(iso: string): string {
   }
   if (day < 30) return `${day}d ago`;
   return `${Math.floor(day / 30)}mo ago`;
+}
+
+function formatCheckInWhen(iso: string): string {
+  const date = new Date(iso);
+  const day = date.toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+  const time = date.toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  return `${day} · ${time}`;
+}
+
+function formatCountdown(iso: string): string {
+  const ms = new Date(iso).getTime() - Date.now();
+  if (ms <= 0) return "live now";
+  const hr = Math.floor(ms / 3_600_000);
+  if (hr < 1) {
+    const min = Math.max(1, Math.floor(ms / 60_000));
+    return `in ${min}m`;
+  }
+  if (hr < 24) return `in ${hr}h`;
+  return `in ${Math.floor(hr / 24)}d`;
 }
 
 export default function ChallengeDetail() {
@@ -64,7 +92,9 @@ export default function ChallengeDetail() {
     );
   }
 
-  const { challenge, joined, posts } = data;
+  const { challenge, joined, posts, checkIns } = data;
+  const upcomingCheckIns = checkIns ?? [];
+  const SOON_MS = 24 * 60 * 60 * 1000;
 
   const handleJoin = () => {
     join.mutate(undefined, {
@@ -187,6 +217,74 @@ export default function ChallengeDetail() {
             </Link>
           </CardContent>
         </Card>
+      )}
+
+      {joined && upcomingCheckIns.length > 0 && (
+        <>
+          <Separator className="bg-clinical-slate/20" />
+          <section className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Video className="w-4 h-4 text-clinical-gold" />
+              <h2 className="text-clinical-label">Upcoming RD check-ins</h2>
+              <Badge
+                variant="outline"
+                className="ml-auto border-clinical-slate/30 text-clinical-zinc text-[10px] tabular-nums"
+              >
+                {upcomingCheckIns.length} scheduled
+              </Badge>
+            </div>
+            <div className="space-y-2">
+              {upcomingCheckIns.map((ci) => {
+                const ms = new Date(ci.scheduledAt).getTime() - Date.now();
+                const soon = ms > 0 && ms <= SOON_MS;
+                return (
+                  <Card
+                    key={ci.id}
+                    className="bg-clinical-surface border-clinical-slate/20"
+                  >
+                    <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+                      <div className="flex-1 space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-xs font-semibold text-white">
+                            {ci.title}
+                          </p>
+                          {soon && (
+                            <Badge className="bg-clinical-gold/90 text-[#050505] border-0 gap-1 text-[10px]">
+                              <Bell className="w-3 h-3" />
+                              Within 24h
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-clinical-zinc tabular-nums">
+                          {formatCheckInWhen(ci.scheduledAt)}{" "}
+                          <span className="text-clinical-zinc/70">
+                            · {formatCountdown(ci.scheduledAt)}
+                          </span>
+                        </p>
+                      </div>
+                      {ci.joinUrl ? (
+                        <a
+                          href={ci.joinUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="shrink-0"
+                        >
+                          <Button
+                            size="sm"
+                            className="bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90"
+                          >
+                            <Video className="w-3.5 h-3.5 mr-1.5" />
+                            Join video
+                          </Button>
+                        </a>
+                      ) : null}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </section>
+        </>
       )}
 
       <Separator className="bg-clinical-slate/20" />

@@ -110,10 +110,18 @@ export function useChallenges() {
   });
 }
 
+export interface ChallengeCheckInDTO {
+  id: number;
+  title: string;
+  scheduledAt: string;
+  joinUrl: string;
+}
+
 export interface ChallengeDetailDTO {
   challenge: ChallengeDTO;
   joined: boolean;
   posts: ChallengePostDTO[];
+  checkIns: ChallengeCheckInDTO[];
 }
 
 export function useChallenge(slug: string | undefined) {
