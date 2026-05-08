@@ -175,6 +175,53 @@ router.post(
 );
 
 router.post(
+  "/menu/items/bulk/availability",
+  async (req: Request, res: Response) => {
+    if (!requireCatalog(req, res)) return;
+    const bp = z
+      .object({
+        filter: z.object({
+          category: z.string().optional(),
+          kitchenLocation: z.string().optional(),
+          slugs: z.array(z.string()).optional(),
+        }),
+        available: z.boolean(),
+        reason: z.string().max(500).optional(),
+        unavailableUntil: z.string().datetime().optional(),
+      })
+      .safeParse(req.body);
+    if (!bp.success) {
+      res.status(400).json({ error: bp.error.message });
+      return;
+    }
+    const result = await bulkSetAvailability(
+      bp.data.filter,
+      bp.data.available,
+      bp.data.reason ?? null,
+      bp.data.unavailableUntil ? new Date(bp.data.unavailableUntil) : null,
+    );
+    await recordOpsAction({
+      operatorId: req.user?.id ?? null,
+      agent: "cms-rest",
+      action: "cms_bulk_availability",
+      params: bp.data,
+      beforeState: { matched: result.matched },
+      afterState: {
+        updated: result.updated.length,
+        slugs: result.updated.map((u) => u.slug),
+      },
+      status: "success",
+      reasoning: bp.data.reason ?? "bulk availability via REST",
+    });
+    res.json({
+      matched: result.matched,
+      updated: result.updated.length,
+      items: result.updated,
+    });
+  },
+);
+
+router.post(
   "/menu/items/:slug/availability",
   async (req: Request, res: Response) => {
     if (!requireCatalog(req, res)) return;
@@ -241,52 +288,5 @@ router.post("/menu/items/:slug/image", async (req: Request, res: Response) => {
   });
   res.json({ item });
 });
-
-router.post(
-  "/menu/items/bulk/availability",
-  async (req: Request, res: Response) => {
-    if (!requireCatalog(req, res)) return;
-    const bp = z
-      .object({
-        filter: z.object({
-          category: z.string().optional(),
-          kitchenLocation: z.string().optional(),
-          slugs: z.array(z.string()).optional(),
-        }),
-        available: z.boolean(),
-        reason: z.string().max(500).optional(),
-        unavailableUntil: z.string().datetime().optional(),
-      })
-      .safeParse(req.body);
-    if (!bp.success) {
-      res.status(400).json({ error: bp.error.message });
-      return;
-    }
-    const result = await bulkSetAvailability(
-      bp.data.filter,
-      bp.data.available,
-      bp.data.reason ?? null,
-      bp.data.unavailableUntil ? new Date(bp.data.unavailableUntil) : null,
-    );
-    await recordOpsAction({
-      operatorId: req.user?.id ?? null,
-      agent: "cms-rest",
-      action: "cms_bulk_availability",
-      params: bp.data,
-      beforeState: { matched: result.matched },
-      afterState: {
-        updated: result.updated.length,
-        slugs: result.updated.map((u) => u.slug),
-      },
-      status: "success",
-      reasoning: bp.data.reason ?? "bulk availability via REST",
-    });
-    res.json({
-      matched: result.matched,
-      updated: result.updated.length,
-      items: result.updated,
-    });
-  },
-);
 
 export default router;
