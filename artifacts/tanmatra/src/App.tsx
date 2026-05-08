@@ -45,6 +45,7 @@ import AdminCmsAgent from "@/pages/AdminCmsAgent";
 import AdminForecasting from "@/pages/AdminForecasting";
 import AdminMenuEngineering from "@/pages/AdminMenuEngineering";
 import AdminAnalytics from "@/pages/AdminAnalytics";
+import AdminSupportTickets from "@/pages/AdminSupportTickets";
 import GroupOrder from "@/pages/GroupOrder";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
@@ -157,6 +158,14 @@ export default function App() {
                       element={
                         <AdminGate>
                           <AdminAnalytics />
+                        </AdminGate>
+                      }
+                    />
+                    <Route
+                      path="/admin/support-tickets"
+                      element={
+                        <AdminGate>
+                          <AdminSupportTickets />
                         </AdminGate>
                       }
                     />

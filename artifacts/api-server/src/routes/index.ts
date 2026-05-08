@@ -19,6 +19,7 @@ import menuAssetsRouter from "./menuAssets";
 import cmsAgentRouter from "./cmsAgent";
 import menuEngineeringRouter from "./menuEngineering";
 import analyticsRouter from "./analytics";
+import supportTicketsRouter from "./supportTickets";
 
 const router: IRouter = Router();
 
@@ -42,5 +43,6 @@ router.use(menuAssetsRouter);
 router.use(cmsAgentRouter);
 router.use(menuEngineeringRouter);
 router.use(analyticsRouter);
+router.use(supportTicketsRouter);
 
 export default router;
