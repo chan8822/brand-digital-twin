@@ -477,7 +477,18 @@ function PairMobileCard() {
       const json = (await res.json()) as { token: string; ttlMs: number };
       setToken(json.token);
       setTtlMs(json.ttlMs);
-      setCopied(false);
+      // Auto-copy on issue so the user only taps once. Falls through silently
+      // if the browser blocks clipboard access (e.g. insecure context); the
+      // explicit Copy button below remains as a manual fallback.
+      try {
+        await navigator.clipboard.writeText(json.token);
+        setCopied(true);
+        toast.success("Token generated & copied to clipboard");
+        setTimeout(() => setCopied(false), 2500);
+      } catch {
+        setCopied(false);
+        toast.success("Token generated — tap Copy to copy it");
+      }
       loadSessions();
     } catch (e) {
       toast.error(`Could not issue token: ${(e as Error).message}`);
@@ -525,7 +536,10 @@ function PairMobileCard() {
     : "";
 
   return (
-    <Card className="bg-clinical-slate/5 border border-clinical-slate/20">
+    <Card
+      id="pair-device"
+      className="bg-clinical-slate/5 border border-clinical-slate/20 scroll-mt-20"
+    >
       <CardContent className="p-5">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">

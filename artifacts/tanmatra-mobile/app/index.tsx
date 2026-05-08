@@ -255,8 +255,16 @@ export default function HomeScreen() {
               lineHeight: 18,
             }}
           >
-            On the Tanmatra web app, sign in and copy your session token from
-            the wellness settings page.
+            On the Tanmatra web app, sign in and open{" "}
+            <Text style={{ color: c.foreground, fontFamily: "Inter_500Medium" }}>
+              tanmatra.health/wellness#pair-device
+            </Text>
+            . Tap{" "}
+            <Text style={{ color: c.foreground, fontFamily: "Inter_500Medium" }}>
+              Generate
+            </Text>{" "}
+            — the token is copied to your clipboard automatically. Switch back
+            here and long-press the field to paste.
           </Text>
         </Card>
       </ScrollView>
