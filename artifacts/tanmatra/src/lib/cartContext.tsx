@@ -57,13 +57,27 @@ const useCartStore = create<CartState>()(
           return { items: [...state.items, { ...item, lineId }] };
         }),
       updateQty: (lineId, delta) =>
-        set((state) => ({
-          items: state.items
-            .map((p) => (p.lineId === lineId ? { ...p, quantity: Math.max(0, p.quantity + delta) } : p))
-            .filter((p) => p.quantity > 0),
-        })),
+        set((state) => {
+          const nextItems = state.items
+            .map((p) =>
+              p.lineId === lineId
+                ? { ...p, quantity: Math.max(0, p.quantity + delta) }
+                : p,
+            )
+            .filter((p) => p.quantity > 0);
+          // If a line was fully removed, drop active combo intents — the
+          // user has clearly diverged from the original bundle composition.
+          const lostLine = nextItems.length < state.items.length;
+          return {
+            items: nextItems,
+            bundleSlugs: lostLine ? [] : state.bundleSlugs,
+          };
+        }),
       removeItem: (lineId) =>
-        set((state) => ({ items: state.items.filter((p) => p.lineId !== lineId) })),
+        set((state) => ({
+          items: state.items.filter((p) => p.lineId !== lineId),
+          bundleSlugs: [],
+        })),
       // Append (don't dedupe) so two purchases of the same combo apply
       // two server-side discounts. The server caps each instance to
       // available cart stock, so spurious extras are no-ops.
