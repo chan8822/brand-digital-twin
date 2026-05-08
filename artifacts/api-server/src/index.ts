@@ -31,8 +31,12 @@ startLoyaltyScheduler();
 startAnomalyScheduler();
 startAnomalyDigestSender();
 startReviewSummarizerScheduler();
-startAnalyticsScheduler();
-void ensureSafeViews();
+// Make sure the curated safe_* views exist before the analytics scheduler
+// starts ticking; otherwise the first tick can race view creation and fail
+// with a missing-relation error.
+void ensureSafeViews()
+  .catch((err) => logger.error({ err }, "ensureSafeViews failed"))
+  .finally(() => startAnalyticsScheduler());
 
 httpServer.listen(port, (err?: Error) => {
   if (err) {

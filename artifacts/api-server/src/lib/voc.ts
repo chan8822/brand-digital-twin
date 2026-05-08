@@ -3,6 +3,7 @@ import { desc, gte, sql } from "drizzle-orm";
 import { db, vocThemesTable, type VocTheme } from "@workspace/db";
 import { DEFAULT_MODEL_ID, getModel } from "./ai/model";
 import { logger } from "./logger";
+import { lastFullWeek } from "./wbr";
 
 // All source-document reads in this file go through curated `safe_*` views
 // (see safeSql.ts / ensureSafeViews) so the VoC pipeline operates under
@@ -157,8 +158,12 @@ async function clusterWithAI(docs: SourceDoc[]): Promise<ModelTheme[]> {
 }
 
 export async function extractWeeklyVoc(weekStart?: Date, weekEnd?: Date): Promise<VocTheme[]> {
-  const end = weekEnd ?? new Date();
-  const start = weekStart ?? new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000);
+  // Normalize to canonical ISO-Monday week boundaries so manual reruns and
+  // scheduler ticks all upsert into the same row instead of creating
+  // near-duplicate "weeks" with drifting timestamps.
+  const fallback = lastFullWeek();
+  const start = weekStart ?? fallback.weekStart;
+  const end = weekEnd ?? fallback.weekEnd;
   const docs = await loadDocuments(start, end);
   if (docs.length === 0) {
     logger.info({ start, end }, "voc: no documents in window");
