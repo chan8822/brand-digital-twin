@@ -43,6 +43,8 @@ export interface EtaResult {
   modelVersion: string;
   features?: EtaFeatures;
   reason?: string;
+  dropLat?: number | null;
+  dropLng?: number | null;
 }
 
 const ACTIVE_STATUSES = [
@@ -232,7 +234,11 @@ export async function getDeliveryEta(orderId: number): Promise<EtaResult | null>
     .where(eq(ordersTable.id, orderId))
     .limit(1);
   if (!order) return null;
-  if (!isModelEnabled()) return staticFallback("model disabled");
+  const dropCoords = {
+    dropLat: typeof order.dropLat === "number" ? order.dropLat : null,
+    dropLng: typeof order.dropLng === "number" ? order.dropLng : null,
+  };
+  if (!isModelEnabled()) return { ...staticFallback("model disabled"), ...dropCoords };
   try {
     // Reuse the most recent prediction for this order if it's <2min old, so
     // the customer sees a stable arrival time across polls/refreshes.
@@ -252,6 +258,7 @@ export async function getDeliveryEta(orderId: number): Promise<EtaResult | null>
         zone: latest.zone,
         source: "model",
         modelVersion: latest.modelVersion,
+        ...dropCoords,
       };
     }
     const f = await gatherFeatures({
@@ -275,10 +282,11 @@ export async function getDeliveryEta(orderId: number): Promise<EtaResult | null>
       source: "model",
       modelVersion: ETA_MODEL_VERSION,
       features: f,
+      ...dropCoords,
     };
   } catch (err) {
     logger.error({ err, orderId }, "getDeliveryEta failed; falling back to static");
-    return staticFallback("error");
+    return { ...staticFallback("error"), ...dropCoords };
   }
 }
 

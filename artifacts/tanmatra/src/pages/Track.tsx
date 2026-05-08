@@ -181,6 +181,8 @@ export default function Track() {
   const [dynamicEta, setDynamicEta] = useState<{
     etaAt: string;
     source: "model" | "static";
+    dropLat?: number | null;
+    dropLng?: number | null;
   } | null>(null);
   useEffect(() => {
     if (!numericOrderId || !order) return;
@@ -193,7 +195,12 @@ export default function Track() {
           credentials: "include",
         });
         if (!r.ok) return;
-        const data = (await r.json()) as { etaAt: string; source: "model" | "static" };
+        const data = (await r.json()) as {
+          etaAt: string;
+          source: "model" | "static";
+          dropLat?: number | null;
+          dropLng?: number | null;
+        };
         if (!cancelled && data?.etaAt) setDynamicEta(data);
       } catch {
         /* keep static */
@@ -415,7 +422,18 @@ export default function Track() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-3">
-            <RiderMap orderId={numericOrderId} />
+            <RiderMap
+              orderId={numericOrderId}
+              destination={
+                dynamicEta?.dropLat != null && dynamicEta?.dropLng != null
+                  ? {
+                      lat: dynamicEta.dropLat,
+                      lng: dynamicEta.dropLng,
+                      label: order?.address?.label ?? "Delivery address",
+                    }
+                  : undefined
+              }
+            />
           </CardContent>
         </Card>
       )}
