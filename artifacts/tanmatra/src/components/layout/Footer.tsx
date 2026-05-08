@@ -19,6 +19,7 @@ const FOOTER_LINKS = {
     { label: "Health Assessment", href: "/health-quiz" },
     { label: "Ops Dashboard", href: "/admin/ops" },
     { label: "Menu Engineering", href: "/admin/menu-engineering" },
+    { label: "Analytics", href: "/admin/analytics" },
   ],
   legal: [
     { label: "Privacy Policy", href: "/privacy" },

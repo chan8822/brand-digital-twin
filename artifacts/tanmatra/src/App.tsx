@@ -44,6 +44,7 @@ import AdminOpsAgent from "@/pages/AdminOpsAgent";
 import AdminCmsAgent from "@/pages/AdminCmsAgent";
 import AdminForecasting from "@/pages/AdminForecasting";
 import AdminMenuEngineering from "@/pages/AdminMenuEngineering";
+import AdminAnalytics from "@/pages/AdminAnalytics";
 import GroupOrder from "@/pages/GroupOrder";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
@@ -148,6 +149,14 @@ export default function App() {
                       element={
                         <AdminGate>
                           <AdminMenuEngineering />
+                        </AdminGate>
+                      }
+                    />
+                    <Route
+                      path="/admin/analytics"
+                      element={
+                        <AdminGate>
+                          <AdminAnalytics />
                         </AdminGate>
                       }
                     />

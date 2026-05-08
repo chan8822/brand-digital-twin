@@ -7,6 +7,7 @@ import { startLoyaltyScheduler } from "./lib/loyaltyScheduler";
 import { startAnomalyScheduler } from "./lib/anomalyScheduler";
 import { startAnomalyDigestSender } from "./lib/anomalyDigestSender";
 import { startReviewSummarizerScheduler } from "./lib/menuEngineeringScheduler";
+import { startAnalyticsScheduler } from "./lib/analyticsScheduler";
 
 const rawPort = process.env["PORT"];
 
@@ -29,6 +30,7 @@ startLoyaltyScheduler();
 startAnomalyScheduler();
 startAnomalyDigestSender();
 startReviewSummarizerScheduler();
+startAnalyticsScheduler();
 
 httpServer.listen(port, (err?: Error) => {
   if (err) {
