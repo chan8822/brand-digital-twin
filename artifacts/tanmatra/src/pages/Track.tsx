@@ -28,8 +28,10 @@ import {
   Store,
   CalendarClock,
   ArrowLeft,
+  LifeBuoy,
 } from "lucide-react";
 import { fulfillmentApi, type PackagingReturnRow } from "@/lib/fulfillmentApi";
+import SupportTicketDialog from "@/components/track/SupportTicketDialog";
 
 const STEPS = [
   { status: "placed", label: "Placed", icon: CheckCircle2 },
@@ -175,6 +177,7 @@ export default function Track() {
   const { data: timeline, isLoading } = useDeliveryTimeline(numericOrderId || 0);
   const recordEvent = useRecordDeliveryEvent();
   const qc = useQueryClient();
+  const [supportOpen, setSupportOpen] = useState(false);
 
   // Dynamic ETA pulled from the server model. Falls back to the static
   // etaAt stored on the order if the request fails or the model is disabled.
@@ -341,6 +344,15 @@ export default function Track() {
             <h1 className="text-2xl font-bold tracking-tight text-white">Track Order</h1>
             <p className="font-mono text-xs text-clinical-gold mt-1">{order.orderId}</p>
           </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setSupportOpen(true)}
+            className="gap-1.5 border-clinical-gold/40 text-clinical-gold hover:bg-clinical-gold/10"
+          >
+            <LifeBuoy className="w-3.5 h-3.5" />
+            Need help with this order?
+          </Button>
         </div>
 
         <Card className="bg-clinical-surface border-clinical-slate/20">
@@ -639,6 +651,13 @@ export default function Track() {
           </CardContent>
         </Card>
       )}
+
+      <SupportTicketDialog
+        open={supportOpen}
+        onOpenChange={setSupportOpen}
+        orderDisplayId={order.orderId}
+        orderServerId={order.serverOrderId}
+      />
     </div>
   );
 }
