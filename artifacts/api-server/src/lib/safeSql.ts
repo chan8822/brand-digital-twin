@@ -88,13 +88,13 @@ export const SAFE_SCHEMA: SafeTable[] = [
     ],
   },
   {
-    name: "safe_loyalty_points",
-    source: "loyalty_points",
-    description: "Loyalty point ledger entries.",
+    name: "safe_credit_ledger",
+    source: "credit_ledger",
+    description: "Customer credit/loyalty ledger. delta_paise > 0 = credit, < 0 = redemption.",
     columns: [
       { name: "id", type: "int" },
       { name: "user_id", type: "varchar" },
-      { name: "delta", type: "int" },
+      { name: "delta_paise", type: "int" },
       { name: "reason", type: "varchar" },
       { name: "created_at", type: "timestamptz" },
     ],

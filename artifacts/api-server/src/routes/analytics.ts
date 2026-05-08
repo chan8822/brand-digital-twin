@@ -190,12 +190,22 @@ router.get("/analytics/wbr/:id", async (req: Request, res: Response) => {
 router.post("/analytics/wbr/generate", async (req: Request, res: Response) => {
   if (!requireCatalog(req, res)) return;
   try {
-    const week = req.body?.weekStart
-      ? {
-          weekStart: new Date(req.body.weekStart),
-          weekEnd: new Date(req.body.weekEnd ?? Date.now()),
-        }
-      : lastFullWeek();
+    let week;
+    if (req.body?.weekStart) {
+      const ws = new Date(req.body.weekStart);
+      const we = new Date(req.body.weekEnd ?? Date.now());
+      if (Number.isNaN(ws.getTime()) || Number.isNaN(we.getTime())) {
+        res.status(400).json({ error: "invalid weekStart/weekEnd" });
+        return;
+      }
+      if (we.getTime() <= ws.getTime()) {
+        res.status(400).json({ error: "weekEnd must be after weekStart" });
+        return;
+      }
+      week = { weekStart: ws, weekEnd: we };
+    } else {
+      week = lastFullWeek();
+    }
     const report = await generateWbr(week);
     res.json({ report });
   } catch (err) {
