@@ -5,11 +5,17 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useOrders } from "@/lib/ordersContext";
 import { toast } from "sonner";
 import { Star, MessageSquare, Sparkles, TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 const API_BASE = `${import.meta.env.BASE_URL}api`;
+
+interface PublicReviewer {
+  label: string;
+  avatarUrl: string | null;
+}
 
 interface PublicReview {
   id: number;
@@ -18,6 +24,14 @@ interface PublicReview {
   body: string;
   photoUrl?: string | null;
   createdAt: string;
+  reviewer: PublicReviewer;
+}
+
+function reviewerInitials(label: string): string {
+  const parts = label.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0]!.charAt(0).toUpperCase();
+  return (parts[0]!.charAt(0) + parts[parts.length - 1]!.charAt(0)).toUpperCase();
 }
 
 interface ReviewSummary {
@@ -271,14 +285,32 @@ export default function DishReviews({ slug, dishId }: DishReviewsProps) {
           {reviews.slice(0, 5).map((r, idx) => (
             <div key={r.id}>
               {idx > 0 && <Separator className="bg-clinical-slate/10 mb-3" />}
-              <div className="flex items-center justify-between">
-                <StarRow value={r.rating} />
-                <span className="text-[10px] text-clinical-zinc/70 tabular-nums">
-                  {formatRelative(r.createdAt)}
-                </span>
+              <div className="flex items-center gap-2.5">
+                <Avatar className="h-7 w-7 border border-clinical-slate/20">
+                  {r.reviewer.avatarUrl && (
+                    <AvatarImage
+                      src={r.reviewer.avatarUrl}
+                      alt={r.reviewer.label}
+                    />
+                  )}
+                  <AvatarFallback className="bg-clinical-dark text-[10px] text-clinical-zinc">
+                    {reviewerInitials(r.reviewer.label)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium text-white truncate">
+                    {r.reviewer.label}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <StarRow value={r.rating} size={12} />
+                    <span className="text-[10px] text-clinical-zinc/70 tabular-nums">
+                      {formatRelative(r.createdAt)}
+                    </span>
+                  </div>
+                </div>
               </div>
               {r.body && (
-                <p className="text-xs text-clinical-zinc leading-relaxed mt-1.5">
+                <p className="text-xs text-clinical-zinc leading-relaxed mt-2">
                   {r.body}
                 </p>
               )}

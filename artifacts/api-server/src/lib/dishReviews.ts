@@ -5,6 +5,7 @@ import {
   dishReviewSummariesTable,
   dishReviewsTable,
   menuItemsTable,
+  usersTable,
   type DishReview,
   type DishReviewSummary,
 } from "@workspace/db";
@@ -117,6 +118,82 @@ export async function listReviews(
     )
     .orderBy(desc(dishReviewsTable.createdAt))
     .limit(Math.max(1, Math.min(200, limit)));
+}
+
+export interface PublicReviewer {
+  label: string;
+  avatarUrl: string | null;
+}
+
+export interface PublicReviewRow {
+  id: number;
+  slug: string;
+  rating: number;
+  body: string;
+  photoUrl: string | null;
+  createdAt: Date;
+  reviewer: PublicReviewer;
+}
+
+// Privacy model: show "First L." (first name + last initial) so reviews feel
+// like they came from real people without exposing full names, email handles,
+// or user ids. We deliberately do not fall back to the email local-part —
+// email handles often contain full names or other PII. When we don't have a
+// first name, we surface the last initial (or a generic "Tanmatra Guest"),
+// never the raw email.
+export function buildReviewerLabel(input: {
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+}): string {
+  const first = (input.firstName ?? "").trim();
+  const last = (input.lastName ?? "").trim();
+  if (first && last) return `${first} ${last[0]!.toUpperCase()}.`;
+  if (first) return first;
+  if (last) return `${last[0]!.toUpperCase()}.`;
+  return "Tanmatra Guest";
+}
+
+export async function listPublicReviews(
+  slug: string,
+  limit = 50,
+): Promise<PublicReviewRow[]> {
+  const rows = await db
+    .select({
+      id: dishReviewsTable.id,
+      slug: dishReviewsTable.slug,
+      rating: dishReviewsTable.rating,
+      body: dishReviewsTable.body,
+      photoUrl: dishReviewsTable.photoUrl,
+      createdAt: dishReviewsTable.createdAt,
+      firstName: usersTable.firstName,
+      lastName: usersTable.lastName,
+      email: usersTable.email,
+      profileImageUrl: usersTable.profileImageUrl,
+    })
+    .from(dishReviewsTable)
+    .leftJoin(usersTable, eq(dishReviewsTable.userId, usersTable.id))
+    .where(
+      and(eq(dishReviewsTable.slug, slug), eq(dishReviewsTable.hidden, 0)),
+    )
+    .orderBy(desc(dishReviewsTable.createdAt))
+    .limit(Math.max(1, Math.min(200, limit)));
+  return rows.map((r) => ({
+    id: r.id,
+    slug: r.slug,
+    rating: r.rating,
+    body: r.body,
+    photoUrl: r.photoUrl,
+    createdAt: r.createdAt,
+    reviewer: {
+      label: buildReviewerLabel({
+        firstName: r.firstName,
+        lastName: r.lastName,
+        email: r.email,
+      }),
+      avatarUrl: r.profileImageUrl ?? null,
+    },
+  }));
 }
 
 export async function getSummary(

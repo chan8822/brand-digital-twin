@@ -15,6 +15,7 @@ import {
   createReview,
   getSummariesForActiveMenu,
   getSummary,
+  listPublicReviews,
   listReviews,
   listReviewsForModeration,
   setReviewHidden,
@@ -276,20 +277,14 @@ router.get("/dish-reviews/:slug", async (req: Request, res: Response) => {
   }
   try {
     const [reviews, summary] = await Promise.all([
-      listReviews(slug, 50),
+      listPublicReviews(slug, 50),
       getSummary(slug),
     ]);
-    // Public endpoint — strip reviewer userId so we don't leak who said what.
-    // Catalog-scoped endpoints (the dish detail view) get the full row.
-    const publicReviews = reviews.map((r) => ({
-      id: r.id,
-      slug: r.slug,
-      rating: r.rating,
-      body: r.body,
-      photoUrl: r.photoUrl,
-      createdAt: r.createdAt,
-    }));
-    res.json({ reviews: publicReviews, summary });
+    // Public endpoint — never leaks reviewer userId. Each review carries a
+    // safe display label (e.g. "Priya S.") and optional avatar. Catalog
+    // endpoints (the dish detail view) still receive the full row via
+    // listReviews.
+    res.json({ reviews, summary });
   } catch (err) {
     sendError(res, err);
   }
