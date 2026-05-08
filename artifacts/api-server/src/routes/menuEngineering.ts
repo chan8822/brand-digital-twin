@@ -21,6 +21,7 @@ import {
   setReviewHidden,
   summarizeAllReviews,
   summarizeReviewsForSlug,
+  userHasOrderedSlug,
 } from "../lib/dishReviews";
 
 const router: IRouter = Router();
@@ -244,7 +245,10 @@ const createReviewBody = z.object({
   photoUrl: z.string().url().max(1024).optional().nullable(),
 });
 
-// Customer-facing: any authenticated user can leave a review.
+// Customer-facing: an authenticated user who has actually ordered the dish
+// can leave a review. Eligibility is enforced server-side against the
+// `orders` table so localStorage tampering or cross-device gaps cannot
+// bypass it.
 router.post("/dish-reviews", async (req: Request, res: Response) => {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "login required" });
@@ -256,6 +260,13 @@ router.post("/dish-reviews", async (req: Request, res: Response) => {
     return;
   }
   try {
+    const eligible = await userHasOrderedSlug(req.user.id, parsed.data.slug);
+    if (!eligible) {
+      res
+        .status(403)
+        .json({ error: "order this dish before leaving a review" });
+      return;
+    }
     const review = await createReview({
       userId: req.user.id,
       slug: parsed.data.slug,
@@ -276,15 +287,19 @@ router.get("/dish-reviews/:slug", async (req: Request, res: Response) => {
     return;
   }
   try {
-    const [reviews, summary] = await Promise.all([
+    const [reviews, summary, eligibleToReview] = await Promise.all([
       listPublicReviews(slug, 50),
       getSummary(slug),
+      req.isAuthenticated()
+        ? userHasOrderedSlug(req.user.id, slug)
+        : Promise.resolve(false),
     ]);
     // Public endpoint — never leaks reviewer userId. Each review carries a
     // safe display label (e.g. "Priya S.") and optional avatar. Catalog
     // endpoints (the dish detail view) still receive the full row via
-    // listReviews.
-    res.json({ reviews, summary });
+    // listReviews. `eligibleToReview` is computed server-side from the
+    // orders table so the client doesn't need to consult localStorage.
+    res.json({ reviews, summary, eligibleToReview });
   } catch (err) {
     sendError(res, err);
   }

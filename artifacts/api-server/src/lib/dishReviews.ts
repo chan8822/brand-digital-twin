@@ -1,10 +1,11 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { generateText } from "ai";
 import {
   db,
   dishReviewSummariesTable,
   dishReviewsTable,
   menuItemsTable,
+  ordersTable,
   usersTable,
   type DishReview,
   type DishReviewSummary,
@@ -82,6 +83,43 @@ export async function createReview(
     return { ...row, hidden: 1 };
   }
   return row;
+}
+
+// Server-side eligibility check used both by the public reviews endpoint
+// (to gate the "leave a review" form) and by createReview (to reject posts
+// from users who never actually ordered the dish). Eligibility means: the
+// user has a non-cancelled order whose items jsonb array contains a row
+// whose `id` matches the menu item id resolved from the slug. We resolve
+// slug -> id via menu_items rather than trusting an `slug` field on order
+// items (orders only persist {id,name,qty,price}).
+export async function userHasOrderedSlug(
+  userId: string,
+  slug: string,
+): Promise<boolean> {
+  const trimmedSlug = slug.trim();
+  if (!userId || !trimmedSlug) return false;
+  const [item] = await db
+    .select({ id: menuItemsTable.id })
+    .from(menuItemsTable)
+    .where(eq(menuItemsTable.slug, trimmedSlug))
+    .limit(1);
+  if (!item) return false;
+  const [row] = await db
+    .select({ exists: sql<number>`1`.as("exists") })
+    .from(ordersTable)
+    .where(
+      and(
+        eq(ordersTable.userId, userId),
+        ne(ordersTable.status, "cancelled"),
+        sql`exists (
+          select 1
+          from jsonb_array_elements(${ordersTable.items}) as it
+          where (it->>'id')::int = ${item.id}
+        )`,
+      ),
+    )
+    .limit(1);
+  return Boolean(row);
 }
 
 export async function setReviewHidden(

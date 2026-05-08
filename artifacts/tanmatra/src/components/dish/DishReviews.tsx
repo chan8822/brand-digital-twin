@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useOrders } from "@/lib/ordersContext";
 import { toast } from "sonner";
 import { Star, MessageSquare, Sparkles, TrendingUp, TrendingDown, Minus } from "lucide-react";
 
@@ -47,6 +46,7 @@ interface ReviewSummary {
 interface ReviewsResponse {
   reviews: PublicReview[];
   summary: ReviewSummary | null;
+  eligibleToReview: boolean;
 }
 
 interface AuthResponse {
@@ -117,12 +117,10 @@ function StarRow({
 
 interface DishReviewsProps {
   slug: string;
-  dishId: number;
 }
 
-export default function DishReviews({ slug, dishId }: DishReviewsProps) {
+export default function DishReviews({ slug }: DishReviewsProps) {
   const qc = useQueryClient();
-  const { orders } = useOrders();
 
   const auth = useQuery<AuthResponse>({
     queryKey: ["auth", "user"],
@@ -132,14 +130,15 @@ export default function DishReviews({ slug, dishId }: DishReviewsProps) {
   const isLoggedIn = Boolean(auth.data?.user?.id);
 
   const data = useQuery<ReviewsResponse>({
-    queryKey: ["dish-reviews", slug],
+    queryKey: ["dish-reviews", slug, auth.data?.user?.id ?? null],
     queryFn: () => fetchJson<ReviewsResponse>(`/dish-reviews/${encodeURIComponent(slug)}`),
     staleTime: 1000 * 30,
   });
 
-  const hasOrdered = orders.some((o) =>
-    o.items.some((it) => it.dishId === dishId || it.slug === slug),
-  );
+  // Eligibility ("has this user ordered this dish?") is computed server-side
+  // against the orders table so localStorage tampering or cross-device gaps
+  // can't bypass it. The server also re-checks on POST.
+  const hasOrdered = Boolean(data.data?.eligibleToReview);
 
   const [rating, setRating] = useState(0);
   const [body, setBody] = useState("");

@@ -622,7 +622,7 @@ export default function Dish() {
 
           <Separator className="bg-clinical-slate/20" />
 
-          <DishReviews slug={meal.slug} dishId={meal.id} />
+          <DishReviews slug={meal.slug} />
 
           <Separator className="bg-clinical-slate/20" />
 
