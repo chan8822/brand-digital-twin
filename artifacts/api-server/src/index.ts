@@ -31,17 +31,22 @@ startLoyaltyScheduler();
 startAnomalyScheduler();
 startAnomalyDigestSender();
 startReviewSummarizerScheduler();
-// Make sure the curated safe_* views exist before the analytics scheduler
-// starts ticking; otherwise the first tick can race view creation and fail
-// with a missing-relation error.
-void ensureSafeViews()
-  .catch((err) => logger.error({ err }, "ensureSafeViews failed"))
-  .finally(() => startAnalyticsScheduler());
-
-httpServer.listen(port, (err?: Error) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
-    process.exit(1);
+// Bootstrap the curated safe_* views and reader role BEFORE we start
+// listening, so the very first /analytics/* request can never race view
+// creation. We then start the scheduler and bind the port.
+async function start(): Promise<void> {
+  try {
+    await ensureSafeViews();
+  } catch (err) {
+    logger.error({ err }, "ensureSafeViews failed (continuing without safe layer)");
   }
-  logger.info({ port }, "Server listening");
-});
+  startAnalyticsScheduler();
+  httpServer.listen(port, (err?: Error) => {
+    if (err) {
+      logger.error({ err }, "Error listening on port");
+      process.exit(1);
+    }
+    logger.info({ port }, "Server listening");
+  });
+}
+void start();

@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { db, wbrReportsTable, type WbrReport } from "@workspace/db";
 import { logger } from "./logger";
 
@@ -88,11 +88,16 @@ export async function publishWbr(
       return { delivered: false, channel: "slack", alreadyPublished: false };
     }
   }
-  // Record successful delivery (or the log-only fallback) so subsequent
-  // ticks in the same week skip this report.
-  await db
+  // Concurrency-safe claim: only the first concurrent caller wins the
+  // update (publishedAt is null) — any racing caller updates 0 rows and
+  // returns alreadyPublished without re-sending.
+  const claimed = await db
     .update(wbrReportsTable)
     .set({ publishedAt: new Date(), publishChannel: channel })
-    .where(eq(wbrReportsTable.id, report.id));
+    .where(and(eq(wbrReportsTable.id, report.id), isNull(wbrReportsTable.publishedAt)))
+    .returning({ id: wbrReportsTable.id });
+  if (claimed.length === 0) {
+    return { delivered: false, channel, alreadyPublished: true };
+  }
   return { delivered, channel, alreadyPublished: false };
 }
