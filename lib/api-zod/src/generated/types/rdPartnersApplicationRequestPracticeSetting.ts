@@ -13,6 +13,7 @@ export const RdPartnersApplicationRequestPracticeSetting = {
   solo: "solo",
   clinic: "clinic",
   hospital: "hospital",
-  online: "online",
-  mixed: "mixed",
+  corporate: "corporate",
+  academia: "academia",
+  other: "other",
 } as const;

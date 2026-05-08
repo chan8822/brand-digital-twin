@@ -518,6 +518,63 @@ paths:
           description: Email mismatch with application
         "404":
           description: Application not found
+  /admin/rd-applications:
+    get:
+      operationId: listAdminRdApplications
+      tags: [rd-partners]
+      summary: List RD applications for ops review
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [all, new, contacted, approved, rejected]
+            default: all
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+      responses:
+        "200":
+          description: Applications and per-status counts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminRdApplicationsList"
+        "403":
+          description: Ops scope required
+  /admin/rd-applications/{id}:
+    patch:
+      operationId: patchAdminRdApplication
+      tags: [rd-partners]
+      summary: Update an application's status / notes and optionally provision an RD seat
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminRdApplicationPatch"
+      responses:
+        "200":
+          description: Updated row
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminRdApplicationPatchResult"
+        "400":
+          description: Invalid payload
+        "403":
+          description: Ops scope required
+        "404":
+          description: Application not found
+        "409":
+          description: rdSlug already claimed by another user
+        "412":
+          description: Provisioning requires a linked user account
 components:
   schemas:
     HealthStatus:
@@ -938,7 +995,7 @@ components:
           items: { type: string, maxLength: 80 }
         practiceSetting:
           type: string
-          enum: [solo, clinic, hospital, online, mixed]
+          enum: [solo, clinic, hospital, corporate, academia, other]
         clientVolumeBucket:
           type: string
           maxLength: 32
@@ -1003,3 +1060,45 @@ components:
           type: string
           nullable: true
         provisioned: { type: boolean }
+    AdminRdApplicationStatusCount:
+      type: object
+      required: [status, n]
+      properties:
+        status:
+          type: string
+          enum: [new, contacted, approved, rejected]
+        n: { type: integer, minimum: 0 }
+    AdminRdApplicationsList:
+      type: object
+      required: [rows, counts]
+      properties:
+        rows:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        counts:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminRdApplicationStatusCount"
+    AdminRdApplicationPatch:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [new, contacted, approved, rejected]
+        adminNotes:
+          type: string
+          maxLength: 4000
+        provisionRdSlug:
+          type: string
+          maxLength: 64
+          pattern: "^[a-z0-9-]+$"
+    AdminRdApplicationPatchResult:
+      type: object
+      required: [ok]
+      properties:
+        ok: { type: boolean }
+        row:
+          type: object
+          additionalProperties: true

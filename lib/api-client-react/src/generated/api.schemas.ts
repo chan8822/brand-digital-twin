@@ -371,8 +371,9 @@ export const RdPartnersApplicationRequestPracticeSetting = {
   solo: "solo",
   clinic: "clinic",
   hospital: "hospital",
-  online: "online",
-  mixed: "mixed",
+  corporate: "corporate",
+  academia: "academia",
+  other: "other",
 } as const;
 
 export type RdPartnersApplicationRequestNotifyPref =
@@ -485,6 +486,57 @@ export interface RdPartnersAttachAccountResult {
   provisioned?: boolean;
 }
 
+export type AdminRdApplicationStatusCountStatus =
+  (typeof AdminRdApplicationStatusCountStatus)[keyof typeof AdminRdApplicationStatusCountStatus];
+
+export const AdminRdApplicationStatusCountStatus = {
+  new: "new",
+  contacted: "contacted",
+  approved: "approved",
+  rejected: "rejected",
+} as const;
+
+export interface AdminRdApplicationStatusCount {
+  status: AdminRdApplicationStatusCountStatus;
+  /** @minimum 0 */
+  n: number;
+}
+
+export type AdminRdApplicationsListRowsItem = { [key: string]: unknown };
+
+export interface AdminRdApplicationsList {
+  rows: AdminRdApplicationsListRowsItem[];
+  counts: AdminRdApplicationStatusCount[];
+}
+
+export type AdminRdApplicationPatchStatus =
+  (typeof AdminRdApplicationPatchStatus)[keyof typeof AdminRdApplicationPatchStatus];
+
+export const AdminRdApplicationPatchStatus = {
+  new: "new",
+  contacted: "contacted",
+  approved: "approved",
+  rejected: "rejected",
+} as const;
+
+export interface AdminRdApplicationPatch {
+  status?: AdminRdApplicationPatchStatus;
+  /** @maxLength 4000 */
+  adminNotes?: string;
+  /**
+   * @maxLength 64
+   * @pattern ^[a-z0-9-]+$
+   */
+  provisionRdSlug?: string;
+}
+
+export type AdminRdApplicationPatchResultRow = { [key: string]: unknown };
+
+export interface AdminRdApplicationPatchResult {
+  ok: boolean;
+  row?: AdminRdApplicationPatchResultRow;
+}
+
 export type ListRecipesParams = {
   goal?: string;
   diet?: string;
@@ -520,3 +572,23 @@ export type PostToChallenge200 = {
 export type TrackRdPartnersEvent200 = {
   ok: boolean;
 };
+
+export type ListAdminRdApplicationsParams = {
+  status?: ListAdminRdApplicationsStatus;
+  /**
+   * @minimum 1
+   * @maximum 200
+   */
+  limit?: number;
+};
+
+export type ListAdminRdApplicationsStatus =
+  (typeof ListAdminRdApplicationsStatus)[keyof typeof ListAdminRdApplicationsStatus];
+
+export const ListAdminRdApplicationsStatus = {
+  all: "all",
+  new: "new",
+  contacted: "contacted",
+  approved: "approved",
+  rejected: "rejected",
+} as const;

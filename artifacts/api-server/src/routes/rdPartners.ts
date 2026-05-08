@@ -363,7 +363,7 @@ router.post(
       "rd_partners.application.created",
     );
 
-    res.status(201).json({ application: appRow, notify });
+    res.status(200).json({ application: appRow, notify });
   },
 );
 

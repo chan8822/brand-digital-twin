@@ -26,6 +26,13 @@ function hasTwilioCreds(): boolean {
   );
 }
 
+/** Mock OTP is only allowed outside production. In production we
+ * refuse to send/verify when Twilio creds are missing rather than
+ * silently accepting a fixed code that anyone could guess. */
+function mockAllowed(): boolean {
+  return (process.env["NODE_ENV"] ?? "development") !== "production";
+}
+
 export interface WhatsappE164 {
   countryCode: string;
   phone: string;
@@ -55,6 +62,16 @@ export async function sendWhatsappOtp(
   number: WhatsappE164,
 ): Promise<SendOtpResult> {
   if (!hasTwilioCreds()) {
+    if (!mockAllowed()) {
+      logger.error(
+        { e164: number.e164 },
+        "whatsapp.otp.no_twilio_creds_in_production",
+      );
+      return {
+        ok: false,
+        error: "WhatsApp verification is temporarily unavailable",
+      };
+    }
     logger.info(
       { e164: number.e164, code: MOCK_CODE },
       "whatsapp.otp.mock_send",
@@ -100,6 +117,12 @@ export async function verifyWhatsappOtp(
   code: string,
 ): Promise<VerifyOtpResult> {
   if (!hasTwilioCreds()) {
+    if (!mockAllowed()) {
+      return {
+        ok: false,
+        error: "WhatsApp verification is temporarily unavailable",
+      };
+    }
     if (code.trim() === MOCK_CODE) return { ok: true };
     return { ok: false, error: "invalid code" };
   }

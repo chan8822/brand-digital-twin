@@ -7,6 +7,14 @@
  */
 
 export * from "./activityLevel";
+export * from "./adminRdApplicationPatch";
+export * from "./adminRdApplicationPatchResult";
+export * from "./adminRdApplicationPatchResultRow";
+export * from "./adminRdApplicationPatchStatus";
+export * from "./adminRdApplicationsList";
+export * from "./adminRdApplicationsListRowsItem";
+export * from "./adminRdApplicationStatusCount";
+export * from "./adminRdApplicationStatusCountStatus";
 export * from "./challenge";
 export * from "./challengePost";
 export * from "./challengePostInput";
@@ -15,6 +23,8 @@ export * from "./dishReviewInput";
 export * from "./getChallenge200";
 export * from "./getRecipe200";
 export * from "./healthStatus";
+export * from "./listAdminRdApplicationsParams";
+export * from "./listAdminRdApplicationsStatus";
 export * from "./listChallenges200";
 export * from "./listRecipes200";
 export * from "./listRecipesParams";

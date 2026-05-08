@@ -867,7 +867,14 @@ export const RdPartnersSubmitApplicationBody = zod.object({
   languages: zod
     .array(zod.string().max(rdPartnersSubmitApplicationBodyLanguagesItemMax))
     .min(1),
-  practiceSetting: zod.enum(["solo", "clinic", "hospital", "online", "mixed"]),
+  practiceSetting: zod.enum([
+    "solo",
+    "clinic",
+    "hospital",
+    "corporate",
+    "academia",
+    "other",
+  ]),
   clientVolumeBucket: zod
     .string()
     .max(rdPartnersSubmitApplicationBodyClientVolumeBucketMax)
@@ -927,4 +934,68 @@ export const RdPartnersAttachAccountResponse = zod.object({
   linkedUserId: zod.string().nullish(),
   rdSlug: zod.string().nullish(),
   provisioned: zod.boolean().optional(),
+});
+
+/**
+ * @summary List RD applications for ops review
+ */
+export const listAdminRdApplicationsQueryStatusDefault = `all`;
+export const listAdminRdApplicationsQueryLimitDefault = 50;
+export const listAdminRdApplicationsQueryLimitMax = 200;
+
+export const ListAdminRdApplicationsQueryParams = zod.object({
+  status: zod
+    .enum(["all", "new", "contacted", "approved", "rejected"])
+    .default(listAdminRdApplicationsQueryStatusDefault),
+  limit: zod.coerce
+    .number()
+    .min(1)
+    .max(listAdminRdApplicationsQueryLimitMax)
+    .default(listAdminRdApplicationsQueryLimitDefault),
+});
+
+export const listAdminRdApplicationsResponseCountsItemNMin = 0;
+
+export const ListAdminRdApplicationsResponse = zod.object({
+  rows: zod.array(zod.record(zod.string(), zod.unknown())),
+  counts: zod.array(
+    zod.object({
+      status: zod.enum(["new", "contacted", "approved", "rejected"]),
+      n: zod.number().min(listAdminRdApplicationsResponseCountsItemNMin),
+    }),
+  ),
+});
+
+/**
+ * @summary Update an application's status / notes and optionally provision an RD seat
+ */
+
+export const PatchAdminRdApplicationParams = zod.object({
+  id: zod.coerce.number().min(1),
+});
+
+export const patchAdminRdApplicationBodyAdminNotesMax = 4000;
+
+export const patchAdminRdApplicationBodyProvisionRdSlugMax = 64;
+
+export const patchAdminRdApplicationBodyProvisionRdSlugRegExp = new RegExp(
+  "^[a-z0-9-]+$",
+);
+
+export const PatchAdminRdApplicationBody = zod.object({
+  status: zod.enum(["new", "contacted", "approved", "rejected"]).optional(),
+  adminNotes: zod
+    .string()
+    .max(patchAdminRdApplicationBodyAdminNotesMax)
+    .optional(),
+  provisionRdSlug: zod
+    .string()
+    .max(patchAdminRdApplicationBodyProvisionRdSlugMax)
+    .regex(patchAdminRdApplicationBodyProvisionRdSlugRegExp)
+    .optional(),
+});
+
+export const PatchAdminRdApplicationResponse = zod.object({
+  ok: zod.boolean(),
+  row: zod.record(zod.string(), zod.unknown()).optional(),
 });

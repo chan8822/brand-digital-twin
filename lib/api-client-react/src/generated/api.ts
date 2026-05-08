@@ -17,11 +17,15 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  AdminRdApplicationPatch,
+  AdminRdApplicationPatchResult,
+  AdminRdApplicationsList,
   ChallengePostInput,
   DishReviewInput,
   GetChallenge200,
   GetRecipe200,
   HealthStatus,
+  ListAdminRdApplicationsParams,
   ListChallenges200,
   ListRecipes200,
   ListRecipesParams,
@@ -2157,4 +2161,198 @@ export const useRdPartnersAttachAccount = <
   TContext
 > => {
   return useMutation(getRdPartnersAttachAccountMutationOptions(options));
+};
+
+/**
+ * @summary List RD applications for ops review
+ */
+export const getListAdminRdApplicationsUrl = (
+  params?: ListAdminRdApplicationsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/admin/rd-applications?${stringifiedParams}`
+    : `/api/admin/rd-applications`;
+};
+
+export const listAdminRdApplications = async (
+  params?: ListAdminRdApplicationsParams,
+  options?: RequestInit,
+): Promise<AdminRdApplicationsList> => {
+  return customFetch<AdminRdApplicationsList>(
+    getListAdminRdApplicationsUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListAdminRdApplicationsQueryKey = (
+  params?: ListAdminRdApplicationsParams,
+) => {
+  return [`/api/admin/rd-applications`, ...(params ? [params] : [])] as const;
+};
+
+export const getListAdminRdApplicationsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAdminRdApplications>>,
+  TError = ErrorType<void>,
+>(
+  params?: ListAdminRdApplicationsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listAdminRdApplications>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListAdminRdApplicationsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listAdminRdApplications>>
+  > = ({ signal }) =>
+    listAdminRdApplications(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAdminRdApplications>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListAdminRdApplicationsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAdminRdApplications>>
+>;
+export type ListAdminRdApplicationsQueryError = ErrorType<void>;
+
+/**
+ * @summary List RD applications for ops review
+ */
+
+export function useListAdminRdApplications<
+  TData = Awaited<ReturnType<typeof listAdminRdApplications>>,
+  TError = ErrorType<void>,
+>(
+  params?: ListAdminRdApplicationsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listAdminRdApplications>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListAdminRdApplicationsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update an application's status / notes and optionally provision an RD seat
+ */
+export const getPatchAdminRdApplicationUrl = (id: number) => {
+  return `/api/admin/rd-applications/${id}`;
+};
+
+export const patchAdminRdApplication = async (
+  id: number,
+  adminRdApplicationPatch: AdminRdApplicationPatch,
+  options?: RequestInit,
+): Promise<AdminRdApplicationPatchResult> => {
+  return customFetch<AdminRdApplicationPatchResult>(
+    getPatchAdminRdApplicationUrl(id),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(adminRdApplicationPatch),
+    },
+  );
+};
+
+export const getPatchAdminRdApplicationMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchAdminRdApplication>>,
+    TError,
+    { id: number; data: BodyType<AdminRdApplicationPatch> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof patchAdminRdApplication>>,
+  TError,
+  { id: number; data: BodyType<AdminRdApplicationPatch> },
+  TContext
+> => {
+  const mutationKey = ["patchAdminRdApplication"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof patchAdminRdApplication>>,
+    { id: number; data: BodyType<AdminRdApplicationPatch> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return patchAdminRdApplication(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PatchAdminRdApplicationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof patchAdminRdApplication>>
+>;
+export type PatchAdminRdApplicationMutationBody =
+  BodyType<AdminRdApplicationPatch>;
+export type PatchAdminRdApplicationMutationError = ErrorType<void>;
+
+/**
+ * @summary Update an application's status / notes and optionally provision an RD seat
+ */
+export const usePatchAdminRdApplication = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchAdminRdApplication>>,
+    TError,
+    { id: number; data: BodyType<AdminRdApplicationPatch> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof patchAdminRdApplication>>,
+  TError,
+  { id: number; data: BodyType<AdminRdApplicationPatch> },
+  TContext
+> => {
+  return useMutation(getPatchAdminRdApplicationMutationOptions(options));
 };
