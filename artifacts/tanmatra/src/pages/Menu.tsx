@@ -549,8 +549,8 @@ export default function Menu() {
 
       {/* Diet + Category + Kitchen */}
       <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[10px] uppercase tracking-[0.18em] text-clinical-zinc/60 font-semibold pr-1">
+        <div className="flex items-center gap-2 overflow-x-auto md:flex-wrap -mx-4 px-4 md:mx-0 md:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <span className="shrink-0 text-[10px] uppercase tracking-[0.18em] text-clinical-zinc/60 font-semibold pr-1">
             Diet
           </span>
           {(["all", "veg", "nonveg"] as DietFilter[]).map((opt) => {
@@ -560,7 +560,7 @@ export default function Menu() {
               <button
                 key={opt}
                 onClick={() => setDiet(opt)}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-[11px] uppercase tracking-[0.12em] font-semibold transition-all ${
+                className={`shrink-0 inline-flex items-center gap-1.5 px-3 min-h-[36px] rounded-full border text-[11px] uppercase tracking-[0.12em] font-semibold transition-all ${
                   active
                     ? "border-clinical-gold/50 bg-clinical-gold/10 text-clinical-gold"
                     : "border-clinical-slate/30 text-clinical-zinc hover:text-clinical-gold"
@@ -573,14 +573,17 @@ export default function Menu() {
           })}
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div
+          className="flex gap-2 overflow-x-auto md:flex-wrap -mx-4 px-4 md:mx-0 md:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          aria-label="Filter by category"
+        >
           {CATEGORY_TABS.map((c) => {
             const active = category === c;
             return (
               <button
                 key={c}
                 onClick={() => setCategory(c)}
-                className={`px-3 py-1 rounded-full border text-[11px] uppercase tracking-[0.12em] font-semibold transition-all ${
+                className={`shrink-0 inline-flex items-center px-3 min-h-[36px] rounded-full border text-[11px] uppercase tracking-[0.12em] font-semibold transition-all ${
                   active
                     ? "border-clinical-gold/50 bg-clinical-gold/10 text-clinical-gold"
                     : "border-clinical-slate/30 text-clinical-zinc hover:text-clinical-gold"
@@ -592,14 +595,17 @@ export default function Menu() {
           })}
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div
+          className="flex gap-2 overflow-x-auto md:flex-wrap -mx-4 px-4 md:mx-0 md:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          aria-label="Filter by kitchen"
+        >
           {KITCHEN_TABS.map((k) => {
             const active = kitchen === k;
             return (
               <button
                 key={k}
                 onClick={() => setKitchen(k)}
-                className={`px-3 py-1 rounded-full border text-[11px] uppercase tracking-[0.12em] font-semibold transition-all ${
+                className={`shrink-0 inline-flex items-center px-3 min-h-[36px] rounded-full border text-[11px] uppercase tracking-[0.12em] font-semibold transition-all ${
                   active
                     ? "border-clinical-gold/50 bg-clinical-gold/10 text-clinical-gold"
                     : "border-clinical-slate/30 text-clinical-zinc hover:text-clinical-gold"

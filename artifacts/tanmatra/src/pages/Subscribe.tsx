@@ -5,7 +5,7 @@ import { evaluateDishForPreferences } from "@/lib/preferencesMatch";
 import { usePreferences } from "@/lib/preferencesContext";
 import { ACCENT_CLASSES } from "@/lib/teamData";
 import type { SubscriptionItem } from "@/lib/subscriptionsApi";
-import { Stethoscope } from "lucide-react";
+import { Stethoscope, ArrowLeft } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -238,6 +238,14 @@ export default function Subscribe() {
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
+      <Link
+        to="/plans"
+        className="inline-flex items-center gap-1.5 min-h-[36px] py-2 -ml-1 px-1 text-xs text-clinical-zinc hover:text-clinical-gold transition-colors"
+      >
+        <ArrowLeft className="w-3.5 h-3.5" />
+        Back to RD Plans
+      </Link>
+
       <header className="space-y-2 text-center">
         <Badge className="bg-clinical-gold/15 text-clinical-gold border-clinical-gold/30 uppercase tracking-widest text-[10px]">
           Tanmatra Plans

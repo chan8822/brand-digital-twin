@@ -214,7 +214,7 @@ export default function Dish() {
       <div className="max-w-6xl mx-auto px-4 pt-4">
         <Link
           to="/menu"
-          className="inline-flex items-center gap-1.5 text-xs text-clinical-zinc hover:text-clinical-gold transition-colors"
+          className="inline-flex items-center gap-1.5 min-h-[36px] py-2 -ml-1 px-1 text-xs text-clinical-zinc hover:text-clinical-gold transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           Back to Menu

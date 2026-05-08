@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import MacroOverlay from "@/components/dish/MacroOverlay";
 import SegmentToggle from "@/components/layout/SegmentToggle";
 import { Link } from "react-router";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Zap,
@@ -52,6 +53,16 @@ export default function Performance() {
   return (
     <div className="min-h-screen bg-clinical-dark">
       <SegmentToggle />
+
+      <div className="max-w-7xl mx-auto px-4 pt-3">
+        <Link
+          to="/challenges"
+          className="inline-flex items-center gap-1.5 min-h-[36px] py-2 -ml-1 px-1 text-xs text-clinical-zinc hover:text-clinical-gold transition-colors"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Back to Community
+        </Link>
+      </div>
 
       <section className="relative py-16 border-b border-clinical-slate/20">
         <div className="max-w-7xl mx-auto px-4">

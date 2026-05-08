@@ -16,6 +16,7 @@ import {
   ShoppingBag,
   Sparkles,
   ArrowRight,
+  ArrowLeft,
   Share2,
   Check,
 } from "lucide-react";
@@ -138,6 +139,14 @@ export default function GroupOrder() {
 
   return (
     <div className="max-w-3xl mx-auto p-4 space-y-5 animate-in fade-in duration-500">
+      <Link
+        to="/menu"
+        className="inline-flex items-center gap-1.5 min-h-[36px] py-2 -ml-1 px-1 text-xs text-clinical-zinc hover:text-clinical-gold transition-colors"
+      >
+        <ArrowLeft className="w-3.5 h-3.5" />
+        Back to Menu
+      </Link>
+
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="space-y-1">
           <p className="text-clinical-label">Group Order</p>

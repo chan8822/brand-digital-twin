@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
+import { ArrowLeft } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -865,6 +866,16 @@ export default function Wellness() {
   return (
     <div className="min-h-screen bg-clinical-dark">
       <SegmentToggle />
+
+      <div className="max-w-7xl mx-auto px-4 pt-3">
+        <Link
+          to="/challenges"
+          className="inline-flex items-center gap-1.5 min-h-[36px] py-2 -ml-1 px-1 text-xs text-clinical-zinc hover:text-clinical-gold transition-colors"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Back to Community
+        </Link>
+      </div>
 
       <ProtocolActions />
 
