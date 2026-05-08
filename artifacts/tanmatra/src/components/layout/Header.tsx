@@ -17,16 +17,13 @@ import {
   Flag,
   Building2,
   Gift,
-  Menu as MenuIcon,
-  X,
+  User,
 } from "lucide-react";
-import { useState } from "react";
 import { useCart } from "@/lib/cartContext";
 import Logo from "./Logo";
 
 export default function Header() {
   const location = useLocation();
-  const [mobileOpen, setMobileOpen] = useState(false);
   const { totalQuantity } = useCart();
 
   const isActive = (path: string) => location.pathname === path;
@@ -76,62 +73,35 @@ export default function Header() {
           })}
         </nav>
 
-        <div className="flex items-center gap-2">
-          <Link to="/cart" className="relative">
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-8 gap-1.5 text-xs text-clinical-zinc hover:text-clinical-gold hover:bg-clinical-gold/10"
-            >
-              <ShoppingCart className="w-4 h-4" />
-              <span className="hidden sm:inline">Cart</span>
-              {totalQuantity > 0 && (
-                <Badge className="h-4 min-w-4 px-1 text-[10px] bg-clinical-gold text-[#050505] border-0 ml-0.5 font-bold">
-                  {totalQuantity}
-                </Badge>
-              )}
-            </Button>
+        <div className="flex items-center gap-1 sm:gap-2">
+          <Link
+            to="/cart"
+            aria-label={`Cart${totalQuantity > 0 ? ` (${totalQuantity} items)` : ""}`}
+            className="relative inline-flex items-center justify-center h-10 w-10 sm:h-8 sm:w-auto sm:px-3 rounded-md text-clinical-zinc hover:text-clinical-gold hover:bg-clinical-gold/10 transition-colors"
+          >
+            <ShoppingCart className="w-5 h-5 sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline ml-1.5 text-xs">Cart</span>
+            {totalQuantity > 0 && (
+              <Badge className="absolute top-1 right-1 sm:static sm:ml-1 h-4 min-w-4 px-1 text-[10px] bg-clinical-gold text-[#050505] border-0 font-bold leading-none">
+                {totalQuantity}
+              </Badge>
+            )}
+          </Link>
+
+          <Link
+            to="/login"
+            aria-label="My account"
+            className="md:hidden inline-flex items-center justify-center h-10 w-10 rounded-md text-clinical-zinc hover:text-clinical-gold hover:bg-clinical-gold/10 transition-colors"
+          >
+            <User className="w-5 h-5" />
           </Link>
 
           <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-clinical-sage/10 border border-clinical-sage/20">
             <span className="w-1.5 h-1.5 rounded-full bg-clinical-sage animate-pulse" />
             <span className="text-[10px] text-clinical-sage font-medium tracking-wide">RD VERIFIED</span>
           </div>
-
-          <Button
-            size="icon"
-            variant="ghost"
-            className="md:hidden h-8 w-8 text-clinical-zinc"
-            onClick={() => setMobileOpen(!mobileOpen)}
-            aria-label="Toggle menu"
-          >
-            {mobileOpen ? <X className="w-4 h-4" /> : <MenuIcon className="w-4 h-4" />}
-          </Button>
         </div>
       </div>
-
-      {mobileOpen && (
-        <nav className="md:hidden border-t border-clinical-slate/30 px-4 py-3 bg-[#050505]/95 backdrop-blur-xl flex flex-col gap-1">
-          {navItems.map((item) => {
-            const active = isActive(item.path);
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                onClick={() => setMobileOpen(false)}
-                className={`flex items-center gap-2 px-3 py-2.5 rounded-md text-sm transition-colors ${
-                  active
-                    ? "bg-clinical-gold/15 text-clinical-gold border border-clinical-gold/20"
-                    : "text-clinical-zinc hover:text-white hover:bg-white/5"
-                }`}
-              >
-                <item.icon className={`w-4 h-4 ${active ? "text-clinical-gold" : ""}`} />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
-      )}
     </header>
   );
 }

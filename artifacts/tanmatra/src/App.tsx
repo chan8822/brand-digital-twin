@@ -8,6 +8,8 @@ import { PreferencesProvider } from "@/lib/preferencesContext";
 import OnboardingQuizGate from "@/components/preferences/OnboardingQuizGate";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
+import BottomNav from "@/components/layout/BottomNav";
+import ScrollToTop from "@/components/layout/ScrollToTop";
 import SupportAgentWidget from "@/components/ai/SupportAgent";
 import Home from "@/pages/Home";
 import Menu from "@/pages/Menu";
@@ -86,10 +88,11 @@ export default function App() {
           <OrdersProvider>
             <PreferencesProvider>
             <BrowserRouter basename={basename}>
+              <ScrollToTop />
               <div className="min-h-screen flex flex-col bg-clinical-dark">
                 <Header />
                 <OnboardingQuizGate />
-                <main className="flex-1">
+                <main className="flex-1 pb-20 md:pb-0">
                   <Routes>
                     <Route path="/" element={<Home />} />
                     <Route path="/menu" element={<Menu />} />
@@ -206,6 +209,7 @@ export default function App() {
                   </Routes>
                 </main>
                 <Footer />
+                <BottomNav />
                 <SupportAgentWidget />
               </div>
               <Toaster theme="dark" position="top-right" richColors />

@@ -129,14 +129,14 @@ export default function SupportAgentWidget() {
     <>
       <Button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full shadow-lg"
+        className="fixed bottom-24 md:bottom-6 right-4 md:right-6 z-50 h-12 w-12 md:h-14 md:w-14 rounded-full shadow-lg"
         aria-label={isOpen ? "Close support chat" : "Open support chat"}
       >
         {isOpen ? <X className="w-6 h-6" /> : <MessageCircle className="w-6 h-6" />}
       </Button>
 
       {isOpen && (
-        <Card className="fixed bottom-24 right-6 z-50 w-[380px] max-h-[560px] flex flex-col shadow-2xl border-2 border-[#D4AF37]/30">
+        <Card className="fixed bottom-[152px] md:bottom-24 right-3 md:right-6 left-3 md:left-auto z-50 w-auto md:w-[380px] max-h-[65vh] md:max-h-[560px] flex flex-col shadow-2xl border-2 border-[#D4AF37]/30">
           <CardHeader className="shrink-0 py-3 px-4 border-b bg-[#050505]">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-full bg-[#D4AF37]/20 flex items-center justify-center">

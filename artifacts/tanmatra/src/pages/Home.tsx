@@ -35,6 +35,15 @@ import {
   Flag,
   Users as UsersIcon,
   CalendarDays,
+  Utensils,
+  CalendarClock,
+  BookOpen,
+  Building2,
+  Gift,
+  Stethoscope,
+  HeartHandshake,
+  MapPin,
+  Sparkles,
 } from "lucide-react";
 
 /* ── Featured meals (each with unique image) ──────────────────────── */
@@ -199,7 +208,7 @@ export default function Home() {
       <SegmentToggle />
 
       {/* ═══════════════ HERO SECTION ═══════════════ */}
-      <section className="relative h-[70vh] min-h-[480px] overflow-hidden flex items-center">
+      <section className="relative min-h-[420px] md:h-[70vh] md:min-h-[480px] overflow-hidden flex items-center">
         <div className="absolute inset-0">
           <img src="/hero-bg.jpg" alt="Clinical-grade food preparation" className="w-full h-full object-cover" loading="eager" />
           <div className="absolute inset-0 bg-gradient-to-r from-[#050505]/95 via-[#050505]/70 to-[#050505]/40" />
@@ -244,6 +253,44 @@ export default function Home() {
               <div className="w-px bg-clinical-slate/30" />
               <div><p className="tabular-nums text-2xl font-bold text-white">24</p><p className="text-clinical-label mt-0.5">RD Advisors</p></div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════ MOBILE QUICK ACTIONS ═══════════════ */}
+      <section className="md:hidden border-b border-clinical-slate/15 bg-clinical-surface/40">
+        <div className="px-4 py-5">
+          <p className="text-[10px] tracking-widest uppercase text-clinical-zinc/70 mb-3">
+            Quick start
+          </p>
+          <div className="grid grid-cols-4 gap-2">
+            {[
+              { to: "/menu", label: "Menu", icon: Utensils },
+              { to: "/subscribe", label: "Subscribe", icon: CalendarClock },
+              { to: "/recipes", label: "Recipes", icon: BookOpen },
+              { to: "/challenges", label: "Cohorts", icon: Flag },
+              { to: "/plans", label: "RD Plans", icon: Stethoscope },
+              { to: "/rd", label: "Book RD", icon: HeartHandshake },
+              { to: "/rewards", label: "Rewards", icon: Sparkles },
+              { to: "/track", label: "Track", icon: MapPin },
+              { to: "/corporate", label: "Corporate", icon: Building2 },
+              { to: "/vouchers", label: "Vouchers", icon: Gift },
+              { to: "/orders", label: "Orders", icon: RefreshCw },
+              { to: "/preferences", label: "Settings", icon: Activity },
+            ].map((a) => (
+              <Link
+                key={a.to}
+                to={a.to}
+                className="group flex flex-col items-center justify-start gap-1.5 min-h-[76px] rounded-xl bg-[#050505] border border-clinical-slate/25 px-2 py-3 active:bg-clinical-gold/5 active:border-clinical-gold/40 transition-colors"
+              >
+                <span className="w-9 h-9 rounded-lg bg-clinical-gold/10 border border-clinical-gold/25 flex items-center justify-center group-active:bg-clinical-gold/20">
+                  <a.icon className="w-4 h-4 text-clinical-gold" strokeWidth={1.8} />
+                </span>
+                <span className="text-[11px] text-white text-center leading-tight">
+                  {a.label}
+                </span>
+              </Link>
+            ))}
           </div>
         </div>
       </section>

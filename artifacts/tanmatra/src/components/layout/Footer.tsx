@@ -32,7 +32,7 @@ const FOOTER_LINKS = {
 
 export default function Footer() {
   return (
-    <footer className="border-t border-clinical-slate/20 bg-clinical-surface">
+    <footer className="hidden md:block border-t border-clinical-slate/20 bg-clinical-surface">
       {/* Main footer */}
       <div className="max-w-7xl mx-auto px-4 py-12">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8">
