@@ -134,3 +134,22 @@ export async function resolveDishBySlug(
   const merged = await getMergedCatalog();
   return merged.find((d) => d.slug === slug);
 }
+
+/** Build a single-shot resolver that fetches the merged catalog once and
+ * answers many lookups against the in-memory snapshot. Use this in any
+ * server flow that needs to resolve multiple dishes in a tight loop
+ * (e.g. checkout finalize, bundle expansion) to avoid N round-trips. */
+export async function makeBatchDishResolver(): Promise<{
+  byId: (id: number) => DishData | undefined;
+  bySlug: (slug: string) => DishData | undefined;
+  all: DishData[];
+}> {
+  const merged = await getMergedCatalog();
+  const byIdMap = new Map(merged.map((d) => [d.id, d]));
+  const bySlugMap = new Map(merged.map((d) => [d.slug, d]));
+  return {
+    byId: (id) => byIdMap.get(id),
+    bySlug: (slug) => bySlugMap.get(slug),
+    all: merged,
+  };
+}

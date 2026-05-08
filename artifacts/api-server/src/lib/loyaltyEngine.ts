@@ -17,7 +17,7 @@ import {
   type NotificationKind,
 } from "@workspace/db";
 import { inArray } from "drizzle-orm";
-import { resolveDishById } from "./menuResolver";
+import { makeBatchDishResolver } from "./menuResolver";
 import type { PgTransaction } from "drizzle-orm/pg-core";
 
 type DbOrTx = typeof db | PgTransaction<any, any, any>;
@@ -396,8 +396,10 @@ export async function finalizeOrder(args: {
   }
   const validatedItems: FinalizeOrderItem[] = [];
   let grossPaise = 0;
+  // Resolve the merged catalog once; subsequent lookups are in-memory.
+  const catalog = await makeBatchDishResolver();
   for (const it of args.items) {
-    const dish = await resolveDishById(it.id);
+    const dish = catalog.byId(it.id);
     if (!dish) throw new Error(`unknown dish id: ${it.id}`);
     if (!dish.isAvailable) throw new Error(`dish unavailable: ${dish.slug}`);
     const qty = Math.max(0, Math.floor(it.qty));
