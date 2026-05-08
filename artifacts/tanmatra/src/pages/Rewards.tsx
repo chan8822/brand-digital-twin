@@ -34,7 +34,7 @@ const REASON_LABEL: Record<CreditLedgerReason, string> = {
   referral_referrer_award: "Friend joined",
   referral_referee_signup: "Welcome bonus",
   loyalty_free_week: "Loyalty reward",
-  premium_unlock_bonus: "Premium unlock",
+  premium_unlock_bonus: "Chef's tier unlock",
   birthday_meal: "Birthday meal",
   winback_offer: "Win-back offer",
   manual_grant: "Manual grant",
@@ -116,7 +116,7 @@ export default function Rewards() {
         <Wallet className="w-10 h-10 text-clinical-gold mx-auto" />
         <h1 className="text-2xl font-bold text-white">Sign in to see rewards</h1>
         <p className="text-sm text-clinical-zinc">
-          Earn credits, refer friends, and unlock premium meals.
+          Earn credits, refer friends, and unlock Chef's tier perks.
         </p>
         <Link to="/login">
           <Button className="bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90">

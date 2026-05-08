@@ -296,7 +296,7 @@ export default function Subscriptions() {
                     </p>
                     {pr.premiumUnlocked && (
                       <Badge className="bg-clinical-gold/15 text-clinical-gold border-clinical-gold/40 text-[10px]">
-                        Premium unlocked
+                        Chef's tier unlocked
                       </Badge>
                     )}
                   </div>
@@ -322,7 +322,7 @@ export default function Subscriptions() {
                   {!pr.premiumUnlocked && (
                     <div className="space-y-1">
                       <div className="flex items-center justify-between text-[10px] text-clinical-zinc uppercase tracking-wide">
-                        <span>Premium tier</span>
+                        <span>Chef's tier</span>
                         <span>
                           {pr.deliveredCount}/{pr.premiumUnlockAt}
                         </span>

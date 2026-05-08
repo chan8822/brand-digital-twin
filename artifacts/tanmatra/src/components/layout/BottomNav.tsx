@@ -74,8 +74,8 @@ const PRIMARY: NavItem[] = [
   },
   {
     to: "/orders",
-    label: "Track",
-    icon: Stethoscope,
+    label: "Orders",
+    icon: Package,
     match: (p) => p.startsWith("/orders") || p === "/track",
   },
   {

@@ -332,7 +332,7 @@ export default function Cart() {
               to="/subscriptions"
               className="block text-center text-[11px] text-clinical-gold hover:underline pt-1"
             >
-              Order this every week — save 10% on a meal plan →
+              Subscribe to weekly delivery — save 10% →
             </Link>
 
             <p className="text-[10px] text-clinical-zinc text-center">

@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   ForkKnife,
   Calendar,
-  Stethoscope,
+  Package,
   UsersThree,
   UserCircle,
   ShoppingCart,
@@ -28,7 +28,7 @@ export default function Header() {
   const navItems = [
     { path: "/menu", label: "Eat", icon: ForkKnife, match: ["/menu", "/dish", "/marketplace", "/recipes"] },
     { path: "/meal-planner", label: "Plan", icon: Calendar, match: ["/meal-planner", "/subscriptions", "/plans", "/rd", "/appointments", "/subscribe"] },
-    { path: "/orders", label: "Track", icon: Stethoscope, match: ["/orders", "/track"] },
+    { path: "/orders", label: "Orders", icon: Package, match: ["/orders", "/track"] },
     { path: "/challenges", label: "Community", icon: UsersThree, match: ["/challenges", "/wellness", "/performance", "/clinical", "/corporate", "/team"] },
     { path: "/preferences", label: "Account", icon: UserCircle, match: ["/preferences", "/rewards", "/vouchers", "/premium", "/login"] },
   ];
@@ -46,7 +46,8 @@ export default function Header() {
 
           <nav className="hidden md:flex items-center gap-1" aria-label="Primary">
             {navItems.map((item) => {
-              const active = isGroupActive(item.match) || isActive(item.path);
+              const onExactPath = isActive(item.path);
+              const active = isGroupActive(item.match) || onExactPath;
               const Icon = item.icon;
               return (
                 <Link
@@ -57,7 +58,7 @@ export default function Header() {
                       ? "bg-clinical-gold/15 text-clinical-gold border border-clinical-gold/30"
                       : "text-clinical-zinc hover:text-white hover:bg-white/5 border border-transparent"
                   }`}
-                  aria-current={active ? "page" : undefined}
+                  aria-current={onExactPath ? "page" : undefined}
                 >
                   <Icon className="w-3.5 h-3.5" weight={active ? "fill" : "regular"} aria-hidden />
                   {item.label}
