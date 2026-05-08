@@ -85,6 +85,32 @@ interface BulkHeroResult {
   error?: string;
 }
 
+type BulkHeroEvent =
+  | { type: "plan"; total: number; slugs: string[] }
+  | {
+      type: "started";
+      slug: string;
+      name: string;
+      index: number;
+      total: number;
+    }
+  | { type: "item"; result: BulkHeroResult; index: number; total: number }
+  | { type: "error"; error: string }
+  | {
+      type: "summary";
+      attempted: number;
+      succeeded: number;
+      failed: number;
+      aborted: boolean;
+      results: BulkHeroResult[];
+    };
+
+interface BulkProgress {
+  total: number;
+  completed: number;
+  inFlight: { slug: string; name: string } | null;
+}
+
 export function MenuPhotosPanel({
   items,
   adminToken,
@@ -107,6 +133,7 @@ export function MenuPhotosPanel({
     cappedAtCap: boolean;
   } | null>(null);
   const [bulkResults, setBulkResults] = useState<BulkHeroResult[] | null>(null);
+  const [bulkProgress, setBulkProgress] = useState<BulkProgress | null>(null);
   const [bulkError, setBulkError] = useState<string | null>(null);
   const [dropFilter, setDropFilter] = useState("");
   const [dragOverSlug, setDragOverSlug] = useState<string | null>(null);
@@ -261,6 +288,7 @@ export function MenuPhotosPanel({
     setBusy("bulk-preview");
     setBulkError(null);
     setBulkResults(null);
+    setBulkProgress(null);
     try {
       const res = await authedFetch(
         `/api/menu/items/missing-images`,
@@ -297,30 +325,94 @@ export function MenuPhotosPanel({
       return;
     setBusy("bulk-run");
     setBulkError(null);
-    setBulkResults(null);
+    setBulkResults([]);
+    setBulkProgress({ total: slugs.length, completed: 0, inFlight: null });
+    const collected: BulkHeroResult[] = [];
+    let touchedCurrentSlug = false;
     try {
       const res = await authedFetch(
         `/api/menu/items/assets/bulk-hero`,
         { method: "POST", body: JSON.stringify({ slugs, confirm: true }) },
         adminToken,
       );
-      if (!res.ok) throw new Error(await res.text());
-      const json = (await res.json()) as {
-        attempted: number;
-        succeeded: number;
-        failed: number;
-        results: BulkHeroResult[];
-      };
+      if (!res.ok || !res.body) throw new Error(await res.text());
+
+      // Parse NDJSON: one JSON object per newline-terminated line. The
+      // server streams a `plan` event, then alternating `started`/`item`
+      // events per slug, and a final `summary`.
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let done = false;
+      while (!done) {
+        const chunk = await reader.read();
+        done = chunk.done;
+        if (chunk.value) buffer += decoder.decode(chunk.value, { stream: !done });
+        let nl = buffer.indexOf("\n");
+        while (nl >= 0) {
+          const line = buffer.slice(0, nl).trim();
+          buffer = buffer.slice(nl + 1);
+          nl = buffer.indexOf("\n");
+          if (!line) continue;
+          let event: BulkHeroEvent;
+          try {
+            event = JSON.parse(line) as BulkHeroEvent;
+          } catch {
+            continue;
+          }
+          if (event.type === "plan") {
+            setBulkProgress({
+              total: event.total,
+              completed: 0,
+              inFlight: null,
+            });
+          } else if (event.type === "started") {
+            setBulkProgress({
+              total: event.total,
+              completed: event.index - 1,
+              inFlight: { slug: event.slug, name: event.name },
+            });
+          } else if (event.type === "item") {
+            collected.push(event.result);
+            setBulkResults([...collected]);
+            setBulkProgress({
+              total: event.total,
+              completed: event.index,
+              inFlight: null,
+            });
+            if (event.result.slug === slug) touchedCurrentSlug = true;
+          } else if (event.type === "error") {
+            setBulkError(event.error);
+          }
+          // `summary` is informational; we already have the full list.
+        }
+      }
       onPrimaryChanged?.();
-      // Refresh the preview FIRST (it clears bulkResults as part of its
-      // reset) so we can then surface the run results without losing them.
-      await loadBulkPreview();
-      setBulkResults(json.results);
-      // If the currently-selected slug was in the run, refresh its assets.
-      if (slugs.includes(slug)) await load(slug);
+      if (touchedCurrentSlug) await load(slug);
+      // Refresh the preview list so completed items drop out of "missing".
+      // Don't reset results — preserve them as the run summary.
+      try {
+        const previewRes = await authedFetch(
+          `/api/menu/items/missing-images`,
+          { method: "GET" },
+          adminToken,
+        );
+        if (previewRes.ok) {
+          const json = (await previewRes.json()) as {
+            items: MissingItem[];
+            total: number;
+            cap: number;
+            cappedAtCap: boolean;
+          };
+          setBulkPreview(json);
+        }
+      } catch {
+        /* preview refresh is best-effort */
+      }
     } catch (err) {
       setBulkError((err as Error).message);
     } finally {
+      setBulkProgress(null);
       setBusy(null);
     }
   };
@@ -609,6 +701,36 @@ export function MenuPhotosPanel({
           </div>
           {bulkError && (
             <div className="text-xs text-destructive">{bulkError}</div>
+          )}
+          {bulkProgress && (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="font-medium">
+                  {bulkProgress.completed} / {bulkProgress.total} done
+                </span>
+                <span className="text-muted-foreground truncate">
+                  {bulkProgress.inFlight
+                    ? `Generating: ${bulkProgress.inFlight.name}`
+                    : bulkProgress.completed >= bulkProgress.total
+                      ? "Wrapping up…"
+                      : "Working…"}
+                </span>
+              </div>
+              <div className="h-1.5 w-full bg-muted rounded overflow-hidden">
+                <div
+                  className="h-full bg-primary transition-all"
+                  style={{
+                    width: `${
+                      bulkProgress.total > 0
+                        ? Math.round(
+                            (bulkProgress.completed / bulkProgress.total) * 100,
+                          )
+                        : 0
+                    }%`,
+                  }}
+                />
+              </div>
+            </div>
           )}
           {bulkPreview && (
             <div className="text-[11px] space-y-1 max-h-40 overflow-auto border rounded p-2 bg-background">

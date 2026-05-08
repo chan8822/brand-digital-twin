@@ -4,7 +4,7 @@ import { recordOpsAction } from "../lib/opsAudit";
 import { findBySlug } from "../lib/menu";
 import {
   BULK_HERO_CAP,
-  bulkGenerateMissingHeroes,
+  bulkGenerateMissingHeroesIter,
   findAssetById,
   generateHeroAsset,
   ingestUpload,
@@ -396,34 +396,96 @@ router.post(
       res.status(400).json({ error: "invalid payload; need slugs + confirm:true" });
       return;
     }
+    // Stream NDJSON (one JSON object per line) so the editor can show
+    // per-item progress and so a flaky network only loses what hasn't been
+    // flushed yet. The audit log is always written from a `finally` block —
+    // even if the client disconnects mid-run — so partial work is recorded.
+    res.status(200);
+    res.setHeader("Content-Type", "application/x-ndjson; charset=utf-8");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("X-Accel-Buffering", "no");
+    res.flushHeaders?.();
+
+    const results: Array<{
+      slug: string;
+      ok: boolean;
+      assetId?: number;
+      imageUrl?: string;
+      error?: string;
+    }> = [];
+    let aborted = false;
+    let fatalError: string | null = null;
+    const onClose = () => {
+      aborted = true;
+    };
+    req.on("close", onClose);
+
+    const write = (event: Record<string, unknown>): void => {
+      if (res.writableEnded) return;
+      try {
+        res.write(JSON.stringify(event) + "\n");
+      } catch {
+        /* socket gone; finally block handles audit */
+      }
+    };
+
     try {
-      const results = await bulkGenerateMissingHeroes({
+      for await (const ev of bulkGenerateMissingHeroesIter({
         slugs: bp.data.slugs,
         createdBy: userId(req),
-      });
+      })) {
+        if (ev.type === "item") results.push(ev.result);
+        write(ev);
+        if (aborted) break;
+      }
+    } catch (err) {
+      fatalError = err instanceof Error ? err.message : String(err);
+      write({ type: "error", error: fatalError });
+    } finally {
       const succeeded = results.filter((r) => r.ok).length;
       const failed = results.length - succeeded;
-      await recordOpsAction({
-        operatorId: userId(req),
-        agent: "cms-rest",
-        action: "cms_bulk_generate_missing_heroes",
-        params: { slugs: bp.data.slugs },
-        beforeState: { requested: bp.data.slugs.length },
-        afterState: {
+      try {
+        await recordOpsAction({
+          operatorId: userId(req),
+          agent: "cms-rest",
+          action: "cms_bulk_generate_missing_heroes",
+          params: { slugs: bp.data.slugs },
+          beforeState: { requested: bp.data.slugs.length },
+          afterState: {
+            attempted: results.length,
+            succeeded,
+            failed,
+            aborted,
+            ...(fatalError ? { fatalError } : {}),
+            slugs: results.map((r) => ({
+              slug: r.slug,
+              ok: r.ok,
+              ...(r.error ? { error: r.error } : {}),
+            })),
+          },
+          status: fatalError ? "failure" : "success",
+          reasoning: aborted
+            ? `bulk AI hero generation interrupted; ${succeeded} ok / ${failed} failed before disconnect`
+            : `bulk AI hero generation; ${succeeded} ok / ${failed} failed`,
+        });
+      } catch (auditErr) {
+        req.log?.error?.(
+          { err: auditErr },
+          "failed to record bulk-hero audit entry",
+        );
+      }
+      if (!res.writableEnded) {
+        write({
+          type: "summary",
+          attempted: results.length,
           succeeded,
           failed,
-          slugs: results.map((r) => ({
-            slug: r.slug,
-            ok: r.ok,
-            ...(r.error ? { error: r.error } : {}),
-          })),
-        },
-        status: "success",
-        reasoning: `bulk AI hero generation; ${succeeded} ok / ${failed} failed`,
-      });
-      res.json({ attempted: results.length, succeeded, failed, results });
-    } catch (err) {
-      sendAssetError(res, err);
+          aborted,
+          results,
+        });
+        res.end();
+      }
+      req.off("close", onClose);
     }
   },
 );

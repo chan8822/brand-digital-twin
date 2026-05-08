@@ -280,23 +280,48 @@ export interface BulkHeroResult {
   error?: string;
 }
 
-export async function bulkGenerateMissingHeroes(input: {
+export type BulkHeroEvent =
+  | { type: "plan"; total: number; slugs: string[] }
+  | { type: "started"; slug: string; name: string; index: number; total: number }
+  | { type: "item"; result: BulkHeroResult; index: number; total: number };
+
+// Streaming variant: yields per-item events so callers can surface live
+// progress and persist partial results if the run is interrupted.
+export async function* bulkGenerateMissingHeroesIter(input: {
   slugs: string[];
   createdBy: string | null;
-}): Promise<BulkHeroResult[]> {
-  // Re-fetch authoritative MenuItem rows from the slugs we were handed,
-  // and skip any that have since had a primary set (race-safe). Cap defends
-  // against a runaway client.
+}): AsyncGenerator<BulkHeroEvent, void, void> {
   const capped = input.slugs.slice(0, BULK_HERO_CAP);
-  if (capped.length === 0) return [];
+  if (capped.length === 0) {
+    yield { type: "plan", total: 0, slugs: [] };
+    return;
+  }
   const items = await db
     .select()
     .from(menuItemsTable)
     .where(
       and(inArray(menuItemsTable.slug, capped), isNull(menuItemsTable.imageUrl)),
     );
-  const out: BulkHeroResult[] = [];
+  const seen = new Set(items.map((i) => i.slug));
+  // Items missing from the DB result already have a primary (race) — emit
+  // them as failures up-front so the audit log captures them.
+  const skipped: BulkHeroResult[] = [];
+  for (const slug of capped) {
+    if (!seen.has(slug)) {
+      skipped.push({ slug, ok: false, error: "already has primary image" });
+    }
+  }
+  const total = items.length + skipped.length;
+  yield {
+    type: "plan",
+    total,
+    slugs: [...items.map((i) => i.slug), ...skipped.map((s) => s.slug)],
+  };
+  let index = 0;
   for (const it of items) {
+    index += 1;
+    yield { type: "started", slug: it.slug, name: it.name, index, total };
+    let result: BulkHeroResult;
     try {
       const asset = await generateHeroAsset({
         item: it,
@@ -306,27 +331,37 @@ export async function bulkGenerateMissingHeroes(input: {
         assetId: asset.id,
         expectedSlug: it.slug,
       });
-      out.push({
+      result = {
         slug: it.slug,
         ok: true,
         assetId: asset.id,
         imageUrl: r.item?.imageUrl ?? asset.publicUrl,
-      });
+      };
     } catch (err) {
-      out.push({
+      result = {
         slug: it.slug,
         ok: false,
         error: (err as Error).message,
-      });
+      };
     }
+    yield { type: "item", result, index, total };
   }
-  // Surface any slugs that were filtered out (already had a primary by the
-  // time we ran) so the caller can show "skipped" in the audit trail.
-  const seen = new Set(items.map((i) => i.slug));
-  for (const slug of capped) {
-    if (!seen.has(slug)) {
-      out.push({ slug, ok: false, error: "already has primary image" });
-    }
+  for (const s of skipped) {
+    index += 1;
+    yield { type: "item", result: s, index, total };
+  }
+}
+
+// Buffered wrapper around the iterator. Used by the AI agent which expects
+// a single aggregate result; the streaming HTTP endpoint consumes the
+// iterator directly.
+export async function bulkGenerateMissingHeroes(input: {
+  slugs: string[];
+  createdBy: string | null;
+}): Promise<BulkHeroResult[]> {
+  const out: BulkHeroResult[] = [];
+  for await (const ev of bulkGenerateMissingHeroesIter(input)) {
+    if (ev.type === "item") out.push(ev.result);
   }
   return out;
 }
