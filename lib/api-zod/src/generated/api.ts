@@ -1127,3 +1127,572 @@ export const GetDishRationalesResponse = zod.object({
     }),
   ),
 });
+
+/**
+ * @summary Get the signed-in user's auto-replan + budget settings
+ */
+export const GetMealPlanSettingsResponse = zod.object({
+  settings: zod.object({
+    userId: zod.string(),
+    autoReplanEnabled: zod.boolean(),
+    weeklyBudgetPaise: zod.number().nullish(),
+    maxRepetitionsPerDish: zod.number(),
+    lastPlannedWeekStart: zod.string().nullish(),
+  }),
+});
+
+/**
+ * @summary Update the signed-in user's auto-replan + budget settings
+ */
+export const updateMealPlanSettingsBodyMaxRepetitionsPerDishMax = 7;
+
+export const UpdateMealPlanSettingsBody = zod.object({
+  autoReplanEnabled: zod.boolean().optional(),
+  weeklyBudgetPaise: zod.number().nullish(),
+  maxRepetitionsPerDish: zod
+    .number()
+    .min(1)
+    .max(updateMealPlanSettingsBodyMaxRepetitionsPerDishMax)
+    .optional(),
+});
+
+export const UpdateMealPlanSettingsResponse = zod.object({
+  settings: zod.object({
+    userId: zod.string(),
+    autoReplanEnabled: zod.boolean(),
+    weeklyBudgetPaise: zod.number().nullish(),
+    maxRepetitionsPerDish: zod.number(),
+    lastPlannedWeekStart: zod.string().nullish(),
+  }),
+});
+
+/**
+ * @summary List the signed-in user's most recent meal plans
+ */
+export const ListMealPlansResponse = zod.object({
+  plans: zod.array(
+    zod.object({
+      id: zod.number(),
+      userId: zod.string(),
+      weekStartDate: zod.string(),
+      status: zod.enum(["draft", "accepted", "scheduled", "discarded"]),
+      constraints: zod.object({
+        dailyCalorieTarget: zod.number().nullish(),
+        dailyProteinTargetGrams: zod.number().nullish(),
+        weeklyBudgetPaise: zod.number().nullish(),
+        maxRepetitionsPerDish: zod.number(),
+        allergens: zod.array(zod.string()),
+        dietaryStyle: zod.string().nullish(),
+        spiceLevel: zod.string().nullish(),
+        goal: zod.string().nullish(),
+      }),
+      days: zod.array(
+        zod.object({
+          date: zod.string(),
+          breakfast: zod
+            .object({
+              dishId: zod.number(),
+              slug: zod.string(),
+              name: zod.string(),
+              image: zod.string(),
+              pricePaise: zod.number(),
+              calories: zod.number(),
+              protein: zod.number(),
+              carbs: zod.number(),
+              fat: zod.number(),
+            })
+            .optional(),
+          lunch: zod
+            .object({
+              dishId: zod.number(),
+              slug: zod.string(),
+              name: zod.string(),
+              image: zod.string(),
+              pricePaise: zod.number(),
+              calories: zod.number(),
+              protein: zod.number(),
+              carbs: zod.number(),
+              fat: zod.number(),
+            })
+            .optional(),
+          dinner: zod
+            .object({
+              dishId: zod.number(),
+              slug: zod.string(),
+              name: zod.string(),
+              image: zod.string(),
+              pricePaise: zod.number(),
+              calories: zod.number(),
+              protein: zod.number(),
+              carbs: zod.number(),
+              fat: zod.number(),
+            })
+            .optional(),
+        }),
+      ),
+      totals: zod
+        .union([
+          zod.object({
+            totalPaise: zod.number(),
+            avgCalories: zod.number(),
+            avgProteinGrams: zod.number(),
+            avgCarbsGrams: zod.number(),
+            avgFatGrams: zod.number(),
+          }),
+          zod.null(),
+        ])
+        .optional(),
+      subscriptionId: zod.number().nullish(),
+      model: zod.string().nullish(),
+      notes: zod.string().nullish(),
+      acceptedAt: zod.coerce.date().nullish(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Generate (or regenerate) a draft 7-day plan for a given week
+ */
+export const generateMealPlanBodyOverridesMaxRepetitionsPerDishMax = 7;
+
+export const GenerateMealPlanBody = zod.object({
+  weekStartDate: zod.string().optional(),
+  overrides: zod
+    .object({
+      weeklyBudgetPaise: zod.number().nullish(),
+      maxRepetitionsPerDish: zod
+        .number()
+        .min(1)
+        .max(generateMealPlanBodyOverridesMaxRepetitionsPerDishMax)
+        .optional(),
+      dailyCalorieTarget: zod.number().nullish(),
+      dailyProteinTargetGrams: zod.number().nullish(),
+    })
+    .optional(),
+});
+
+/**
+ * @summary Get a single meal plan by id
+ */
+
+export const GetMealPlanParams = zod.object({
+  id: zod.coerce.number().min(1),
+});
+
+export const GetMealPlanResponse = zod.object({
+  plan: zod.object({
+    id: zod.number(),
+    userId: zod.string(),
+    weekStartDate: zod.string(),
+    status: zod.enum(["draft", "accepted", "scheduled", "discarded"]),
+    constraints: zod.object({
+      dailyCalorieTarget: zod.number().nullish(),
+      dailyProteinTargetGrams: zod.number().nullish(),
+      weeklyBudgetPaise: zod.number().nullish(),
+      maxRepetitionsPerDish: zod.number(),
+      allergens: zod.array(zod.string()),
+      dietaryStyle: zod.string().nullish(),
+      spiceLevel: zod.string().nullish(),
+      goal: zod.string().nullish(),
+    }),
+    days: zod.array(
+      zod.object({
+        date: zod.string(),
+        breakfast: zod
+          .object({
+            dishId: zod.number(),
+            slug: zod.string(),
+            name: zod.string(),
+            image: zod.string(),
+            pricePaise: zod.number(),
+            calories: zod.number(),
+            protein: zod.number(),
+            carbs: zod.number(),
+            fat: zod.number(),
+          })
+          .optional(),
+        lunch: zod
+          .object({
+            dishId: zod.number(),
+            slug: zod.string(),
+            name: zod.string(),
+            image: zod.string(),
+            pricePaise: zod.number(),
+            calories: zod.number(),
+            protein: zod.number(),
+            carbs: zod.number(),
+            fat: zod.number(),
+          })
+          .optional(),
+        dinner: zod
+          .object({
+            dishId: zod.number(),
+            slug: zod.string(),
+            name: zod.string(),
+            image: zod.string(),
+            pricePaise: zod.number(),
+            calories: zod.number(),
+            protein: zod.number(),
+            carbs: zod.number(),
+            fat: zod.number(),
+          })
+          .optional(),
+      }),
+    ),
+    totals: zod
+      .union([
+        zod.object({
+          totalPaise: zod.number(),
+          avgCalories: zod.number(),
+          avgProteinGrams: zod.number(),
+          avgCarbsGrams: zod.number(),
+          avgFatGrams: zod.number(),
+        }),
+        zod.null(),
+      ])
+      .optional(),
+    subscriptionId: zod.number().nullish(),
+    model: zod.string().nullish(),
+    notes: zod.string().nullish(),
+    acceptedAt: zod.coerce.date().nullish(),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+  }),
+});
+
+/**
+ * @summary Regenerate a single day in a draft plan
+ */
+
+export const RegenerateMealPlanDayParams = zod.object({
+  id: zod.coerce.number().min(1),
+});
+
+export const regenerateMealPlanDayBodyDayIndexMin = 0;
+export const regenerateMealPlanDayBodyDayIndexMax = 6;
+
+export const RegenerateMealPlanDayBody = zod.object({
+  dayIndex: zod
+    .number()
+    .min(regenerateMealPlanDayBodyDayIndexMin)
+    .max(regenerateMealPlanDayBodyDayIndexMax),
+});
+
+export const RegenerateMealPlanDayResponse = zod.object({
+  plan: zod.object({
+    id: zod.number(),
+    userId: zod.string(),
+    weekStartDate: zod.string(),
+    status: zod.enum(["draft", "accepted", "scheduled", "discarded"]),
+    constraints: zod.object({
+      dailyCalorieTarget: zod.number().nullish(),
+      dailyProteinTargetGrams: zod.number().nullish(),
+      weeklyBudgetPaise: zod.number().nullish(),
+      maxRepetitionsPerDish: zod.number(),
+      allergens: zod.array(zod.string()),
+      dietaryStyle: zod.string().nullish(),
+      spiceLevel: zod.string().nullish(),
+      goal: zod.string().nullish(),
+    }),
+    days: zod.array(
+      zod.object({
+        date: zod.string(),
+        breakfast: zod
+          .object({
+            dishId: zod.number(),
+            slug: zod.string(),
+            name: zod.string(),
+            image: zod.string(),
+            pricePaise: zod.number(),
+            calories: zod.number(),
+            protein: zod.number(),
+            carbs: zod.number(),
+            fat: zod.number(),
+          })
+          .optional(),
+        lunch: zod
+          .object({
+            dishId: zod.number(),
+            slug: zod.string(),
+            name: zod.string(),
+            image: zod.string(),
+            pricePaise: zod.number(),
+            calories: zod.number(),
+            protein: zod.number(),
+            carbs: zod.number(),
+            fat: zod.number(),
+          })
+          .optional(),
+        dinner: zod
+          .object({
+            dishId: zod.number(),
+            slug: zod.string(),
+            name: zod.string(),
+            image: zod.string(),
+            pricePaise: zod.number(),
+            calories: zod.number(),
+            protein: zod.number(),
+            carbs: zod.number(),
+            fat: zod.number(),
+          })
+          .optional(),
+      }),
+    ),
+    totals: zod
+      .union([
+        zod.object({
+          totalPaise: zod.number(),
+          avgCalories: zod.number(),
+          avgProteinGrams: zod.number(),
+          avgCarbsGrams: zod.number(),
+          avgFatGrams: zod.number(),
+        }),
+        zod.null(),
+      ])
+      .optional(),
+    subscriptionId: zod.number().nullish(),
+    model: zod.string().nullish(),
+    notes: zod.string().nullish(),
+    acceptedAt: zod.coerce.date().nullish(),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+  }),
+});
+
+/**
+ * @summary Swap a single slot in a draft plan to a chosen dish
+ */
+
+export const SwapMealPlanSlotParams = zod.object({
+  id: zod.coerce.number().min(1),
+});
+
+export const swapMealPlanSlotBodyDayIndexMin = 0;
+export const swapMealPlanSlotBodyDayIndexMax = 6;
+
+export const SwapMealPlanSlotBody = zod.object({
+  dayIndex: zod
+    .number()
+    .min(swapMealPlanSlotBodyDayIndexMin)
+    .max(swapMealPlanSlotBodyDayIndexMax),
+  slot: zod.enum(["breakfast", "lunch", "dinner"]),
+  dishId: zod.number().min(1),
+});
+
+export const SwapMealPlanSlotResponse = zod.object({
+  plan: zod.object({
+    id: zod.number(),
+    userId: zod.string(),
+    weekStartDate: zod.string(),
+    status: zod.enum(["draft", "accepted", "scheduled", "discarded"]),
+    constraints: zod.object({
+      dailyCalorieTarget: zod.number().nullish(),
+      dailyProteinTargetGrams: zod.number().nullish(),
+      weeklyBudgetPaise: zod.number().nullish(),
+      maxRepetitionsPerDish: zod.number(),
+      allergens: zod.array(zod.string()),
+      dietaryStyle: zod.string().nullish(),
+      spiceLevel: zod.string().nullish(),
+      goal: zod.string().nullish(),
+    }),
+    days: zod.array(
+      zod.object({
+        date: zod.string(),
+        breakfast: zod
+          .object({
+            dishId: zod.number(),
+            slug: zod.string(),
+            name: zod.string(),
+            image: zod.string(),
+            pricePaise: zod.number(),
+            calories: zod.number(),
+            protein: zod.number(),
+            carbs: zod.number(),
+            fat: zod.number(),
+          })
+          .optional(),
+        lunch: zod
+          .object({
+            dishId: zod.number(),
+            slug: zod.string(),
+            name: zod.string(),
+            image: zod.string(),
+            pricePaise: zod.number(),
+            calories: zod.number(),
+            protein: zod.number(),
+            carbs: zod.number(),
+            fat: zod.number(),
+          })
+          .optional(),
+        dinner: zod
+          .object({
+            dishId: zod.number(),
+            slug: zod.string(),
+            name: zod.string(),
+            image: zod.string(),
+            pricePaise: zod.number(),
+            calories: zod.number(),
+            protein: zod.number(),
+            carbs: zod.number(),
+            fat: zod.number(),
+          })
+          .optional(),
+      }),
+    ),
+    totals: zod
+      .union([
+        zod.object({
+          totalPaise: zod.number(),
+          avgCalories: zod.number(),
+          avgProteinGrams: zod.number(),
+          avgCarbsGrams: zod.number(),
+          avgFatGrams: zod.number(),
+        }),
+        zod.null(),
+      ])
+      .optional(),
+    subscriptionId: zod.number().nullish(),
+    model: zod.string().nullish(),
+    notes: zod.string().nullish(),
+    acceptedAt: zod.coerce.date().nullish(),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+  }),
+});
+
+/**
+ * @summary List candidate dishes that could replace a given slot
+ */
+
+export const getMealPlanSwapSuggestionsBodyDayIndexMin = 0;
+export const getMealPlanSwapSuggestionsBodyDayIndexMax = 6;
+
+export const GetMealPlanSwapSuggestionsBody = zod.object({
+  planId: zod.number().min(1),
+  dayIndex: zod
+    .number()
+    .min(getMealPlanSwapSuggestionsBodyDayIndexMin)
+    .max(getMealPlanSwapSuggestionsBodyDayIndexMax),
+  slot: zod.enum(["breakfast", "lunch", "dinner"]),
+});
+
+export const GetMealPlanSwapSuggestionsResponse = zod.object({
+  suggestions: zod.array(
+    zod.object({
+      dishId: zod.number(),
+      slug: zod.string(),
+      name: zod.string(),
+      image: zod.string(),
+      pricePaise: zod.number(),
+      calories: zod.number(),
+      protein: zod.number(),
+      carbs: zod.number(),
+      fat: zod.number(),
+    }),
+  ),
+});
+
+/**
+ * @summary Accept a draft plan; attaches to active weekly subscription if any
+ */
+
+export const AcceptMealPlanParams = zod.object({
+  id: zod.coerce.number().min(1),
+});
+
+export const AcceptMealPlanResponse = zod.object({
+  plan: zod.object({
+    id: zod.number(),
+    userId: zod.string(),
+    weekStartDate: zod.string(),
+    status: zod.enum(["draft", "accepted", "scheduled", "discarded"]),
+    constraints: zod.object({
+      dailyCalorieTarget: zod.number().nullish(),
+      dailyProteinTargetGrams: zod.number().nullish(),
+      weeklyBudgetPaise: zod.number().nullish(),
+      maxRepetitionsPerDish: zod.number(),
+      allergens: zod.array(zod.string()),
+      dietaryStyle: zod.string().nullish(),
+      spiceLevel: zod.string().nullish(),
+      goal: zod.string().nullish(),
+    }),
+    days: zod.array(
+      zod.object({
+        date: zod.string(),
+        breakfast: zod
+          .object({
+            dishId: zod.number(),
+            slug: zod.string(),
+            name: zod.string(),
+            image: zod.string(),
+            pricePaise: zod.number(),
+            calories: zod.number(),
+            protein: zod.number(),
+            carbs: zod.number(),
+            fat: zod.number(),
+          })
+          .optional(),
+        lunch: zod
+          .object({
+            dishId: zod.number(),
+            slug: zod.string(),
+            name: zod.string(),
+            image: zod.string(),
+            pricePaise: zod.number(),
+            calories: zod.number(),
+            protein: zod.number(),
+            carbs: zod.number(),
+            fat: zod.number(),
+          })
+          .optional(),
+        dinner: zod
+          .object({
+            dishId: zod.number(),
+            slug: zod.string(),
+            name: zod.string(),
+            image: zod.string(),
+            pricePaise: zod.number(),
+            calories: zod.number(),
+            protein: zod.number(),
+            carbs: zod.number(),
+            fat: zod.number(),
+          })
+          .optional(),
+      }),
+    ),
+    totals: zod
+      .union([
+        zod.object({
+          totalPaise: zod.number(),
+          avgCalories: zod.number(),
+          avgProteinGrams: zod.number(),
+          avgCarbsGrams: zod.number(),
+          avgFatGrams: zod.number(),
+        }),
+        zod.null(),
+      ])
+      .optional(),
+    subscriptionId: zod.number().nullish(),
+    model: zod.string().nullish(),
+    notes: zod.string().nullish(),
+    acceptedAt: zod.coerce.date().nullish(),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+  }),
+  subscriptionId: zod.number().nullable(),
+  deliveryIds: zod.array(zod.number()),
+});
+
+/**
+ * @summary Discard a draft plan
+ */
+
+export const DiscardMealPlanParams = zod.object({
+  id: zod.coerce.number().min(1),
+});
+
+export const DiscardMealPlanResponse = zod.object({
+  ok: zod.boolean(),
+});

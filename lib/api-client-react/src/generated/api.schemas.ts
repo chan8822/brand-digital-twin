@@ -5,6 +5,142 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type MealPlanSlot = (typeof MealPlanSlot)[keyof typeof MealPlanSlot];
+
+export const MealPlanSlot = {
+  breakfast: "breakfast",
+  lunch: "lunch",
+  dinner: "dinner",
+} as const;
+
+export type MealPlanStatus =
+  (typeof MealPlanStatus)[keyof typeof MealPlanStatus];
+
+export const MealPlanStatus = {
+  draft: "draft",
+  accepted: "accepted",
+  scheduled: "scheduled",
+  discarded: "discarded",
+} as const;
+
+export interface MealPlanSlotEntry {
+  dishId: number;
+  slug: string;
+  name: string;
+  image: string;
+  pricePaise: number;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
+export interface MealPlanDay {
+  date: string;
+  breakfast?: MealPlanSlotEntry;
+  lunch?: MealPlanSlotEntry;
+  dinner?: MealPlanSlotEntry;
+}
+
+export interface MealPlanConstraints {
+  dailyCalorieTarget?: number | null;
+  dailyProteinTargetGrams?: number | null;
+  weeklyBudgetPaise?: number | null;
+  maxRepetitionsPerDish: number;
+  allergens: string[];
+  dietaryStyle?: string | null;
+  spiceLevel?: string | null;
+  goal?: string | null;
+}
+
+export interface MealPlanTotals {
+  totalPaise: number;
+  avgCalories: number;
+  avgProteinGrams: number;
+  avgCarbsGrams: number;
+  avgFatGrams: number;
+}
+
+export interface MealPlan {
+  id: number;
+  userId: string;
+  weekStartDate: string;
+  status: MealPlanStatus;
+  constraints: MealPlanConstraints;
+  days: MealPlanDay[];
+  totals?: MealPlanTotals | null;
+  subscriptionId?: number | null;
+  model?: string | null;
+  notes?: string | null;
+  acceptedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type MealPlanGenerateRequestOverrides = {
+  weeklyBudgetPaise?: number | null;
+  /**
+   * @minimum 1
+   * @maximum 7
+   */
+  maxRepetitionsPerDish?: number;
+  dailyCalorieTarget?: number | null;
+  dailyProteinTargetGrams?: number | null;
+};
+
+export interface MealPlanGenerateRequest {
+  weekStartDate?: string;
+  overrides?: MealPlanGenerateRequestOverrides;
+}
+
+export interface MealPlanSettings {
+  userId: string;
+  autoReplanEnabled: boolean;
+  weeklyBudgetPaise?: number | null;
+  maxRepetitionsPerDish: number;
+  lastPlannedWeekStart?: string | null;
+}
+
+export interface MealPlanSettingsInput {
+  autoReplanEnabled?: boolean;
+  weeklyBudgetPaise?: number | null;
+  /**
+   * @minimum 1
+   * @maximum 7
+   */
+  maxRepetitionsPerDish?: number;
+}
+
+export interface RegenerateMealPlanDayInput {
+  /**
+   * @minimum 0
+   * @maximum 6
+   */
+  dayIndex: number;
+}
+
+export interface SwapMealPlanSlotInput {
+  /**
+   * @minimum 0
+   * @maximum 6
+   */
+  dayIndex: number;
+  slot: MealPlanSlot;
+  /** @minimum 1 */
+  dishId: number;
+}
+
+export interface GetMealPlanSwapSuggestionsInput {
+  /** @minimum 1 */
+  planId: number;
+  /**
+   * @minimum 0
+   * @maximum 6
+   */
+  dayIndex: number;
+  slot: MealPlanSlot;
+}
+
 export interface DishRationaleRequest {
   /**
    * @minItems 1
@@ -693,3 +829,46 @@ export const ListAdminRdApplicationsStatus = {
   approved: "approved",
   rejected: "rejected",
 } as const;
+
+export type GetMealPlanSettings200 = {
+  settings: MealPlanSettings;
+};
+
+export type UpdateMealPlanSettings200 = {
+  settings: MealPlanSettings;
+};
+
+export type ListMealPlans200 = {
+  plans: MealPlan[];
+};
+
+export type GenerateMealPlan201 = {
+  plan: MealPlan;
+  usedFallback: boolean;
+};
+
+export type GetMealPlan200 = {
+  plan: MealPlan;
+};
+
+export type RegenerateMealPlanDay200 = {
+  plan: MealPlan;
+};
+
+export type SwapMealPlanSlot200 = {
+  plan: MealPlan;
+};
+
+export type GetMealPlanSwapSuggestions200 = {
+  suggestions: MealPlanSlotEntry[];
+};
+
+export type AcceptMealPlan200 = {
+  plan: MealPlan;
+  subscriptionId: number | null;
+  deliveryIds: number[];
+};
+
+export type DiscardMealPlan200 = {
+  ok: boolean;
+};

@@ -26,6 +26,8 @@ tags:
     description: Public chef & RD profiles for trust & transparency
   - name: dish-rationales
     description: AI-generated "why this meal" rationales for recommended dishes
+  - name: meal-plans
+    description: Smart weekly meal planner — generate, edit, and accept 7-day plans
 paths:
   /recipes:
     get:
@@ -653,8 +655,367 @@ paths:
           description: Invalid payload
         "401":
           description: Unauthorized
+  /meal-plan-settings:
+    get:
+      operationId: getMealPlanSettings
+      tags: [meal-plans]
+      summary: Get the signed-in user's auto-replan + budget settings
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [settings]
+                properties:
+                  settings:
+                    $ref: "#/components/schemas/MealPlanSettings"
+        "401": { description: Unauthorized }
+    put:
+      operationId: updateMealPlanSettings
+      tags: [meal-plans]
+      summary: Update the signed-in user's auto-replan + budget settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MealPlanSettingsInput"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [settings]
+                properties:
+                  settings:
+                    $ref: "#/components/schemas/MealPlanSettings"
+        "400": { description: Invalid payload }
+        "401": { description: Unauthorized }
+  /meal-plans:
+    get:
+      operationId: listMealPlans
+      tags: [meal-plans]
+      summary: List the signed-in user's most recent meal plans
+      responses:
+        "200":
+          description: Plans
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [plans]
+                properties:
+                  plans:
+                    type: array
+                    items: { $ref: "#/components/schemas/MealPlan" }
+        "401": { description: Unauthorized }
+  /meal-plans/generate:
+    post:
+      operationId: generateMealPlan
+      tags: [meal-plans]
+      summary: Generate (or regenerate) a draft 7-day plan for a given week
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MealPlanGenerateRequest"
+      responses:
+        "201":
+          description: Created draft plan
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [plan, usedFallback]
+                properties:
+                  plan: { $ref: "#/components/schemas/MealPlan" }
+                  usedFallback: { type: boolean }
+        "400": { description: Invalid payload }
+        "401": { description: Unauthorized }
+  /meal-plans/{id}:
+    get:
+      operationId: getMealPlan
+      tags: [meal-plans]
+      summary: Get a single meal plan by id
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Plan
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [plan]
+                properties:
+                  plan: { $ref: "#/components/schemas/MealPlan" }
+        "401": { description: Unauthorized }
+        "404": { description: Not found }
+  /meal-plans/{id}/regenerate-day:
+    post:
+      operationId: regenerateMealPlanDay
+      tags: [meal-plans]
+      summary: Regenerate a single day in a draft plan
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegenerateMealPlanDayInput"
+      responses:
+        "200":
+          description: Updated plan
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [plan]
+                properties:
+                  plan: { $ref: "#/components/schemas/MealPlan" }
+        "400": { description: Invalid payload }
+        "401": { description: Unauthorized }
+        "404": { description: Not found }
+        "409": { description: Plan is not editable }
+  /meal-plans/{id}/slot:
+    patch:
+      operationId: swapMealPlanSlot
+      tags: [meal-plans]
+      summary: Swap a single slot in a draft plan to a chosen dish
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SwapMealPlanSlotInput"
+      responses:
+        "200":
+          description: Updated plan
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [plan]
+                properties:
+                  plan: { $ref: "#/components/schemas/MealPlan" }
+        "400": { description: Invalid swap (allergen / repetition / unknown dish) }
+        "401": { description: Unauthorized }
+        "404": { description: Not found }
+        "409": { description: Plan is not editable }
+  /meal-plans/swap-suggestions:
+    post:
+      operationId: getMealPlanSwapSuggestions
+      tags: [meal-plans]
+      summary: List candidate dishes that could replace a given slot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GetMealPlanSwapSuggestionsInput"
+      responses:
+        "200":
+          description: Suggestions
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [suggestions]
+                properties:
+                  suggestions:
+                    type: array
+                    items: { $ref: "#/components/schemas/MealPlanSlotEntry" }
+        "400": { description: Invalid parameters }
+        "401": { description: Unauthorized }
+        "404": { description: Not found }
+  /meal-plans/{id}/accept:
+    post:
+      operationId: acceptMealPlan
+      tags: [meal-plans]
+      summary: Accept a draft plan; attaches to active weekly subscription if any
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Accepted plan
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [plan, subscriptionId, deliveryIds]
+                properties:
+                  plan: { $ref: "#/components/schemas/MealPlan" }
+                  subscriptionId:
+                    type: integer
+                    nullable: true
+                  deliveryIds:
+                    type: array
+                    items: { type: integer }
+        "400": { description: Plan no longer valid }
+        "401": { description: Unauthorized }
+        "404": { description: Not found }
+        "409": { description: Plan is not draft }
+  /meal-plans/{id}/discard:
+    post:
+      operationId: discardMealPlan
+      tags: [meal-plans]
+      summary: Discard a draft plan
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Discarded
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok: { type: boolean }
+        "401": { description: Unauthorized }
+        "404": { description: Not found }
 components:
   schemas:
+    MealPlanSlot:
+      type: string
+      enum: [breakfast, lunch, dinner]
+    MealPlanStatus:
+      type: string
+      enum: [draft, accepted, scheduled, discarded]
+    MealPlanSlotEntry:
+      type: object
+      required: [dishId, slug, name, image, pricePaise, calories, protein, carbs, fat]
+      properties:
+        dishId: { type: integer }
+        slug: { type: string }
+        name: { type: string }
+        image: { type: string }
+        pricePaise: { type: integer }
+        calories: { type: integer }
+        protein: { type: integer }
+        carbs: { type: integer }
+        fat: { type: integer }
+    MealPlanDay:
+      type: object
+      required: [date]
+      properties:
+        date: { type: string }
+        breakfast: { $ref: "#/components/schemas/MealPlanSlotEntry" }
+        lunch: { $ref: "#/components/schemas/MealPlanSlotEntry" }
+        dinner: { $ref: "#/components/schemas/MealPlanSlotEntry" }
+    MealPlanConstraints:
+      type: object
+      required: [maxRepetitionsPerDish, allergens]
+      properties:
+        dailyCalorieTarget: { type: integer, nullable: true }
+        dailyProteinTargetGrams: { type: integer, nullable: true }
+        weeklyBudgetPaise: { type: integer, nullable: true }
+        maxRepetitionsPerDish: { type: integer }
+        allergens:
+          type: array
+          items: { type: string }
+        dietaryStyle: { type: string, nullable: true }
+        spiceLevel: { type: string, nullable: true }
+        goal: { type: string, nullable: true }
+    MealPlanTotals:
+      type: object
+      required: [totalPaise, avgCalories, avgProteinGrams, avgCarbsGrams, avgFatGrams]
+      properties:
+        totalPaise: { type: integer }
+        avgCalories: { type: integer }
+        avgProteinGrams: { type: integer }
+        avgCarbsGrams: { type: integer }
+        avgFatGrams: { type: integer }
+    MealPlan:
+      type: object
+      required: [id, userId, weekStartDate, status, constraints, days, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        userId: { type: string }
+        weekStartDate: { type: string }
+        status: { $ref: "#/components/schemas/MealPlanStatus" }
+        constraints: { $ref: "#/components/schemas/MealPlanConstraints" }
+        days:
+          type: array
+          items: { $ref: "#/components/schemas/MealPlanDay" }
+        totals:
+          oneOf:
+            - { $ref: "#/components/schemas/MealPlanTotals" }
+            - { type: "null" }
+        subscriptionId: { type: integer, nullable: true }
+        model: { type: string, nullable: true }
+        notes: { type: string, nullable: true }
+        acceptedAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    MealPlanGenerateRequest:
+      type: object
+      properties:
+        weekStartDate: { type: string }
+        overrides:
+          type: object
+          properties:
+            weeklyBudgetPaise: { type: integer, nullable: true }
+            maxRepetitionsPerDish: { type: integer, minimum: 1, maximum: 7 }
+            dailyCalorieTarget: { type: integer, nullable: true }
+            dailyProteinTargetGrams: { type: integer, nullable: true }
+    MealPlanSettings:
+      type: object
+      required: [userId, autoReplanEnabled, maxRepetitionsPerDish]
+      properties:
+        userId: { type: string }
+        autoReplanEnabled: { type: boolean }
+        weeklyBudgetPaise: { type: integer, nullable: true }
+        maxRepetitionsPerDish: { type: integer }
+        lastPlannedWeekStart: { type: string, nullable: true }
+    MealPlanSettingsInput:
+      type: object
+      properties:
+        autoReplanEnabled: { type: boolean }
+        weeklyBudgetPaise: { type: integer, nullable: true }
+        maxRepetitionsPerDish: { type: integer, minimum: 1, maximum: 7 }
+    RegenerateMealPlanDayInput:
+      type: object
+      required: [dayIndex]
+      properties:
+        dayIndex: { type: integer, minimum: 0, maximum: 6 }
+    SwapMealPlanSlotInput:
+      type: object
+      required: [dayIndex, slot, dishId]
+      properties:
+        dayIndex: { type: integer, minimum: 0, maximum: 6 }
+        slot: { $ref: "#/components/schemas/MealPlanSlot" }
+        dishId: { type: integer, minimum: 1 }
+    GetMealPlanSwapSuggestionsInput:
+      type: object
+      required: [planId, dayIndex, slot]
+      properties:
+        planId: { type: integer, minimum: 1 }
+        dayIndex: { type: integer, minimum: 0, maximum: 6 }
+        slot: { $ref: "#/components/schemas/MealPlanSlot" }
     DishRationaleRequest:
       type: object
       required: [dishIds]

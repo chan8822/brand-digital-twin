@@ -8,6 +8,7 @@
     "evals": "tsx ./src/evals.ts",
     "test:user-brief": "node --test --import tsx ./src/lib/userBrief/userBrief.test.ts",
     "test:dish-rationale": "node --test --import tsx ./src/lib/dishRationale.test.ts",
+    "test:meal-planner": "node --test --import tsx ./src/lib/mealPlanner.test.ts",
     "evals:menu-copy": "tsx ./src/lib/menuCopy.eval.ts",
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",

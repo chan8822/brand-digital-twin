@@ -30,6 +30,7 @@ import addonsRouter from "./addons";
 import premiumRouter from "./premium";
 import marketplaceRouter from "./marketplace";
 import dishRationalesRouter from "./dishRationales";
+import mealPlansRouter from "./mealPlans";
 
 const router: IRouter = Router();
 
@@ -64,5 +65,6 @@ router.use(addonsRouter);
 router.use(premiumRouter);
 router.use(marketplaceRouter);
 router.use(dishRationalesRouter);
+router.use(mealPlansRouter);
 
 export default router;

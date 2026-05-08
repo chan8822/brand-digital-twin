@@ -60,6 +60,7 @@ const MORE_GROUPS: { title: string; items: MoreLink[] }[] = [
     title: "Plans & Programs",
     items: [
       { to: "/subscriptions", label: "My Plans", icon: CalendarClock, desc: "Weekly meal plans & active subscriptions" },
+      { to: "/meal-planner", label: "Weekly Planner", icon: Sparkles, desc: "AI-personalized 7-day plan" },
       { to: "/plans", label: "RD Plans", icon: Stethoscope, desc: "Therapeutic protocols" },
       { to: "/rd", label: "Book a Dietitian", icon: HeartHandshake, desc: "1:1 consult" },
       { to: "/appointments", label: "My Care", icon: CalendarClock, desc: "Appointments & notes" },

@@ -26,6 +26,7 @@ import Track from "@/pages/Track";
 import Orders from "@/pages/Orders";
 import Subscribe from "@/pages/Subscribe";
 import Subscriptions from "@/pages/Subscriptions";
+import WeeklyPlanner from "@/pages/WeeklyPlanner";
 import Rewards from "@/pages/Rewards";
 import Preferences from "@/pages/Preferences";
 import Wellness from "@/pages/Wellness";
@@ -106,6 +107,7 @@ export default function App() {
                     <Route path="/orders" element={<Orders />} />
                     <Route path="/subscribe" element={<Subscribe />} />
                     <Route path="/subscriptions" element={<Subscriptions />} />
+                    <Route path="/meal-planner" element={<WeeklyPlanner />} />
                     <Route path="/rewards" element={<Rewards />} />
                     <Route path="/preferences" element={<Preferences />} />
                     <Route path="/wellness" element={<Wellness />} />
