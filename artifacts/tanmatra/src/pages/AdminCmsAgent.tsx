@@ -87,6 +87,89 @@ const COPY_FIELDS: CopyField[] = [
   "macros",
 ];
 
+function CopyFieldEditor({
+  field,
+  value,
+  onChange,
+}: {
+  field: CopyField;
+  value: unknown;
+  onChange: (next: unknown) => void;
+}) {
+  const isTextArea =
+    field === "description" ||
+    field === "longDescription" ||
+    field === "seoDescription";
+  const isList =
+    field === "allergens" || field === "cuisineTags" || field === "vibeTags";
+
+  if (field === "macros") {
+    const m = (value ?? {
+      kcal: 0,
+      proteinG: 0,
+      carbsG: 0,
+      fatG: 0,
+    }) as MacrosEstimate;
+    const update = (k: keyof MacrosEstimate, v: number) =>
+      onChange({ ...m, [k]: v });
+    return (
+      <div className="grid grid-cols-2 gap-1">
+        {(["kcal", "proteinG", "carbsG", "fatG"] as const).map((k) => (
+          <label key={k} className="flex items-center gap-1 text-[11px]">
+            <span className="w-12 text-muted-foreground">{k}</span>
+            <input
+              type="number"
+              className="w-full border rounded px-1 py-0.5 bg-background"
+              value={m[k] ?? 0}
+              onChange={(e) =>
+                update(k, Number.isFinite(+e.target.value) ? +e.target.value : 0)
+              }
+            />
+          </label>
+        ))}
+      </div>
+    );
+  }
+
+  if (isList) {
+    const arr = Array.isArray(value) ? (value as string[]) : [];
+    return (
+      <input
+        className="w-full border rounded px-1 py-0.5 bg-background text-xs"
+        value={arr.join(", ")}
+        placeholder="comma,separated,tags"
+        onChange={(e) =>
+          onChange(
+            e.target.value
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean),
+          )
+        }
+      />
+    );
+  }
+
+  const str = typeof value === "string" ? value : "";
+  if (isTextArea) {
+    return (
+      <textarea
+        className="w-full border rounded px-1 py-0.5 bg-background text-xs"
+        rows={field === "longDescription" ? 4 : 2}
+        value={str}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    );
+  }
+  return (
+    <input
+      className="w-full border rounded px-1 py-0.5 bg-background text-xs"
+      value={str}
+      onChange={(e) => onChange(e.target.value)}
+    />
+  );
+}
+
 function fmt(v: unknown): string {
   if (v == null || v === "") return "—";
   if (Array.isArray(v)) return v.join(", ") || "—";
@@ -146,8 +229,18 @@ export default function AdminCmsAgent() {
   const [items, setItems] = useState<MenuItemRow[]>([]);
   const [copySlug, setCopySlug] = useState<string>("");
   const [copyDraft, setCopyDraft] = useState<CopyDraft | null>(null);
+  const [copyEdits, setCopyEdits] = useState<Partial<Record<CopyField, unknown>>>(
+    {},
+  );
   const [copyBusy, setCopyBusy] = useState(false);
   const [copyError, setCopyError] = useState<string | null>(null);
+  const [bulkCategory, setBulkCategory] = useState<string>("");
+  const [bulkMissingOnly, setBulkMissingOnly] = useState(true);
+  const [bulkPreview, setBulkPreview] = useState<
+    Array<{ slug: string; name: string; missing: CopyField[] }> | null
+  >(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkError, setBulkError] = useState<string | null>(null);
   const [adminToken, setAdminToken] = useState<string>(() =>
     typeof window === "undefined"
       ? ""
@@ -215,24 +308,49 @@ export default function AdminCmsAgent() {
     });
   }, [messages]);
 
-  const generateCopy = async (slug: string) => {
+  const generateCopy = async (slug: string, fields?: CopyField[]) => {
     if (!slug) return;
     setCopyBusy(true);
     setCopyError(null);
-    setCopyDraft(null);
+    if (!fields) {
+      setCopyDraft(null);
+      setCopyEdits({});
+    }
     try {
       const res = await fetch(`/api/menu/items/${slug}/generate-copy`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json", ...authedHeaders() },
-        body: JSON.stringify({}),
+        body: JSON.stringify(fields ? { fields } : {}),
       });
       if (!res.ok) {
         const j = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(j.error ?? `HTTP ${res.status}`);
       }
       const j = (await res.json()) as { draft: CopyDraft };
-      setCopyDraft(j.draft);
+      if (fields && copyDraft && copyDraft.slug === slug) {
+        // Per-field regenerate: merge proposed/current for the requested fields
+        // and refresh edit buffers for them only.
+        setCopyDraft((prev) =>
+          prev
+            ? {
+                ...prev,
+                proposed: { ...prev.proposed, ...j.draft.proposed },
+                current: { ...prev.current, ...j.draft.current },
+                warnings: j.draft.warnings,
+                modelId: j.draft.modelId,
+              }
+            : j.draft,
+        );
+        setCopyEdits((prev) => {
+          const next = { ...prev };
+          for (const f of fields) next[f] = j.draft.proposed[f];
+          return next;
+        });
+      } else {
+        setCopyDraft(j.draft);
+        setCopyEdits({ ...j.draft.proposed });
+      }
     } catch (err) {
       setCopyError((err as Error).message);
     } finally {
@@ -242,7 +360,7 @@ export default function AdminCmsAgent() {
 
   const acceptCopyField = async (field: CopyField) => {
     if (!copyDraft) return;
-    const value = copyDraft.proposed[field];
+    const value = copyEdits[field] ?? copyDraft.proposed[field];
     if (value == null) return;
     setCopyBusy(true);
     setCopyError(null);
@@ -257,12 +375,20 @@ export default function AdminCmsAgent() {
         const j = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(j.error ?? `HTTP ${res.status}`);
       }
+      const j = (await res.json()) as {
+        item: unknown;
+        warnings?: string[];
+      };
       // Patch local draft so accepted field becomes the "current" value.
       setCopyDraft((prev) =>
         prev
           ? {
               ...prev,
               current: { ...prev.current, [field]: value },
+              warnings:
+                j.warnings && j.warnings.length > 0
+                  ? [...prev.warnings, ...j.warnings]
+                  : prev.warnings,
             }
           : prev,
       );
@@ -274,6 +400,46 @@ export default function AdminCmsAgent() {
       setCopyBusy(false);
     }
   };
+
+  const loadBulkPreview = async () => {
+    setBulkBusy(true);
+    setBulkError(null);
+    setBulkPreview(null);
+    try {
+      const qs = new URLSearchParams();
+      if (bulkCategory) qs.set("category", bulkCategory);
+      const res = await fetch(`/api/menu/copy/missing?${qs.toString()}`, {
+        credentials: "include",
+        headers: authedHeaders(),
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(j.error ?? `HTTP ${res.status}`);
+      }
+      const j = (await res.json()) as {
+        items: Array<{ slug: string; name: string; missing: CopyField[] }>;
+      };
+      const filtered = bulkMissingOnly
+        ? j.items.filter((it) => it.missing.length > 0)
+        : j.items;
+      setBulkPreview(filtered.slice(0, 25));
+    } catch (err) {
+      setBulkError((err as Error).message);
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  const runBulkRegenerate = async () => {
+    if (!bulkPreview || bulkPreview.length === 0) return;
+    const slugs = bulkPreview.map((p) => p.slug).slice(0, 25);
+    const msg = `Run bulk_regenerate_copy on these slugs: ${slugs.join(", ")}. Use missingOnly=${bulkMissingOnly}. Preview first, then I will say confirm.`;
+    await sendText(msg);
+  };
+
+  const categories = Array.from(
+    new Set(items.map((it) => it.category)),
+  ).sort();
 
   const sendText = async (text: string) => {
     if (!text || busy) return;
@@ -472,8 +638,9 @@ export default function AdminCmsAgent() {
                     (f) => copyDraft.proposed[f] != null,
                   ).map((f) => {
                     const cur = copyDraft.current[f];
-                    const prop = copyDraft.proposed[f];
-                    const same = JSON.stringify(cur ?? null) === JSON.stringify(prop ?? null);
+                    const edited = copyEdits[f];
+                    const editedSerialised = JSON.stringify(edited ?? null);
+                    const same = editedSerialised === JSON.stringify(cur ?? null);
                     return (
                       <div
                         key={f}
@@ -496,7 +663,10 @@ export default function AdminCmsAgent() {
                               size="sm"
                               variant="ghost"
                               disabled={copyBusy}
-                              onClick={() => void generateCopy(copyDraft.slug)}
+                              title="Regenerate just this field"
+                              onClick={() =>
+                                void generateCopy(copyDraft.slug, [f])
+                              }
                             >
                               ↻
                             </Button>
@@ -511,15 +681,102 @@ export default function AdminCmsAgent() {
                           </div>
                           <div>
                             <div className="text-[10px] text-muted-foreground">
-                              proposed
+                              proposed (editable)
                             </div>
-                            <div className="whitespace-pre-wrap">{fmt(prop)}</div>
+                            <CopyFieldEditor
+                              field={f}
+                              value={edited}
+                              onChange={(v) =>
+                                setCopyEdits((prev) => ({ ...prev, [f]: v }))
+                              }
+                            />
                           </div>
                         </div>
                       </div>
                     );
                   })}
                 </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
+              Bulk regenerate missing copy
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex flex-wrap gap-2 items-center">
+              <select
+                className="border rounded-md px-2 py-1 text-sm bg-background"
+                value={bulkCategory}
+                onChange={(e) => setBulkCategory(e.target.value)}
+              >
+                <option value="">All categories</option>
+                {categories.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+              <label className="text-xs flex items-center gap-1">
+                <input
+                  type="checkbox"
+                  checked={bulkMissingOnly}
+                  onChange={(e) => setBulkMissingOnly(e.target.checked)}
+                />
+                Missing fields only
+              </label>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={bulkBusy}
+                onClick={() => void loadBulkPreview()}
+              >
+                {bulkBusy ? "…" : "Preview"}
+              </Button>
+              <Button
+                size="sm"
+                disabled={
+                  bulkBusy || !bulkPreview || bulkPreview.length === 0 || busy
+                }
+                onClick={() => void runBulkRegenerate()}
+              >
+                Run via assistant
+              </Button>
+            </div>
+            {bulkError && (
+              <div className="text-sm text-destructive">{bulkError}</div>
+            )}
+            {bulkPreview && (
+              <div className="text-xs space-y-1 max-h-48 overflow-auto border rounded-md p-2">
+                {bulkPreview.length === 0 && (
+                  <div className="text-muted-foreground">
+                    Nothing to regenerate — every item in this filter has
+                    complete copy.
+                  </div>
+                )}
+                {bulkPreview.map((p) => (
+                  <div
+                    key={p.slug}
+                    className="flex items-start justify-between gap-2"
+                  >
+                    <span className="font-medium">{p.name}</span>
+                    <span className="text-muted-foreground">
+                      {p.missing.length > 0
+                        ? `missing: ${p.missing.join(", ")}`
+                        : "complete"}
+                    </span>
+                  </div>
+                ))}
+                {bulkPreview.length > 0 && (
+                  <div className="text-[10px] text-muted-foreground pt-1 border-t mt-1">
+                    Capped at 25 items per run. Click "Run via assistant" — the
+                    chat panel will preview each item, then say "confirm".
+                  </div>
+                )}
               </div>
             )}
           </CardContent>

@@ -412,11 +412,20 @@ router.post("/menu/items/:slug/copy", async (req: Request, res: Response) => {
 
 router.get("/menu/copy/missing", async (req: Request, res: Response) => {
   if (!requireCatalog(req, res)) return;
-  const items = await listMenuItems({});
+  const category =
+    typeof req.query.category === "string" && req.query.category
+      ? req.query.category
+      : undefined;
+  const kitchenLocation =
+    typeof req.query.kitchenLocation === "string" && req.query.kitchenLocation
+      ? req.query.kitchenLocation
+      : undefined;
+  const items = await listMenuItems({ category, kitchenLocation });
   const out = items
     .map((it) => ({
       slug: it.slug,
       name: it.name,
+      category: it.category,
       missing: detectMissingFields(it),
     }))
     .filter((x) => x.missing.length > 0);
