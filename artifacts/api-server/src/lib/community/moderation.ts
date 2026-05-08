@@ -293,14 +293,76 @@ export function applyDeterministicPhotoPolicy(photoUrl: string): {
   return { severity: 0, categories: [], rationale: "" };
 }
 
+/**
+ * SSRF guard: reject anything that resolves to a private, loopback,
+ * link-local, or otherwise non-public address before we issue a fetch.
+ */
+function isBlockedIp(ip: string): boolean {
+  // IPv6 loopback / link-local / unique-local / mapped private v4
+  if (ip === "::1" || ip === "::") return true;
+  if (/^fe80:/i.test(ip)) return true;
+  if (/^f[cd][0-9a-f]{2}:/i.test(ip)) return true;
+  const v4mapped = ip.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i);
+  const v4 = v4mapped ? v4mapped[1]! : ip;
+  const parts = v4.split(".").map((n) => Number.parseInt(n, 10));
+  if (parts.length !== 4 || parts.some((n) => !Number.isFinite(n))) {
+    return false; // not v4, IPv6 already covered above
+  }
+  const [a, b] = parts as [number, number, number, number];
+  if (a === 10) return true; // 10/8
+  if (a === 127) return true; // loopback
+  if (a === 0) return true; // 0/8
+  if (a === 169 && b === 254) return true; // link-local + AWS metadata
+  if (a === 172 && b >= 16 && b <= 31) return true; // 172.16/12
+  if (a === 192 && b === 168) return true; // 192.168/16
+  if (a === 100 && b >= 64 && b <= 127) return true; // CGNAT
+  if (a >= 224) return true; // multicast / reserved
+  return false;
+}
+
 async function fetchPhotoBytes(url: string): Promise<{
   bytes: Uint8Array;
   mimeType: string;
 } | null> {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return null;
+  // Restrict ports to standard web ports — blocks SSRF probes against
+  // arbitrary internal services.
+  if (
+    parsed.port &&
+    parsed.port !== "" &&
+    parsed.port !== "80" &&
+    parsed.port !== "443"
+  ) {
+    return null;
+  }
+  // Resolve hostname and reject any private/loopback/link-local target.
+  try {
+    const dns = await import("node:dns/promises");
+    const addrs = await dns.lookup(parsed.hostname, { all: true });
+    if (addrs.length === 0) return null;
+    if (addrs.some((a) => isBlockedIp(a.address))) {
+      logger.warn(
+        { host: parsed.hostname },
+        "photo moderation: SSRF guard blocked private host",
+      );
+      return null;
+    }
+  } catch {
+    return null;
+  }
   try {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), PHOTO_TIMEOUT_MS);
-    const r = await fetch(url, { signal: ctrl.signal });
+    const r = await fetch(parsed.toString(), {
+      signal: ctrl.signal,
+      redirect: "error", // prevent redirect-based SSRF bypass
+    });
     clearTimeout(timer);
     if (!r.ok) return null;
     const ct = r.headers.get("content-type") || "image/jpeg";
@@ -381,16 +443,21 @@ export async function screenPhoto(
     input.caption ? `\n${input.caption}` : ""
   }`;
 
+  // IMPORTANT: persist the original contentType (e.g. "dish_review") so
+  // appeal-overturn logic can unhide the parent row by id. The snapshot
+  // is prefixed with "[photo]" so reviewers can tell text vs media
+  // decisions apart, and we tag the rationale with media=photo for the
+  // audit trail.
   const [row] = await db
     .insert(moderationDecisionsTable)
     .values({
-      contentType: "challenge_photo",
+      contentType: input.contentType,
       contentId: input.contentId,
       userId: input.userId,
       decision,
       severity,
       categories,
-      rationale: rationale.slice(0, 4000),
+      rationale: `media=photo | ${rationale}`.slice(0, 4000),
       actor: "ai",
       model,
       snapshot: snapshot.slice(0, 4000),
