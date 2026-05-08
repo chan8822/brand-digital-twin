@@ -28,6 +28,7 @@ import {
   dispatchNotificationEmail,
 } from "./notificationMail";
 import { invalidateUserBrief } from "./userBrief";
+import { geocodeAddress } from "./geocode";
 
 type DbOrTx = typeof db | PgTransaction<any, any, any>;
 
@@ -550,6 +551,32 @@ export async function finalizeOrder(args: {
       Math.max(0, grossPaise - bundleDiscountPaise),
     );
   }
+  // Geocode the delivery address up-front so dispatch can use real coords
+  // and km savings reported in the A/B comparison are precise. Pickup
+  // orders have no drop. Geocoder failures fall back to the synthetic
+  // helper inside geocodeAddress, so checkout never breaks because the
+  // geocoder is offline — but we *do* require at least one usable address
+  // field for delivery so we never persist a NULL drop coordinate that
+  // would silently fall back to the metro-default at dispatch time.
+  let dropLat: number | null = null;
+  let dropLng: number | null = null;
+  if (fulfillmentType === "delivery") {
+    const hasAddr = !!(
+      args.address?.line ||
+      args.address?.pincode ||
+      args.address?.city
+    );
+    if (!hasAddr) {
+      throw new Error("delivery address required");
+    }
+    const geo = await geocodeAddress({
+      line: args.address?.line ?? null,
+      city: args.address?.city ?? null,
+      pincode: args.address?.pincode ?? null,
+    });
+    dropLat = geo.lat;
+    dropLng = geo.lng;
+  }
   const grossAfterBundles = grossPaise - bundleDiscountPaise - pickupDiscountPaise;
   // Pre-order discount: 5% off the meal subtotal when scheduled for the
   // future. Floored to whole paise; never negative.
@@ -579,6 +606,8 @@ export async function finalizeOrder(args: {
         city: args.address?.city ?? null,
         pincode: args.address?.pincode ?? null,
         phone: args.address?.phone ?? null,
+        dropLat,
+        dropLng,
         scheduledFor: isScheduled ? args.scheduledFor! : null,
         deliverySlotId: fulfillmentType === "delivery" ? args.deliverySlotId ?? null : null,
         pickupLocationId: pickupLocation?.id ?? null,

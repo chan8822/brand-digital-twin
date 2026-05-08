@@ -79,7 +79,18 @@ function riderLatLng(rider: Rider): { lat: number; lng: number } {
   };
 }
 
+// Prefer the real geocoded coordinates persisted on the order at checkout.
+// Fall back to the synthetic helper for legacy rows that pre-date Task #46
+// (and for the rare case the geocoder was unavailable at checkout time).
 export function orderDropLatLng(order: Order): { lat: number; lng: number } {
+  if (
+    typeof order.dropLat === "number" &&
+    typeof order.dropLng === "number" &&
+    !Number.isNaN(order.dropLat) &&
+    !Number.isNaN(order.dropLng)
+  ) {
+    return { lat: order.dropLat, lng: order.dropLng };
+  }
   return addressLatLng({
     city: order.city,
     pincode: order.pincode,

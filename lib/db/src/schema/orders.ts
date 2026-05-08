@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, integer, timestamp, jsonb, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, integer, timestamp, jsonb, uniqueIndex, doublePrecision } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -17,6 +17,15 @@ export const ordersTable = pgTable(
     city: varchar("city", { length: 64 }),
     pincode: varchar("pincode", { length: 16 }),
     phone: varchar("phone", { length: 32 }),
+    // Real geocoded drop coordinates from the customer address.
+    // Populated at checkout (see geocodeAddress / finalizeOrder) so the
+    // dispatcher computes real distances and batching radii instead of
+    // synthesising a (lat,lng) from the pincode prefix. Nullable so legacy
+    // rows and pickup orders (no delivery address) remain valid; the
+    // backfill script in scripts/src/backfill-order-coords.ts fills these
+    // in for historical rows.
+    dropLat: doublePrecision("drop_lat"),
+    dropLng: doublePrecision("drop_lng"),
     items: jsonb("items").notNull().$type<Array<{ id: number; name: string; qty: number; price: number }>>(),
     riderId: integer("rider_id"),
     scheduledFor: timestamp("scheduled_for", { withTimezone: true }),

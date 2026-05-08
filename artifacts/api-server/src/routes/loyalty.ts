@@ -325,6 +325,7 @@ router.post("/orders/finalize", async (req: Request, res: Response) => {
     if (
       msg === "delivery slot required" ||
       msg === "delivery slot not found" ||
+      msg === "delivery address required" ||
       msg === "pickup location required" ||
       msg === "pickup location unavailable"
     ) {
