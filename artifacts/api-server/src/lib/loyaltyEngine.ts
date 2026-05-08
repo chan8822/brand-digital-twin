@@ -17,7 +17,7 @@ import {
   type NotificationKind,
 } from "@workspace/db";
 import { inArray } from "drizzle-orm";
-import { getDishById } from "@workspace/menu-catalog";
+import { resolveDishById } from "./menuResolver";
 import type { PgTransaction } from "drizzle-orm/pg-core";
 
 type DbOrTx = typeof db | PgTransaction<any, any, any>;
@@ -397,7 +397,7 @@ export async function finalizeOrder(args: {
   const validatedItems: FinalizeOrderItem[] = [];
   let grossPaise = 0;
   for (const it of args.items) {
-    const dish = getDishById(it.id);
+    const dish = await resolveDishById(it.id);
     if (!dish) throw new Error(`unknown dish id: ${it.id}`);
     if (!dish.isAvailable) throw new Error(`dish unavailable: ${dish.slug}`);
     const qty = Math.max(0, Math.floor(it.qty));

@@ -7,13 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/api/adapter";
 import { useBundles, groupOrdersApi } from "@/lib/queries";
 import {
-  DISHES,
   CATEGORY_LABELS,
+  getDishById,
+  useMenuCatalog,
   type DishCategory,
   type DishKitchen,
   type DishData,
 } from "@/lib/menuData";
-import { getDishById } from "@workspace/menu-catalog";
 import {
   LIFESTYLE_LABELS,
   LIFESTYLE_TAGS,
@@ -88,6 +88,7 @@ export default function Menu() {
   const [searchParams] = useSearchParams();
   const groupCode = searchParams.get("group");
   const { data: bundles } = useBundles();
+  const { dishes: catalogDishes } = useMenuCatalog();
 
   const handleQuickAdd = (e: React.MouseEvent, item: DishData) => {
     e.preventDefault();
@@ -169,7 +170,7 @@ export default function Menu() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const baseList = DISHES.filter((d) => {
+    const baseList = catalogDishes.filter((d) => {
       if (kitchen !== "all" && d.kitchen !== kitchen) return false;
       if (category !== "all" && d.category !== category) return false;
       if (diet === "veg" && !d.isVeg) return false;
@@ -181,14 +182,14 @@ export default function Menu() {
     });
     const ranked = rankDishesForPreferences(baseList, preferences);
     return hideBlocked ? ranked.filter((r) => !r.match.blocked) : ranked;
-  }, [kitchen, category, diet, lifestyle, query, preferences, hideBlocked]);
+  }, [kitchen, category, diet, lifestyle, query, preferences, hideBlocked, catalogDishes]);
 
   const blockedCount = useMemo(() => {
     if (!preferences) return 0;
-    return DISHES.filter(
+    return catalogDishes.filter(
       (d) => evaluateDishForPreferences(d, preferences).blocked,
     ).length;
-  }, [preferences]);
+  }, [preferences, catalogDishes]);
 
   const lifestyleTag =
     lifestyle !== "all" ? LIFESTYLE_TAGS[lifestyle as Exclude<Lifestyle, "all">] : null;

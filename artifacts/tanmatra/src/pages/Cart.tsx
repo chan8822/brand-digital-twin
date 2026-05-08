@@ -25,13 +25,15 @@ import {
   evaluateDishForPreferences,
   findSmartSwap,
 } from "@/lib/preferencesMatch";
-import { getDishById } from "@workspace/menu-catalog";
+import { getDishById, useMenuCatalog } from "@/lib/menuData";
 import { ShieldAlert, Sparkles } from "lucide-react";
 
 export default function Cart() {
   const navigate = useNavigate();
   const { items, updateQty, removeItem, subtotal, totalQuantity } = useCart();
   const { preferences } = usePreferences();
+  // Hydrate the runtime menu cache so getDishById reflects CMS edits.
+  useMenuCatalog();
 
   const conflictMap = (() => {
     const out = new Map<

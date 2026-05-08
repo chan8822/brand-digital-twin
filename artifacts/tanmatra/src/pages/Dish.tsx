@@ -12,7 +12,7 @@ import NutritionLabelModal from "@/components/dish/NutritionLabelModal";
 import WhyThisMealPanel from "@/components/dish/WhyThisMealPanel";
 import { getChefForDish, getRdForDish, ACCENT_CLASSES } from "@/lib/teamData";
 import { toast } from "sonner";
-import { getDishBySlug } from "@/lib/menuData";
+import { getDishBySlug, useMenuCatalog } from "@/lib/menuData";
 import {
   getCustomizationsForDish,
   getKitchenNoteForDish,
@@ -47,7 +47,11 @@ export default function Dish() {
   const navigate = useNavigate();
   const { addItem } = useCart();
   const { preferences } = usePreferences();
-  const meal = slug ? getDishBySlug(slug) : undefined;
+  const { dishes: catalogDishes } = useMenuCatalog();
+  const meal = useMemo(() => {
+    if (!slug) return undefined;
+    return catalogDishes.find((d) => d.slug === slug) ?? getDishBySlug(slug);
+  }, [slug, catalogDishes]);
   const match = useMemo(
     () => (meal ? evaluateDishForPreferences(meal, preferences) : null),
     [meal, preferences],

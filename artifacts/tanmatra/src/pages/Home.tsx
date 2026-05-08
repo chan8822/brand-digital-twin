@@ -8,7 +8,7 @@ import { WeeklySummaryCard } from "@/pages/Wellness";
 import SegmentToggle from "@/components/layout/SegmentToggle";
 import { useOrders } from "@/lib/ordersContext";
 import { useCart } from "@/lib/cartContext";
-import { DISHES, type DishData } from "@/lib/menuData";
+import { useMenuCatalog, type DishData } from "@/lib/menuData";
 import { toast } from "sonner";
 import {
   ShieldCheck,
@@ -152,12 +152,14 @@ export default function Home() {
 
   const daypart = currentDaypart();
   const daypartMeta = DAYPART_META[daypart];
+  const { dishes: catalogDishes } = useMenuCatalog();
   const daypartDishes = useMemo(() => {
-    return DISHES.filter(
-      (d) => d.isAvailable && daypartMeta.categories.includes(d.category),
-    )
+    return catalogDishes
+      .filter(
+        (d) => d.isAvailable && daypartMeta.categories.includes(d.category),
+      )
       .slice(0, 6);
-  }, [daypartMeta]);
+  }, [daypartMeta, catalogDishes]);
 
   const quickAddDaypart = (e: React.MouseEvent, item: DishData) => {
     e.preventDefault();

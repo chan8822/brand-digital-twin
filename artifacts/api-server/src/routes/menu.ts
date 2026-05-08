@@ -10,6 +10,7 @@ import {
   updatePrice,
   updateItem,
 } from "../lib/menu";
+import { getMergedCatalog } from "../lib/menuResolver";
 import {
   ALL_COPY_FIELDS,
   applyCopyToItem,
@@ -49,6 +50,16 @@ function requireCatalog(req: Request, res: Response): boolean {
   }
   return true;
 }
+
+// Public, unauthenticated catalog: merges editable DB fields (price, name,
+// description, image, isAvailable, macros) on top of the static DISHES seed.
+// Items only present in the DB (CMS-created) are emitted with synthetic ids
+// in the 100000+ range so they don't collide with static dish ids used by
+// existing carts/orders.
+router.get("/menu/public", async (_req: Request, res: Response) => {
+  const dishes = await getMergedCatalog();
+  res.json({ dishes });
+});
 
 router.get("/menu/items", async (req: Request, res: Response) => {
   if (!requireCatalog(req, res)) return;

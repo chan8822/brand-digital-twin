@@ -7,7 +7,7 @@ import {
   groupOrdersTable,
   type GroupOrderLine,
 } from "@workspace/db";
-import { getDishById } from "@workspace/menu-catalog";
+import { resolveDishById } from "../lib/menuResolver";
 
 const MAX_LINES_PER_GROUP = 50;
 
@@ -101,7 +101,7 @@ router.post("/group-orders/:code/items", async (req: Request, res: Response) => 
   }
   // Resolve canonical dish from catalog. Reject unknown/unavailable dishes
   // here so we never persist tampered or stale lines.
-  const dish = getDishById(parsed.data.dishId);
+  const dish = await resolveDishById(parsed.data.dishId);
   if (!dish) {
     res.status(404).json({ error: "dish not found" });
     return;
