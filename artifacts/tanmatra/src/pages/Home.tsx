@@ -1,4 +1,4 @@
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -248,6 +248,7 @@ const DAYPART_META: Record<
 };
 
 export default function Home() {
+  const navigate = useNavigate();
   const { orders } = useOrders();
   const { addItem } = useCart();
 
@@ -290,7 +291,9 @@ export default function Home() {
       macros: item.macros,
       customizations: [],
     });
-    toast.success(`Added ${item.name}`);
+    toast.success(`Added ${item.name} to your order`, {
+      action: { label: "View Cart", onClick: () => navigate("/cart") },
+    });
   };
 
   return (
@@ -548,9 +551,10 @@ export default function Home() {
                           });
                         });
                         toast.success(
-                          `${order.items.length} item${order.items.length === 1 ? "" : "s"} added`,
+                          `${order.items.length} item${order.items.length === 1 ? "" : "s"} added to your order`,
                           {
                             description: `From order ${order.orderId}`,
+                            action: { label: "View Cart", onClick: () => navigate("/cart") },
                           },
                         );
                       }}

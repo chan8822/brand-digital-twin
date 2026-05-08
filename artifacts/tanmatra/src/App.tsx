@@ -287,7 +287,7 @@ export default function App() {
                 <StickyCheckoutBar />
                 <CoachAgentWidget />
               </div>
-              <Toaster theme="dark" position="top-right" richColors />
+              <Toaster theme="dark" position="top-center" richColors offset={72} />
             </BrowserRouter>
             </PreferencesProvider>
           </OrdersProvider>

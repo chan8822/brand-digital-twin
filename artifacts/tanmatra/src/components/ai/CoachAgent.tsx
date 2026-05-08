@@ -181,9 +181,6 @@ export default function CoachAgentWidget({
           }),
         });
         if (res.status === 409) {
-          toast.error(
-            "No upcoming subscription delivery — added to your cart instead.",
-          );
           addItem({
             dishId: dish.id,
             slug: dish.slug,
@@ -197,6 +194,11 @@ export default function CoachAgentWidget({
             rdVerified: dish.rdVerified,
             macros: dish.macros,
             customizations: [],
+          });
+          toast.success(`${dish.name} added to your order`, {
+            description:
+              "No upcoming subscription delivery — placed in your cart instead.",
+            action: { label: "View Cart", onClick: () => navigate("/cart") },
           });
           return;
         }
@@ -240,8 +242,11 @@ export default function CoachAgentWidget({
       a.target === "replace_in_cart"
         ? replacedName
           ? `Swapped ${replacedName} for ${dish.name}`
-          : `${dish.name} added to cart`
-        : `${dish.name} added to cart`,
+          : `${dish.name} added to your order`
+        : `${dish.name} added to your order`,
+      {
+        action: { label: "View Cart", onClick: () => navigate("/cart") },
+      },
     );
   };
 

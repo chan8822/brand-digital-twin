@@ -144,7 +144,10 @@ export default function Menu() {
       macros: item.macros,
       customizations: [],
     });
-    toast.success(`Added ${item.name} to cart`);
+    toast.success(`Added ${item.name} to your order`, {
+      description: "Tap View Cart to review and check out.",
+      action: { label: "View Cart", onClick: () => navigate("/cart") },
+    });
   };
 
   const handleAddBundle = (
@@ -185,8 +188,9 @@ export default function Menu() {
       // apply the authoritative bundle discount (client-side per-line
       // pricing is just for cart UX).
       addBundleSlug(bundle.slug);
-      toast.success(`${bundle.name} added`, {
+      toast.success(`${bundle.name} added to your order`, {
         description: `${added} item${added === 1 ? "" : "s"} for ${formatPrice(bundle.pricePaise)}`,
+        action: { label: "View Cart", onClick: () => navigate("/cart") },
       });
     }
   };
