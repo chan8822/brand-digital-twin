@@ -23,6 +23,7 @@ import {
 } from "@/lib/dishEnrichment";
 import { useCart } from "@/lib/cartContext";
 import { usePreferences } from "@/lib/preferencesContext";
+import { usePremiumStatus, usePremiumSlugs } from "@/lib/usePremium";
 import {
   evaluateDishForPreferences,
   findSmartSwap,
@@ -41,6 +42,7 @@ import {
   Sparkles,
   Utensils,
   ArrowRight,
+  Crown,
 } from "lucide-react";
 
 export default function Dish() {
@@ -48,6 +50,8 @@ export default function Dish() {
   const navigate = useNavigate();
   const { addItem } = useCart();
   const { preferences } = usePreferences();
+  const { isPremium } = usePremiumStatus();
+  const premiumSlugs = usePremiumSlugs();
   const { dishes: catalogDishes } = useMenuCatalog();
   const meal = useMemo(() => {
     if (!slug) return undefined;
@@ -158,7 +162,15 @@ export default function Dish() {
     return labels;
   };
 
+  const isPremiumOnly = !!meal && premiumSlugs.has(meal.slug);
   const handleAddToPlan = () => {
+    if (isPremiumOnly && !isPremium) {
+      toast.error(`${meal!.name} is a Premium-only dish`, {
+        description: "Join Tanmatra Premium to add this dish.",
+        action: { label: "See Premium", onClick: () => navigate("/premium") },
+      });
+      return;
+    }
     const customizations = collectCustomizationsForCart();
     addItem({
       dishId: meal.id,
@@ -671,14 +683,24 @@ export default function Dish() {
             </div>
           </div>
 
-          <Button
-            onClick={handleAddToPlan}
-            className="flex-1 sm:flex-initial bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold h-11 px-6 shadow-clinical-lg text-sm gap-2"
-          >
-            <ClipboardList className="w-4 h-4" />
-            Add to Cart
-            <span className="tabular-nums">— {formatPrice(calculatedTotal)}</span>
-          </Button>
+          {isPremiumOnly && !isPremium ? (
+            <Button
+              onClick={() => navigate("/premium")}
+              className="flex-1 sm:flex-initial bg-transparent border border-clinical-gold/50 text-clinical-gold hover:bg-clinical-gold/10 font-semibold h-11 px-6 text-sm gap-2"
+            >
+              <Crown className="w-4 h-4" />
+              Premium Only — See Membership
+            </Button>
+          ) : (
+            <Button
+              onClick={handleAddToPlan}
+              className="flex-1 sm:flex-initial bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold h-11 px-6 shadow-clinical-lg text-sm gap-2"
+            >
+              <ClipboardList className="w-4 h-4" />
+              Add to Cart
+              <span className="tabular-nums">— {formatPrice(calculatedTotal)}</span>
+            </Button>
+          )}
         </div>
       </div>
     </div>

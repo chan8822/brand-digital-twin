@@ -16,6 +16,8 @@ import {
   Users,
   Building2,
   Gift,
+  Crown,
+  ShoppingBag,
   MapPin,
   ShieldCheck,
   Mail,
@@ -79,6 +81,8 @@ const MORE_GROUPS: { title: string; items: MoreLink[] }[] = [
     items: [
       { to: "/rewards", label: "Rewards", icon: Sparkles },
       { to: "/vouchers", label: "Vouchers", icon: Gift },
+      { to: "/premium", label: "Premium", icon: Crown, desc: "Priority delivery + free RD consult" },
+      { to: "/marketplace", label: "Marketplace", icon: ShoppingBag, desc: "RD-curated pantry & supplements" },
       { to: "/track", label: "Track Order", icon: MapPin },
       { to: "/preferences", label: "Preferences", icon: SlidersHorizontal },
     ],

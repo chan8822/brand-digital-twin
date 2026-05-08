@@ -34,3 +34,6 @@ export * from "./contentRecipes";
 export * from "./challenges";
 export * from "./rdApplications";
 export * from "./corporate";
+export * from "./addons";
+export * from "./premium";
+export * from "./marketplace";

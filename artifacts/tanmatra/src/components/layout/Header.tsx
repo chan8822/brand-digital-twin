@@ -18,6 +18,8 @@ import {
   Building2,
   Gift,
   User,
+  Crown,
+  ShoppingBag,
 } from "lucide-react";
 import { useCart } from "@/lib/cartContext";
 import Logo from "./Logo";
@@ -43,6 +45,8 @@ export default function Header() {
     { path: "/team", label: "Team", icon: Users },
     { path: "/corporate", label: "Corporate", icon: Building2 },
     { path: "/vouchers", label: "Vouchers", icon: Gift },
+    { path: "/marketplace", label: "Marketplace", icon: ShoppingBag },
+    { path: "/premium", label: "Premium", icon: Crown },
     { path: "/track", label: "Track", icon: MapPin },
   ];
 

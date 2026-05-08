@@ -62,6 +62,9 @@ import CorporateAdmin from "@/pages/CorporateAdmin";
 import CorporateInvite from "@/pages/CorporateInvite";
 import OfficeLunch from "@/pages/OfficeLunch";
 import Vouchers from "@/pages/Vouchers";
+import Premium from "@/pages/Premium";
+import Marketplace from "@/pages/Marketplace";
+import MarketplaceItemPage from "@/pages/MarketplaceItem";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -204,6 +207,9 @@ export default function App() {
                     <Route path="/corporate/:slug" element={<CorporateAdmin />} />
                     <Route path="/office-lunch/:id" element={<OfficeLunch />} />
                     <Route path="/vouchers" element={<Vouchers />} />
+                    <Route path="/premium" element={<Premium />} />
+                    <Route path="/marketplace" element={<Marketplace />} />
+                    <Route path="/marketplace/:slug" element={<MarketplaceItemPage />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>

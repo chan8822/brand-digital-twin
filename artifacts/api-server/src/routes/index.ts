@@ -25,6 +25,9 @@ import recipesRouter from "./recipes";
 import challengesRouter from "./challenges";
 import rdPartnersRouter from "./rdPartners";
 import corporateRouter from "./corporate";
+import addonsRouter from "./addons";
+import premiumRouter from "./premium";
+import marketplaceRouter from "./marketplace";
 
 const router: IRouter = Router();
 
@@ -54,5 +57,8 @@ router.use(recipesRouter);
 router.use(challengesRouter);
 router.use(rdPartnersRouter);
 router.use(corporateRouter);
+router.use(addonsRouter);
+router.use(premiumRouter);
+router.use(marketplaceRouter);
 
 export default router;

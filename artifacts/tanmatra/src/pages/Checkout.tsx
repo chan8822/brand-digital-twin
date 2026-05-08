@@ -29,6 +29,8 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Sparkles, Leaf, Store, Truck, NotebookPen } from "lucide-react";
+import AddOnRail from "@/components/checkout/AddOnRail";
+import { addonsApi } from "@/lib/marketplaceApi";
 import {
   MapPin,
   CreditCard,
@@ -71,6 +73,9 @@ export default function Checkout() {
   const { items, bundleSlugs, subtotal, clear } = useCart();
   const { addOrder } = useOrders();
   const [selectedAddress, setSelectedAddress] = useState("addr-1");
+  const [selectedAddons, setSelectedAddons] = useState<Map<number, number>>(
+    new Map(),
+  );
   const [showNewAddress, setShowNewAddress] = useState(false);
   const [tipAmount, setTipAmount] = useState(0);
   const [customTip, setCustomTip] = useState("");
@@ -334,6 +339,20 @@ export default function Checkout() {
       setCreditBalance(out.balancePaise);
       referralAwarded = out.referral.awarded;
       serverOrderIdFromFinalize = out.serverOrderId;
+      // Attach add-ons (drinks/snacks/supplements) to the freshly-created
+      // server order. Failures here should not block the order itself —
+      // the user already paid for the meals.
+      if (out.serverOrderId && selectedAddons.size > 0) {
+        try {
+          const items = Array.from(selectedAddons.entries()).map(
+            ([addonId, qty]) => ({ addonId, qty }),
+          );
+          const r = await addonsApi.attach(out.serverOrderId, items);
+          finalTotal += r.addedPaise;
+        } catch {
+          toast.warning("Add-ons could not be attached — contact support");
+        }
+      }
     } catch (err) {
       const msg = String((err as Error).message);
       if (msg.includes("delivery slot full")) {
@@ -822,6 +841,20 @@ export default function Checkout() {
       </div>
 
       <div className="lg:col-span-2 space-y-4">
+        <AddOnRail
+          cartTags={Array.from(
+            new Set(
+              items.flatMap((it) => [
+                it.kitchen,
+                it.isVeg ? "vegan" : "nonveg",
+                ...(it.macros.protein >= 25 ? ["fitness", "performance"] : []),
+                "lunch",
+              ]),
+            ),
+          )}
+          selected={selectedAddons}
+          onChange={setSelectedAddons}
+        />
         <Card className="bg-clinical-surface border-clinical-slate/20 sticky top-20">
           <CardContent className="p-5 space-y-4">
             <h2 className="text-sm font-semibold text-white flex items-center gap-2">

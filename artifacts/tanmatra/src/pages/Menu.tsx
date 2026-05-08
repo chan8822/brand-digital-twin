@@ -22,6 +22,9 @@ import {
 } from "@/lib/dishEnrichment";
 import { useCart } from "@/lib/cartContext";
 import { usePreferences } from "@/lib/preferencesContext";
+import { usePremiumStatus, usePremiumSlugs } from "@/lib/usePremium";
+import { useNavigate } from "react-router";
+import { Crown } from "lucide-react";
 import {
   evaluateDishForPreferences,
   rankDishesForPreferences,
@@ -77,6 +80,9 @@ const LIFESTYLE_TABS: Array<{ value: Lifestyle; label: string; icon: typeof Hear
 type DietFilter = "all" | "veg" | "nonveg";
 
 export default function Menu() {
+  const { isPremium } = usePremiumStatus();
+  const premiumSlugs = usePremiumSlugs();
+  const navigate = useNavigate();
   const [kitchen, setKitchen] = useState<"all" | DishKitchen>("all");
   const [category, setCategory] = useState<"all" | DishCategory>("all");
   const [diet, setDiet] = useState<DietFilter>("all");
@@ -105,6 +111,13 @@ export default function Menu() {
           toast.success(`Added ${item.name} to group ${groupCode}`);
         })
         .catch(() => toast.error("Could not add to group order"));
+      return;
+    }
+    if (premiumSlugs.has(item.slug) && !isPremium) {
+      toast.error(`${item.name} is a Premium-only dish`, {
+        description: "Join Tanmatra Premium to unlock chef-table dishes.",
+        action: { label: "See Premium", onClick: () => navigate("/premium") },
+      });
       return;
     }
     addItem({
@@ -501,6 +514,11 @@ export default function Menu() {
                     RD
                   </span>
                 )}
+                {premiumSlugs.has(item.slug) && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded border border-clinical-gold/50 text-clinical-gold bg-[#050505]/80 backdrop-blur-sm font-bold tracking-wider uppercase flex items-center gap-1">
+                    <Crown className="w-2.5 h-2.5" /> Premium
+                  </span>
+                )}
               </div>
 
               {/* Top-right: lifestyle tag */}
@@ -604,15 +622,31 @@ export default function Menu() {
                     Details
                   </Button>
                 </Link>
-                <Button
-                  size="sm"
-                  onClick={(e) => handleQuickAdd(e, item)}
-                  disabled={!item.isAvailable}
-                  className="flex-1 h-10 bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 disabled:opacity-50 disabled:pointer-events-none text-[11px] uppercase tracking-[0.12em] font-bold gap-1 shadow-[0_0_15px_rgba(212,175,55,0.15)] hover:shadow-[0_0_20px_rgba(212,175,55,0.3)]"
-                >
-                  <Plus className="w-3 h-3" />
-                  Add to Order
-                </Button>
+                {premiumSlugs.has(item.slug) && !isPremium ? (
+                  <Button
+                    size="sm"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      navigate("/premium");
+                    }}
+                    disabled={!item.isAvailable}
+                    className="flex-1 h-10 bg-transparent border border-clinical-gold/50 text-clinical-gold hover:bg-clinical-gold/10 text-[11px] uppercase tracking-[0.12em] font-bold gap-1"
+                  >
+                    <Crown className="w-3 h-3" />
+                    Premium Only
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    onClick={(e) => handleQuickAdd(e, item)}
+                    disabled={!item.isAvailable}
+                    className="flex-1 h-10 bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 disabled:opacity-50 disabled:pointer-events-none text-[11px] uppercase tracking-[0.12em] font-bold gap-1 shadow-[0_0_15px_rgba(212,175,55,0.15)] hover:shadow-[0_0_20px_rgba(212,175,55,0.3)]"
+                  >
+                    <Plus className="w-3 h-3" />
+                    Add to Order
+                  </Button>
+                )}
               </div>
             </div>
 

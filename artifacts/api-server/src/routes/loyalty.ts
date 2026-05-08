@@ -10,6 +10,8 @@ import {
   referralRedemptionsTable,
   userProfileTable,
 } from "@workspace/db";
+import { getPremiumSlugSet, userIsPremium } from "./premium";
+import { makeBatchDishResolver } from "../lib/menuResolver";
 import {
   finalizeOrder,
   getCreditBalancePaise,
@@ -260,6 +262,35 @@ router.post("/orders/finalize", async (req: Request, res: Response) => {
   const parsed = finalizeOrderSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "invalid payload" });
+    return;
+  }
+  // Server-side premium-meal gating: if the cart contains any dish whose
+  // slug is in the curated premium-only set, the user must be a paying
+  // premium member. Resolve dish ids through the same merged catalog
+  // resolver used for pricing so static and DB-only (synthetic id) dishes
+  // both map correctly. Fails CLOSED — a resolver/db error rejects the
+  // order rather than silently letting premium dishes through.
+  try {
+    const ids = parsed.data.items.map((i) => i.id).filter((id) => id > 0);
+    if (ids.length > 0) {
+      const [premiumSet, resolver] = await Promise.all([
+        getPremiumSlugSet(),
+        makeBatchDishResolver(),
+      ]);
+      const cartHasPremium = ids.some((id) => {
+        const d = resolver.byId(id);
+        return !!d && premiumSet.has(d.slug);
+      });
+      if (cartHasPremium && !(await userIsPremium(userId))) {
+        res
+          .status(403)
+          .json({ error: "premium membership required for one or more items" });
+        return;
+      }
+    }
+  } catch (err) {
+    req.log.error({ err }, "premium gate check failed");
+    res.status(503).json({ error: "premium gate unavailable, try again" });
     return;
   }
   try {
