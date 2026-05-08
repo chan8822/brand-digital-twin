@@ -51,11 +51,24 @@ export default function Orders() {
         <p className="text-sm text-clinical-zinc">
           Place your first clinical-grade meal and it will appear here.
         </p>
-        <Link to="/menu">
-          <Button className="bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90">
-            Browse Menu
-          </Button>
-        </Link>
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <Link to="/menu">
+            <Button className="bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90">
+              Browse Menu
+            </Button>
+          </Link>
+          <Link to="/preferences">
+            <Button
+              variant="outline"
+              className="border-clinical-slate/40 text-clinical-zinc hover:text-white"
+            >
+              Set preferences first
+            </Button>
+          </Link>
+        </div>
+        <p className="text-[11px] text-clinical-zinc pt-2">
+          New here? Browse the menu, add to your Nutrition Plan, then check out — orders track in real time and earn loyalty credits.
+        </p>
       </div>
     );
   }
@@ -226,19 +239,23 @@ export default function Orders() {
 
       {/* Dispute dialog */}
       <Dialog open={disputeFor !== null} onOpenChange={(open) => !open && setDisputeFor(null)}>
-        <DialogContent className="bg-clinical-surface border-clinical-slate/30">
+        <DialogContent
+          className="bg-clinical-surface border-clinical-slate/30"
+          aria-describedby="dispute-desc"
+        >
           <DialogHeader>
             <DialogTitle className="text-white flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-orange-400" />
               Report a problem
             </DialogTitle>
-            <DialogDescription className="text-clinical-zinc">
+            <DialogDescription id="dispute-desc" className="text-clinical-zinc">
               Tell us what went wrong with order{" "}
               <span className="font-mono text-clinical-gold">{disputeFor?.orderId}</span>. Our care team responds
               within 30 minutes during operating hours.
             </DialogDescription>
           </DialogHeader>
           <Textarea
+            aria-describedby="dispute-desc"
             placeholder="e.g., Wrong dish delivered, food was cold, missing item, allergen concern…"
             value={disputeText}
             onChange={(e) => setDisputeText(e.target.value)}

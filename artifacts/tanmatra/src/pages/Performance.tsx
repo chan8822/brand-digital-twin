@@ -3,7 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import MacroOverlay from "@/components/dish/MacroOverlay";
 import SegmentToggle from "@/components/layout/SegmentToggle";
 import { Link } from "react-router";
-import { Zap, Timer, TrendingUp, ShieldCheck } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Zap, Timer, TrendingUp, ShieldCheck, ArrowRight, Utensils } from "lucide-react";
 
 const FEATURED = [
   { id: 3, name: "Aglio Olio (Chicken)", image: "https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=800&q=80", price: 18000, slug: "aglio-olio-chicken", macros: { protein: 28, carbs: 65, fat: 22, fiber: 5, calories: 580 }, rdVerified: true, description: "Spaghetti tossed in garlic-olive oil with grilled chicken strips." },
@@ -116,6 +117,32 @@ export default function Performance() {
                 </Card>
               </Link>
             ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="py-12 border-t border-clinical-slate/20">
+        <div className="max-w-3xl mx-auto px-4 text-center space-y-4">
+          <h2 className="text-clinical-h2 text-white">
+            Start a <span className="text-clinical-blue">Performance Plan</span>
+          </h2>
+          <p className="text-sm text-clinical-zinc">
+            Lock in a recurring delivery of performance-formulated meals — adjust your protein target, cadence, and rest-day swaps any time.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+            <Link to="/subscribe?plan=performance">
+              <Button className="bg-clinical-blue text-[#050505] hover:bg-clinical-blue/90 gap-2 h-11 px-6">
+                <Zap className="w-4 h-4" />
+                Start Performance Plan
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            </Link>
+            <Link to="/menu?protocol=performance">
+              <Button variant="outline" className="border-clinical-blue/40 text-clinical-blue hover:bg-clinical-blue/10 gap-2 h-11 px-6">
+                <Utensils className="w-4 h-4" />
+                Browse one-time meals
+              </Button>
+            </Link>
           </div>
         </div>
       </section>

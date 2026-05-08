@@ -127,6 +127,22 @@ export default function HomeScreen() {
   }, [provider]);
 
   const handleSync = useCallback(async () => {
+    const stepsRaw = Number(stepsInput);
+    const kcalRaw = Number(kcalInput);
+    if (stepsInput && (Number.isNaN(stepsRaw) || stepsRaw > 60000)) {
+      Alert.alert(
+        "Steps look off",
+        "Enter a whole number of steps between 0 and 60,000 for today.",
+      );
+      return;
+    }
+    if (kcalInput && (Number.isNaN(kcalRaw) || kcalRaw > 3000)) {
+      Alert.alert(
+        "Active calories look off",
+        "Enter a whole number of kcal between 0 and 3,000 for today.",
+      );
+      return;
+    }
     const steps = clampInt(stepsInput, 60000);
     const activityKcal = clampInt(kcalInput, 3000);
     if (activityKcal === 0 && steps === 0) {
@@ -148,8 +164,21 @@ export default function HomeScreen() {
   }, [stepsInput, kcalInput, provider, sync, refreshAll]);
 
   const handleSignOut = useCallback(async () => {
-    await setToken(null);
-    queryClient.clear();
+    Alert.alert(
+      "Sign out of Tanmatra?",
+      "You'll need to paste a fresh device pairing token from the web app to sync again.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Sign out",
+          style: "destructive",
+          onPress: async () => {
+            await setToken(null);
+            queryClient.clear();
+          },
+        },
+      ],
+    );
   }, [setToken, queryClient]);
 
   if (!tokenReady) {
@@ -412,6 +441,8 @@ export default function HomeScreen() {
               color={c.primary}
               onPress={handleAutoFill}
               style={{ padding: 6 }}
+              accessibilityRole="button"
+              accessibilityLabel={`Auto-fill from ${providerLabel(provider)}`}
             />
           ) : null}
         </View>

@@ -20,6 +20,7 @@ import {
   Plus,
   X,
   ChevronRight,
+  MapPin,
 } from "lucide-react";
 import {
   subscriptionsApi,
@@ -520,6 +521,7 @@ export default function Subscribe() {
       <Card className="bg-clinical-surface border-clinical-slate/20">
         <CardContent className="p-5 space-y-4">
           <div className="flex items-center gap-2 text-clinical-zinc text-xs uppercase tracking-widest">
+            <MapPin className="w-3.5 h-3.5 text-clinical-gold" />
             Step 4 — Delivery Address
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

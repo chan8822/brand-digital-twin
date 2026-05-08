@@ -240,10 +240,16 @@ function ManualLogDialog({ onSaved }: { onSaved: () => void }) {
           <Plus className="w-4 h-4 mr-1" /> Log meal
         </Button>
       </DialogTrigger>
-      <DialogContent className="bg-clinical-dark border border-clinical-slate/30 text-white">
+      <DialogContent
+        className="bg-clinical-dark border border-clinical-slate/30 text-white"
+        aria-describedby="manual-log-help"
+      >
         <DialogHeader>
           <DialogTitle>Log a meal or snack</DialogTitle>
         </DialogHeader>
+        <p id="manual-log-help" className="sr-only">
+          Add a quick meal or snack to today's wellness totals.
+        </p>
         <div className="space-y-3">
           <div>
             <Label className="text-clinical-slate text-xs uppercase tracking-widest">

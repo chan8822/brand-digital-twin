@@ -278,10 +278,14 @@ export default function Dish() {
             <Card className="bg-clinical-surface border-clinical-slate/20">
               <CardContent className="p-4">
                 <p className="text-clinical-label mb-2">Suggested Pairing</p>
-                <Link to={`/dish/${pairingDish.slug}`} className="flex items-center gap-3 group">
+                <Link
+                  to={`/dish/${pairingDish.slug}`}
+                  className="flex items-center gap-3 group"
+                  aria-label={`Pair with ${pairingDish.name} — adds ${pairingDish.macros.protein}g protein`}
+                >
                   <img
                     src={pairingDish.image}
-                    alt={pairingDish.name}
+                    alt={`${pairingDish.name} — suggested pairing`}
                     className="w-14 h-14 rounded-lg object-cover border border-clinical-slate/20 group-hover:border-clinical-gold/40 transition-colors"
                   />
                   <div className="flex-1 min-w-0">

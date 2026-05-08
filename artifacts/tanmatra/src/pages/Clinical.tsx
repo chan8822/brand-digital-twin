@@ -3,7 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import MacroOverlay from "@/components/dish/MacroOverlay";
 import SegmentToggle from "@/components/layout/SegmentToggle";
 import { Link } from "react-router";
-import { Dna, Syringe, HeartPulse, ShieldCheck, AlertCircle, ScrollText } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Dna, Syringe, HeartPulse, ShieldCheck, AlertCircle, ScrollText, ArrowRight, Utensils } from "lucide-react";
 
 const FEATURED = [
   { id: 56, name: "Moong Dal Chilla with Curd", image: "https://images.unsplash.com/photo-1525351484163-7529414344d8?w=800&q=80", price: 7500, slug: "moong-dal-chilla-with-curd", macros: { protein: 12, carbs: 22, fat: 14, fiber: 3, calories: 260 }, rdVerified: true, description: "Protein-rich moong dal pancake with curd. Low-glycemic and gut-friendly." },
@@ -140,6 +141,32 @@ export default function Clinical() {
                 </Card>
               </Link>
             ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="py-12 border-t border-clinical-slate/20">
+        <div className="max-w-3xl mx-auto px-4 text-center space-y-4">
+          <h2 className="text-clinical-h2 text-white">
+            Start a <span className="text-clinical-gold">Clinical Plan</span>
+          </h2>
+          <p className="text-sm text-clinical-zinc">
+            Therapeutic meal plans are reviewed by a registered dietitian before delivery. Pair with an RD consult to share your physician's nutrition prescription.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+            <Link to="/subscribe?plan=clinical">
+              <Button className="bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 gap-2 h-11 px-6">
+                <Dna className="w-4 h-4" />
+                Start Clinical Plan
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            </Link>
+            <Link to="/rd">
+              <Button variant="outline" className="border-clinical-gold/40 text-clinical-gold hover:bg-clinical-gold/10 gap-2 h-11 px-6">
+                <HeartPulse className="w-4 h-4" />
+                Book an RD first
+              </Button>
+            </Link>
           </div>
         </div>
       </section>

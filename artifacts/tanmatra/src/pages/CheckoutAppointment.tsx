@@ -47,6 +47,7 @@ export default function CheckoutAppointment() {
   const booking = location.state as BookingState | null;
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [lastError, setLastError] = useState<string | null>(null);
 
   if (!booking || !booking.rdSlug) {
     return (
@@ -66,6 +67,7 @@ export default function CheckoutAppointment() {
 
   async function pay() {
     if (!booking) return;
+    setLastError(null);
     setProcessing(true);
     // Mock payment processing UI delay — same pattern as the meal
     // checkout flow. The actual payment is settled server-side via the
@@ -104,8 +106,10 @@ export default function CheckoutAppointment() {
         toast.error("Sign in to confirm", {
           description: "Please sign in to complete your booking.",
         });
+        setLastError("Sign-in required to complete this booking.");
       } else {
         toast.error("Could not book", { description: msg });
+        setLastError(msg);
       }
     } finally {
       setProcessing(false);
@@ -207,6 +211,39 @@ export default function CheckoutAppointment() {
         <CreditCard className="w-4 h-4 mr-2" />
         Confirm and pay {formatRupees(booking.pricePaise)}
       </Button>
+
+      {lastError && (
+        <Card className="bg-red-500/5 border-red-500/30">
+          <CardContent className="p-4 space-y-3">
+            <p className="text-xs text-red-300">
+              <span className="font-semibold">Booking didn't go through:</span>{" "}
+              {lastError}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                onClick={() => {
+                  setLastError(null);
+                  setConfirmOpen(true);
+                }}
+                size="sm"
+                className="bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 text-xs h-8"
+              >
+                Retry payment
+              </Button>
+              <Button
+                asChild
+                size="sm"
+                variant="outline"
+                className="border-clinical-slate/40 text-clinical-zinc hover:text-white text-xs h-8"
+              >
+                <a href="mailto:care@tanmatra.health?subject=RD%20appointment%20booking%20issue">
+                  Contact support
+                </a>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent className="bg-clinical-surface border-clinical-slate/30">

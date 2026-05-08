@@ -317,7 +317,10 @@ export default function Preferences() {
             </div>
           </Section>
 
-          <div className="flex items-center justify-end gap-2 pt-2">
+          <div className="sticky bottom-0 -mx-6 -mb-6 px-6 py-3 mt-2 bg-clinical-surface/95 backdrop-blur border-t border-clinical-slate/20 flex items-center justify-end gap-2 z-10">
+            <span className="text-[11px] text-clinical-zinc mr-auto">
+              Changes apply to future menu suggestions and meal plans.
+            </span>
             <Button
               onClick={handleSave}
               disabled={saving}

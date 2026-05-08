@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetHeader,
   SheetTitle,
@@ -169,13 +170,12 @@ export default function BottomNav() {
           <SheetHeader className="px-5 pt-5 pb-3 border-b border-clinical-slate/20">
             <SheetTitle className="text-white text-base font-serif flex items-center justify-between">
               Explore Tanmatra
-              <button
-                onClick={() => setMoreOpen(false)}
-                aria-label="Close"
-                className="text-clinical-zinc hover:text-white -mr-1"
+              <SheetClose
+                aria-label="Close menu"
+                className="text-clinical-zinc hover:text-white -mr-1 inline-flex items-center justify-center h-8 w-8 rounded-md hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-clinical-gold/40"
               >
                 <X className="w-4 h-4" />
-              </button>
+              </SheetClose>
             </SheetTitle>
           </SheetHeader>
 

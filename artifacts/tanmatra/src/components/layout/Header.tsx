@@ -21,8 +21,8 @@ export default function Header() {
 
   const navItems = [
     { path: "/menu", label: "Menu", icon: Utensils },
-    { path: "/plans", label: "Plans", icon: CalendarClock },
-    { path: "/rd", label: "Coach", icon: HeartHandshake },
+    { path: "/plans", label: "Therapeutic Plans", icon: CalendarClock },
+    { path: "/rd", label: "Book RD", icon: HeartHandshake },
     { path: "/challenges", label: "Challenges", icon: Flag },
     { path: "/orders", label: "Orders", icon: Package },
     { path: "/preferences", label: "Account", icon: Stethoscope },

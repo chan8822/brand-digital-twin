@@ -131,6 +131,7 @@ export default function SupportAgentWidget() {
         onClick={() => setIsOpen(!isOpen)}
         className="fixed bottom-24 md:bottom-6 right-4 md:right-6 z-50 h-12 w-12 md:h-14 md:w-14 rounded-full shadow-lg"
         aria-label={isOpen ? "Close support chat" : "Open support chat"}
+        title={isOpen ? "Close support chat" : "Need help? Chat with our support agent"}
       >
         {isOpen ? <X className="w-6 h-6" /> : <MessageCircle className="w-6 h-6" />}
       </Button>

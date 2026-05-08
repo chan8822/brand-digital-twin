@@ -131,9 +131,18 @@ export default function Marketplace() {
 
       {!q.isLoading && items.length === 0 && (
         <Card className="bg-clinical-surface border-clinical-slate/20">
-          <CardContent className="p-10 text-center text-sm text-clinical-zinc">
-            <Package className="w-6 h-6 mx-auto mb-2 text-clinical-gold" />
-            No items in this category yet.
+          <CardContent className="p-10 text-center space-y-3">
+            <Package className="w-6 h-6 mx-auto text-clinical-gold" />
+            <p className="text-sm text-clinical-zinc">
+              No items in this category yet — our RDs are still curating this shelf.
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => setCategory("all")}
+              className="border-clinical-gold/30 text-clinical-gold hover:bg-clinical-gold/10"
+            >
+              Browse the full pantry
+            </Button>
           </CardContent>
         </Card>
       )}

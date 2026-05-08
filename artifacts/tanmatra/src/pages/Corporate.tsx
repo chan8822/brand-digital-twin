@@ -50,15 +50,42 @@ export default function Corporate() {
 
   if (unauthorized) {
     return (
-      <div className="max-w-xl mx-auto p-8 text-center space-y-3">
-        <Building2 className="w-10 h-10 mx-auto text-clinical-gold" />
-        <h1 className="text-2xl font-bold text-white">Corporate Plans</h1>
-        <p className="text-sm text-clinical-zinc">
-          Sign in to set up an office program for your team.
-        </p>
-        <Button onClick={() => nav("/login?next=/corporate")} className="bg-clinical-gold text-[#050505]">
-          Sign in
-        </Button>
+      <div className="max-w-2xl mx-auto p-6 sm:p-10 space-y-8">
+        <div className="text-center space-y-3">
+          <Building2 className="w-10 h-10 mx-auto text-clinical-gold" />
+          <h1 className="text-3xl font-bold text-white">Corporate Plans</h1>
+          <p className="text-sm text-clinical-zinc max-w-md mx-auto">
+            Subsidize meals for your team, run office lunch programs, and gift wellness vouchers — all on a single monthly invoice.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {[
+            { title: "Per-employee budgets", desc: "Set a monthly meal allowance employees redeem at checkout." },
+            { title: "Office lunch programs", desc: "Schedule recurring team meals with one-click reorder." },
+            { title: "Wellness vouchers", desc: "Gift one-off meals and RD consults for milestones or hires." },
+          ].map((b) => (
+            <div key={b.title} className="rounded-lg border border-clinical-slate/20 bg-clinical-surface p-4 space-y-1">
+              <p className="text-sm font-semibold text-white">{b.title}</p>
+              <p className="text-[11px] text-clinical-zinc">{b.desc}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="rounded-lg border border-clinical-gold/30 bg-clinical-gold/5 p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-white">Sign in to get started</p>
+            <p className="text-xs text-clinical-zinc mt-1">
+              Already an HR admin? Sign in to create your company workspace, invite teammates, and configure subsidies.
+            </p>
+          </div>
+          <Button
+            onClick={() => nav("/login?next=/corporate")}
+            className="bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 shrink-0"
+          >
+            Sign in
+          </Button>
+        </div>
       </div>
     );
   }

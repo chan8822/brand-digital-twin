@@ -772,6 +772,8 @@ export default function Checkout() {
                   value={customTip}
                   onChange={(e) => setCustomTip(e.target.value)}
                   className="h-9 text-xs bg-clinical-surface border-clinical-slate/30 tabular-nums"
+                  autoFocus
+                  aria-label="Custom tip amount in rupees"
                 />
               </div>
             )}
@@ -826,15 +828,18 @@ export default function Checkout() {
               <CreditCard className="w-4 h-4 text-clinical-gold" />
               <h2 className="text-sm font-semibold text-white">Payment</h2>
             </div>
-            <div className="p-3 rounded-lg border border-clinical-gold/30 bg-clinical-gold/5 flex items-center gap-3">
+            <div
+              className="p-3 rounded-lg border border-clinical-gold/30 bg-clinical-gold/5 flex items-center gap-3"
+              title="Razorpay handles your payment securely. Tanmatra never sees your card or UPI details."
+            >
               <div className="w-8 h-8 rounded-md bg-clinical-gold/20 flex items-center justify-center">
                 <CreditCard className="w-4 h-4 text-clinical-gold" />
               </div>
               <div>
                 <p className="text-xs font-medium text-white">Razorpay Secure Checkout</p>
-                <p className="text-[10px] text-clinical-zinc">UPI · Cards · Net Banking · Wallets</p>
+                <p className="text-[10px] text-clinical-zinc">UPI · Cards · Net Banking · Wallets · PCI-DSS Level 1</p>
               </div>
-              <ShieldCheck className="w-4 h-4 text-clinical-sage ml-auto" />
+              <ShieldCheck className="w-4 h-4 text-clinical-sage ml-auto" aria-label="Encrypted payment" />
             </div>
           </CardContent>
         </Card>

@@ -192,7 +192,13 @@ export default function Cart() {
                     </div>
 
                     {item.customizations.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
+                      <div
+                        className="flex flex-wrap gap-1"
+                        title="Premium-only customizations"
+                      >
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-clinical-gold/15 text-clinical-gold uppercase tracking-wide">
+                          Premium
+                        </span>
                         {item.customizations.map((c) => (
                           <span key={c} className="text-[9px] px-1.5 py-0.5 rounded bg-clinical-slate/20 text-clinical-zinc">
                             {c}
