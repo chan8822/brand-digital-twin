@@ -873,6 +873,7 @@ export const RdPartnersSubmitApplicationBody = zod.object({
     "hospital",
     "corporate",
     "academia",
+    "online-only",
     "other",
   ]),
   clientVolumeBucket: zod

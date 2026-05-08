@@ -119,6 +119,7 @@ const applicationSchema = z.object({
     "hospital",
     "corporate",
     "academia",
+    "online-only",
     "other",
   ]),
   clientVolumeBucket: z
@@ -410,14 +411,13 @@ router.post(
       return;
     }
 
-    // For partner-only applications we just attach the user; advisory
-    // and "both" applications also get an `rd_users` row + slug so the
-    // partner can step into the console immediately on approval.
+    // Every applicant — partner, advisory, or both — gets an
+    // `rd_users` row + slug on attach so they can sign straight into
+    // the RD console on approval.
     let provisionedSlug: string | null = app.linkedRdSlug ?? null;
-    const wantsConsole = app.path === "advisory" || app.path === "both";
-    if (wantsConsole && !provisionedSlug) {
+    if (!provisionedSlug) {
       provisionedSlug = await provisionRdSlug(req.user.id, app.fullName);
-    } else if (wantsConsole && provisionedSlug) {
+    } else {
       // Make sure the rd_users row actually exists for the slug we
       // recorded — admins may have wiped it.
       const existing = await db
@@ -618,7 +618,7 @@ router.patch(
       { applicationId: id, updates, by: req.user?.id ?? "token" },
       "rd_partners.application.updated",
     );
-    res.json({ application: updated[0] });
+    res.json({ ok: true, row: updated[0] });
   },
 );
 

@@ -27,6 +27,7 @@ type PracticeSetting =
   | "hospital"
   | "corporate"
   | "academia"
+  | "online-only"
   | "other";
 
 interface DraftState {
@@ -524,6 +525,7 @@ function StepPractice({
     { id: "hospital", label: "Hospital" },
     { id: "corporate", label: "Corporate wellness" },
     { id: "academia", label: "Academia / research" },
+    { id: "online-only", label: "Online-only practice" },
     { id: "other", label: "Other" },
   ];
   return (

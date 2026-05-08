@@ -995,7 +995,7 @@ components:
           items: { type: string, maxLength: 80 }
         practiceSetting:
           type: string
-          enum: [solo, clinic, hospital, corporate, academia, other]
+          enum: [solo, clinic, hospital, corporate, academia, online-only, other]
         clientVolumeBucket:
           type: string
           maxLength: 32

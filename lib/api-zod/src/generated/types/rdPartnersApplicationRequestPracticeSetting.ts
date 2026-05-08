@@ -15,5 +15,6 @@ export const RdPartnersApplicationRequestPracticeSetting = {
   hospital: "hospital",
   corporate: "corporate",
   academia: "academia",
+  "online-only": "online-only",
   other: "other",
 } as const;

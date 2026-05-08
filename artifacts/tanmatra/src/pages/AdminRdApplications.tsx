@@ -278,8 +278,8 @@ function ApplicationDetail({
         const j = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(j.error ?? `HTTP ${res.status}`);
       }
-      const j = (await res.json()) as { application: Application };
-      onChange(j.application);
+      const j = (await res.json()) as { ok: boolean; row: Application };
+      onChange(j.row);
       toast.success(label);
     } catch (err) {
       toast.error(`${label} failed`, { description: (err as Error).message });
