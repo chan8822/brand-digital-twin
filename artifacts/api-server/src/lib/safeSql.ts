@@ -198,6 +198,14 @@ export function validateSafeSql(sqlIn: string): string {
       throw new UnsafeSqlError(`forbidden keyword: ${kw}`);
     }
   }
+  // Reject implicit (comma) joins outright. The table-extraction regex
+  // below only sees identifiers that follow FROM or JOIN, so a query like
+  // `select * from safe_orders, orders` would otherwise expose the base
+  // `orders` table. We walk every FROM clause and refuse if a top-level
+  // comma appears before the next clause boundary.
+  if (hasFromCommaJoin(stripped)) {
+    throw new UnsafeSqlError("comma joins are not allowed; use explicit JOIN");
+  }
   // Column-level safety is enforced by the DB itself: queries are only
   // allowed to reference `safe_*` views (created by ensureSafeViews) which
   // SELECT a narrow, explicit column list from each underlying table. Even
@@ -215,6 +223,50 @@ export function validateSafeSql(sqlIn: string): string {
     }
   }
   return sql;
+}
+
+// Walks the (already-lowercased, string-literals-stripped) SQL and returns
+// true if any top-level comma appears inside a FROM clause — i.e. an
+// implicit (comma) join such as `from safe_orders, orders` or
+// `from safe_orders o, users u`. Commas inside parentheses (function args,
+// subqueries) are ignored.
+export function hasFromCommaJoin(s: string): boolean {
+  const CLAUSE_END = /^\s+(?:where|group|order|having|limit|offset|union|intersect|except|fetch|window|for|returning)\b/;
+  let i = 0;
+  while (i < s.length) {
+    const idx = s.indexOf("from", i);
+    if (idx === -1) return false;
+    const before = idx === 0 ? "" : s[idx - 1] ?? "";
+    const after = s[idx + 4] ?? "";
+    // Require word boundaries so we don't match inside identifiers.
+    if (/[a-z0-9_]/.test(before) || /[a-z0-9_]/.test(after)) {
+      i = idx + 4;
+      continue;
+    }
+    let j = idx + 4;
+    let depth = 0;
+    while (j < s.length) {
+      const c = s[j];
+      if (c === "(") {
+        depth++;
+        j++;
+        continue;
+      }
+      if (c === ")") {
+        if (depth === 0) break;
+        depth--;
+        j++;
+        continue;
+      }
+      if (depth === 0) {
+        if (c === ",") return true;
+        if (CLAUSE_END.test(s.slice(j))) break;
+      }
+      j++;
+    }
+    i = j + 1;
+  }
+  return false;
 }
 
 export async function ensureSafeViews(): Promise<void> {

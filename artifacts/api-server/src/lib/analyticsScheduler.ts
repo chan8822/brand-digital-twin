@@ -32,13 +32,14 @@ async function tick(): Promise<void> {
     // idempotent via wbr_reports.published_at so successful prior delivery
     // is never duplicated.
     let published: { delivered: boolean; channel: string; alreadyPublished: boolean } | null = null;
-    const todayDow = new Date().getUTCDay();
-    const sameWeekBackfill =
-      todayDow === PUBLISH_DOW ||
-      (todayDow > PUBLISH_DOW && !wbr.publishedAt) ||
-      // Sunday (0) wraps before Monday (1) — treat as not-yet-window.
-      (PUBLISH_DOW === 1 && todayDow >= 2 && !wbr.publishedAt);
-    if (sameWeekBackfill) {
+    // Normalize day-of-week to "days since Monday" (0..6) so backfill logic
+    // works for any configured WBR_PUBLISH_DOW, not just Monday. Sunday=0
+    // wraps to 6 (end of ISO week).
+    const daysSinceMonday = (dow: number) => (dow + 6) % 7;
+    const todayIdx = daysSinceMonday(new Date().getUTCDay());
+    const publishIdx = daysSinceMonday(PUBLISH_DOW);
+    const inWindow = todayIdx === publishIdx || (todayIdx > publishIdx && !wbr.publishedAt);
+    if (inWindow) {
       published = await publishWbr(wbr);
     }
     logger.info(
