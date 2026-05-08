@@ -234,14 +234,14 @@ export default function Home() {
             </p>
 
             <div className="flex flex-wrap gap-3 pt-2">
-              <Link to="/menu">
+              <Link to="/preferences">
                 <Button className="bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold gap-2 h-11 px-6 shadow-clinical-lg">
-                  Explore Menu <ArrowRight className="w-4 h-4" />
+                  Take 60-second assessment <ArrowRight className="w-4 h-4" />
                 </Button>
               </Link>
-              <Link to="/wellness">
+              <Link to="/menu">
                 <Button variant="outline" className="border-clinical-slate/40 text-clinical-zinc hover:text-white hover:border-clinical-gold/40 h-11 px-6">
-                  View Protocols
+                  Explore Menu
                 </Button>
               </Link>
             </div>
@@ -266,7 +266,7 @@ export default function Home() {
           <div className="grid grid-cols-4 gap-2">
             {[
               { to: "/menu", label: "Menu", icon: Utensils },
-              { to: "/subscribe", label: "Subscribe", icon: CalendarClock },
+              { to: "/subscriptions", label: "Plans", icon: CalendarClock },
               { to: "/recipes", label: "Recipes", icon: BookOpen },
               { to: "/challenges", label: "Cohorts", icon: Flag },
               { to: "/plans", label: "RD Plans", icon: Stethoscope },

@@ -59,8 +59,7 @@ const MORE_GROUPS: { title: string; items: MoreLink[] }[] = [
   {
     title: "Plans & Programs",
     items: [
-      { to: "/subscribe", label: "Subscribe", icon: CalendarClock, desc: "Weekly meal plans" },
-      { to: "/subscriptions", label: "My Plans", icon: CalendarClock, desc: "Active subscriptions" },
+      { to: "/subscriptions", label: "My Plans", icon: CalendarClock, desc: "Weekly meal plans & active subscriptions" },
       { to: "/plans", label: "RD Plans", icon: Stethoscope, desc: "Therapeutic protocols" },
       { to: "/rd", label: "Book a Dietitian", icon: HeartHandshake, desc: "1:1 consult" },
       { to: "/appointments", label: "My Care", icon: CalendarClock, desc: "Appointments & notes" },
@@ -235,17 +234,6 @@ export default function BottomNav() {
               <div className="flex items-center gap-2 pt-1">
                 <ShieldCheck className="w-3 h-3 text-clinical-sage" />
                 ISO 22000 · FSSAI Licensed
-              </div>
-              <div className="flex flex-wrap gap-x-3 gap-y-1 pt-2">
-                <Link to="/privacy" onClick={() => setMoreOpen(false)} className="hover:text-clinical-gold">
-                  Privacy
-                </Link>
-                <Link to="/terms" onClick={() => setMoreOpen(false)} className="hover:text-clinical-gold">
-                  Terms
-                </Link>
-                <Link to="/hipaa" onClick={() => setMoreOpen(false)} className="hover:text-clinical-gold">
-                  HIPAA
-                </Link>
               </div>
               <p className="pt-2 text-[10px] text-clinical-zinc/70">
                 © {new Date().getFullYear()} Tanmatra Health Technologies

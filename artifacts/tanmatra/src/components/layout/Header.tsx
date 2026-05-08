@@ -1,25 +1,14 @@
 import { Link, useLocation } from "react-router";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  Home,
   Utensils,
-  MapPin,
   Package,
   ShoppingCart,
   CalendarClock,
-  Sparkles,
-  SlidersHorizontal,
-  Users,
   Stethoscope,
-  HeartHandshake,
-  BookOpen,
   Flag,
-  Building2,
-  Gift,
   User,
-  Crown,
-  ShoppingBag,
+  HeartHandshake,
 } from "lucide-react";
 import { useCart } from "@/lib/cartContext";
 import Logo from "./Logo";
@@ -31,23 +20,12 @@ export default function Header() {
   const isActive = (path: string) => location.pathname === path;
 
   const navItems = [
-    { path: "/", label: "Home", icon: Home },
     { path: "/menu", label: "Menu", icon: Utensils },
-    { path: "/recipes", label: "Recipes", icon: BookOpen },
+    { path: "/plans", label: "Plans", icon: CalendarClock },
+    { path: "/rd", label: "Coach", icon: HeartHandshake },
     { path: "/challenges", label: "Challenges", icon: Flag },
-    { path: "/plans", label: "RD Plans", icon: Stethoscope },
-    { path: "/rd", label: "Book RD", icon: HeartHandshake },
-    { path: "/appointments", label: "Care", icon: CalendarClock },
     { path: "/orders", label: "Orders", icon: Package },
-    { path: "/subscriptions", label: "My Plans", icon: CalendarClock },
-    { path: "/rewards", label: "Rewards", icon: Sparkles },
-    { path: "/preferences", label: "Preferences", icon: SlidersHorizontal },
-    { path: "/team", label: "Team", icon: Users },
-    { path: "/corporate", label: "Corporate", icon: Building2 },
-    { path: "/vouchers", label: "Vouchers", icon: Gift },
-    { path: "/marketplace", label: "Marketplace", icon: ShoppingBag },
-    { path: "/premium", label: "Premium", icon: Crown },
-    { path: "/track", label: "Track", icon: MapPin },
+    { path: "/preferences", label: "Account", icon: Stethoscope },
   ];
 
   return (
@@ -100,10 +78,6 @@ export default function Header() {
             <User className="w-5 h-5" />
           </Link>
 
-          <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-clinical-sage/10 border border-clinical-sage/20">
-            <span className="w-1.5 h-1.5 rounded-full bg-clinical-sage animate-pulse" />
-            <span className="text-[10px] text-clinical-sage font-medium tracking-wide">RD VERIFIED</span>
-          </div>
         </div>
       </div>
     </header>

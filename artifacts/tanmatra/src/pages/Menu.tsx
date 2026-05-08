@@ -658,6 +658,14 @@ export default function Menu() {
                 </span>
               </div>
             )}
+            {premiumSlugs.has(item.slug) && !isPremium && item.isAvailable && (
+              <div className="absolute inset-0 z-20 flex items-start justify-end p-2 bg-gradient-to-b from-[#050505]/30 to-transparent pointer-events-none">
+                <span className="text-[10px] flex items-center gap-1 px-2 py-1 rounded-full bg-clinical-gold/15 border border-clinical-gold/40 text-clinical-gold font-bold uppercase tracking-wider backdrop-blur-sm">
+                  <Crown className="w-3 h-3" />
+                  Premium
+                </span>
+              </div>
+            )}
           </article>
         ))}
       </div>

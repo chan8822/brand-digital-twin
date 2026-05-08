@@ -23,11 +23,6 @@ const FOOTER_LINKS = {
     { label: "Support Inbox", href: "/admin/support-tickets" },
     { label: "RD Applications", href: "/admin/rd-applications" },
   ],
-  legal: [
-    { label: "Privacy Policy", href: "/privacy" },
-    { label: "Terms of Service", href: "/terms" },
-    { label: "HIPAA Compliance", href: "/hipaa" },
-  ],
 };
 
 export default function Footer() {
@@ -111,13 +106,6 @@ export default function Footer() {
           <div className="flex items-center gap-1.5">
             <ShieldCheck className="w-3 h-3 text-clinical-sage" />
             <span className="text-[10px] text-white">ISO 22000 Certified Kitchens · FSSAI Licensed</span>
-          </div>
-          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
-            {FOOTER_LINKS.legal.map((link) => (
-              <Link key={link.href} to={link.href} className="text-[10px] text-white hover:text-clinical-gold transition-colors">
-                {link.label}
-              </Link>
-            ))}
           </div>
           <p className="text-[10px] text-white">
             © 2024 Tanmatra Health Technologies Pvt. Ltd.

@@ -70,6 +70,35 @@ function clampNum(v: string, lo: number, hi: number): number | null {
 
 const STEPS = ["Diet", "Goals", "Cuisine & Spice", "Allergens", "Targets"] as const;
 
+function suggestedTargets(goal: WellnessGoal, activity: ActivityLevel) {
+  const baseCal: Record<ActivityLevel, number> = {
+    sedentary: 1700,
+    light: 1900,
+    moderate: 2100,
+    active: 2400,
+    very_active: 2700,
+  } as Record<ActivityLevel, number>;
+  let calories = baseCal[activity] ?? 2000;
+  let proteinPerKgFactor = 1.6;
+  if (goal === "lose_weight") {
+    calories = Math.round(calories * 0.82);
+    proteinPerKgFactor = 1.8;
+  } else if (goal === "gain_muscle") {
+    calories = Math.round(calories * 1.12);
+    proteinPerKgFactor = 2.0;
+  } else if (goal === "maintain") {
+    proteinPerKgFactor = 1.6;
+  }
+  const assumedKg = 70;
+  const protein = Math.round(assumedKg * proteinPerKgFactor);
+  const proteinKcal = protein * 4;
+  const fatKcal = Math.round(calories * 0.28);
+  const fat = Math.round(fatKcal / 9);
+  const carbsKcal = Math.max(0, calories - proteinKcal - fatKcal);
+  const carbs = Math.round(carbsKcal / 4);
+  return { calories, protein, carbs, fat };
+}
+
 interface IntakeQuizProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -124,17 +153,12 @@ export default function IntakeQuiz({ open, onOpenChange }: IntakeQuizProps) {
       return;
     }
     if (markComplete) {
-      toast.success("Preferences saved — your menu is now personalized", {
-        description: "See RD-curated plans matched to your goal.",
-        action: {
-          label: "View plans",
-          onClick: () => {
-            window.location.href = `${import.meta.env.BASE_URL}plans`;
-          },
-        },
-        duration: 8000,
+      toast.success("Your menu is now personalized", {
+        description: "Showing RD-matched dishes for your goal.",
+        duration: 6000,
       });
       onOpenChange(false);
+      window.location.href = `${import.meta.env.BASE_URL}menu?personalized=1`;
     }
   };
 
@@ -397,6 +421,23 @@ export default function IntakeQuiz({ open, onOpenChange }: IntakeQuizProps) {
                   />
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const t = suggestedTargets(state.goal, state.activityLevel);
+                  setState((s) => ({
+                    ...s,
+                    calorieTarget: String(t.calories),
+                    proteinTargetGrams: String(t.protein),
+                    carbsTargetGrams: String(t.carbs),
+                    fatTargetGrams: String(t.fat),
+                  }));
+                  toast.success("Targets calculated from your goal & activity");
+                }}
+                className="w-full text-xs px-3 py-2 rounded-md border border-clinical-gold/40 bg-clinical-gold/10 text-clinical-gold hover:bg-clinical-gold/15 font-semibold"
+              >
+                Calculate for me — based on goal &amp; activity
+              </button>
               <p className="text-[11px] text-clinical-zinc/70">
                 Optional — leave blank if you're not tracking macros yet. You
                 can edit any time from Preferences.

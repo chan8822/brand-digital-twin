@@ -312,6 +312,13 @@ export default function Cart() {
 
             <StartGroupOrderButton />
 
+            <Link
+              to="/subscriptions"
+              className="block text-center text-[11px] text-clinical-gold hover:underline pt-1"
+            >
+              Order this every week — save 10% on a meal plan →
+            </Link>
+
             <p className="text-[10px] text-clinical-zinc text-center">
               Secured by Razorpay · SSL encrypted
             </p>
