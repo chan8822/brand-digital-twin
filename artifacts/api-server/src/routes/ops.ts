@@ -16,6 +16,7 @@ import {
   runAnomalyScan,
   snoozeAlert,
 } from "../lib/anomalies";
+import { sendDailyDigest } from "../lib/anomalyDigestSender";
 
 const router: IRouter = Router();
 
@@ -117,6 +118,12 @@ router.get("/anomalies/digest", async (req: Request, res: Response) => {
   if (!requireOps(req, res)) return;
   const digest = await buildDailyDigest();
   res.json(digest);
+});
+
+router.post("/anomalies/digest/send", async (req: Request, res: Response) => {
+  if (!requireOps(req, res)) return;
+  const out = await sendDailyDigest();
+  res.json(out);
 });
 
 router.get("/packaging", async (_req: Request, res: Response) => {

@@ -7,6 +7,7 @@ import {
   type AnomalyAlert,
 } from "@workspace/db";
 import { logger } from "./logger";
+import { explainAnomalyWithAI } from "./anomalyExplainer";
 
 // ─── Types & metric registry ───────────────────────────────────────────────
 
@@ -440,28 +441,27 @@ async function evaluateMetric(
   });
 
   const fingerprint = fingerprintOf(metric, windowEnd);
-  // Idempotent insert: if an alert with this fingerprint already exists,
-  // skip silently (background scan can run more than once per hour).
-  const [existing] = await db
-    .select({ id: anomalyAlertsTable.id })
-    .from(anomalyAlertsTable)
-    .where(eq(anomalyAlertsTable.fingerprint, fingerprint))
-    .limit(1);
-  if (existing) {
-    return {
-      metric,
-      alertId: existing.id,
-      fired: false,
-      reason: "already raised this hour",
-      value: current.value,
-      baseline,
-      threshold,
-      severity,
-      sampleSize: current.sampleSize,
-    };
-  }
+  // Optionally enrich the explanation with the AI explainer. The function
+  // never throws — on any failure it returns null and we keep the template.
+  const enriched = await explainAnomalyWithAI({
+    metric,
+    label: spec.label,
+    severity,
+    value: current.value,
+    baseline,
+    threshold,
+    sampleSize: current.sampleSize,
+    windowStart,
+    windowEnd,
+    templateSummary: summary,
+    templateAction: suggestedAction,
+  });
+  const finalSummary = enriched?.summary ?? summary;
+  const finalAction = enriched?.suggestedAction ?? suggestedAction;
 
-  const [inserted] = await db
+  // Idempotent insert via DB-level UNIQUE(fingerprint) — concurrent scans
+  // race onto onConflictDoNothing and at most one row is created.
+  const inserted = await db
     .insert(anomalyAlertsTable)
     .values({
       metric,
@@ -473,16 +473,40 @@ async function evaluateMetric(
       baseline,
       threshold,
       deviation,
-      dimensions: { sampleSize: current.sampleSize, label: spec.label },
-      summary,
-      suggestedAction,
+      dimensions: {
+        sampleSize: current.sampleSize,
+        label: spec.label,
+        aiExplained: enriched != null,
+      },
+      summary: finalSummary,
+      suggestedAction: finalAction,
       fingerprint,
     })
+    .onConflictDoNothing({ target: anomalyAlertsTable.fingerprint })
     .returning({ id: anomalyAlertsTable.id });
+
+  if (inserted.length === 0) {
+    const [existing] = await db
+      .select({ id: anomalyAlertsTable.id })
+      .from(anomalyAlertsTable)
+      .where(eq(anomalyAlertsTable.fingerprint, fingerprint))
+      .limit(1);
+    return {
+      metric,
+      alertId: existing?.id ?? null,
+      fired: false,
+      reason: "already raised this hour",
+      value: current.value,
+      baseline,
+      threshold,
+      severity,
+      sampleSize: current.sampleSize,
+    };
+  }
 
   return {
     metric,
-    alertId: inserted?.id ?? null,
+    alertId: inserted[0]?.id ?? null,
     fired: true,
     reason: "alert raised",
     value: current.value,

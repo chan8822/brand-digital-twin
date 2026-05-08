@@ -423,7 +423,14 @@ export default function AdminOpsDashboard() {
 
         <DispatchPanel />
 
-        <AnomaliesPanel />
+        <AnomaliesPanel
+          onOpenAgent={(prompt) => {
+            setInput(prompt);
+            if (typeof window !== "undefined") {
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }
+          }}
+        />
 
         <Card>
           <CardHeader className="pb-2">

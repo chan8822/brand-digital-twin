@@ -31,7 +31,7 @@ export const anomalyAlertsTable = pgTable(
     ackedAt: timestamp("acked_at", { withTimezone: true }),
     snoozedUntil: timestamp("snoozed_until", { withTimezone: true }),
     closedAt: timestamp("closed_at", { withTimezone: true }),
-    fingerprint: varchar("fingerprint", { length: 128 }).notNull(),
+    fingerprint: varchar("fingerprint", { length: 128 }).notNull().unique(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -39,7 +39,6 @@ export const anomalyAlertsTable = pgTable(
   (table) => [
     index("idx_anomaly_alerts_status_created").on(table.status, table.createdAt),
     index("idx_anomaly_alerts_metric_created").on(table.metric, table.createdAt),
-    index("idx_anomaly_alerts_fingerprint").on(table.fingerprint),
   ],
 );
 

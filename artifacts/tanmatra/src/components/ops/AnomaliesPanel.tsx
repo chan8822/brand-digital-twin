@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Bell } from "lucide-react";
+import { Bell, Bot } from "lucide-react";
 
 interface AlertRow {
   id: number;
@@ -38,7 +38,11 @@ function severityColor(s: AlertRow["severity"]): string {
   return "bg-yellow-500/10 text-yellow-400 border-yellow-500/30";
 }
 
-export default function AnomaliesPanel() {
+interface AnomaliesPanelProps {
+  onOpenAgent?: (prompt: string) => void;
+}
+
+export default function AnomaliesPanel({ onOpenAgent }: AnomaliesPanelProps = {}) {
   const [alerts, setAlerts] = useState<AlertRow[]>([]);
   const [digest, setDigest] = useState<{
     rows: DigestRow[];
@@ -207,6 +211,20 @@ export default function AnomaliesPanel() {
                   Close
                 </Button>
               </div>
+              {onOpenAgent ? (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="h-6 text-[10px] w-full mt-1"
+                  onClick={() =>
+                    onOpenAgent(
+                      `Look at anomaly alert #${a.id} (${a.metric}, severity ${a.severity}). ${a.summary} Suggested action: ${a.suggestedAction}. Investigate the underlying orders/riders/payments and recommend (or take) the next step. Acknowledge the alert when you're done.`,
+                    )
+                  }
+                >
+                  <Bot className="w-3 h-3 mr-1" /> Ask Ops Agent
+                </Button>
+              ) : null}
             </div>
           ))
         )}

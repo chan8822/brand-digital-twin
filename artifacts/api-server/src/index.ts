@@ -5,6 +5,7 @@ import { initRealtime } from "./lib/realtime";
 import { startWorkers } from "./lib/queue";
 import { startLoyaltyScheduler } from "./lib/loyaltyScheduler";
 import { startAnomalyScheduler } from "./lib/anomalyScheduler";
+import { startAnomalyDigestSender } from "./lib/anomalyDigestSender";
 
 const rawPort = process.env["PORT"];
 
@@ -25,6 +26,7 @@ initRealtime(httpServer);
 startWorkers();
 startLoyaltyScheduler();
 startAnomalyScheduler();
+startAnomalyDigestSender();
 
 httpServer.listen(port, (err?: Error) => {
   if (err) {
