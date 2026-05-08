@@ -64,6 +64,9 @@ import Corporate from "@/pages/Corporate";
 import CorporateAdmin from "@/pages/CorporateAdmin";
 import CorporateInvite from "@/pages/CorporateInvite";
 import OfficeLunch from "@/pages/OfficeLunch";
+import CorporateLunchPlanner from "@/pages/CorporateLunchPlanner";
+import AdminSalesConsole from "@/pages/AdminSalesConsole";
+import AdminSalesAccount from "@/pages/AdminSalesAccount";
 import Vouchers from "@/pages/Vouchers";
 import Premium from "@/pages/Premium";
 import Marketplace from "@/pages/Marketplace";
@@ -217,7 +220,27 @@ export default function App() {
                     <Route path="/corporate" element={<Corporate />} />
                     <Route path="/corporate/invite/:token" element={<CorporateInvite />} />
                     <Route path="/corporate/:slug" element={<CorporateAdmin />} />
+                    <Route
+                      path="/corporate/:slug/lunch-planner"
+                      element={<CorporateLunchPlanner />}
+                    />
                     <Route path="/office-lunch/:id" element={<OfficeLunch />} />
+                    <Route
+                      path="/admin/sales-console"
+                      element={
+                        <AdminGate>
+                          <AdminSalesConsole />
+                        </AdminGate>
+                      }
+                    />
+                    <Route
+                      path="/admin/sales-console/:slug"
+                      element={
+                        <AdminGate>
+                          <AdminSalesAccount />
+                        </AdminGate>
+                      }
+                    />
                     <Route path="/vouchers" element={<Vouchers />} />
                     <Route path="/premium" element={<Premium />} />
                     <Route path="/marketplace" element={<Marketplace />} />

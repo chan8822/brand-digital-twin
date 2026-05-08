@@ -34,6 +34,7 @@ import dishRationalesRouter from "./dishRationales";
 import mealPlansRouter from "./mealPlans";
 import rdCopilotRouter from "./rdCopilot";
 import communityRouter from "./community";
+import b2bPlannerRouter from "./b2bPlanner";
 
 const router: IRouter = Router();
 
@@ -72,5 +73,6 @@ router.use(dishRationalesRouter);
 router.use(mealPlansRouter);
 router.use(rdCopilotRouter);
 router.use(communityRouter);
+router.use(b2bPlannerRouter);
 
 export default router;

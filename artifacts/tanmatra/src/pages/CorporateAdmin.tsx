@@ -297,9 +297,17 @@ export default function CorporateAdmin() {
 
       <Card className="bg-clinical-surface border-clinical-slate/20">
         <CardContent className="p-5 space-y-3">
-          <h2 className="text-sm font-semibold text-white flex items-center gap-2">
-            <CalendarClock className="w-4 h-4 text-clinical-gold" /> Office lunch
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+              <CalendarClock className="w-4 h-4 text-clinical-gold" /> Office lunch
+            </h2>
+            <Link
+              to={`/corporate/${slug}/lunch-planner`}
+              className="text-xs text-clinical-gold underline"
+            >
+              Open weekly planner →
+            </Link>
+          </div>
           {isAdmin && (
             <>
               <div className="grid grid-cols-2 gap-2">
