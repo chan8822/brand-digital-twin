@@ -212,6 +212,85 @@ test("buildCandidatePool excludes allergen and diet violations", () => {
   }
 });
 
+test("validatePlan respects per-day calorie target shifted by week calendar", () => {
+  // validatePlan looks dishes up in the real catalog by id, so we must
+  // build entries from real DISHES — synthetic ids would silently fall
+  // into "missing-dish" and never tally calories.
+  const safe = DISHES.find((d) => d.allergens.length === 0);
+  if (!safe) return;
+  // Build entries that override calories to a known value while keeping
+  // the real dishId so the validator's lookup succeeds.
+  const lite: MealPlanSlotEntry = {
+    ...entryFromDish(safe),
+    calories: 400,
+  };
+  const days: MealPlanDay[] = Array.from({ length: 7 }, (_, i) => ({
+    date: `2026-05-${String(11 + i).padStart(2, "0")}`,
+    breakfast: lite,
+    lunch: lite,
+    dinner: lite,
+  })); // 1200 kcal/day everywhere
+  // Baseline target 1500 → band [1275, 1725] → 1200 is OUTSIDE.
+  const baseline = validatePlan(
+    days,
+    constraints({ dailyCalorieTarget: 1500, maxRepetitionsPerDish: 7 }),
+  );
+  assert.ok(
+    baseline.some((v) => v.kind === "calories"),
+    "1200 kcal/day should fail a 1500-kcal target",
+  );
+  // Mark every day "travel" → target shifts to 1350 → band [1147, 1552]
+  // → 1200 is INSIDE.
+  const shifted = validatePlan(
+    days,
+    constraints({
+      dailyCalorieTarget: 1500,
+      maxRepetitionsPerDish: 7,
+      weekCalendar: ["travel", "travel", "travel", "travel", "travel", "travel", "travel"],
+    }),
+  );
+  assert.ok(
+    !shifted.some((v) => v.kind === "calories"),
+    "calendar-adjusted target should accept 1200 kcal/day",
+  );
+});
+
+test("validatePlan flags swap-induced budget overrun", () => {
+  // Use a real catalog dish so the dishById lookup in validatePlan
+  // succeeds and the price actually tallies. Override pricePaise on the
+  // edited entry to simulate a costly swap.
+  const safe = DISHES.find((d) => d.allergens.length === 0);
+  if (!safe) return;
+  const cheap: MealPlanSlotEntry = {
+    ...entryFromDish(safe),
+    pricePaise: 1000,
+  };
+  const days: MealPlanDay[] = Array.from({ length: 7 }, (_, i) => ({
+    date: `2026-05-${String(11 + i).padStart(2, "0")}`,
+    breakfast: cheap,
+    lunch: cheap,
+    dinner: cheap,
+  }));
+  const c = constraints({
+    weeklyBudgetPaise: 30_000,
+    maxRepetitionsPerDish: 7,
+  });
+  assert.deepEqual(
+    validatePlan(days, c).filter((v) => v.kind === "budget"),
+    [],
+    "baseline plan should be within budget",
+  );
+  const expensive: MealPlanSlotEntry = { ...cheap, pricePaise: 1_000_000 };
+  const edited = days.map((d, i) =>
+    i === 0 ? { ...d, lunch: expensive } : d,
+  );
+  const violations = validatePlan(edited, c);
+  assert.ok(
+    violations.some((v) => v.kind === "budget"),
+    "edited plan should fail budget after expensive swap",
+  );
+});
+
 test("greedyPlan produces a valid 7-day plan from a healthy pool", () => {
   const c = constraints({
     allergens: [],

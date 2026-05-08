@@ -38,6 +38,15 @@ export interface MealPlanDay {
   dinner?: MealPlanSlotEntry;
 }
 
+/**
+ * Per-day calendar context that scales daily calorie targets:
+ *   gym    → +15% (training day)
+ *   travel → light meals, prefer convenience-friendly dishes
+ *   wfh    → baseline
+ *   normal → baseline
+ */
+export type WeekDayCalendarKind = "normal" | "gym" | "travel" | "wfh";
+
 export interface MealPlanConstraints {
   dailyCalorieTarget: number | null;
   dailyProteinTargetGrams: number | null;
@@ -47,6 +56,8 @@ export interface MealPlanConstraints {
   dietaryStyle: string | null;
   spiceLevel: string | null;
   goal: string | null;
+  /** Optional 7-entry array (Mon..Sun) describing the user's week. */
+  weekCalendar?: WeekDayCalendarKind[];
 }
 
 export interface MealPlanTotals {

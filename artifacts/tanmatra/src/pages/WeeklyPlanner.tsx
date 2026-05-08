@@ -33,7 +33,17 @@ import {
   type MealPlanSettings,
   type MealPlanSlot,
   type MealPlanSlotEntry,
+  type WeekDayCalendarKind,
 } from "@/lib/mealPlanApi";
+
+const CALENDAR_KINDS: WeekDayCalendarKind[] = ["normal", "gym", "travel", "wfh"];
+const CALENDAR_LABEL: Record<WeekDayCalendarKind, string> = {
+  normal: "Normal",
+  gym: "Gym",
+  travel: "Travel",
+  wfh: "WFH",
+};
+const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 const SLOTS: MealPlanSlot[] = ["breakfast", "lunch", "dinner"];
 const SLOT_LABEL: Record<MealPlanSlot, string> = {
@@ -56,6 +66,19 @@ export default function WeeklyPlanner() {
     loading: boolean;
   } | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [weekCalendar, setWeekCalendar] = useState<WeekDayCalendarKind[]>(
+    () => Array<WeekDayCalendarKind>(7).fill("normal"),
+  );
+
+  const cycleCalendar = (i: number) => {
+    setWeekCalendar((prev) => {
+      const next = [...prev];
+      const cur = next[i] ?? "normal";
+      const idx = CALENDAR_KINDS.indexOf(cur);
+      next[i] = CALENDAR_KINDS[(idx + 1) % CALENDAR_KINDS.length]!;
+      return next;
+    });
+  };
   const [settingsDraft, setSettingsDraft] = useState<{
     autoReplanEnabled: boolean;
     weeklyBudgetRupees: string;
@@ -105,7 +128,9 @@ export default function WeeklyPlanner() {
   const handleGenerate = async () => {
     setGenerating(true);
     try {
-      const { plan, usedFallback } = await mealPlanApi.generate({});
+      const { plan, usedFallback } = await mealPlanApi.generate({
+        overrides: { weekCalendar },
+      });
       setActivePlan(plan);
       setPlans((prev) => {
         const without = prev.filter((p) => p.id !== plan.id);
@@ -296,6 +321,32 @@ export default function WeeklyPlanner() {
         </Card>
       ) : (
         <>
+          <Card className="mb-3">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <CalendarDays className="h-4 w-4 text-clinical-zinc" />
+                <span className="text-xs text-clinical-zinc">
+                  Week calendar (tap a day to mark gym/travel/WFH — applied next time you regenerate)
+                </span>
+              </div>
+              <div className="grid grid-cols-7 gap-1">
+                {weekCalendar.map((kind, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => cycleCalendar(i)}
+                    className="flex flex-col items-center gap-0.5 p-1 rounded border border-clinical-zinc/20 hover:border-clinical-cream/40"
+                    data-testid={`button-calendar-${i}`}
+                  >
+                    <span className="text-xs text-clinical-zinc">{DAY_LABELS[i]}</span>
+                    <Badge variant="secondary" className="text-[10px]">
+                      {CALENDAR_LABEL[kind]}
+                    </Badge>
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
           <PlanSummary plan={activePlan} />
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
             {activePlan.days.map((day, idx) => (

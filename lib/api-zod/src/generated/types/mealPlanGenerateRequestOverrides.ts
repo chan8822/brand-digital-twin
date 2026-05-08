@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { WeekDayCalendarKind } from "./weekDayCalendarKind";
 
 export type MealPlanGenerateRequestOverrides = {
   weeklyBudgetPaise?: number | null;
@@ -15,4 +16,9 @@ export type MealPlanGenerateRequestOverrides = {
   maxRepetitionsPerDish?: number;
   dailyCalorieTarget?: number | null;
   dailyProteinTargetGrams?: number | null;
+  /**
+   * @minItems 7
+   * @maxItems 7
+   */
+  weekCalendar?: WeekDayCalendarKind[];
 };

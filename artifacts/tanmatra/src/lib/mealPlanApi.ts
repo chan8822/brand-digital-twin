@@ -38,6 +38,8 @@ export interface MealPlanDay {
   dinner: MealPlanSlotEntry;
 }
 
+export type WeekDayCalendarKind = "normal" | "gym" | "travel" | "wfh";
+
 export interface MealPlanConstraints {
   dailyCalorieTarget: number | null;
   dailyProteinTargetGrams: number | null;
@@ -47,6 +49,7 @@ export interface MealPlanConstraints {
   dietaryStyle: string | null;
   spiceLevel: string | null;
   goal: string | null;
+  weekCalendar?: WeekDayCalendarKind[];
 }
 
 export interface MealPlanTotals {
@@ -91,6 +94,7 @@ export const mealPlanApi = {
       maxRepetitionsPerDish?: number;
       dailyCalorieTarget?: number | null;
       dailyProteinTargetGrams?: number | null;
+      weekCalendar?: WeekDayCalendarKind[];
     };
   }) =>
     request<{ plan: MealPlan; usedFallback: boolean }>("/meal-plans/generate", {

@@ -927,6 +927,9 @@ components:
         breakfast: { $ref: "#/components/schemas/MealPlanSlotEntry" }
         lunch: { $ref: "#/components/schemas/MealPlanSlotEntry" }
         dinner: { $ref: "#/components/schemas/MealPlanSlotEntry" }
+    WeekDayCalendarKind:
+      type: string
+      enum: [normal, gym, travel, wfh]
     MealPlanConstraints:
       type: object
       required: [maxRepetitionsPerDish, allergens]
@@ -941,6 +944,11 @@ components:
         dietaryStyle: { type: string, nullable: true }
         spiceLevel: { type: string, nullable: true }
         goal: { type: string, nullable: true }
+        weekCalendar:
+          type: array
+          minItems: 7
+          maxItems: 7
+          items: { $ref: "#/components/schemas/WeekDayCalendarKind" }
     MealPlanTotals:
       type: object
       required: [totalPaise, avgCalories, avgProteinGrams, avgCarbsGrams, avgFatGrams]
@@ -983,6 +991,11 @@ components:
             maxRepetitionsPerDish: { type: integer, minimum: 1, maximum: 7 }
             dailyCalorieTarget: { type: integer, nullable: true }
             dailyProteinTargetGrams: { type: integer, nullable: true }
+            weekCalendar:
+              type: array
+              minItems: 7
+              maxItems: 7
+              items: { $ref: "#/components/schemas/WeekDayCalendarKind" }
     MealPlanSettings:
       type: object
       required: [userId, autoReplanEnabled, maxRepetitionsPerDish]

@@ -61,6 +61,10 @@ const overridesSchema = z.object({
   maxRepetitionsPerDish: z.number().int().min(1).max(7).optional(),
   dailyCalorieTarget: z.number().int().min(800).max(6000).nullable().optional(),
   dailyProteinTargetGrams: z.number().int().min(20).max(400).nullable().optional(),
+  weekCalendar: z
+    .array(z.enum(["normal", "gym", "travel", "wfh"]))
+    .length(7)
+    .optional(),
 });
 
 const generateSchema = z.object({
@@ -222,6 +226,8 @@ router.post("/meal-plans/generate", async (req: Request, res: Response) => {
     if (parsed.data.overrides.dailyProteinTargetGrams !== undefined)
       overrides.dailyProteinTargetGrams =
         parsed.data.overrides.dailyProteinTargetGrams;
+    if (parsed.data.overrides.weekCalendar !== undefined)
+      overrides.weekCalendar = parsed.data.overrides.weekCalendar;
   }
   if (overrides.weeklyBudgetPaise === undefined && savedSettings)
     overrides.weeklyBudgetPaise = savedSettings.weeklyBudgetPaise;
@@ -367,6 +373,17 @@ router.patch("/meal-plans/:id/slot", async (req: Request, res: Response) => {
       parsed.data.dishId,
       plan.constraints,
     );
+    // swapSlot only enforces allergen / diet / repetition / unknown-dish.
+    // Run the full validatePlan after the swap so an edit can never push
+    // the plan over the budget cap or outside the calorie/protein band.
+    const violations = validatePlan(result.days, plan.constraints);
+    if (violations.length > 0) {
+      res.status(400).json({
+        error: "swap would violate plan constraints",
+        violations,
+      });
+      return;
+    }
     const [updated] = await db
       .update(mealPlansTable)
       .set({ days: result.days, totals: result.totals })

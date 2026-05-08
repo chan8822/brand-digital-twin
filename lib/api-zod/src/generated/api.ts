@@ -1169,6 +1169,9 @@ export const UpdateMealPlanSettingsResponse = zod.object({
 /**
  * @summary List the signed-in user's most recent meal plans
  */
+export const listMealPlansResponsePlansItemConstraintsWeekCalendarMin = 7;
+export const listMealPlansResponsePlansItemConstraintsWeekCalendarMax = 7;
+
 export const ListMealPlansResponse = zod.object({
   plans: zod.array(
     zod.object({
@@ -1185,6 +1188,11 @@ export const ListMealPlansResponse = zod.object({
         dietaryStyle: zod.string().nullish(),
         spiceLevel: zod.string().nullish(),
         goal: zod.string().nullish(),
+        weekCalendar: zod
+          .array(zod.enum(["normal", "gym", "travel", "wfh"]))
+          .min(listMealPlansResponsePlansItemConstraintsWeekCalendarMin)
+          .max(listMealPlansResponsePlansItemConstraintsWeekCalendarMax)
+          .optional(),
       }),
       days: zod.array(
         zod.object({
@@ -1257,6 +1265,9 @@ export const ListMealPlansResponse = zod.object({
  */
 export const generateMealPlanBodyOverridesMaxRepetitionsPerDishMax = 7;
 
+export const generateMealPlanBodyOverridesWeekCalendarMin = 7;
+export const generateMealPlanBodyOverridesWeekCalendarMax = 7;
+
 export const GenerateMealPlanBody = zod.object({
   weekStartDate: zod.string().optional(),
   overrides: zod
@@ -1269,6 +1280,11 @@ export const GenerateMealPlanBody = zod.object({
         .optional(),
       dailyCalorieTarget: zod.number().nullish(),
       dailyProteinTargetGrams: zod.number().nullish(),
+      weekCalendar: zod
+        .array(zod.enum(["normal", "gym", "travel", "wfh"]))
+        .min(generateMealPlanBodyOverridesWeekCalendarMin)
+        .max(generateMealPlanBodyOverridesWeekCalendarMax)
+        .optional(),
     })
     .optional(),
 });
@@ -1280,6 +1296,9 @@ export const GenerateMealPlanBody = zod.object({
 export const GetMealPlanParams = zod.object({
   id: zod.coerce.number().min(1),
 });
+
+export const getMealPlanResponsePlanConstraintsWeekCalendarMin = 7;
+export const getMealPlanResponsePlanConstraintsWeekCalendarMax = 7;
 
 export const GetMealPlanResponse = zod.object({
   plan: zod.object({
@@ -1296,6 +1315,11 @@ export const GetMealPlanResponse = zod.object({
       dietaryStyle: zod.string().nullish(),
       spiceLevel: zod.string().nullish(),
       goal: zod.string().nullish(),
+      weekCalendar: zod
+        .array(zod.enum(["normal", "gym", "travel", "wfh"]))
+        .min(getMealPlanResponsePlanConstraintsWeekCalendarMin)
+        .max(getMealPlanResponsePlanConstraintsWeekCalendarMax)
+        .optional(),
     }),
     days: zod.array(
       zod.object({
@@ -1380,6 +1404,9 @@ export const RegenerateMealPlanDayBody = zod.object({
     .max(regenerateMealPlanDayBodyDayIndexMax),
 });
 
+export const regenerateMealPlanDayResponsePlanConstraintsWeekCalendarMin = 7;
+export const regenerateMealPlanDayResponsePlanConstraintsWeekCalendarMax = 7;
+
 export const RegenerateMealPlanDayResponse = zod.object({
   plan: zod.object({
     id: zod.number(),
@@ -1395,6 +1422,11 @@ export const RegenerateMealPlanDayResponse = zod.object({
       dietaryStyle: zod.string().nullish(),
       spiceLevel: zod.string().nullish(),
       goal: zod.string().nullish(),
+      weekCalendar: zod
+        .array(zod.enum(["normal", "gym", "travel", "wfh"]))
+        .min(regenerateMealPlanDayResponsePlanConstraintsWeekCalendarMin)
+        .max(regenerateMealPlanDayResponsePlanConstraintsWeekCalendarMax)
+        .optional(),
     }),
     days: zod.array(
       zod.object({
@@ -1481,6 +1513,9 @@ export const SwapMealPlanSlotBody = zod.object({
   dishId: zod.number().min(1),
 });
 
+export const swapMealPlanSlotResponsePlanConstraintsWeekCalendarMin = 7;
+export const swapMealPlanSlotResponsePlanConstraintsWeekCalendarMax = 7;
+
 export const SwapMealPlanSlotResponse = zod.object({
   plan: zod.object({
     id: zod.number(),
@@ -1496,6 +1531,11 @@ export const SwapMealPlanSlotResponse = zod.object({
       dietaryStyle: zod.string().nullish(),
       spiceLevel: zod.string().nullish(),
       goal: zod.string().nullish(),
+      weekCalendar: zod
+        .array(zod.enum(["normal", "gym", "travel", "wfh"]))
+        .min(swapMealPlanSlotResponsePlanConstraintsWeekCalendarMin)
+        .max(swapMealPlanSlotResponsePlanConstraintsWeekCalendarMax)
+        .optional(),
     }),
     days: zod.array(
       zod.object({
@@ -1602,6 +1642,9 @@ export const AcceptMealPlanParams = zod.object({
   id: zod.coerce.number().min(1),
 });
 
+export const acceptMealPlanResponsePlanConstraintsWeekCalendarMin = 7;
+export const acceptMealPlanResponsePlanConstraintsWeekCalendarMax = 7;
+
 export const AcceptMealPlanResponse = zod.object({
   plan: zod.object({
     id: zod.number(),
@@ -1617,6 +1660,11 @@ export const AcceptMealPlanResponse = zod.object({
       dietaryStyle: zod.string().nullish(),
       spiceLevel: zod.string().nullish(),
       goal: zod.string().nullish(),
+      weekCalendar: zod
+        .array(zod.enum(["normal", "gym", "travel", "wfh"]))
+        .min(acceptMealPlanResponsePlanConstraintsWeekCalendarMin)
+        .max(acceptMealPlanResponsePlanConstraintsWeekCalendarMax)
+        .optional(),
     }),
     days: zod.array(
       zod.object({
@@ -1693,6 +1741,9 @@ export const DiscardMealPlanParams = zod.object({
   id: zod.coerce.number().min(1),
 });
 
+export const discardMealPlanResponsePlanConstraintsWeekCalendarMin = 7;
+export const discardMealPlanResponsePlanConstraintsWeekCalendarMax = 7;
+
 export const DiscardMealPlanResponse = zod.object({
   plan: zod.object({
     id: zod.number(),
@@ -1708,6 +1759,11 @@ export const DiscardMealPlanResponse = zod.object({
       dietaryStyle: zod.string().nullish(),
       spiceLevel: zod.string().nullish(),
       goal: zod.string().nullish(),
+      weekCalendar: zod
+        .array(zod.enum(["normal", "gym", "travel", "wfh"]))
+        .min(discardMealPlanResponsePlanConstraintsWeekCalendarMin)
+        .max(discardMealPlanResponsePlanConstraintsWeekCalendarMax)
+        .optional(),
     }),
     days: zod.array(
       zod.object({

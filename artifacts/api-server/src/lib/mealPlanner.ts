@@ -19,6 +19,7 @@ import {
   type MealPlanSlot,
   type MealPlanSlotEntry,
   type MealPlanTotals,
+  type WeekDayCalendarKind,
   MEAL_SLOTS,
 } from "@workspace/db";
 import { logger } from "./logger";
@@ -71,7 +72,42 @@ export function defaultConstraintsFromBrief(
     dietaryStyle: overrides.dietaryStyle ?? r.preferences?.dietaryStyle ?? null,
     spiceLevel: overrides.spiceLevel ?? r.preferences?.spiceLevel ?? null,
     goal: overrides.goal ?? r.preferences?.goal ?? null,
+    weekCalendar: normalizeWeekCalendar(overrides.weekCalendar),
   };
+}
+
+const CALORIE_MULTIPLIER: Record<WeekDayCalendarKind, number> = {
+  normal: 1,
+  wfh: 1,
+  gym: 1.15,
+  travel: 0.9,
+};
+
+/**
+ * Normalize an arbitrary `weekCalendar` override into a fixed 7-entry
+ * array. Anything missing or malformed defaults to "normal" so downstream
+ * callers can index without bounds checks.
+ */
+export function normalizeWeekCalendar(
+  input: WeekDayCalendarKind[] | undefined,
+): WeekDayCalendarKind[] | undefined {
+  if (!input) return undefined;
+  const valid: WeekDayCalendarKind[] = ["normal", "gym", "travel", "wfh"];
+  const out: WeekDayCalendarKind[] = [];
+  for (let i = 0; i < 7; i++) {
+    const v = input[i];
+    out.push(v && valid.includes(v) ? v : "normal");
+  }
+  return out;
+}
+
+function calorieTargetForDay(
+  base: number,
+  calendar: WeekDayCalendarKind[] | undefined,
+  dayIndex: number,
+): number {
+  const kind = calendar?.[dayIndex] ?? "normal";
+  return Math.round(base * CALORIE_MULTIPLIER[kind]);
 }
 
 /** True when the dish does NOT contain any of the user's allergens. */
@@ -250,7 +286,8 @@ export function validatePlan(
   // Per-day macro tolerance: allow ±15% drift around the target so a
   // realistic catalog can still satisfy a precise calorie/protein goal.
   const MACRO_TOLERANCE = 0.15;
-  for (const day of days) {
+  for (let dayIndex = 0; dayIndex < days.length; dayIndex++) {
+    const day = days[dayIndex]!;
     let dayCalories = 0;
     let dayProtein = 0;
     for (const slot of MEAL_SLOTS) {
@@ -288,7 +325,14 @@ export function validatePlan(
       dayProtein += entry.protein;
     }
     if (constraints.dailyCalorieTarget !== null && constraints.dailyCalorieTarget > 0) {
-      const target = constraints.dailyCalorieTarget;
+      // Calendar (gym/travel/wfh) shifts the per-day calorie target so a
+      // training day can carry more food and a travel day can carry less,
+      // while still being judged against the user's overall goal.
+      const target = calorieTargetForDay(
+        constraints.dailyCalorieTarget,
+        constraints.weekCalendar,
+        dayIndex,
+      );
       const lo = target * (1 - MACRO_TOLERANCE);
       const hi = target * (1 + MACRO_TOLERANCE);
       if (dayCalories < lo || dayCalories > hi) {
@@ -455,6 +499,15 @@ function buildPlannerPrompt(
       glycaemicIndex: d.glycaemicIndex,
     }));
 
+  // Surface per-day calendar context so the model can scale calories
+  // (gym day → heavier, travel day → lighter) and bias dish choices
+  // (travel → low-prep / convenience-friendly).
+  const calendarLines = constraints.weekCalendar
+    ? constraints.weekCalendar
+        .map((kind, i) => `- ${dates[i] ?? `day${i + 1}`}: ${kind}`)
+        .join("\n")
+    : "- (no calendar provided — treat every day as normal)";
+
   return `You are planning a 7-day meal schedule for a Tanmatra customer.
 Pick ONE dish per slot per day from the candidate pools below. Match the
 user's goals; spread cuisines across the week; never reuse a single dish
@@ -463,6 +516,9 @@ more than ${constraints.maxRepetitionsPerDish} times across the whole week.
 USER PROFILE
 ${profile.join("\n")}
 ${recentLine}
+
+WEEK CALENDAR (use this to scale daily calories and dish style)
+${calendarLines}
 
 WEEKLY CONSTRAINTS
 - weekly budget cap (paise): ${constraints.weeklyBudgetPaise ?? "none"}

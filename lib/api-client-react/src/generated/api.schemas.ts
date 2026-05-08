@@ -42,6 +42,16 @@ export interface MealPlanDay {
   dinner?: MealPlanSlotEntry;
 }
 
+export type WeekDayCalendarKind =
+  (typeof WeekDayCalendarKind)[keyof typeof WeekDayCalendarKind];
+
+export const WeekDayCalendarKind = {
+  normal: "normal",
+  gym: "gym",
+  travel: "travel",
+  wfh: "wfh",
+} as const;
+
 export interface MealPlanConstraints {
   dailyCalorieTarget?: number | null;
   dailyProteinTargetGrams?: number | null;
@@ -51,6 +61,11 @@ export interface MealPlanConstraints {
   dietaryStyle?: string | null;
   spiceLevel?: string | null;
   goal?: string | null;
+  /**
+   * @minItems 7
+   * @maxItems 7
+   */
+  weekCalendar?: WeekDayCalendarKind[];
 }
 
 export interface MealPlanTotals {
@@ -86,6 +101,11 @@ export type MealPlanGenerateRequestOverrides = {
   maxRepetitionsPerDish?: number;
   dailyCalorieTarget?: number | null;
   dailyProteinTargetGrams?: number | null;
+  /**
+   * @minItems 7
+   * @maxItems 7
+   */
+  weekCalendar?: WeekDayCalendarKind[];
 };
 
 export interface MealPlanGenerateRequest {

@@ -99,6 +99,7 @@ export * from "./wearableLink";
 export * from "./wearableLinkEnvelope";
 export * from "./wearableProvider";
 export * from "./wearableSyncInput";
+export * from "./weekDayCalendarKind";
 export * from "./wellnessDailyTotals";
 export * from "./wellnessGoal";
 export * from "./wellnessTargets";

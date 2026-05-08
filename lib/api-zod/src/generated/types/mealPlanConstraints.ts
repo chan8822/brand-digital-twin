@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { WeekDayCalendarKind } from "./weekDayCalendarKind";
 
 export interface MealPlanConstraints {
   dailyCalorieTarget?: number | null;
@@ -15,4 +16,9 @@ export interface MealPlanConstraints {
   dietaryStyle?: string | null;
   spiceLevel?: string | null;
   goal?: string | null;
+  /**
+   * @minItems 7
+   * @maxItems 7
+   */
+  weekCalendar?: WeekDayCalendarKind[];
 }
