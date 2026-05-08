@@ -279,9 +279,8 @@ router.post(
       res.status(400).json({ error: "invalid payload" });
       return;
     }
-    const isOps = resolveOps(req);
-    if (!req.isAuthenticated() && !isOps) {
-      res.status(401).json({ error: "unauthorized" });
+    if (!resolveOps(req)) {
+      res.status(403).json({ error: "ops scope required" });
       return;
     }
     const { riderId, status } = parsed.data;
@@ -303,7 +302,7 @@ router.post(
     if (prev.status !== "online" && status === "online") {
       try {
         dispatched = await dispatchReadyOrders({
-          operatorId: isOps ? (req.user?.id ?? null) : null,
+          operatorId: req.user?.id ?? null,
         });
       } catch (err) {
         req.log.error(
