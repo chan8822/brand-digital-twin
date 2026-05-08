@@ -1,14 +1,13 @@
 import { generateText } from "ai";
-import { and, desc, eq, gte, lt, sql } from "drizzle-orm";
-import {
-  anomalyAlertsTable,
-  db,
-  ordersTable,
-  wbrReportsTable,
-  type WbrReport,
-} from "@workspace/db";
+import { desc, eq, sql } from "drizzle-orm";
+import { db, wbrReportsTable, type WbrReport } from "@workspace/db";
 import { DEFAULT_MODEL_ID, getModel } from "./ai/model";
 import { logger } from "./logger";
+
+// All read paths in this file go through the curated `safe_*` views (see
+// safeSql.ts / ensureSafeViews). The views expose only the non-PII columns
+// the analytics pack is permitted to see, matching the same governance
+// boundary the NL "Ask the data" surface uses.
 
 export interface WbrInput {
   weekStart: Date;
@@ -18,7 +17,7 @@ export interface WbrInput {
 function isoMonday(d: Date): Date {
   const x = new Date(d);
   x.setUTCHours(0, 0, 0, 0);
-  const day = x.getUTCDay(); // 0=Sun..6=Sat
+  const day = x.getUTCDay();
   const diff = day === 0 ? -6 : 1 - day;
   x.setUTCDate(x.getUTCDate() + diff);
   return x;
@@ -39,80 +38,62 @@ interface OrderSlice {
 }
 
 async function aggregateWindow(start: Date, end: Date): Promise<OrderSlice> {
-  const [row] = await db
-    .select({
-      orders: sql<number>`count(*)::int`,
-      revenuePaise: sql<number>`coalesce(sum(${ordersTable.totalPaise}),0)::bigint`,
-      uniqueUsers: sql<number>`count(distinct ${ordersTable.userId})::int`,
-    })
-    .from(ordersTable)
-    .where(
-      and(
-        gte(ordersTable.createdAt, start),
-        lt(ordersTable.createdAt, end),
-      ),
-    );
+  const r = await db.execute<{ orders: number; revenue_paise: string; unique_users: number }>(
+    sql`select count(*)::int as orders,
+               coalesce(sum(total_paise), 0)::bigint as revenue_paise,
+               count(distinct user_id)::int as unique_users
+        from safe_orders
+        where created_at >= ${start} and created_at < ${end}`,
+  );
+  const row = r.rows[0];
   return {
     orders: Number(row?.orders ?? 0),
-    revenuePaise: Number(row?.revenuePaise ?? 0),
-    uniqueUsers: Number(row?.uniqueUsers ?? 0),
+    revenuePaise: Number(row?.revenue_paise ?? 0),
+    uniqueUsers: Number(row?.unique_users ?? 0),
   };
 }
 
 async function ordersByDay(start: Date, end: Date) {
-  const rows = await db
-    .select({
-      day: sql<string>`to_char(date_trunc('day', ${ordersTable.createdAt}), 'YYYY-MM-DD')`,
-      orders: sql<number>`count(*)::int`,
-      revenuePaise: sql<number>`coalesce(sum(${ordersTable.totalPaise}),0)::bigint`,
-    })
-    .from(ordersTable)
-    .where(
-      and(
-        gte(ordersTable.createdAt, start),
-        lt(ordersTable.createdAt, end),
-      ),
-    )
-    .groupBy(sql`1`)
-    .orderBy(sql`1`);
-  return rows.map((r) => ({
-    day: String(r.day),
-    orders: Number(r.orders),
-    revenuePaise: Number(r.revenuePaise),
+  const r = await db.execute<{ day: string; orders: number; revenue_paise: string }>(
+    sql`select to_char(date_trunc('day', created_at), 'YYYY-MM-DD') as day,
+               count(*)::int as orders,
+               coalesce(sum(total_paise), 0)::bigint as revenue_paise
+        from safe_orders
+        where created_at >= ${start} and created_at < ${end}
+        group by 1 order by 1`,
+  );
+  return r.rows.map((row) => ({
+    day: String(row.day),
+    orders: Number(row.orders),
+    revenuePaise: Number(row.revenue_paise),
   }));
 }
 
 async function topDishes(start: Date, end: Date) {
-  // jsonb expansion to count units per dish name.
-  const rows = await db.execute<{ name: string; units: number }>(
+  const r = await db.execute<{ name: string; units: string }>(
     sql`select item->>'name' as name,
                sum((item->>'qty')::int) as units
-        from ${ordersTable}
-        cross join lateral jsonb_array_elements(${ordersTable.items}) as item
-        where ${ordersTable.createdAt} >= ${start}
-          and ${ordersTable.createdAt} < ${end}
+        from safe_orders
+        cross join lateral jsonb_array_elements(items) as item
+        where created_at >= ${start} and created_at < ${end}
           and item->>'name' is not null
         group by 1
         order by units desc nulls last
         limit 5`,
   );
-  return rows.rows.map((r: { name: string; units: number | string }) => ({
-    name: String(r.name),
-    units: Number(r.units),
+  return r.rows.map((row) => ({
+    name: String(row.name),
+    units: Number(row.units),
   }));
 }
 
 async function anomaliesFired(start: Date, end: Date): Promise<number> {
-  const [row] = await db
-    .select({ c: sql<number>`count(*)::int` })
-    .from(anomalyAlertsTable)
-    .where(
-      and(
-        gte(anomalyAlertsTable.createdAt, start),
-        lt(anomalyAlertsTable.createdAt, end),
-      ),
-    );
-  return Number(row?.c ?? 0);
+  const r = await db.execute<{ c: number }>(
+    sql`select count(*)::int as c
+        from safe_anomaly_alerts
+        where created_at >= ${start} and created_at < ${end}`,
+  );
+  return Number(r.rows[0]?.c ?? 0);
 }
 
 function pctDelta(curr: number, prev: number): string {
@@ -187,7 +168,6 @@ export async function generateWbr(input?: Partial<WbrInput>): Promise<WbrReport>
   };
   const { text: commentary, modelId } = await aiCommentary(kpis);
 
-  // Upsert by weekStart so re-running for the same week refreshes the row.
   const [row] = await db
     .insert(wbrReportsTable)
     .values({ weekStart, weekEnd, kpis, chartSpec, commentary, modelId })

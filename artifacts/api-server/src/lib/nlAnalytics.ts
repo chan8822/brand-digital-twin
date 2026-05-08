@@ -80,7 +80,7 @@ async function planQuery(question: string): Promise<ModelPlan> {
     logger.warn({ err }, "nl analytics plan failed, falling back");
     // Deterministic fallback so the surface still works without AI.
     return {
-      sql: "select date_trunc('day', created_at)::date as day, count(*) as orders, sum(total_paise) as revenue_paise from orders where created_at > now() - interval '14 days' group by 1 order by 1",
+      sql: "select date_trunc('day', created_at)::date as day, count(*) as orders, sum(total_paise) as revenue_paise from safe_orders where created_at > now() - interval '14 days' group by 1 order by 1",
       chartSpec: { kind: "line", xKey: "day", yKey: "orders", title: "Orders, last 14 days" },
       rationale: "Could not generate from question — showing recent order trend.",
     };

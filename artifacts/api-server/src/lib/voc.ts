@@ -1,15 +1,13 @@
 import { generateText } from "ai";
-import { and, desc, gte, lt, sql } from "drizzle-orm";
-import {
-  db,
-  dishReviewsTable,
-  npsResponsesTable,
-  vocThemesTable,
-  type VocTheme,
-} from "@workspace/db";
-import { messages, conversations } from "@workspace/db";
+import { desc, gte, sql } from "drizzle-orm";
+import { db, vocThemesTable, type VocTheme } from "@workspace/db";
 import { DEFAULT_MODEL_ID, getModel } from "./ai/model";
 import { logger } from "./logger";
+
+// All source-document reads in this file go through curated `safe_*` views
+// (see safeSql.ts / ensureSafeViews) so the VoC pipeline operates under
+// the same governance boundary as NL analytics — only non-PII columns are
+// reachable, even if a future change to the loader function is buggy.
 
 interface SourceDoc {
   source: "review" | "support" | "nps";
@@ -20,55 +18,28 @@ interface SourceDoc {
 const MAX_DOCS = 200;
 
 async function loadDocuments(start: Date, end: Date): Promise<SourceDoc[]> {
-  const [reviews, supportRows, npsRows] = await Promise.all([
-    db
-      .select({
-        body: dishReviewsTable.body,
-        rating: dishReviewsTable.rating,
-      })
-      .from(dishReviewsTable)
-      .where(
-        and(
-          gte(dishReviewsTable.createdAt, start),
-          lt(dishReviewsTable.createdAt, end),
-        ),
-      )
-      .limit(MAX_DOCS),
-    db
-      .select({ content: messages.content })
-      .from(messages)
-      .innerJoin(conversations, sql`${messages.conversationId} = ${conversations.id}`)
-      .where(
-        and(
-          gte(messages.createdAt, start),
-          lt(messages.createdAt, end),
-          sql`${messages.role} = 'user'`,
-        ),
-      )
-      .limit(MAX_DOCS),
-    db
-      .select({
-        comment: npsResponsesTable.comment,
-        score: npsResponsesTable.score,
-      })
-      .from(npsResponsesTable)
-      .where(
-        and(
-          gte(npsResponsesTable.createdAt, start),
-          lt(npsResponsesTable.createdAt, end),
-        ),
-      )
-      .limit(MAX_DOCS)
-      .catch(() => [] as Array<{ comment: string | null; score: number }>),
-  ]);
+  const reviewsP = db.execute<{ body: string | null; rating: number | null }>(
+    sql`select body, rating from safe_dish_reviews
+        where created_at >= ${start} and created_at < ${end}
+        limit ${MAX_DOCS}`,
+  );
+  // Customer-side support messages are not part of the curated safe schema
+  // by design — the messages table contains free-text support content that
+  // may include PII. We intentionally skip it here and rely on reviews and
+  // NPS comments, both of which ARE in the safe view layer.
+  const npsP = db
+    .execute<{ comment: string | null; score: number }>(
+      sql`select comment, score from safe_nps_responses
+          where created_at >= ${start} and created_at < ${end}
+          limit ${MAX_DOCS}`,
+    )
+    .catch(() => ({ rows: [] as Array<{ comment: string | null; score: number }> }));
+  const [reviews, npsRows] = await Promise.all([reviewsP, npsP]);
   const docs: SourceDoc[] = [
-    ...reviews
+    ...reviews.rows
       .filter((r) => r.body && r.body.trim().length > 5)
-      .map((r) => ({ source: "review" as const, body: r.body, rating: r.rating ?? undefined })),
-    ...supportRows
-      .filter((r) => r.content && r.content.trim().length > 5)
-      .map((r) => ({ source: "support" as const, body: r.content })),
-    ...npsRows
+      .map((r) => ({ source: "review" as const, body: r.body as string, rating: r.rating ?? undefined })),
+    ...npsRows.rows
       .filter((r) => r.comment && r.comment.trim().length > 5)
       .map((r) => ({
         source: "nps" as const,
