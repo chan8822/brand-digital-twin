@@ -13,6 +13,7 @@ import { registerAgent } from "../agentRegistry";
 import { recordOpsAction } from "../../opsAudit";
 import { emitDeliveryEvent } from "../../realtime";
 import { dispatchOrder, overrideAssignment } from "../../dispatch";
+import { ackAlert, listAlerts, snoozeAlert } from "../../anomalies";
 
 const REFUND_CONFIRM_THRESHOLD_PAISE = 50_000;
 const ALLOWED_ORDER_STATUSES = [
@@ -482,6 +483,75 @@ const overrideDispatch = defineTool({
   },
 });
 
+const listAnomalyAlerts = defineTool({
+  name: "list_anomaly_alerts",
+  description:
+    "List active ops anomaly alerts (refund spikes, slow kitchen, rider lag, payment failures, low ratings). Read-only. ALWAYS provide `reasoning`.",
+  inputSchema: z.object({
+    limit: z.number().int().positive().max(50).default(10),
+    reasoning: z.string().min(3),
+  }),
+  authScope: "ops",
+  handler: async ({ limit, reasoning }, ctx) => {
+    const rows = await listAlerts({ status: "active", limit });
+    await recordOpsAction({
+      operatorId: ctx.userId,
+      agent: ctx.agent,
+      action: "list_anomaly_alerts",
+      params: { limit },
+      beforeState: null,
+      afterState: { count: rows.length },
+      status: "success",
+      reasoning,
+    });
+    return {
+      success: true as const,
+      alerts: rows.map((r) => ({
+        id: r.id,
+        metric: r.metric,
+        severity: r.severity,
+        summary: r.summary,
+        suggestedAction: r.suggestedAction,
+        createdAt: r.createdAt,
+      })),
+    };
+  },
+});
+
+const acknowledgeAnomaly = defineTool({
+  name: "acknowledge_anomaly_alert",
+  description:
+    "Acknowledge an anomaly alert by id, optionally snoozing it for N minutes. Non-destructive but operator-attributed. ALWAYS provide `reasoning`.",
+  inputSchema: z.object({
+    alertId: z.number().int().positive(),
+    snoozeMinutes: z.number().int().positive().max(24 * 60).optional(),
+    reasoning: z.string().min(3),
+  }),
+  authScope: "ops",
+  handler: async ({ alertId, snoozeMinutes, reasoning }, ctx) => {
+    const row = snoozeMinutes
+      ? await snoozeAlert(alertId, snoozeMinutes, ctx.userId ?? null)
+      : await ackAlert(alertId, ctx.userId ?? null);
+    if (!row) return { success: false as const, error: "Alert not found" };
+    await recordOpsAction({
+      operatorId: ctx.userId,
+      agent: ctx.agent,
+      action: snoozeMinutes ? "snooze_anomaly_alert" : "acknowledge_anomaly_alert",
+      params: { alertId, snoozeMinutes: snoozeMinutes ?? null },
+      beforeState: { status: "open" },
+      afterState: { status: row.status, snoozedUntil: row.snoozedUntil },
+      status: "success",
+      reasoning,
+    });
+    return {
+      success: true as const,
+      alertId,
+      status: row.status,
+      snoozedUntil: row.snoozedUntil,
+    };
+  },
+});
+
 registerAgent({
   name: "ops",
   description:
@@ -497,5 +567,7 @@ registerAgent({
     updateOrderStatus,
     refundOrder,
     getLiveQueue,
+    listAnomalyAlerts,
+    acknowledgeAnomaly,
   ],
 });

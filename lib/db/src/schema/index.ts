@@ -17,3 +17,4 @@ export * from "./ops";
 export * from "./forecasting";
 export * from "./eta";
 export * from "./dispatch";
+export * from "./anomalies";
