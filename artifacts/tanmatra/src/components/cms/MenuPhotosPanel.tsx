@@ -108,6 +108,11 @@ export function MenuPhotosPanel({
   } | null>(null);
   const [bulkResults, setBulkResults] = useState<BulkHeroResult[] | null>(null);
   const [bulkError, setBulkError] = useState<string | null>(null);
+  const [dropFilter, setDropFilter] = useState("");
+  const [dragOverSlug, setDragOverSlug] = useState<string | null>(null);
+  const [dropBusySlug, setDropBusySlug] = useState<string | null>(null);
+  const [dropError, setDropError] = useState<string | null>(null);
+  const [dropToast, setDropToast] = useState<string | null>(null);
 
   useEffect(() => {
     if (!slug && items[0]) setSlug(items[0].slug);
@@ -320,6 +325,58 @@ export function MenuPhotosPanel({
     }
   };
 
+  const handleDropUpload = async (targetSlug: string, file: File) => {
+    if (!file.type.startsWith("image/")) {
+      setDropError(`${file.name}: only image files`);
+      return;
+    }
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setDropError(`${file.name}: must be JPEG, PNG, or WebP`);
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setDropError(`${file.name}: file larger than 10MB`);
+      return;
+    }
+    setDropBusySlug(targetSlug);
+    setDropError(null);
+    setDropToast(null);
+    try {
+      const dataBase64 = await fileToBase64(file);
+      const upRes = await authedFetch(
+        `/api/menu/items/${encodeURIComponent(targetSlug)}/assets/upload`,
+        {
+          method: "POST",
+          body: JSON.stringify({ dataBase64, mimeType: file.type }),
+        },
+        adminToken,
+      );
+      if (!upRes.ok) throw new Error(await upRes.text());
+      const upJson = (await upRes.json()) as {
+        original?: { id: number };
+        enhanced?: { id: number };
+      };
+      const primaryId = upJson.enhanced?.id ?? upJson.original?.id;
+      if (primaryId) {
+        const pRes = await authedFetch(
+          `/api/menu/assets/${primaryId}/set-primary`,
+          { method: "POST" },
+          adminToken,
+        );
+        if (!pRes.ok) throw new Error(await pRes.text());
+      }
+      onPrimaryChanged?.();
+      if (targetSlug === slug) await load(slug);
+      const name =
+        items.find((it) => it.slug === targetSlug)?.name ?? targetSlug;
+      setDropToast(`Uploaded and set as primary: ${name}`);
+    } catch (err) {
+      setDropError((err as Error).message);
+    } finally {
+      setDropBusySlug(null);
+    }
+  };
+
   const removeAsset = async (id: number) => {
     if (!window.confirm("Delete this derivative? Originals can't be deleted."))
       return;
@@ -349,6 +406,114 @@ export function MenuPhotosPanel({
         <CardTitle className="text-base">Photos</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
+        <div className="border rounded-md p-2 space-y-2 bg-muted/30">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div>
+              <div className="text-xs font-medium">
+                Drag-and-drop a photo onto an item
+              </div>
+              <div className="text-[11px] text-muted-foreground">
+                Drop a JPG/PNG/WebP (≤10MB) on a card to upload it and set it
+                as that item's primary photo.
+              </div>
+            </div>
+            <input
+              className="border rounded-md px-2 py-1 text-xs bg-background w-44"
+              placeholder="Filter items…"
+              value={dropFilter}
+              onChange={(e) => setDropFilter(e.target.value)}
+            />
+          </div>
+          {dropError && (
+            <div className="text-xs text-destructive">{dropError}</div>
+          )}
+          {dropToast && (
+            <div className="text-xs text-emerald-600 dark:text-emerald-400">
+              {dropToast}
+            </div>
+          )}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-72 overflow-auto">
+            {items
+              .filter((it) => {
+                const q = dropFilter.trim().toLowerCase();
+                if (!q) return true;
+                return (
+                  it.name.toLowerCase().includes(q) ||
+                  it.slug.toLowerCase().includes(q)
+                );
+              })
+              .slice(0, 60)
+              .map((it) => {
+                const isOver = dragOverSlug === it.slug;
+                const isBusy = dropBusySlug === it.slug;
+                return (
+                  <div
+                    key={it.slug}
+                    onClick={() => setSlug(it.slug)}
+                    onDragEnter={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setDragOverSlug(it.slug);
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      e.dataTransfer.dropEffect = "copy";
+                      if (dragOverSlug !== it.slug) setDragOverSlug(it.slug);
+                    }}
+                    onDragLeave={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (dragOverSlug === it.slug) setDragOverSlug(null);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setDragOverSlug(null);
+                      const f = e.dataTransfer.files?.[0];
+                      if (f) void handleDropUpload(it.slug, f);
+                    }}
+                    className={`group relative cursor-pointer border rounded-md overflow-hidden bg-background transition-all ${
+                      isOver
+                        ? "ring-2 ring-primary border-primary"
+                        : slug === it.slug
+                          ? "border-primary"
+                          : "border-border"
+                    }`}
+                    title={`Drop a photo to set as ${it.name}'s primary`}
+                  >
+                    <div className="aspect-[4/3] bg-muted flex items-center justify-center">
+                      {it.imageUrl ? (
+                        <img
+                          src={it.imageUrl}
+                          alt={it.name}
+                          className="object-cover w-full h-full"
+                        />
+                      ) : (
+                        <span className="text-[10px] text-muted-foreground px-2 text-center">
+                          No primary photo
+                        </span>
+                      )}
+                    </div>
+                    <div className="px-2 py-1 text-[11px] font-medium truncate">
+                      {it.name}
+                    </div>
+                    {(isOver || isBusy) && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-background/80 text-[11px] font-medium">
+                        {isBusy ? "Uploading…" : "Drop to upload"}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+          </div>
+          {items.length > 60 && !dropFilter && (
+            <div className="text-[10px] text-muted-foreground">
+              Showing first 60 items. Use the filter to find more.
+            </div>
+          )}
+        </div>
+
         <div className="flex gap-2 items-center flex-wrap">
           <select
             className="flex-1 min-w-[200px] border rounded-md px-2 py-1 text-sm bg-background"
