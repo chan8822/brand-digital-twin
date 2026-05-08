@@ -26,3 +26,5 @@ export * from "./conversations";
 export * from "./messages";
 export * from "./nps";
 export * from "./supportTickets";
+export * from "./contentRecipes";
+export * from "./challenges";

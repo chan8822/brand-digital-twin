@@ -194,3 +194,112 @@ export interface WellnessTodayEnvelope {
   totals: WellnessDailyTotals;
   wearables: WearableLink[];
 }
+
+export type RecipeIngredientsItem = {
+  text: string;
+};
+
+export type RecipeNutrition = {
+  kcal?: number;
+  proteinG?: number;
+  carbsG?: number;
+  fatG?: number;
+  fiberG?: number;
+} | null;
+
+export interface Recipe {
+  id: number;
+  slug: string;
+  title: string;
+  summary: string;
+  heroImageUrl?: string | null;
+  authorName?: string | null;
+  authorRole?: string | null;
+  goalTags: string[];
+  dietTags: string[];
+  totalTimeMinutes: number;
+  servings?: number | null;
+  ingredients?: RecipeIngredientsItem[];
+  steps?: string[];
+  nutrition?: RecipeNutrition;
+  status: string;
+}
+
+export interface Challenge {
+  id: number;
+  slug: string;
+  title: string;
+  summary: string;
+  heroImageUrl?: string | null;
+  durationDays: number;
+  startDate?: string | null;
+  endDate?: string | null;
+  bundleSlug?: string | null;
+  rdName?: string | null;
+  rdCheckinCadence?: string | null;
+  memberCount?: number;
+  status: string;
+}
+
+export interface ChallengePost {
+  id: number;
+  challengeId: number;
+  userId?: string | null;
+  authorName?: string | null;
+  body: string;
+  kind?: string | null;
+  createdAt: string;
+}
+
+export interface ChallengePostInput {
+  /**
+   * @minLength 1
+   * @maxLength 1000
+   */
+  body: string;
+}
+
+export interface DishReviewInput {
+  slug: string;
+  /**
+   * @minimum 1
+   * @maximum 5
+   */
+  rating: number;
+  /** @maxLength 2000 */
+  body?: string;
+  /** @maxLength 1024 */
+  photoUrl?: string | null;
+}
+
+export type ListRecipesParams = {
+  goal?: string;
+  diet?: string;
+  /**
+   * @minimum 1
+   */
+  maxTime?: number;
+  q?: string;
+};
+
+export type ListRecipes200 = {
+  recipes: Recipe[];
+};
+
+export type GetRecipe200 = {
+  recipe: Recipe;
+};
+
+export type ListChallenges200 = {
+  challenges: Challenge[];
+};
+
+export type GetChallenge200 = {
+  challenge: Challenge;
+  joined: boolean;
+  posts: ChallengePost[];
+};
+
+export type PostToChallenge200 = {
+  post: ChallengePost;
+};

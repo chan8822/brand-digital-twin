@@ -7,12 +7,25 @@
  */
 
 export * from "./activityLevel";
+export * from "./challenge";
+export * from "./challengePost";
+export * from "./challengePostInput";
 export * from "./dietaryStyle";
+export * from "./dishReviewInput";
+export * from "./getChallenge200";
+export * from "./getRecipe200";
 export * from "./healthStatus";
+export * from "./listChallenges200";
+export * from "./listRecipes200";
+export * from "./listRecipesParams";
 export * from "./okEnvelope";
+export * from "./postToChallenge200";
 export * from "./preferencesEnvelope";
 export * from "./preferencesEnvelopeRequired";
 export * from "./preferencesPatch";
+export * from "./recipe";
+export * from "./recipeIngredientsItem";
+export * from "./recipeNutrition";
 export * from "./spiceLevel";
 export * from "./userPreferences";
 export * from "./wearableConnectInput";

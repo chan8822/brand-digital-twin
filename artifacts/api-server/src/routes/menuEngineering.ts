@@ -10,11 +10,14 @@ import {
   listSuggestionsForSlug,
   runMenuEngineering,
 } from "../lib/menuEngineering";
+import { recordOpsAction } from "../lib/opsAudit";
 import {
   createReview,
   getSummariesForActiveMenu,
   getSummary,
   listReviews,
+  listReviewsForModeration,
+  setReviewHidden,
   summarizeAllReviews,
   summarizeReviewsForSlug,
 } from "../lib/dishReviews";
@@ -237,6 +240,7 @@ const createReviewBody = z.object({
   slug: z.string().min(1).max(128),
   rating: z.number().int().min(1).max(5),
   body: z.string().max(2000).default(""),
+  photoUrl: z.string().url().max(1024).optional().nullable(),
 });
 
 // Customer-facing: any authenticated user can leave a review.
@@ -256,6 +260,7 @@ router.post("/dish-reviews", async (req: Request, res: Response) => {
       slug: parsed.data.slug,
       rating: parsed.data.rating,
       body: parsed.data.body,
+      photoUrl: parsed.data.photoUrl ?? null,
     });
     res.json({ review });
   } catch (err) {
@@ -281,6 +286,7 @@ router.get("/dish-reviews/:slug", async (req: Request, res: Response) => {
       slug: r.slug,
       rating: r.rating,
       body: r.body,
+      photoUrl: r.photoUrl,
       createdAt: r.createdAt,
     }));
     res.json({ reviews: publicReviews, summary });
@@ -304,6 +310,64 @@ router.post(
     } catch (err) {
       sendError(res, err);
     }
+  },
+);
+
+// ---- Review moderation (catalog scope) --------------------------------------
+
+router.get("/dish-reviews-mod", async (req: Request, res: Response) => {
+  if (!requireCatalog(req, res)) return;
+  const reviews = await listReviewsForModeration(200);
+  res.json({ reviews });
+});
+
+router.post(
+  "/dish-reviews/:id/hide",
+  async (req: Request, res: Response) => {
+    if (!requireCatalog(req, res)) return;
+    const id = Number(req.params["id"]);
+    if (!Number.isFinite(id) || id <= 0) {
+      res.status(400).json({ error: "invalid id" });
+      return;
+    }
+    const row = await setReviewHidden(id, true);
+    if (!row) {
+      res.status(404).json({ error: "not found" });
+      return;
+    }
+    await recordOpsAction({
+      action: "review.hide",
+      agent: "catalog-admin",
+      operatorId: userId(req),
+      params: { id },
+      status: "ok",
+    });
+    res.json({ review: row });
+  },
+);
+
+router.post(
+  "/dish-reviews/:id/unhide",
+  async (req: Request, res: Response) => {
+    if (!requireCatalog(req, res)) return;
+    const id = Number(req.params["id"]);
+    if (!Number.isFinite(id) || id <= 0) {
+      res.status(400).json({ error: "invalid id" });
+      return;
+    }
+    const row = await setReviewHidden(id, false);
+    if (!row) {
+      res.status(404).json({ error: "not found" });
+      return;
+    }
+    await recordOpsAction({
+      action: "review.unhide",
+      agent: "catalog-admin",
+      operatorId: userId(req),
+      params: { id },
+      status: "ok",
+    });
+    res.json({ review: row });
   },
 );
 

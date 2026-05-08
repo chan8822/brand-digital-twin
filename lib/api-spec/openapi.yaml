@@ -14,7 +14,241 @@ tags:
     description: User taste & wellness preferences
   - name: wellness
     description: Wellness dashboard, wearables, and daily activity sync
+  - name: recipes
+    description: RD/chef-authored recipe library
+  - name: challenges
+    description: Cohort challenges with shared progress feed
+  - name: reviews
+    description: Per-dish customer reviews and moderation
 paths:
+  /recipes:
+    get:
+      operationId: listRecipes
+      tags: [recipes]
+      summary: List published recipes with optional filters
+      parameters:
+        - in: query
+          name: goal
+          schema: { type: string }
+        - in: query
+          name: diet
+          schema: { type: string }
+        - in: query
+          name: maxTime
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: q
+          schema: { type: string }
+      responses:
+        "200":
+          description: Recipes
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [recipes]
+                properties:
+                  recipes:
+                    type: array
+                    items: { $ref: "#/components/schemas/Recipe" }
+  /recipes/{slug}:
+    get:
+      operationId: getRecipe
+      tags: [recipes]
+      summary: Get a recipe by slug
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Recipe
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [recipe]
+                properties:
+                  recipe: { $ref: "#/components/schemas/Recipe" }
+        "404":
+          description: Not found
+  /challenges:
+    get:
+      operationId: listChallenges
+      tags: [challenges]
+      summary: List cohort challenges
+      responses:
+        "200":
+          description: Challenges
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [challenges]
+                properties:
+                  challenges:
+                    type: array
+                    items: { $ref: "#/components/schemas/Challenge" }
+  /challenges/{slug}:
+    get:
+      operationId: getChallenge
+      tags: [challenges]
+      summary: Get a challenge with cohort feed
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Challenge detail
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [challenge, joined, posts]
+                properties:
+                  challenge: { $ref: "#/components/schemas/Challenge" }
+                  joined: { type: boolean }
+                  posts:
+                    type: array
+                    items: { $ref: "#/components/schemas/ChallengePost" }
+        "404":
+          description: Not found
+  /challenges/{slug}/join:
+    post:
+      operationId: joinChallenge
+      tags: [challenges]
+      summary: Join a challenge (auth required)
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unauthorized
+  /challenges/{slug}/leave:
+    post:
+      operationId: leaveChallenge
+      tags: [challenges]
+      summary: Leave a challenge (auth required)
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unauthorized
+  /challenges/{slug}/posts:
+    post:
+      operationId: postToChallenge
+      tags: [challenges]
+      summary: Post to the cohort feed (members only)
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChallengePostInput"
+      responses:
+        "200":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [post]
+                properties:
+                  post: { $ref: "#/components/schemas/ChallengePost" }
+        "401":
+          description: Unauthorized
+        "403":
+          description: Not a member
+  /dish-reviews:
+    post:
+      operationId: createDishReview
+      tags: [reviews]
+      summary: Submit a review for a dish (auth required)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DishReviewInput"
+      responses:
+        "200":
+          description: Created
+        "401":
+          description: Unauthorized
+  /dish-reviews/{slug}:
+    get:
+      operationId: listDishReviews
+      tags: [reviews]
+      summary: Public reviews and AI summary for a dish
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Reviews
+  /dish-reviews-mod:
+    get:
+      operationId: listReviewsForModeration
+      tags: [reviews]
+      summary: Catalog-scoped — list recent reviews including hidden
+      responses:
+        "200":
+          description: Reviews
+        "403":
+          description: Catalog scope required
+  /dish-reviews/{id}/hide:
+    post:
+      operationId: hideDishReview
+      tags: [reviews]
+      summary: Catalog-scoped — hide a review
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Updated
+        "403":
+          description: Catalog scope required
+        "404":
+          description: Not found
+  /dish-reviews/{id}/unhide:
+    post:
+      operationId: unhideDishReview
+      tags: [reviews]
+      summary: Catalog-scoped — unhide a review
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Updated
+        "403":
+          description: Catalog scope required
+        "404":
+          description: Not found
   /healthz:
     get:
       operationId: healthCheck
@@ -418,3 +652,87 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/WearableLink"
+    Recipe:
+      type: object
+      required: [id, slug, title, summary, goalTags, dietTags, totalTimeMinutes, status]
+      properties:
+        id: { type: integer }
+        slug: { type: string }
+        title: { type: string }
+        summary: { type: string }
+        heroImageUrl: { type: string, nullable: true }
+        authorName: { type: string, nullable: true }
+        authorRole: { type: string, nullable: true }
+        goalTags:
+          type: array
+          items: { type: string }
+        dietTags:
+          type: array
+          items: { type: string }
+        totalTimeMinutes: { type: integer }
+        servings: { type: integer, nullable: true }
+        ingredients:
+          type: array
+          items:
+            type: object
+            required: [text]
+            properties:
+              text: { type: string }
+        steps:
+          type: array
+          items: { type: string }
+        nutrition:
+          type: object
+          nullable: true
+          properties:
+            kcal: { type: number }
+            proteinG: { type: number }
+            carbsG: { type: number }
+            fatG: { type: number }
+            fiberG: { type: number }
+        status: { type: string }
+    Challenge:
+      type: object
+      required: [id, slug, title, summary, durationDays, status]
+      properties:
+        id: { type: integer }
+        slug: { type: string }
+        title: { type: string }
+        summary: { type: string }
+        heroImageUrl: { type: string, nullable: true }
+        durationDays: { type: integer }
+        startDate: { type: string, nullable: true }
+        endDate: { type: string, nullable: true }
+        bundleSlug: { type: string, nullable: true }
+        rdName: { type: string, nullable: true }
+        rdCheckinCadence: { type: string, nullable: true }
+        memberCount: { type: integer }
+        status: { type: string }
+    ChallengePost:
+      type: object
+      required: [id, challengeId, body, createdAt]
+      properties:
+        id: { type: integer }
+        challengeId: { type: integer }
+        userId: { type: string, nullable: true }
+        authorName: { type: string, nullable: true }
+        body: { type: string }
+        kind: { type: string, nullable: true }
+        createdAt: { type: string }
+    ChallengePostInput:
+      type: object
+      required: [body]
+      properties:
+        body: { type: string, minLength: 1, maxLength: 1000 }
+    DishReviewInput:
+      type: object
+      required: [slug, rating]
+      properties:
+        slug: { type: string }
+        rating: { type: integer, minimum: 1, maximum: 5 }
+        body: { type: string, maxLength: 2000 }
+        photoUrl:
+          type: string
+          format: uri
+          maxLength: 1024
+          nullable: true

@@ -5,6 +5,7 @@ import {
   type DishKitchen,
 } from "@workspace/menu-catalog";
 import { listMenuItems } from "./menu";
+import { getSummariesForSlugs } from "./dishReviews";
 
 const VALID_CATEGORIES = new Set<DishCategory>([
   "beverages",
@@ -37,6 +38,19 @@ export function syntheticIdFor(dbRowId: number): number {
 export async function getMergedCatalog(): Promise<DishData[]> {
   const dbRows = await listMenuItems({});
   const dbBySlug = new Map(dbRows.map((r) => [r.slug, r]));
+  const allSlugs = Array.from(
+    new Set([...DISHES.map((d) => d.slug), ...dbRows.map((r) => r.slug)]),
+  );
+  const summaries = await getSummariesForSlugs(allSlugs);
+  const enrich = (dish: DishData): DishData => {
+    const s = summaries.get(dish.slug);
+    if (!s) return dish;
+    return {
+      ...dish,
+      averageRating: s.averageRating / 10,
+      reviewCount: s.sampleSize,
+    };
+  };
   const merged: DishData[] = [];
   const usedSlugs = new Set<string>();
 
@@ -115,7 +129,7 @@ export async function getMergedCatalog(): Promise<DishData[]> {
       isAvailable: row.isAvailable,
     });
   }
-  return merged;
+  return merged.map(enrich);
 }
 
 /** Lookup a dish by its catalog id (static id 1..N or synthetic id 100000+).

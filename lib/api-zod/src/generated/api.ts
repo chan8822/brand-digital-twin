@@ -8,6 +8,230 @@
 import * as zod from "zod";
 
 /**
+ * @summary List published recipes with optional filters
+ */
+
+export const ListRecipesQueryParams = zod.object({
+  goal: zod.coerce.string().optional(),
+  diet: zod.coerce.string().optional(),
+  maxTime: zod.coerce.number().min(1).optional(),
+  q: zod.coerce.string().optional(),
+});
+
+export const ListRecipesResponse = zod.object({
+  recipes: zod.array(
+    zod.object({
+      id: zod.number(),
+      slug: zod.string(),
+      title: zod.string(),
+      summary: zod.string(),
+      heroImageUrl: zod.string().nullish(),
+      authorName: zod.string().nullish(),
+      authorRole: zod.string().nullish(),
+      goalTags: zod.array(zod.string()),
+      dietTags: zod.array(zod.string()),
+      totalTimeMinutes: zod.number(),
+      servings: zod.number().nullish(),
+      ingredients: zod
+        .array(
+          zod.object({
+            text: zod.string(),
+          }),
+        )
+        .optional(),
+      steps: zod.array(zod.string()).optional(),
+      nutrition: zod
+        .object({
+          kcal: zod.number().optional(),
+          proteinG: zod.number().optional(),
+          carbsG: zod.number().optional(),
+          fatG: zod.number().optional(),
+          fiberG: zod.number().optional(),
+        })
+        .nullish(),
+      status: zod.string(),
+    }),
+  ),
+});
+
+/**
+ * @summary Get a recipe by slug
+ */
+export const GetRecipeParams = zod.object({
+  slug: zod.coerce.string(),
+});
+
+export const GetRecipeResponse = zod.object({
+  recipe: zod.object({
+    id: zod.number(),
+    slug: zod.string(),
+    title: zod.string(),
+    summary: zod.string(),
+    heroImageUrl: zod.string().nullish(),
+    authorName: zod.string().nullish(),
+    authorRole: zod.string().nullish(),
+    goalTags: zod.array(zod.string()),
+    dietTags: zod.array(zod.string()),
+    totalTimeMinutes: zod.number(),
+    servings: zod.number().nullish(),
+    ingredients: zod
+      .array(
+        zod.object({
+          text: zod.string(),
+        }),
+      )
+      .optional(),
+    steps: zod.array(zod.string()).optional(),
+    nutrition: zod
+      .object({
+        kcal: zod.number().optional(),
+        proteinG: zod.number().optional(),
+        carbsG: zod.number().optional(),
+        fatG: zod.number().optional(),
+        fiberG: zod.number().optional(),
+      })
+      .nullish(),
+    status: zod.string(),
+  }),
+});
+
+/**
+ * @summary List cohort challenges
+ */
+export const ListChallengesResponse = zod.object({
+  challenges: zod.array(
+    zod.object({
+      id: zod.number(),
+      slug: zod.string(),
+      title: zod.string(),
+      summary: zod.string(),
+      heroImageUrl: zod.string().nullish(),
+      durationDays: zod.number(),
+      startDate: zod.string().nullish(),
+      endDate: zod.string().nullish(),
+      bundleSlug: zod.string().nullish(),
+      rdName: zod.string().nullish(),
+      rdCheckinCadence: zod.string().nullish(),
+      memberCount: zod.number().optional(),
+      status: zod.string(),
+    }),
+  ),
+});
+
+/**
+ * @summary Get a challenge with cohort feed
+ */
+export const GetChallengeParams = zod.object({
+  slug: zod.coerce.string(),
+});
+
+export const GetChallengeResponse = zod.object({
+  challenge: zod.object({
+    id: zod.number(),
+    slug: zod.string(),
+    title: zod.string(),
+    summary: zod.string(),
+    heroImageUrl: zod.string().nullish(),
+    durationDays: zod.number(),
+    startDate: zod.string().nullish(),
+    endDate: zod.string().nullish(),
+    bundleSlug: zod.string().nullish(),
+    rdName: zod.string().nullish(),
+    rdCheckinCadence: zod.string().nullish(),
+    memberCount: zod.number().optional(),
+    status: zod.string(),
+  }),
+  joined: zod.boolean(),
+  posts: zod.array(
+    zod.object({
+      id: zod.number(),
+      challengeId: zod.number(),
+      userId: zod.string().nullish(),
+      authorName: zod.string().nullish(),
+      body: zod.string(),
+      kind: zod.string().nullish(),
+      createdAt: zod.string(),
+    }),
+  ),
+});
+
+/**
+ * @summary Join a challenge (auth required)
+ */
+export const JoinChallengeParams = zod.object({
+  slug: zod.coerce.string(),
+});
+
+/**
+ * @summary Leave a challenge (auth required)
+ */
+export const LeaveChallengeParams = zod.object({
+  slug: zod.coerce.string(),
+});
+
+/**
+ * @summary Post to the cohort feed (members only)
+ */
+export const PostToChallengeParams = zod.object({
+  slug: zod.coerce.string(),
+});
+
+export const postToChallengeBodyBodyMax = 1000;
+
+export const PostToChallengeBody = zod.object({
+  body: zod.string().min(1).max(postToChallengeBodyBodyMax),
+});
+
+export const PostToChallengeResponse = zod.object({
+  post: zod.object({
+    id: zod.number(),
+    challengeId: zod.number(),
+    userId: zod.string().nullish(),
+    authorName: zod.string().nullish(),
+    body: zod.string(),
+    kind: zod.string().nullish(),
+    createdAt: zod.string(),
+  }),
+});
+
+/**
+ * @summary Submit a review for a dish (auth required)
+ */
+export const createDishReviewBodyRatingMax = 5;
+
+export const createDishReviewBodyBodyMax = 2000;
+
+export const createDishReviewBodyPhotoUrlMax = 1024;
+
+export const CreateDishReviewBody = zod.object({
+  slug: zod.string(),
+  rating: zod.number().min(1).max(createDishReviewBodyRatingMax),
+  body: zod.string().max(createDishReviewBodyBodyMax).optional(),
+  photoUrl: zod.string().url().max(createDishReviewBodyPhotoUrlMax).nullish(),
+});
+
+/**
+ * @summary Public reviews and AI summary for a dish
+ */
+export const ListDishReviewsParams = zod.object({
+  slug: zod.coerce.string(),
+});
+
+/**
+ * @summary Catalog-scoped — hide a review
+ */
+export const HideDishReviewParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary Catalog-scoped — unhide a review
+ */
+export const UnhideDishReviewParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
  * Returns server health status
  * @summary Health check
  */

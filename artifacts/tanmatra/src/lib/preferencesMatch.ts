@@ -161,8 +161,24 @@ export function rankDishesForPreferences(
       const aw = a.match.warnings.length;
       const bw = b.match.warnings.length;
       if (aw !== bw) return aw - bw;
-      return b.match.reasons.length - a.match.reasons.length;
+      if (a.match.reasons.length !== b.match.reasons.length)
+        return b.match.reasons.length - a.match.reasons.length;
+      // Customer reviews tip the tie: a Bayesian-shrunk rating that nudges
+      // well-rated dishes up while not over-rewarding 1-review noise.
+      return reviewScore(b.dish) - reviewScore(a.dish);
     });
+}
+
+const REVIEW_PRIOR_RATING = 3.5;
+const REVIEW_PRIOR_WEIGHT = 4;
+function reviewScore(dish: DishData): number {
+  const r = dish.averageRating;
+  const n = dish.reviewCount ?? 0;
+  if (r == null || n <= 0) return REVIEW_PRIOR_RATING;
+  return (
+    (r * n + REVIEW_PRIOR_RATING * REVIEW_PRIOR_WEIGHT) /
+    (n + REVIEW_PRIOR_WEIGHT)
+  );
 }
 
 export function findSmartSwap(

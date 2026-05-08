@@ -20,10 +20,12 @@ export const dishReviewsTable = pgTable(
     slug: varchar("slug", { length: 128 }).notNull(),
     rating: integer("rating").notNull(),
     body: text("body").notNull().default(""),
+    photoUrl: varchar("photo_url", { length: 1024 }),
     sentiment: jsonb("sentiment").$type<{
       polarity: "pos" | "neu" | "neg";
       themes?: string[];
     } | null>(),
+    hidden: integer("hidden").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

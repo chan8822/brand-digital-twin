@@ -47,6 +47,10 @@ import AdminMenuEngineering from "@/pages/AdminMenuEngineering";
 import AdminAnalytics from "@/pages/AdminAnalytics";
 import AdminSupportTickets from "@/pages/AdminSupportTickets";
 import GroupOrder from "@/pages/GroupOrder";
+import Recipes from "@/pages/Recipes";
+import RecipeDetail from "@/pages/RecipeDetail";
+import Challenges from "@/pages/Challenges";
+import ChallengeDetail from "@/pages/ChallengeDetail";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
 
@@ -170,6 +174,10 @@ export default function App() {
                       }
                     />
                     <Route path="/group/:code" element={<GroupOrder />} />
+                    <Route path="/recipes" element={<Recipes />} />
+                    <Route path="/recipes/:slug" element={<RecipeDetail />} />
+                    <Route path="/challenges" element={<Challenges />} />
+                    <Route path="/challenges/:slug" element={<ChallengeDetail />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>

@@ -9,6 +9,7 @@ import SegmentToggle from "@/components/layout/SegmentToggle";
 import { useOrders } from "@/lib/ordersContext";
 import { useCart } from "@/lib/cartContext";
 import { useMenuCatalog, type DishData } from "@/lib/menuData";
+import { useChallenges } from "@/lib/contentApi";
 import { toast } from "sonner";
 import {
   ShieldCheck,
@@ -31,6 +32,9 @@ import {
   Sunset,
   Moon,
   Plus,
+  Flag,
+  Users as UsersIcon,
+  CalendarDays,
 } from "lucide-react";
 
 /* ── Featured meals (each with unique image) ──────────────────────── */
@@ -149,6 +153,15 @@ export default function Home() {
   const { addItem } = useCart();
 
   const reorderRail = useMemo(() => orders.slice(0, 3), [orders]);
+  const { data: challenges } = useChallenges();
+  const featuredChallenge = useMemo(() => {
+    if (!challenges) return null;
+    const now = Date.now();
+    const live = challenges.filter(
+      (c) => new Date(c.endsAt).getTime() > now && c.featured > 0,
+    );
+    return (live[0] ?? challenges[0]) ?? null;
+  }, [challenges]);
 
   const daypart = currentDaypart();
   const daypartMeta = DAYPART_META[daypart];
@@ -253,6 +266,61 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* ═══════════════ COHORT CHALLENGE CTA ═══════════════ */}
+      {featuredChallenge && (
+        <section className="py-8 border-b border-clinical-slate/15">
+          <div className="max-w-7xl mx-auto px-4">
+            <Link to={`/challenges/${featuredChallenge.slug}`} className="block group">
+              <Card className="bg-clinical-surface border-clinical-gold/30 hover:border-clinical-gold/60 transition-colors overflow-hidden">
+                <div className="grid grid-cols-1 md:grid-cols-3">
+                  {featuredChallenge.image && (
+                    <div className="relative aspect-[16/9] md:aspect-auto md:h-full overflow-hidden">
+                      <img
+                        src={featuredChallenge.image}
+                        alt={featuredChallenge.title}
+                        loading="lazy"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent to-clinical-surface/80 md:to-clinical-surface" />
+                    </div>
+                  )}
+                  <CardContent className="p-6 md:col-span-2 space-y-3 flex flex-col justify-center">
+                    <p className="text-clinical-label flex items-center gap-1.5">
+                      <Flag className="w-3 h-3 text-clinical-gold" />
+                      Cohort Challenge
+                    </p>
+                    <h2 className="text-clinical-h2 text-white">
+                      {featuredChallenge.title}
+                    </h2>
+                    <p className="text-sm text-clinical-zinc max-w-xl">
+                      {featuredChallenge.tagline}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-3 text-[11px] text-clinical-zinc/80 tabular-nums">
+                      <span className="flex items-center gap-1">
+                        <CalendarDays className="w-3 h-3 text-clinical-gold" />
+                        {featuredChallenge.durationDays} days
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <UsersIcon className="w-3 h-3 text-clinical-gold" />
+                        {featuredChallenge.memberCount} joined
+                      </span>
+                      <span className="text-clinical-zinc/70">
+                        Led by {featuredChallenge.rdName}
+                      </span>
+                    </div>
+                    <div className="pt-2">
+                      <Button className="bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 gap-2 h-10">
+                        Join the cohort <ArrowRight className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </div>
+              </Card>
+            </Link>
+          </div>
+        </section>
+      )}
 
       {/* ═══════════════ WELLNESS WEEKLY SUMMARY ═══════════════ */}
       <section className="py-8 border-b border-clinical-slate/15">

@@ -13,6 +13,8 @@ import {
   Users,
   Stethoscope,
   HeartHandshake,
+  BookOpen,
+  Flag,
   Menu as MenuIcon,
   X,
 } from "lucide-react";
@@ -30,6 +32,8 @@ export default function Header() {
   const navItems = [
     { path: "/", label: "Home", icon: Home },
     { path: "/menu", label: "Menu", icon: Utensils },
+    { path: "/recipes", label: "Recipes", icon: BookOpen },
+    { path: "/challenges", label: "Challenges", icon: Flag },
     { path: "/plans", label: "RD Plans", icon: Stethoscope },
     { path: "/rd", label: "Book RD", icon: HeartHandshake },
     { path: "/appointments", label: "Care", icon: CalendarClock },

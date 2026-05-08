@@ -16,6 +16,7 @@ interface PublicReview {
   slug: string;
   rating: number;
   body: string;
+  photoUrl?: string | null;
   createdAt: string;
 }
 
@@ -128,18 +129,27 @@ export default function DishReviews({ slug, dishId }: DishReviewsProps) {
 
   const [rating, setRating] = useState(0);
   const [body, setBody] = useState("");
+  const [photoUrl, setPhotoUrl] = useState("");
 
   const submit = useMutation({
     mutationFn: async () => {
+      const payload: Record<string, unknown> = {
+        slug,
+        rating,
+        body: body.trim(),
+      };
+      const trimmedPhoto = photoUrl.trim();
+      if (trimmedPhoto) payload["photoUrl"] = trimmedPhoto;
       return fetchJson<{ review: PublicReview }>(`/dish-reviews`, {
         method: "POST",
-        body: JSON.stringify({ slug, rating, body: body.trim() }),
+        body: JSON.stringify(payload),
       });
     },
     onSuccess: () => {
       toast.success("Thanks for your review");
       setRating(0);
       setBody("");
+      setPhotoUrl("");
       qc.invalidateQueries({ queryKey: ["dish-reviews", slug] });
     },
     onError: (err: unknown) => {
@@ -224,6 +234,13 @@ export default function DishReviews({ slug, dishId }: DishReviewsProps) {
               rows={3}
               className="bg-clinical-dark border-clinical-slate/30 text-xs"
             />
+            <input
+              type="url"
+              placeholder="Optional photo URL"
+              value={photoUrl}
+              onChange={(e) => setPhotoUrl(e.target.value.slice(0, 1024))}
+              className="w-full bg-clinical-dark border border-clinical-slate/30 rounded-md px-3 py-2 text-xs text-white placeholder:text-clinical-zinc/50 focus:outline-none focus:border-clinical-gold/40"
+            />
             <div className="flex items-center justify-between">
               <span className="text-[10px] text-clinical-zinc/70">
                 {body.length}/2000
@@ -264,6 +281,14 @@ export default function DishReviews({ slug, dishId }: DishReviewsProps) {
                 <p className="text-xs text-clinical-zinc leading-relaxed mt-1.5">
                   {r.body}
                 </p>
+              )}
+              {r.photoUrl && (
+                <img
+                  src={r.photoUrl}
+                  alt="Reviewer photo"
+                  loading="lazy"
+                  className="mt-2 rounded-md max-h-40 w-auto object-cover border border-clinical-slate/20"
+                />
               )}
             </div>
           ))}

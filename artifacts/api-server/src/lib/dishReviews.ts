@@ -18,6 +18,7 @@ export interface CreateReviewInput {
   slug: string;
   rating: number;
   body: string;
+  photoUrl?: string | null;
 }
 
 export async function createReview(
@@ -25,6 +26,7 @@ export async function createReview(
 ): Promise<DishReview> {
   const rating = Math.max(1, Math.min(5, Math.round(input.rating)));
   const body = input.body.trim().slice(0, 2000);
+  const photoUrl = input.photoUrl?.trim().slice(0, 1024) || null;
   const [row] = await db
     .insert(dishReviewsTable)
     .values({
@@ -32,11 +34,34 @@ export async function createReview(
       slug: input.slug,
       rating,
       body,
+      photoUrl,
       sentiment: null,
     })
     .returning();
   if (!row) throw new Error("failed to insert review");
   return row;
+}
+
+export async function setReviewHidden(
+  id: number,
+  hidden: boolean,
+): Promise<DishReview | null> {
+  const [row] = await db
+    .update(dishReviewsTable)
+    .set({ hidden: hidden ? 1 : 0 })
+    .where(eq(dishReviewsTable.id, id))
+    .returning();
+  return row ?? null;
+}
+
+export async function listReviewsForModeration(
+  limit = 100,
+): Promise<DishReview[]> {
+  return db
+    .select()
+    .from(dishReviewsTable)
+    .orderBy(desc(dishReviewsTable.createdAt))
+    .limit(Math.max(1, Math.min(500, limit)));
 }
 
 export async function listReviews(
@@ -46,7 +71,9 @@ export async function listReviews(
   return db
     .select()
     .from(dishReviewsTable)
-    .where(eq(dishReviewsTable.slug, slug))
+    .where(
+      and(eq(dishReviewsTable.slug, slug), eq(dishReviewsTable.hidden, 0)),
+    )
     .orderBy(desc(dishReviewsTable.createdAt))
     .limit(Math.max(1, Math.min(200, limit)));
 }

@@ -52,6 +52,8 @@ export interface DishCustomOption {
     customizations: DishCustomGroup[];
     pairingSlug?: string;
     isAvailable: boolean;
+    averageRating?: number | null;
+    reviewCount?: number;
   }
 
   export const CATEGORY_LABELS: Record<DishCategory, string> = {

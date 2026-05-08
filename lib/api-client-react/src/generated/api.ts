@@ -17,8 +17,16 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  ChallengePostInput,
+  DishReviewInput,
+  GetChallenge200,
+  GetRecipe200,
   HealthStatus,
+  ListChallenges200,
+  ListRecipes200,
+  ListRecipesParams,
   OkEnvelope,
+  PostToChallenge200,
   PreferencesEnvelope,
   PreferencesEnvelopeRequired,
   PreferencesPatch,
@@ -36,6 +44,1019 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+/**
+ * @summary List published recipes with optional filters
+ */
+export const getListRecipesUrl = (params?: ListRecipesParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/recipes?${stringifiedParams}`
+    : `/api/recipes`;
+};
+
+export const listRecipes = async (
+  params?: ListRecipesParams,
+  options?: RequestInit,
+): Promise<ListRecipes200> => {
+  return customFetch<ListRecipes200>(getListRecipesUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListRecipesQueryKey = (params?: ListRecipesParams) => {
+  return [`/api/recipes`, ...(params ? [params] : [])] as const;
+};
+
+export const getListRecipesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listRecipes>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListRecipesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listRecipes>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListRecipesQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listRecipes>>> = ({
+    signal,
+  }) => listRecipes(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listRecipes>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListRecipesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listRecipes>>
+>;
+export type ListRecipesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List published recipes with optional filters
+ */
+
+export function useListRecipes<
+  TData = Awaited<ReturnType<typeof listRecipes>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListRecipesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listRecipes>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListRecipesQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get a recipe by slug
+ */
+export const getGetRecipeUrl = (slug: string) => {
+  return `/api/recipes/${slug}`;
+};
+
+export const getRecipe = async (
+  slug: string,
+  options?: RequestInit,
+): Promise<GetRecipe200> => {
+  return customFetch<GetRecipe200>(getGetRecipeUrl(slug), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetRecipeQueryKey = (slug: string) => {
+  return [`/api/recipes/${slug}`] as const;
+};
+
+export const getGetRecipeQueryOptions = <
+  TData = Awaited<ReturnType<typeof getRecipe>>,
+  TError = ErrorType<void>,
+>(
+  slug: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRecipe>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetRecipeQueryKey(slug);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getRecipe>>> = ({
+    signal,
+  }) => getRecipe(slug, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!slug,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof getRecipe>>, TError, TData> & {
+    queryKey: QueryKey;
+  };
+};
+
+export type GetRecipeQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getRecipe>>
+>;
+export type GetRecipeQueryError = ErrorType<void>;
+
+/**
+ * @summary Get a recipe by slug
+ */
+
+export function useGetRecipe<
+  TData = Awaited<ReturnType<typeof getRecipe>>,
+  TError = ErrorType<void>,
+>(
+  slug: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRecipe>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetRecipeQueryOptions(slug, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List cohort challenges
+ */
+export const getListChallengesUrl = () => {
+  return `/api/challenges`;
+};
+
+export const listChallenges = async (
+  options?: RequestInit,
+): Promise<ListChallenges200> => {
+  return customFetch<ListChallenges200>(getListChallengesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListChallengesQueryKey = () => {
+  return [`/api/challenges`] as const;
+};
+
+export const getListChallengesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listChallenges>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listChallenges>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListChallengesQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listChallenges>>> = ({
+    signal,
+  }) => listChallenges({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listChallenges>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListChallengesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listChallenges>>
+>;
+export type ListChallengesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List cohort challenges
+ */
+
+export function useListChallenges<
+  TData = Awaited<ReturnType<typeof listChallenges>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listChallenges>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListChallengesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get a challenge with cohort feed
+ */
+export const getGetChallengeUrl = (slug: string) => {
+  return `/api/challenges/${slug}`;
+};
+
+export const getChallenge = async (
+  slug: string,
+  options?: RequestInit,
+): Promise<GetChallenge200> => {
+  return customFetch<GetChallenge200>(getGetChallengeUrl(slug), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetChallengeQueryKey = (slug: string) => {
+  return [`/api/challenges/${slug}`] as const;
+};
+
+export const getGetChallengeQueryOptions = <
+  TData = Awaited<ReturnType<typeof getChallenge>>,
+  TError = ErrorType<void>,
+>(
+  slug: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getChallenge>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetChallengeQueryKey(slug);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getChallenge>>> = ({
+    signal,
+  }) => getChallenge(slug, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!slug,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getChallenge>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetChallengeQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getChallenge>>
+>;
+export type GetChallengeQueryError = ErrorType<void>;
+
+/**
+ * @summary Get a challenge with cohort feed
+ */
+
+export function useGetChallenge<
+  TData = Awaited<ReturnType<typeof getChallenge>>,
+  TError = ErrorType<void>,
+>(
+  slug: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getChallenge>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetChallengeQueryOptions(slug, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Join a challenge (auth required)
+ */
+export const getJoinChallengeUrl = (slug: string) => {
+  return `/api/challenges/${slug}/join`;
+};
+
+export const joinChallenge = async (
+  slug: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getJoinChallengeUrl(slug), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getJoinChallengeMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof joinChallenge>>,
+    TError,
+    { slug: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof joinChallenge>>,
+  TError,
+  { slug: string },
+  TContext
+> => {
+  const mutationKey = ["joinChallenge"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof joinChallenge>>,
+    { slug: string }
+  > = (props) => {
+    const { slug } = props ?? {};
+
+    return joinChallenge(slug, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type JoinChallengeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof joinChallenge>>
+>;
+
+export type JoinChallengeMutationError = ErrorType<void>;
+
+/**
+ * @summary Join a challenge (auth required)
+ */
+export const useJoinChallenge = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof joinChallenge>>,
+    TError,
+    { slug: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof joinChallenge>>,
+  TError,
+  { slug: string },
+  TContext
+> => {
+  return useMutation(getJoinChallengeMutationOptions(options));
+};
+
+/**
+ * @summary Leave a challenge (auth required)
+ */
+export const getLeaveChallengeUrl = (slug: string) => {
+  return `/api/challenges/${slug}/leave`;
+};
+
+export const leaveChallenge = async (
+  slug: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getLeaveChallengeUrl(slug), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getLeaveChallengeMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof leaveChallenge>>,
+    TError,
+    { slug: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof leaveChallenge>>,
+  TError,
+  { slug: string },
+  TContext
+> => {
+  const mutationKey = ["leaveChallenge"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof leaveChallenge>>,
+    { slug: string }
+  > = (props) => {
+    const { slug } = props ?? {};
+
+    return leaveChallenge(slug, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type LeaveChallengeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof leaveChallenge>>
+>;
+
+export type LeaveChallengeMutationError = ErrorType<void>;
+
+/**
+ * @summary Leave a challenge (auth required)
+ */
+export const useLeaveChallenge = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof leaveChallenge>>,
+    TError,
+    { slug: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof leaveChallenge>>,
+  TError,
+  { slug: string },
+  TContext
+> => {
+  return useMutation(getLeaveChallengeMutationOptions(options));
+};
+
+/**
+ * @summary Post to the cohort feed (members only)
+ */
+export const getPostToChallengeUrl = (slug: string) => {
+  return `/api/challenges/${slug}/posts`;
+};
+
+export const postToChallenge = async (
+  slug: string,
+  challengePostInput: ChallengePostInput,
+  options?: RequestInit,
+): Promise<PostToChallenge200> => {
+  return customFetch<PostToChallenge200>(getPostToChallengeUrl(slug), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(challengePostInput),
+  });
+};
+
+export const getPostToChallengeMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postToChallenge>>,
+    TError,
+    { slug: string; data: BodyType<ChallengePostInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof postToChallenge>>,
+  TError,
+  { slug: string; data: BodyType<ChallengePostInput> },
+  TContext
+> => {
+  const mutationKey = ["postToChallenge"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof postToChallenge>>,
+    { slug: string; data: BodyType<ChallengePostInput> }
+  > = (props) => {
+    const { slug, data } = props ?? {};
+
+    return postToChallenge(slug, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PostToChallengeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof postToChallenge>>
+>;
+export type PostToChallengeMutationBody = BodyType<ChallengePostInput>;
+export type PostToChallengeMutationError = ErrorType<void>;
+
+/**
+ * @summary Post to the cohort feed (members only)
+ */
+export const usePostToChallenge = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postToChallenge>>,
+    TError,
+    { slug: string; data: BodyType<ChallengePostInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof postToChallenge>>,
+  TError,
+  { slug: string; data: BodyType<ChallengePostInput> },
+  TContext
+> => {
+  return useMutation(getPostToChallengeMutationOptions(options));
+};
+
+/**
+ * @summary Submit a review for a dish (auth required)
+ */
+export const getCreateDishReviewUrl = () => {
+  return `/api/dish-reviews`;
+};
+
+export const createDishReview = async (
+  dishReviewInput: DishReviewInput,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getCreateDishReviewUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(dishReviewInput),
+  });
+};
+
+export const getCreateDishReviewMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createDishReview>>,
+    TError,
+    { data: BodyType<DishReviewInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createDishReview>>,
+  TError,
+  { data: BodyType<DishReviewInput> },
+  TContext
+> => {
+  const mutationKey = ["createDishReview"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createDishReview>>,
+    { data: BodyType<DishReviewInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createDishReview(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateDishReviewMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createDishReview>>
+>;
+export type CreateDishReviewMutationBody = BodyType<DishReviewInput>;
+export type CreateDishReviewMutationError = ErrorType<void>;
+
+/**
+ * @summary Submit a review for a dish (auth required)
+ */
+export const useCreateDishReview = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createDishReview>>,
+    TError,
+    { data: BodyType<DishReviewInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createDishReview>>,
+  TError,
+  { data: BodyType<DishReviewInput> },
+  TContext
+> => {
+  return useMutation(getCreateDishReviewMutationOptions(options));
+};
+
+/**
+ * @summary Public reviews and AI summary for a dish
+ */
+export const getListDishReviewsUrl = (slug: string) => {
+  return `/api/dish-reviews/${slug}`;
+};
+
+export const listDishReviews = async (
+  slug: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getListDishReviewsUrl(slug), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListDishReviewsQueryKey = (slug: string) => {
+  return [`/api/dish-reviews/${slug}`] as const;
+};
+
+export const getListDishReviewsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listDishReviews>>,
+  TError = ErrorType<unknown>,
+>(
+  slug: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listDishReviews>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListDishReviewsQueryKey(slug);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listDishReviews>>> = ({
+    signal,
+  }) => listDishReviews(slug, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!slug,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listDishReviews>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListDishReviewsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listDishReviews>>
+>;
+export type ListDishReviewsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Public reviews and AI summary for a dish
+ */
+
+export function useListDishReviews<
+  TData = Awaited<ReturnType<typeof listDishReviews>>,
+  TError = ErrorType<unknown>,
+>(
+  slug: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listDishReviews>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListDishReviewsQueryOptions(slug, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Catalog-scoped — list recent reviews including hidden
+ */
+export const getListReviewsForModerationUrl = () => {
+  return `/api/dish-reviews-mod`;
+};
+
+export const listReviewsForModeration = async (
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getListReviewsForModerationUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListReviewsForModerationQueryKey = () => {
+  return [`/api/dish-reviews-mod`] as const;
+};
+
+export const getListReviewsForModerationQueryOptions = <
+  TData = Awaited<ReturnType<typeof listReviewsForModeration>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listReviewsForModeration>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListReviewsForModerationQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listReviewsForModeration>>
+  > = ({ signal }) => listReviewsForModeration({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listReviewsForModeration>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListReviewsForModerationQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listReviewsForModeration>>
+>;
+export type ListReviewsForModerationQueryError = ErrorType<void>;
+
+/**
+ * @summary Catalog-scoped — list recent reviews including hidden
+ */
+
+export function useListReviewsForModeration<
+  TData = Awaited<ReturnType<typeof listReviewsForModeration>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listReviewsForModeration>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListReviewsForModerationQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Catalog-scoped — hide a review
+ */
+export const getHideDishReviewUrl = (id: number) => {
+  return `/api/dish-reviews/${id}/hide`;
+};
+
+export const hideDishReview = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getHideDishReviewUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getHideDishReviewMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof hideDishReview>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof hideDishReview>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["hideDishReview"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof hideDishReview>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return hideDishReview(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type HideDishReviewMutationResult = NonNullable<
+  Awaited<ReturnType<typeof hideDishReview>>
+>;
+
+export type HideDishReviewMutationError = ErrorType<void>;
+
+/**
+ * @summary Catalog-scoped — hide a review
+ */
+export const useHideDishReview = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof hideDishReview>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof hideDishReview>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getHideDishReviewMutationOptions(options));
+};
+
+/**
+ * @summary Catalog-scoped — unhide a review
+ */
+export const getUnhideDishReviewUrl = (id: number) => {
+  return `/api/dish-reviews/${id}/unhide`;
+};
+
+export const unhideDishReview = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getUnhideDishReviewUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getUnhideDishReviewMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof unhideDishReview>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof unhideDishReview>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["unhideDishReview"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof unhideDishReview>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return unhideDishReview(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UnhideDishReviewMutationResult = NonNullable<
+  Awaited<ReturnType<typeof unhideDishReview>>
+>;
+
+export type UnhideDishReviewMutationError = ErrorType<void>;
+
+/**
+ * @summary Catalog-scoped — unhide a review
+ */
+export const useUnhideDishReview = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof unhideDishReview>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof unhideDishReview>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getUnhideDishReviewMutationOptions(options));
+};
 
 /**
  * Returns server health status
