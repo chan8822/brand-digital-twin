@@ -363,7 +363,7 @@ export default function Menu() {
                           className="bg-clinical-gold/15 text-clinical-gold border border-clinical-gold/40 hover:bg-clinical-gold/25 gap-1.5 h-9 text-xs"
                         >
                           <PlusCircle className="w-3.5 h-3.5" />
-                          Add Combo
+                          Add Combo to Order
                         </Button>
                       </div>
                     </CardContent>
@@ -450,7 +450,7 @@ export default function Menu() {
                         className="w-full bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 gap-1.5"
                       >
                         <PlusCircle className="w-4 h-4" />
-                        Add Combo to Cart
+                        Add Combo to Order
                       </Button>
                     </DialogFooter>
                   </DialogContent>

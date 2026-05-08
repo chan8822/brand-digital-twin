@@ -67,7 +67,7 @@ export default function Orders() {
           </Link>
         </div>
         <p className="text-[11px] text-clinical-zinc pt-2">
-          New here? Browse the menu, add to your Nutrition Plan, then check out — orders track in real time and earn loyalty credits.
+          New here? Browse the menu, add dishes to your order, then check out — orders track in real time and earn loyalty credits.
         </p>
       </div>
     );
@@ -90,9 +90,9 @@ export default function Orders() {
         customizations: item.customizations,
       });
     });
-    toast.success("Items added to your Nutrition Plan", {
+    toast.success("Items added to your order", {
       description: `${order.items.length} item${order.items.length === 1 ? "" : "s"} from ${order.orderId}`,
-      action: { label: "View Plan", onClick: () => navigate("/cart") },
+      action: { label: "View Cart", onClick: () => navigate("/cart") },
     });
   };
 

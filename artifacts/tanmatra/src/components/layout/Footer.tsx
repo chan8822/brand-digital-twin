@@ -7,7 +7,7 @@ const FOOTER_LINKS = {
     { label: "Home", href: "/" },
     { label: "Clinical Menu", href: "/menu" },
     { label: "Track Order", href: "/track" },
-    { label: "Nutrition Plan", href: "/cart" },
+    { label: "Cart & Checkout", href: "/cart" },
   ],
   protocols: [
     { label: "Wellness Protocol", href: "/wellness" },

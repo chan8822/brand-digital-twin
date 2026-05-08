@@ -70,8 +70,18 @@ export default function Cart() {
           <ShoppingBag className="w-7 h-7 text-clinical-zinc" />
         </div>
         <div className="space-y-2">
-          <h1 className="text-clinical-h2 text-white">Your Nutrition Plan is Empty</h1>
-          <p className="text-sm text-clinical-zinc">Browse our clinical menu and add precision-formulated meals.</p>
+          <h1 className="text-clinical-h2 text-white">Your cart is empty</h1>
+          <p className="text-sm text-clinical-zinc">
+            Browse the menu to start an instant order. Looking for a recurring
+            7-day meal plan instead? Try the{" "}
+            <Link
+              to="/meal-planner"
+              className="text-clinical-gold hover:underline underline-offset-2"
+            >
+              Weekly Planner
+            </Link>
+            .
+          </p>
         </div>
         <Link to="/menu">
           <Button className="bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold gap-2 h-11 px-6 shadow-clinical">
@@ -88,7 +98,7 @@ export default function Cart() {
       <div className="lg:col-span-2 space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-clinical-h2 text-white">Nutrition Plan</h1>
+            <h1 className="text-clinical-h2 text-white">Your Order</h1>
             <p className="text-xs text-clinical-zinc mt-1">
               {totalQuantity} item{totalQuantity === 1 ? "" : "s"} · Clinical-grade precision meals
             </p>
@@ -183,7 +193,7 @@ export default function Cart() {
                         className="h-9 w-9 sm:h-7 sm:w-7 text-clinical-zinc hover:text-red-400 shrink-0"
                         onClick={() => {
                           removeItem(item.lineId);
-                          toast.success("Item removed from Nutrition Plan");
+                          toast.success("Item removed from your order");
                         }}
                         aria-label={`Remove ${item.name}`}
                       >

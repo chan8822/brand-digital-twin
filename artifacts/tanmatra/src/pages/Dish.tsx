@@ -36,6 +36,7 @@ import {
   ShieldCheck,
   ChefHat,
   ClipboardList,
+  ShoppingCart,
   Minus,
   Plus,
   AlertTriangle,
@@ -188,12 +189,12 @@ export default function Dish() {
       macros: meal.macros,
       customizations,
     });
-    toast.success(`Added ${meal.name} to Nutrition Plan`, {
+    toast.success(`Added ${meal.name} to your order`, {
       description: `${formatPrice(calculatedTotal)} · Qty: ${quantity}${
         customizations.length > 0 ? ` · ${customizations.length} custom` : ""
       }`,
       action: {
-        label: "View Plan",
+        label: "View Cart",
         onClick: () => navigate("/cart"),
       },
     });
@@ -714,8 +715,8 @@ export default function Dish() {
               onClick={handleAddToPlan}
               className="flex-1 sm:flex-initial bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold h-11 px-6 shadow-clinical-lg text-sm gap-2"
             >
-              <ClipboardList className="w-4 h-4" />
-              Add to Cart
+              <ShoppingCart className="w-4 h-4" />
+              Add to Order
               <span className="tabular-nums">— {formatPrice(calculatedTotal)}</span>
             </Button>
           )}
