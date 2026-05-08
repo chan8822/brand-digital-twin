@@ -265,11 +265,12 @@ export default function Dish() {
               </Badge>
             </div>
 
-            <div className="absolute bottom-4 left-4 right-4 bg-[#050505]/80 backdrop-blur-md rounded-xl p-4 border border-clinical-slate/20">
+            <div className="absolute bottom-3 left-3 right-3 bg-[#050505]/80 backdrop-blur-md rounded-lg px-3 py-2 border border-clinical-slate/20">
               <MacroOverlay
                 macros={meal.macros}
                 rdVerified={meal.rdVerified}
                 sodiumMg={buildNutritionLabel(meal).macros.sodiumMg}
+                compact
               />
             </div>
           </div>
