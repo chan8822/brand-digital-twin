@@ -79,6 +79,135 @@ export function computeBriefHash(brief: UserBrief): string {
     .digest("hex");
 }
 
+/**
+ * Hash the dish ground-truth fields the model is actually allowed to
+ * reason over. If a dish's macros/ingredients/allergens/category change,
+ * its rationale silently invalidates next read.
+ */
+export function computeDishVersion(dish: DishData): string {
+  const subset = {
+    name: dish.name,
+    kitchen: dish.kitchen,
+    category: dish.category,
+    isVeg: dish.isVeg,
+    macros: dish.macros,
+    glycaemicIndex: dish.glycaemicIndex,
+    allergens: [...dish.allergens].sort(),
+    ingredients: [...dish.ingredients].sort(),
+  };
+  return crypto
+    .createHash("sha256")
+    .update(JSON.stringify(subset))
+    .digest("hex")
+    .slice(0, 16);
+}
+
+/**
+ * The DB column is named `briefHash` for historical reasons but acts
+ * as the full cache key — combine the user's brief hash with the dish
+ * ground-truth version so either one moving invalidates a row.
+ */
+function cacheKey(briefHash: string, dishVersion: string): string {
+  return crypto
+    .createHash("sha256")
+    .update(`${briefHash}:${dishVersion}`)
+    .digest("hex");
+}
+
+/**
+ * Strip rationales that mention ingredients NOT in the dish's ground
+ * truth (model hallucination guard). Allowed terms: any whole word in
+ * the dish's ingredient list, the dish name, the kitchen, the category,
+ * plus a small kitchen vocabulary that's safe to reference generically.
+ */
+const GENERIC_FOOD_VOCAB = new Set([
+  "protein",
+  "carbs",
+  "carb",
+  "fat",
+  "fiber",
+  "calories",
+  "kcal",
+  "cal",
+  "macros",
+  "macro",
+  "veg",
+  "vegetarian",
+  "vegan",
+  "meat",
+  "spice",
+  "spices",
+  "flavor",
+  "flavour",
+  "low",
+  "high",
+  "medium",
+  "lean",
+  "balanced",
+  "rich",
+  "light",
+  "heavy",
+  "warm",
+  "cool",
+  "fresh",
+  "sweet",
+  "savoury",
+  "savory",
+  "sour",
+  "bitter",
+  "umami",
+  "salt",
+  "sugar",
+  "oil",
+  "water",
+  "stock",
+  "broth",
+  "sauce",
+  "dressing",
+  "marinade",
+  "seasoning",
+  "garnish",
+]);
+
+function tokenize(s: string): string[] {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, " ")
+    .split(/\s+/)
+    .filter((t) => t.length >= 4); // ignore tiny noise words
+}
+
+function looksFactuallyGrounded(text: string, dish: DishData): boolean {
+  const allowed = new Set<string>(GENERIC_FOOD_VOCAB);
+  for (const t of tokenize(dish.name)) allowed.add(t);
+  for (const ing of dish.ingredients) for (const t of tokenize(ing)) allowed.add(t);
+  for (const a of dish.allergens) for (const t of tokenize(a)) allowed.add(t);
+  allowed.add(dish.kitchen.toLowerCase());
+  allowed.add(dish.category.toLowerCase());
+  // Forbid any allergy-safety claim outright.
+  if (/\b(safe|ok|fine)\b[^.]{0,40}\b(allerg|gluten|dairy|nut|soy|egg)/i.test(text))
+    return false;
+  // Spot-check ingredient nouns: scan for "of <noun>" / "with <noun>" /
+  // "<noun> and <noun>" patterns. If any noun-shaped token in the text
+  // isn't in the allowed set, treat as hallucination.
+  const tokens = tokenize(text);
+  let unknown = 0;
+  for (const t of tokens) {
+    if (allowed.has(t)) continue;
+    // Allow common english function words / adjectives that survived the
+    // length filter
+    if (
+      /^(this|that|with|from|your|their|which|while|brings?|serves?|fits?|matches?|aligns?|supports?|recent|order|orders|ordered|profile|today|tonight|meals?|dish|dishes|protocol|portion|portions|after|before|workout|workouts|breakfast|lunch|dinner|snack|snacks|simple|gentle|hearty|cozy|comfort|comforting|nourishing|wholesome|smart|good|great|tasty|delicious|favourite|favorite)$/.test(
+        t,
+      )
+    )
+      continue;
+    unknown++;
+    if (unknown > 3) return false;
+  }
+  return true;
+}
+
 function clampLine(s: string, max: number): string {
   const t = s.replace(/\s+/g, " ").trim();
   if (t.length <= max) return t;
@@ -192,6 +321,8 @@ Hard rules:
 - Output ONLY the JSON array, no prose, no code fence.`;
 }
 
+export const __test__ = { looksFactuallyGrounded };
+
 function safeParseJson(text: string): unknown {
   const cleaned = text.trim().replace(/^```json\s*|^```\s*|```\s*$/g, "");
   return JSON.parse(cleaned);
@@ -234,13 +365,13 @@ async function callModel(
 
 async function loadCached(
   userId: string,
-  dishIds: number[],
-  briefHash: string,
+  dishKeys: Map<number, string>,
 ): Promise<Map<number, { rationale: string; expanded: string }>> {
-  if (dishIds.length === 0) return new Map();
+  if (dishKeys.size === 0) return new Map();
   const rows = await db
     .select({
       dishId: dishRationalesTable.dishId,
+      briefHash: dishRationalesTable.briefHash,
       rationale: dishRationalesTable.rationale,
       expanded: dishRationalesTable.expanded,
     })
@@ -248,19 +379,21 @@ async function loadCached(
     .where(
       and(
         eq(dishRationalesTable.userId, userId),
-        eq(dishRationalesTable.briefHash, briefHash),
-        inArray(dishRationalesTable.dishId, dishIds),
+        inArray(dishRationalesTable.dishId, Array.from(dishKeys.keys())),
       ),
     );
   const out = new Map<number, { rationale: string; expanded: string }>();
-  for (const r of rows)
-    out.set(r.dishId, { rationale: r.rationale, expanded: r.expanded });
+  for (const r of rows) {
+    if (dishKeys.get(r.dishId) === r.briefHash) {
+      out.set(r.dishId, { rationale: r.rationale, expanded: r.expanded });
+    }
+  }
   return out;
 }
 
 async function persist(
   userId: string,
-  briefHash: string,
+  dishKeys: Map<number, string>,
   generated: Map<number, { rationale: string; expanded: string }>,
   modelId: string,
 ): Promise<void> {
@@ -268,7 +401,7 @@ async function persist(
   const values = Array.from(generated.entries()).map(([dishId, v]) => ({
     userId,
     dishId,
-    briefHash,
+    briefHash: dishKeys.get(dishId)!,
     rationale: v.rationale,
     expanded: v.expanded,
     model: modelId,
@@ -309,7 +442,16 @@ export async function getDishRationales(
   });
   const briefHash = computeBriefHash(brief);
 
-  const cached = await loadCached(userId, dishIds, briefHash);
+  // Per-dish effective cache key = sha256(briefHash + dishVersion).
+  // If the dish's ground truth (macros/ingredients/etc) moves, its row
+  // invalidates even when the user brief hasn't changed.
+  const dishKeys = new Map<number, string>();
+  for (const id of dishIds) {
+    const dish = dishById.get(id);
+    if (dish) dishKeys.set(id, cacheKey(briefHash, computeDishVersion(dish)));
+  }
+
+  const cached = await loadCached(userId, dishKeys);
 
   const missing: DishData[] = [];
   for (const id of dishIds) {
@@ -321,8 +463,26 @@ export async function getDishRationales(
   let generated = new Map<number, { rationale: string; expanded: string }>();
   if (missing.length > 0) {
     try {
-      generated = await callModel(brief, missing);
-      await persist(userId, briefHash, generated, DEFAULT_MODEL_ID);
+      const raw = await callModel(brief, missing);
+      // Strip any rationale that referenced unknown ingredients or
+      // claimed allergy safety — those silently fall through to the
+      // generic fallback.
+      for (const dish of missing) {
+        const r = raw.get(dish.id);
+        if (!r) continue;
+        if (
+          looksFactuallyGrounded(r.rationale, dish) &&
+          looksFactuallyGrounded(r.expanded, dish)
+        ) {
+          generated.set(dish.id, r);
+        } else {
+          logger.warn(
+            { dishId: dish.id, userId },
+            "dish-rationale dropped by factual guard",
+          );
+        }
+      }
+      await persist(userId, dishKeys, generated, DEFAULT_MODEL_ID);
     } catch (err) {
       logger.warn(
         { err, userId, count: missing.length },

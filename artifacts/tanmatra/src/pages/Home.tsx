@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,12 @@ import { useOrders } from "@/lib/ordersContext";
 import { useCart } from "@/lib/cartContext";
 import { useMenuCatalog, type DishData } from "@/lib/menuData";
 import { useChallenges } from "@/lib/contentApi";
+import { usePreferences } from "@/lib/preferencesContext";
+import {
+  useDishRationales,
+  type DishRationale,
+} from "@/lib/dishRationaleApi";
+import { Sparkles as SparklesIcon } from "lucide-react";
 import { toast } from "sonner";
 import {
   ShieldCheck,
@@ -119,6 +125,90 @@ const PROTOCOLS = [
     featureIcon: Syringe,
   },
 ];
+
+function DaypartGrid({
+  dishes,
+  onQuickAdd,
+}: {
+  dishes: DishData[];
+  onQuickAdd: (e: React.MouseEvent, item: DishData) => void;
+}) {
+  const { preferences } = usePreferences();
+  const visibleIds = useMemo(() => dishes.map((d) => d.id), [dishes]);
+  const briefFingerprint = preferences
+    ? `${preferences.userId}:${preferences.updatedAt}`
+    : "anon";
+  const { byId: rationalesById } = useDishRationales(
+    visibleIds,
+    Boolean(preferences),
+    briefFingerprint,
+  );
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      {dishes.map((d) => (
+        <Link to={`/dish/${d.slug}`} key={d.id} className="group">
+          <Card className="bg-clinical-surface border-clinical-slate/20 hover:border-clinical-gold/40 transition-colors overflow-hidden">
+            <div className="relative aspect-square overflow-hidden">
+              <img
+                src={d.image}
+                alt={d.name}
+                loading="lazy"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#050505]/85 via-transparent to-transparent" />
+              <div className="absolute top-1.5 left-1.5">
+                <span
+                  className={`block w-2.5 h-2.5 rounded-sm border-2 ${
+                    d.isVeg ? "border-green-500" : "border-red-500"
+                  } bg-[#050505]/80`}
+                  title={d.isVeg ? "Vegetarian" : "Non-vegetarian"}
+                />
+              </div>
+              <button
+                onClick={(e) => onQuickAdd(e, d)}
+                className="absolute bottom-1.5 right-1.5 w-7 h-7 rounded-full bg-clinical-gold text-[#050505] flex items-center justify-center hover:scale-110 transition-transform shadow-clinical"
+                aria-label={`Quick add ${d.name}`}
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-2.5 space-y-1">
+              <p className="text-[11px] font-semibold text-white line-clamp-2 leading-tight">
+                {d.name}
+              </p>
+              <p className="text-[10px] text-clinical-gold tabular-nums">
+                {formatPrice(d.price)}
+              </p>
+              <DaypartWhyRow rationale={rationalesById.get(d.id)} />
+            </div>
+          </Card>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+function DaypartWhyRow({ rationale }: { rationale: DishRationale | undefined }) {
+  const [open, setOpen] = useState(false);
+  if (!rationale) return null;
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setOpen((v) => !v);
+      }}
+      className="w-full flex items-start gap-1 text-left mt-1"
+      aria-expanded={open}
+    >
+      <SparklesIcon className="w-2.5 h-2.5 mt-0.5 text-clinical-gold shrink-0" />
+      <span className="text-[9px] leading-snug text-clinical-zinc line-clamp-2">
+        {open ? rationale.expanded : rationale.rationale}
+      </span>
+    </button>
+  );
+}
 
 function formatPrice(paise: number) {
   return `Rs.${(paise / 100).toFixed(0)}`;
@@ -506,46 +596,10 @@ export default function Home() {
                 Full menu <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-              {daypartDishes.map((d) => (
-                <Link to={`/dish/${d.slug}`} key={d.id} className="group">
-                  <Card className="bg-clinical-surface border-clinical-slate/20 hover:border-clinical-gold/40 transition-colors overflow-hidden">
-                    <div className="relative aspect-square overflow-hidden">
-                      <img
-                        src={d.image}
-                        alt={d.name}
-                        loading="lazy"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-[#050505]/85 via-transparent to-transparent" />
-                      <div className="absolute top-1.5 left-1.5">
-                        <span
-                          className={`block w-2.5 h-2.5 rounded-sm border-2 ${
-                            d.isVeg ? "border-green-500" : "border-red-500"
-                          } bg-[#050505]/80`}
-                          title={d.isVeg ? "Vegetarian" : "Non-vegetarian"}
-                        />
-                      </div>
-                      <button
-                        onClick={(e) => quickAddDaypart(e, d)}
-                        className="absolute bottom-1.5 right-1.5 w-7 h-7 rounded-full bg-clinical-gold text-[#050505] flex items-center justify-center hover:scale-110 transition-transform shadow-clinical"
-                        aria-label={`Quick add ${d.name}`}
-                      >
-                        <Plus className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <div className="p-2.5 space-y-0.5">
-                      <p className="text-[11px] font-semibold text-white line-clamp-2 leading-tight">
-                        {d.name}
-                      </p>
-                      <p className="text-[10px] text-clinical-gold tabular-nums">
-                        {formatPrice(d.price)}
-                      </p>
-                    </div>
-                  </Card>
-                </Link>
-              ))}
-            </div>
+            <DaypartGrid
+              dishes={daypartDishes}
+              onQuickAdd={quickAddDaypart}
+            />
           </div>
         </section>
       )}
