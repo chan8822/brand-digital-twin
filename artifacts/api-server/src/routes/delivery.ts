@@ -263,6 +263,59 @@ router.post("/delivery/dispatch", async (req: Request, res: Response) => {
   res.json(result);
 });
 
+const riderAvailabilityBody = z.object({
+  riderId: z.number().int().positive(),
+  status: z.enum(["online", "offline", "break"]),
+});
+
+// Rider availability event — flips a rider's status and, on transition to
+// online, kicks off smart dispatch for any unassigned ready orders so the
+// new rider immediately picks up backlog.
+router.post(
+  "/delivery/rider/availability",
+  async (req: Request, res: Response) => {
+    const parsed = riderAvailabilityBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "invalid payload" });
+      return;
+    }
+    const isOps = resolveOps(req);
+    if (!req.isAuthenticated() && !isOps) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const { riderId, status } = parsed.data;
+    const [prev] = await db
+      .select({ status: ridersTable.status })
+      .from(ridersTable)
+      .where(eq(ridersTable.id, riderId))
+      .limit(1);
+    if (!prev) {
+      res.status(404).json({ error: "rider not found" });
+      return;
+    }
+    await db
+      .update(ridersTable)
+      .set({ status })
+      .where(eq(ridersTable.id, riderId));
+    let dispatched: Awaited<ReturnType<typeof dispatchReadyOrders>> | null =
+      null;
+    if (prev.status !== "online" && status === "online") {
+      try {
+        dispatched = await dispatchReadyOrders({
+          operatorId: isOps ? (req.user?.id ?? null) : null,
+        });
+      } catch (err) {
+        req.log.error(
+          { err, riderId },
+          "auto-dispatch on rider online failed",
+        );
+      }
+    }
+    res.json({ ok: true, previous: prev.status, status, dispatched });
+  },
+);
+
 router.post("/delivery/dispatch/run", async (req: Request, res: Response) => {
   if (!resolveOps(req)) {
     res.status(403).json({ error: "ops scope required" });

@@ -87,6 +87,54 @@ export function orderDropLatLng(order: Order): { lat: number; lng: number } {
   });
 }
 
+// ─── Food group / route compatibility ──────────────────────────────────────
+
+const COLD_KEYWORDS =
+  /salad|smoothie|juice|cold|chaas|lassi|raita|yogurt|shake|kombucha|fresh fruit/i;
+const HOT_KEYWORDS =
+  /curry|dal|rice|biryani|soup|stew|noodle|paratha|roti|gravy|tikka|bowl|pulao|sabzi/i;
+
+export type FoodGroup = "hot" | "cold" | "mixed" | "unknown";
+
+export function orderFoodGroup(order: Order): FoodGroup {
+  const items = (order.items ?? []) as Array<{ name?: string }>;
+  if (items.length === 0) return "unknown";
+  let hot = 0;
+  let cold = 0;
+  for (const it of items) {
+    const n = String(it?.name ?? "");
+    if (COLD_KEYWORDS.test(n)) cold++;
+    else if (HOT_KEYWORDS.test(n)) hot++;
+  }
+  if (hot > 0 && cold > 0) return "mixed";
+  if (cold > 0) return "cold";
+  if (hot > 0) return "hot";
+  return "unknown";
+}
+
+// Two orders are route-compatible if neither violates the other's
+// temperature requirements. Hot+cold should never share a bag.
+export function foodGroupsCompatible(a: FoodGroup, b: FoodGroup): boolean {
+  if (a === "unknown" || b === "unknown") return true;
+  if (a === "mixed" || b === "mixed") return true; // mixed already carries both
+  return a === b;
+}
+
+// Travel time proxy in minutes for a rider to reach a drop. Used to align
+// rider arrival with kitchen-ready time.
+const AVG_KMH = 24; // dense-city average
+function travelMinutes(distanceKm: number): number {
+  return (distanceKm / AVG_KMH) * 60;
+}
+
+// Expected minutes from "now" until the order is ready. Uses createdAt +
+// a default prep window; orders already in `ready` return 0.
+export function readyInMinutes(order: Order, prepMinutes = 12): number {
+  if (order.status === "ready") return 0;
+  const elapsedMin = (Date.now() - order.createdAt.getTime()) / 60_000;
+  return Math.max(0, prepMinutes - elapsedMin);
+}
+
 // ─── Scoring ───────────────────────────────────────────────────────────────
 
 export interface ScoreWeights {
@@ -112,16 +160,21 @@ export interface ScoreBreakdown {
 }
 
 // Lower cost = better. Returns negative score so callers can sort desc.
+// `kitchenReadyInMin` is how long until the order is ready; we penalize
+// the absolute gap between rider arrival and kitchen-ready so neither
+// the rider nor the food sits idle for long.
 export function scoreRiderForOrder(
   rider: Rider,
   drop: { lat: number; lng: number },
   weights: ScoreWeights = DEFAULT_WEIGHTS,
-  readinessGapMin = 0,
+  kitchenReadyInMin = 0,
 ): { score: number; breakdown: ScoreBreakdown } {
   const distanceKm = haversineKm(riderLatLng(rider), drop);
   const load = rider.activeOrderCount;
   const rating = rider.rating ?? 5;
   const ratingPenalty = (5 - rating) * weights.ratingBonus;
+  const arriveInMin = travelMinutes(distanceKm);
+  const readinessGapMin = Math.abs(arriveInMin - kitchenReadyInMin);
   const totalCost =
     distanceKm * weights.distanceKm +
     load * weights.loadPerOrder +
@@ -133,7 +186,7 @@ export function scoreRiderForOrder(
       distanceKm: Math.round(distanceKm * 100) / 100,
       load,
       rating,
-      readinessGapMin,
+      readinessGapMin: Math.round(readinessGapMin * 10) / 10,
       totalCost: Math.round(totalCost * 100) / 100,
     },
   };
@@ -169,9 +222,25 @@ export interface BatchEligibility {
 }
 
 export function checkBatchEligibility(
-  baseDrop: { lat: number; lng: number; createdAt: Date },
-  candidateDrop: { lat: number; lng: number; createdAt: Date },
+  baseDrop: {
+    lat: number;
+    lng: number;
+    createdAt: Date;
+    foodGroup: FoodGroup;
+  },
+  candidateDrop: {
+    lat: number;
+    lng: number;
+    createdAt: Date;
+    foodGroup: FoodGroup;
+  },
 ): BatchEligibility {
+  if (!foodGroupsCompatible(baseDrop.foodGroup, candidateDrop.foodGroup)) {
+    return {
+      eligible: false,
+      reason: `food-type incompatible (${baseDrop.foodGroup} + ${candidateDrop.foodGroup})`,
+    };
+  }
   const detourKm = haversineKm(baseDrop, candidateDrop);
   if (detourKm > BATCH_MAX_DETOUR_KM) {
     return { eligible: false, reason: "drop too far", detourKm };
@@ -224,12 +293,17 @@ async function findBatchPartner(
       ),
     )
     .limit(20);
+  const baseGroup = orderFoodGroup(order);
   for (const partner of candidates) {
     if (partner.id === order.id) continue;
     const partnerDrop = orderDropLatLng(partner);
     const elig = checkBatchEligibility(
-      { ...drop, createdAt: order.createdAt },
-      { ...partnerDrop, createdAt: partner.createdAt },
+      { ...drop, createdAt: order.createdAt, foodGroup: baseGroup },
+      {
+        ...partnerDrop,
+        createdAt: partner.createdAt,
+        foodGroup: orderFoodGroup(partner),
+      },
     );
     if (!elig.eligible) continue;
     if (partner.riderId == null) continue;
@@ -304,10 +378,14 @@ export async function dispatchOrder(
 
   // 2. Otherwise, score all online riders and pick the best.
   const allRiders = await db.select().from(ridersTable);
+  const readyMin = readyInMinutes(orderPeek);
   if (!chosenRider) {
     const scored = allRiders
       .filter((r) => r.status === "online")
-      .map((r) => ({ rider: r, ...scoreRiderForOrder(r, drop) }))
+      .map((r) => ({
+        rider: r,
+        ...scoreRiderForOrder(r, drop, DEFAULT_WEIGHTS, readyMin),
+      }))
       .sort((a, b) => b.score - a.score);
     if (scored.length === 0) {
       return {
@@ -324,7 +402,12 @@ export async function dispatchOrder(
     chosenRider = scored[0]!.rider;
   }
 
-  const chosenScore = scoreRiderForOrder(chosenRider, drop);
+  const chosenScore = scoreRiderForOrder(
+    chosenRider,
+    drop,
+    DEFAULT_WEIGHTS,
+    readyMin,
+  );
   const baseline = baselineNearest(drop, allRiders);
 
   // 3. Persist assignment + audit trail under a row lock so concurrent

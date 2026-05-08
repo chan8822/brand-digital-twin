@@ -38,6 +38,11 @@ export default function DispatchPanel() {
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [runMessage, setRunMessage] = useState<string | null>(null);
+  const [overrideOrderId, setOverrideOrderId] = useState("");
+  const [overrideRiderId, setOverrideRiderId] = useState("");
+  const [overrideNotes, setOverrideNotes] = useState("");
+  const [overriding, setOverriding] = useState(false);
+  const [overrideMessage, setOverrideMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -87,6 +92,43 @@ export default function DispatchPanel() {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminToken]);
+
+  const submitOverride = async () => {
+    const orderId = parseInt(overrideOrderId, 10);
+    const riderId = parseInt(overrideRiderId, 10);
+    if (!Number.isFinite(orderId) || !Number.isFinite(riderId)) {
+      setOverrideMessage("Need numeric order and rider IDs.");
+      return;
+    }
+    setOverriding(true);
+    setOverrideMessage(null);
+    try {
+      const r = await fetch(`${apiBase}/delivery/dispatch/override`, {
+        method: "POST",
+        credentials: "include",
+        headers: { ...headers(), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderId,
+          riderId,
+          notes: overrideNotes || undefined,
+        }),
+      });
+      const data = (await r.json()) as { ok?: boolean; reason?: string };
+      if (!r.ok) {
+        setOverrideMessage(data.reason ?? `Failed (${r.status})`);
+        return;
+      }
+      setOverrideMessage(`Order #${orderId} reassigned to rider ${riderId}.`);
+      setOverrideOrderId("");
+      setOverrideRiderId("");
+      setOverrideNotes("");
+      await load();
+    } catch (err) {
+      setOverrideMessage(String((err as Error).message ?? err));
+    } finally {
+      setOverriding(false);
+    }
+  };
 
   const runDispatch = async () => {
     setRunning(true);
@@ -227,6 +269,45 @@ export default function DispatchPanel() {
             </div>
           </>
         )}
+        <div className="space-y-1 pt-2 border-t border-border/40">
+          <div className="text-[10px] uppercase text-muted-foreground">
+            Manual override
+          </div>
+          <div className="flex gap-1">
+            <Input
+              placeholder="Order #"
+              value={overrideOrderId}
+              onChange={(e) => setOverrideOrderId(e.target.value)}
+              className="h-7 text-xs"
+            />
+            <Input
+              placeholder="Rider #"
+              value={overrideRiderId}
+              onChange={(e) => setOverrideRiderId(e.target.value)}
+              className="h-7 text-xs"
+            />
+          </div>
+          <Input
+            placeholder="Reason (optional)"
+            value={overrideNotes}
+            onChange={(e) => setOverrideNotes(e.target.value)}
+            className="h-7 text-xs"
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            className="w-full h-7 text-[10px]"
+            onClick={submitOverride}
+            disabled={overriding}
+          >
+            {overriding ? "Reassigning…" : "Reassign rider"}
+          </Button>
+          {overrideMessage ? (
+            <p className="text-[10px] text-muted-foreground">
+              {overrideMessage}
+            </p>
+          ) : null}
+        </div>
         <Input
           placeholder="x-admin-token (or rely on OPS_USER_IDS allowlist)"
           value={adminToken}
