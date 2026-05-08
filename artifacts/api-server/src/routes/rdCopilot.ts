@@ -385,6 +385,35 @@ router.post(
 );
 
 /**
+ * Returns the most recent proposal for (userId, rdSlug) regardless of
+ * status, so the RD console can show "where we left off" on mount
+ * instead of forcing the RD to draft a new plan to see anything.
+ */
+router.get(
+  "/rd/copilot/clients/:userId/proposals/latest",
+  async (req: Request, res: Response) => {
+    const rdSlug = getRdSlug(req, res);
+    if (!rdSlug) return;
+    if (!(await requireRdRole(req, res, rdSlug))) return;
+    const userId = String(req.params["userId"] ?? "");
+    if (!(await requireRelationship(res, rdSlug, userId))) return;
+
+    const [row] = await db
+      .select()
+      .from(rdPlanProposalsTable)
+      .where(
+        and(
+          eq(rdPlanProposalsTable.userId, userId),
+          eq(rdPlanProposalsTable.rdSlug, rdSlug),
+        ),
+      )
+      .orderBy(desc(rdPlanProposalsTable.createdAt))
+      .limit(1);
+    res.json({ proposal: row ?? null });
+  },
+);
+
+/**
  * Loads a proposal scoped to rdSlug AND verifies the RD still has an
  * existing relationship with the proposal's owner. Returns null and
  * responds with 404/403 if either guard fails. Used by every
@@ -431,9 +460,36 @@ router.get(
   },
 );
 
+// Strict shape for an edited day — mirrors the MealPlanDay TS interface
+// in lib/db/src/schema/mealPlans.ts. We validate every slot so an RD
+// edit can't smuggle malformed dish entries (missing macros, negative
+// price, etc.) into a row the user-facing meal plan flow will trust.
+const MealPlanSlotEntrySchema = z
+  .object({
+    dishId: z.number().int().nonnegative(),
+    slug: z.string().min(1).max(120),
+    name: z.string().min(1).max(200),
+    image: z.string().max(1000),
+    pricePaise: z.number().int().nonnegative(),
+    calories: z.number().nonnegative(),
+    protein: z.number().nonnegative(),
+    carbs: z.number().nonnegative(),
+    fat: z.number().nonnegative(),
+  })
+  .strict();
+
+const MealPlanDaySchema = z
+  .object({
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    breakfast: MealPlanSlotEntrySchema.optional(),
+    lunch: MealPlanSlotEntrySchema.optional(),
+    dinner: MealPlanSlotEntrySchema.optional(),
+  })
+  .strict();
+
 const EditProposalSchema = z
   .object({
-    days: z.array(z.any()).optional(),
+    days: z.array(MealPlanDaySchema).max(31).optional(),
     rdNotes: z.string().max(4000).nullable().optional(),
   })
   .strict();

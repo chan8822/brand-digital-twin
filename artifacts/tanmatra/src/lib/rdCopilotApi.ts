@@ -137,6 +137,11 @@ export const rdCopilotApi = {
       { method: "POST", body: JSON.stringify(body) },
     );
   },
+  latestProposal(rdSlug: string, userId: string) {
+    return request<{ proposal: RdPlanProposal | null }>(
+      `/rd/copilot/clients/${encodeURIComponent(userId)}/proposals/latest?rdSlug=${encodeURIComponent(rdSlug)}`,
+    );
+  },
   getProposal(rdSlug: string, id: number) {
     return request<{ proposal: RdPlanProposal }>(
       `/rd/copilot/proposals/${id}?rdSlug=${encodeURIComponent(rdSlug)}`,

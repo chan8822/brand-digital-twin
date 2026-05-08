@@ -60,12 +60,16 @@ export function RdCopilotPanel({
 
   const loadAll = useCallback(async () => {
     try {
-      const [s, a, au] = await Promise.all([
+      const [s, p, a, au] = await Promise.all([
         rdCopilotApi.getSummary(rdSlug, userId),
+        rdCopilotApi.latestProposal(rdSlug, userId),
         rdCopilotApi.getAdherence(rdSlug, userId),
         rdCopilotApi.getAudit(rdSlug, userId),
       ]);
       setSummary(s.summary);
+      setProposal(p.proposal);
+      setRdNotes(p.proposal?.rdNotes ?? "");
+      if (p.proposal?.weekStartDate) setWeekStart(p.proposal.weekStartDate);
       setAdherence(a);
       setAudit(au.entries);
     } catch (e) {
