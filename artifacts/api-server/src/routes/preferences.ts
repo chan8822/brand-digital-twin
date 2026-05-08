@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { eq } from "drizzle-orm";
 import { z } from "zod/v4";
 import { db, userPreferencesTable } from "@workspace/db";
+import { invalidateUserBrief } from "../lib/userBrief";
 
 const router: IRouter = Router();
 
@@ -140,6 +141,7 @@ async function preferencesWriteHandler(req: Request, res: Response) {
     return;
   }
   const preferences = await upsertPreferences(userId, parsed.data);
+  invalidateUserBrief(userId);
   res.json({ preferences });
 }
 

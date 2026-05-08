@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import type { ModelMessage } from "ai";
 import { runAgent, type GatewayEvent } from "../lib/ai";
+import { getUserBriefForRequest } from "../lib/userBrief";
 
 const router: IRouter = Router();
 
@@ -96,12 +97,17 @@ router.post("/support-agent/chat", async (req: Request, res: Response) => {
   };
 
   try {
+    const userId = req.user?.id ?? null;
+    const brief = userId
+      ? await getUserBriefForRequest(req, userId).catch(() => null)
+      : null;
     await runAgent({
       agent: "support",
-      userId: req.user?.id ?? null,
+      userId,
       messages,
       stream: true,
       onEvent,
+      promptContext: { brief },
     });
     res.end();
   } catch (err) {

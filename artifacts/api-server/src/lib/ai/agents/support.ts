@@ -9,6 +9,10 @@ import {
 import { definePrompt } from "../prompts";
 import { defineTool } from "../tools";
 import { registerAgent } from "../agentRegistry";
+import {
+  briefToPromptMarkdown,
+  type UserBrief,
+} from "../../userBrief";
 
 const DISH_ALLERGENS: Record<string, { name: string; allergens: string[] }> = {
   "activated-charcoal-smoothie": {
@@ -82,11 +86,19 @@ function lookupDishAllergens(
   return null;
 }
 
-const SUPPORT_PROMPT = definePrompt({
+interface SupportPromptContext {
+  brief?: UserBrief | null;
+}
+
+const SUPPORT_PROMPT = definePrompt<SupportPromptContext>({
   name: "support-agent",
-  version: "v2",
-  build: () =>
-    `You are the Tanmatra Support Agent for a clinical-grade nutrition delivery platform.
+  version: "v3",
+  build: (ctx) => {
+    const briefBlock =
+      ctx?.brief != null
+        ? `\n\n${briefToPromptMarkdown(ctx.brief)}\n\nUse the user context above only as background — never read it back verbatim and never repeat any field that isn't relevant to the current question.`
+        : "";
+    return `You are the Tanmatra Support Agent for a clinical-grade nutrition delivery platform.
 
 YOUR SCOPE — you MAY help with:
 - Order status and delivery tracking (use get_order_status)
@@ -110,7 +122,8 @@ ALLERGEN SAFETY RULES — non-negotiable:
 
 GENERAL RULES:
 - Never invent order IDs, ETAs, rider names, prices, or ingredients. If a tool didn't return it, you don't know it.
-- Be concise and warm. If unsure, escalate.`,
+- Be concise and warm. If unsure, escalate.${briefBlock}`;
+  },
 });
 
 const supportTools = [
@@ -230,7 +243,7 @@ const SEVERE_ALLERGY_PATTERNS = [
 const SEVERE_ALLERGY_TEXT =
   "Severe allergy concerns are handled by our care team — never by chat. Please tap Call Support before placing or modifying any order. I'm escalating this conversation now.";
 
-registerAgent({
+registerAgent<SupportPromptContext>({
   name: "support",
   description: "Customer support agent (read-only menu, orders, riders).",
   defaultModel: "gemini-2.5-flash",

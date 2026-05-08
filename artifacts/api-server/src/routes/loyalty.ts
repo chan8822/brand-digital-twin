@@ -25,6 +25,7 @@ import {
   defaultChannelForKind,
   dispatchNotificationEmail,
 } from "../lib/notificationMail";
+import { invalidateUserBrief } from "../lib/userBrief";
 
 const router: IRouter = Router();
 
@@ -472,6 +473,7 @@ async function profileWriteHandler(req: Request, res: Response) {
     return;
   }
   const profile = await upsertProfilePartial(userId, parsed.data);
+  invalidateUserBrief(userId);
   res.json({ profile });
 }
 

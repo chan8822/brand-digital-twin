@@ -11,6 +11,7 @@ import {
 } from "@workspace/db";
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod/v4";
+import { invalidateUserBrief } from "../lib/userBrief";
 
 const router: IRouter = Router();
 
@@ -263,6 +264,7 @@ router.post("/subscriptions", async (req: Request, res: Response) => {
     data.defaultItems,
   );
 
+  invalidateUserBrief(userId);
   res.status(201).json({ subscription: sub, deliveries });
 });
 
@@ -321,6 +323,7 @@ router.post("/subscriptions/:id/pause", async (req: Request, res: Response) => {
     .set({ status: "paused", pausedAt: new Date() })
     .where(eq(subscriptionsTable.id, subId))
     .returning();
+  invalidateUserBrief(userId);
   await db
     .update(subscriptionDeliveriesTable)
     .set({ status: "paused" })
@@ -354,6 +357,7 @@ router.post(
       .set({ status: "active", pausedAt: null })
       .where(eq(subscriptionsTable.id, subId))
       .returning();
+    invalidateUserBrief(userId);
     await db
       .update(subscriptionDeliveriesTable)
       .set({ status: "upcoming" })
@@ -388,6 +392,7 @@ router.post(
       .set({ status: "cancelled" })
       .where(eq(subscriptionsTable.id, subId))
       .returning();
+    invalidateUserBrief(userId);
     await db
       .update(subscriptionDeliveriesTable)
       .set({ status: "cancelled" })
@@ -423,6 +428,7 @@ router.post(
       .insert(subscriptionMembersTable)
       .values({ subscriptionId: subId, ...parsed.data })
       .returning();
+    invalidateUserBrief(userId);
     res.status(201).json({ member });
   },
 );
@@ -449,6 +455,7 @@ router.delete(
           eq(subscriptionMembersTable.subscriptionId, subId),
         ),
       );
+    invalidateUserBrief(userId);
     res.json({ ok: true });
   },
 );
@@ -490,6 +497,7 @@ router.post(
       found.subscription.id,
       found.subscription.nextDeliveryAt,
     );
+    invalidateUserBrief(userId);
     res.json({ delivery: updated });
   },
 );
@@ -520,6 +528,7 @@ router.post(
       .set({ items: parsed.data.items })
       .where(eq(subscriptionDeliveriesTable.id, deliveryId))
       .returning();
+    invalidateUserBrief(userId);
     res.json({ delivery: updated });
   },
 );
@@ -569,6 +578,7 @@ router.post(
       found.subscription.id,
       found.subscription.nextDeliveryAt,
     );
+    invalidateUserBrief(userId);
     res.json({ delivery: updated });
   },
 );
@@ -631,6 +641,7 @@ router.post(
           eq(subscriptionDeliveriesTable.status, "upcoming"),
         ),
       );
+    invalidateUserBrief(userId);
     res.json({ subscription: updated });
   },
 );
@@ -670,6 +681,7 @@ router.post(
       [],
     );
     await recomputeNextDeliveryAt(subId, sub.nextDeliveryAt);
+    invalidateUserBrief(userId);
     res.json({ deliveries: newOnes });
   },
 );

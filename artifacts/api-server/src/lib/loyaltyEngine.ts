@@ -27,6 +27,7 @@ import {
   defaultChannelForKind,
   dispatchNotificationEmail,
 } from "./notificationMail";
+import { invalidateUserBrief } from "./userBrief";
 
 type DbOrTx = typeof db | PgTransaction<any, any, any>;
 
@@ -772,6 +773,9 @@ export async function finalizeOrder(args: {
       void dispatchNotificationEmail(n);
     });
   }
+  // Order/credit/referral state changed — drop any cached UserBrief so
+  // the next agent turn sees fresh totals.
+  invalidateUserBrief(args.userId);
   return result;
 }
 
