@@ -1,0 +1,39 @@
+.git
+.github
+.gitignore
+.gitattributes
+.editorconfig
+
+node_modules
+**/node_modules
+**/dist
+**/.turbo
+**/.next
+**/.cache
+**/.expo
+**/.expo-shared
+**/coverage
+**/*.log
+**/*.tsbuildinfo
+
+# Replit / dev-only
+.replit
+.replitignore
+replit.md
+replit.nix
+.cache
+.local
+
+# Repo-level dev artifacts that don't belong in a runtime image
+agent-skills
+.agents
+artifacts/mockup-sandbox
+artifacts/tanmatra-mobile
+attached_assets
+screenshots
+scripts/lighthouse-audit*.mjs
+
+# Secrets — defence in depth; should never exist anyway
+.env
+.env.*
+!.env.example

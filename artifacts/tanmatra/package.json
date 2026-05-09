@@ -81,10 +81,7 @@
     "zod": "catalog:"
   },
   "dependencies": {
-    "@ai-sdk/google": "^3.0.67",
-    "@ai-sdk/react": "^3.0.177",
     "@tanstack/react-table": "^8.21.3",
-    "ai": "^6.0.175",
     "leaflet": "^1.9.4",
     "react-leaflet": "^5.0.0",
     "socket.io-client": "^4.8.3",
