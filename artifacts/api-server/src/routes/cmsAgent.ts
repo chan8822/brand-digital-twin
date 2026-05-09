@@ -1,57 +1,36 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import type { ModelMessage } from "ai";
+import { z } from "zod/v4";
 import { db, opsActionsTable } from "@workspace/db";
 import { and, desc, eq, ilike, or, type SQL } from "drizzle-orm";
 import { runAgent, type GatewayEvent } from "../lib/ai";
+import { isCatalogRequest, requireCatalog } from "../lib/adminGate";
 
 const router: IRouter = Router();
 
-function resolveCatalog(req: Request): {
-  allowed: boolean;
-  operatorId: string | null;
-} {
-  const adminToken = process.env["RD_ADMIN_TOKEN"];
-  const headerToken = req.header("x-admin-token");
-  if (adminToken && headerToken && headerToken === adminToken) {
-    return { allowed: true, operatorId: req.user?.id ?? "admin-token" };
-  }
-  const ops = (process.env["OPS_USER_IDS"] ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  const cat = (process.env["CATALOG_USER_IDS"] ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  if (
-    req.isAuthenticated() &&
-    (cat.includes(req.user.id) || ops.includes(req.user.id))
-  ) {
-    return { allowed: true, operatorId: req.user.id };
-  }
-  return { allowed: false, operatorId: null };
-}
-
-interface ChatTurn {
-  role: "user" | "agent";
-  text: string;
-}
+const ChatTurnSchema = z.object({
+  role: z.enum(["user", "agent"]),
+  text: z.string(),
+});
+const ChatBodySchema = z.object({
+  message: z.string().min(1).max(8000),
+  history: z.array(ChatTurnSchema).max(50).optional(),
+});
 
 function writeEvent(res: Response, event: object): void {
   res.write(`${JSON.stringify(event)}\n`);
 }
 
 router.post("/cms-agent/chat", async (req: Request, res: Response) => {
-  const { allowed, operatorId } = resolveCatalog(req);
-  if (!allowed) {
-    res.status(403).json({ error: "catalog scope required" });
+  const gate = requireCatalog(req, res);
+  if (!gate) return;
+  const operatorId = gate.operatorId;
+  const parsed = ChatBodySchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "invalid body" });
     return;
   }
-  const body = req.body as { message?: string; history?: ChatTurn[] };
-  if (!body?.message || typeof body.message !== "string") {
-    res.status(400).json({ error: "message required" });
-    return;
-  }
+  const body = parsed.data;
   const message = body.message.trim();
 
   res.status(200);
@@ -138,8 +117,7 @@ router.post("/cms-agent/chat", async (req: Request, res: Response) => {
 });
 
 router.get("/cms-agent/audit", async (req: Request, res: Response) => {
-  const { allowed } = resolveCatalog(req);
-  if (!allowed) {
+  if (!isCatalogRequest(req).allowed) {
     res.status(403).json({ error: "catalog scope required" });
     return;
   }

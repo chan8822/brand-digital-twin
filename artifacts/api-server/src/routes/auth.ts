@@ -21,42 +21,25 @@ import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
+const isProduction = process.env["NODE_ENV"] === "production";
+
 function setSessionCookie(res: Response, sid: string) {
   res.cookie(SESSION_COOKIE, sid, {
     httpOnly: true,
-    secure: true,
+    secure: isProduction,
     sameSite: "lax",
     path: "/",
     maxAge: SESSION_TTL,
   });
 }
 
-// --- In-memory rate limiting (per-IP and per-phone) -------------------------
+// --- Rate limiting (per-IP and per-phone) — see lib/rateLimit.ts -----------
 
-interface RateBucket {
-  count: number;
-  resetAt: number;
-}
-const rateBuckets = new Map<string, RateBucket>();
-
-function rateLimit(key: string, windowMs: number, max: number): boolean {
-  const now = Date.now();
-  const bucket = rateBuckets.get(key);
-  if (!bucket || bucket.resetAt < now) {
-    rateBuckets.set(key, { count: 1, resetAt: now + windowMs });
-    return true;
-  }
-  if (bucket.count >= max) return false;
-  bucket.count += 1;
-  return true;
-}
+import { rateLimit } from "../lib/rateLimit";
 
 function clientIp(req: Request): string {
-  const xff = req.headers["x-forwarded-for"];
-  if (typeof xff === "string" && xff.length > 0) {
-    return xff.split(",")[0]!.trim();
-  }
-  return req.socket.remoteAddress ?? "unknown";
+  // Relies on `app.set("trust proxy", 1)` so req.ip parses XFF correctly.
+  return req.ip ?? req.socket.remoteAddress ?? "unknown";
 }
 
 // --- Routes -----------------------------------------------------------------
@@ -83,11 +66,11 @@ router.post(
       return;
     }
 
-    if (!rateLimit(`auth:otp:ip:${clientIp(req)}`, 60 * 60_000, 20)) {
+    if (!(await rateLimit(`auth:otp:ip:${clientIp(req)}`, 60 * 60_000, 20))) {
       res.status(429).json({ error: "too many requests" });
       return;
     }
-    if (!rateLimit(`auth:otp:ph:${num.e164}`, 60 * 60_000, 5)) {
+    if (!(await rateLimit(`auth:otp:ph:${num.e164}`, 60 * 60_000, 5))) {
       res.status(429).json({ error: "too many requests" });
       return;
     }
@@ -121,21 +104,24 @@ router.post(
       return;
     }
 
-    if (!rateLimit(`auth:verify:ip:${clientIp(req)}`, 60 * 60_000, 30)) {
+    if (!(await rateLimit(`auth:verify:ip:${clientIp(req)}`, 60 * 60_000, 30))) {
       res.status(429).json({ error: "too many requests" });
       return;
     }
     // Per-phone throttle so a leaked IP can't grind 30 attempts at one
     // number's 6-digit code (Twilio Verify also throttles, but defence
     // in depth is cheap).
-    if (!rateLimit(`auth:verify:ph:${num.e164}`, 15 * 60_000, 6)) {
+    if (!(await rateLimit(`auth:verify:ph:${num.e164}`, 15 * 60_000, 6))) {
       res.status(429).json({ error: "too many requests" });
       return;
     }
 
     const result = await verifySmsOtp(num, parsed.data.code);
     if (!result.ok) {
-      res.status(401).json({ error: result.error ?? "incorrect code" });
+      // Always return a single canonical message so attackers can't
+      // distinguish "phone not enrolled" from "wrong code". The detailed
+      // reason is already logged inside verifySmsOtp.
+      res.status(401).json({ error: "incorrect code" });
       return;
     }
 

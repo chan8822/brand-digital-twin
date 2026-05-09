@@ -1,4 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
+import { requireAuthUser as requireAuth } from "../middlewares/requireAuth";
 import { and, desc, eq, gte, sql } from "drizzle-orm";
 import { z } from "zod/v4";
 import { createHmac, timingSafeEqual } from "node:crypto";
@@ -241,13 +242,7 @@ async function requireRdRole(
   return true;
 }
 
-function requireAuth(req: Request, res: Response): string | null {
-  if (!req.isAuthenticated()) {
-    res.status(401).json({ error: "unauthorized" });
-    return null;
-  }
-  return req.user.id;
-}
+// requireAuth: see shared middleware/requireAuth.ts
 
 const KIND = z.enum(["intro_15m", "follow_up_30m", "follow_up_45m"]);
 const KIND_DURATION_MIN: Record<z.infer<typeof KIND>, number> = {

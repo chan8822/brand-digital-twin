@@ -1,64 +1,37 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import type { ModelMessage } from "ai";
+import { z } from "zod/v4";
 import { db, opsActionsTable } from "@workspace/db";
 import { desc, eq, and, type SQL } from "drizzle-orm";
 import { runAgent, type GatewayEvent } from "../lib/ai";
 import { fetchLiveQueue } from "../lib/ai/agents/ops";
+import { isOpsRequest, requireOps } from "../lib/adminGate";
 
 const router: IRouter = Router();
 
-/**
- * Ops gating.
- *
- * An operator is authorized to drive the Ops Agent when EITHER:
- *   - The request carries `x-admin-token` matching env `RD_ADMIN_TOKEN`
- *     (used by the Admin Ops console for token-elevated dev access), OR
- *   - The authenticated user's id is listed in `OPS_USER_IDS`
- *     (comma-separated allowlist env var).
- *
- * If neither token nor allowlist is configured, the agent is locked.
- */
-function resolveOps(req: Request): { allowed: boolean; operatorId: string | null } {
-  const adminToken = process.env["RD_ADMIN_TOKEN"];
-  const headerToken = req.header("x-admin-token");
-  if (adminToken && headerToken && headerToken === adminToken) {
-    return { allowed: true, operatorId: req.user?.id ?? "admin-token" };
-  }
-  const allowlist = (process.env["OPS_USER_IDS"] ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  if (req.isAuthenticated() && allowlist.includes(req.user.id)) {
-    return { allowed: true, operatorId: req.user.id };
-  }
-  return { allowed: false, operatorId: null };
-}
-
-interface ChatTurn {
-  role: "user" | "agent";
-  text: string;
-}
-
-interface ChatBody {
-  message: string;
-  history?: ChatTurn[];
-}
+const ChatTurnSchema = z.object({
+  role: z.enum(["user", "agent"]),
+  text: z.string(),
+});
+const ChatBodySchema = z.object({
+  message: z.string().min(1).max(8000),
+  history: z.array(ChatTurnSchema).max(50).optional(),
+});
 
 function writeEvent(res: Response, event: object): void {
   res.write(`${JSON.stringify(event)}\n`);
 }
 
 router.post("/ops-agent/chat", async (req: Request, res: Response) => {
-  const { allowed, operatorId } = resolveOps(req);
-  if (!allowed) {
-    res.status(403).json({ error: "ops scope required" });
+  const gate = requireOps(req, res);
+  if (!gate) return;
+  const operatorId = gate.operatorId;
+  const parsed = ChatBodySchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "invalid body" });
     return;
   }
-  const body = req.body as ChatBody;
-  if (!body?.message || typeof body.message !== "string") {
-    res.status(400).json({ error: "message required" });
-    return;
-  }
+  const body = parsed.data;
   const message = body.message.trim();
 
   res.status(200);
@@ -145,8 +118,7 @@ router.post("/ops-agent/chat", async (req: Request, res: Response) => {
 });
 
 router.get("/ops-agent/live-queue", async (req: Request, res: Response) => {
-  const { allowed } = resolveOps(req);
-  if (!allowed) {
+  if (!isOpsRequest(req).allowed) {
     res.status(403).json({ error: "ops scope required" });
     return;
   }
@@ -155,8 +127,7 @@ router.get("/ops-agent/live-queue", async (req: Request, res: Response) => {
 });
 
 router.get("/ops-agent/audit", async (req: Request, res: Response) => {
-  const { allowed } = resolveOps(req);
-  if (!allowed) {
+  if (!isOpsRequest(req).allowed) {
     res.status(403).json({ error: "ops scope required" });
     return;
   }

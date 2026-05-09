@@ -1,4 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
+import { requireAuthUser as requireAuth } from "../middlewares/requireAuth";
 import {
   db,
   deliverySlotsTable,
@@ -15,13 +16,7 @@ import { issueCredit } from "../lib/loyaltyEngine";
 
 const router: IRouter = Router();
 
-function requireAuth(req: Request, res: Response): string | null {
-  if (!req.isAuthenticated()) {
-    res.status(401).json({ error: "unauthorized" });
-    return null;
-  }
-  return req.user.id;
-}
+// requireAuth: see shared middleware/requireAuth.ts
 
 function resolveOps(req: Request): boolean {
   const adminToken = process.env["RD_ADMIN_TOKEN"];

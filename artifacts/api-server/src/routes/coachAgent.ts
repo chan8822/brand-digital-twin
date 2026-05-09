@@ -1,21 +1,20 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import type { ModelMessage } from "ai";
+import { z } from "zod/v4";
 import { runAgent, type GatewayEvent } from "../lib/ai";
 import { getUserBriefForRequest } from "../lib/userBrief";
 
 const router: IRouter = Router();
 
-interface ChatTurn {
-  role: "user" | "agent";
-  text: string;
-}
-
-interface ChatBody {
-  message: string;
-  history?: ChatTurn[];
-  /** Optional dish slug context — when the user opens the coach from a dish detail page. */
-  dishSlug?: string;
-}
+const ChatTurnSchema = z.object({
+  role: z.enum(["user", "agent"]),
+  text: z.string(),
+});
+const ChatBodySchema = z.object({
+  message: z.string().min(1).max(8000),
+  history: z.array(ChatTurnSchema).max(50).optional(),
+  dishSlug: z.string().max(120).optional(),
+});
 
 function writeEvent(res: Response, event: object): void {
   res.write(`${JSON.stringify(event)}\n`);
@@ -30,11 +29,12 @@ function startStream(res: Response): void {
 }
 
 router.post("/coach-agent/chat", async (req: Request, res: Response) => {
-  const body = req.body as ChatBody;
-  if (!body?.message || typeof body.message !== "string") {
-    res.status(400).json({ error: "message required" });
+  const parsed = ChatBodySchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "invalid body" });
     return;
   }
+  const body = parsed.data;
   const message = body.message.trim();
 
   startStream(res);

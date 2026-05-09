@@ -18,33 +18,21 @@ import {
 } from "../lib/forecast";
 import { recommendReorder, exportPurchaseOrderCsv } from "../lib/reorder";
 import { runAgent, type GatewayEvent } from "../lib/ai";
+import { z } from "zod/v4";
+import { requireOps as gate } from "../lib/adminGate";
 
 const router: IRouter = Router();
 
-function resolveOps(req: Request): { allowed: boolean; operatorId: string | null } {
-  const adminToken = process.env["RD_ADMIN_TOKEN"];
-  const headerToken = req.header("x-admin-token");
-  if (adminToken && headerToken && headerToken === adminToken) {
-    return { allowed: true, operatorId: req.user?.id ?? "admin-token" };
-  }
-  const allowlist = (process.env["OPS_USER_IDS"] ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  if (req.isAuthenticated() && allowlist.includes(req.user.id)) {
-    return { allowed: true, operatorId: req.user.id };
-  }
-  return { allowed: false, operatorId: null };
-}
-
-function gate(req: Request, res: Response): { operatorId: string | null } | null {
-  const { allowed, operatorId } = resolveOps(req);
-  if (!allowed) {
-    res.status(403).json({ error: "ops scope required" });
-    return null;
-  }
-  return { operatorId };
-}
+const SnapshotsRunBody = z.object({ zone: z.string().optional() });
+const BackfillBody = z.object({ sinceDays: z.coerce.number().int().min(1).max(365).optional() });
+const ChatTurnSchema = z.object({
+  role: z.enum(["user", "agent"]),
+  text: z.string(),
+});
+const ForecastChatBody = z.object({
+  message: z.string().min(1).max(8000),
+  history: z.array(ChatTurnSchema).max(50).optional(),
+});
 
 router.get("/forecasting/forecast", async (req: Request, res: Response) => {
   if (!gate(req, res)) return;
@@ -62,8 +50,12 @@ router.get("/forecasting/forecast", async (req: Request, res: Response) => {
 
 router.post("/forecasting/snapshots/run", async (req: Request, res: Response) => {
   if (!gate(req, res)) return;
-  const zone = typeof req.body?.zone === "string" ? req.body.zone : undefined;
-  const result = await persistForecastSnapshots({ zone });
+  const parsed = SnapshotsRunBody.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    res.status(400).json({ error: "invalid body" });
+    return;
+  }
+  const result = await persistForecastSnapshots({ zone: parsed.data.zone });
   res.json(result);
 });
 
@@ -71,9 +63,12 @@ router.post(
   "/forecasting/snapshots/backfill-actuals",
   async (req: Request, res: Response) => {
     if (!gate(req, res)) return;
-    const sinceDays =
-      parseInt(String(req.body?.sinceDays ?? "14"), 10) || 14;
-    const result = await backfillActuals({ sinceDays });
+    const parsed = BackfillBody.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      res.status(400).json({ error: "invalid body" });
+      return;
+    }
+    const result = await backfillActuals({ sinceDays: parsed.data.sinceDays ?? 14 });
     res.json(result);
   },
 );
@@ -222,16 +217,6 @@ router.get(
   },
 );
 
-interface ChatTurn {
-  role: "user" | "agent";
-  text: string;
-}
-
-interface ChatBody {
-  message: string;
-  history?: ChatTurn[];
-}
-
 function writeEvent(res: Response, event: object): void {
   res.write(`${JSON.stringify(event)}\n`);
 }
@@ -239,11 +224,12 @@ function writeEvent(res: Response, event: object): void {
 router.post("/forecasting/agent/chat", async (req: Request, res: Response) => {
   const auth = gate(req, res);
   if (!auth) return;
-  const body = req.body as ChatBody;
-  if (!body?.message || typeof body.message !== "string") {
-    res.status(400).json({ error: "message required" });
+  const parsed = ForecastChatBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "invalid body" });
     return;
   }
+  const body = parsed.data;
 
   res.status(200);
   res.setHeader("Content-Type", "application/x-ndjson; charset=utf-8");

@@ -1,4 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
+import { requireAuthUser as requireAuth } from "../middlewares/requireAuth";
 import {
   db,
   subscriptionsTable,
@@ -85,13 +86,7 @@ function addDays(date: Date, days: number): Date {
   return out;
 }
 
-function requireAuth(req: Request, res: Response): string | null {
-  if (!req.isAuthenticated()) {
-    res.status(401).json({ error: "unauthorized" });
-    return null;
-  }
-  return req.user.id;
-}
+// requireAuth: see shared middleware/requireAuth.ts
 
 function parseIdParam(
   raw: unknown,

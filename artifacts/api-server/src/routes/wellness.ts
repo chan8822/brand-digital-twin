@@ -1,4 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
+import { requireAuthUser as requireAuth } from "../middlewares/requireAuth";
 import { and, asc, eq, gte, lte, sql } from "drizzle-orm";
 import { z } from "zod/v4";
 import {
@@ -17,13 +18,7 @@ import {
 
 const router: IRouter = Router();
 
-function requireAuth(req: Request, res: Response): string | null {
-  if (!req.isAuthenticated()) {
-    res.status(401).json({ error: "unauthorized" });
-    return null;
-  }
-  return req.user.id;
-}
+// requireAuth: see shared middleware/requireAuth.ts
 
 function todayStr(): string {
   return new Date().toISOString().slice(0, 10);
