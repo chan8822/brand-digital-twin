@@ -53,6 +53,7 @@ function userId(req: Request): string | null {
 function sendError(res: Response, err: unknown): void {
   const msg = err instanceof Error ? err.message : String(err);
   if (err instanceof UnsafeSqlError) {
+    // UnsafeSqlError messages are caller-friendly validation explanations.
     res.status(400).json({ error: msg });
     return;
   }
@@ -61,7 +62,10 @@ function sendError(res: Response, err: unknown): void {
   if (lower.includes("not found")) code = 404;
   else if (lower.includes("required") || lower.includes("invalid")) code = 400;
   else if (lower.includes("statement timeout")) code = 504;
-  res.status(code).json({ error: msg });
+  // Only echo the message for caller-fixable 4xx / known 504 cases. 500s
+  // get a generic message so we don't leak driver / SQL details.
+  const exposed = code === 500 ? "internal error" : msg;
+  res.status(code).json({ error: exposed });
 }
 
 // ---- Schema introspection (safe) --------------------------------------------

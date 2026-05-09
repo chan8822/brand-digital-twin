@@ -12,7 +12,7 @@ import {
   type CompanyMember,
   type OfficeOrderPick,
 } from "@workspace/db";
-import { resolveDishById } from "../lib/menuResolver";
+import { resolveDishById, makeBatchDishResolver } from "../lib/menuResolver";
 
 const router: IRouter = Router();
 
@@ -652,11 +652,14 @@ router.post(
       res.status(400).json({ error: "invalid payload" });
       return;
     }
-    // Resolve dish prices server-side.
+    // Resolve dish prices server-side. Use the batch resolver so we hit the
+    // catalog once even when the office order has many line items (was N+1
+    // round-trips per pick).
+    const catalog = await makeBatchDishResolver();
     const resolvedItems: OfficeOrderPick["items"] = [];
     let total = 0;
     for (const it of parsed.data.items) {
-      const dish = await resolveDishById(it.dishId);
+      const dish = catalog.byId(it.dishId);
       if (!dish || !dish.isAvailable) {
         res.status(404).json({ error: `dish ${it.dishId} unavailable` });
         return;

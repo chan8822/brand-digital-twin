@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
@@ -32,6 +32,8 @@ app.use(
   }),
 );
 
+const isProduction = process.env["NODE_ENV"] === "production";
+
 const allowedOrigins = (process.env["ALLOWED_ORIGINS"] ?? "")
   .split(",")
   .map((s) => s.trim())
@@ -48,9 +50,14 @@ const corsAllowList = new Set<string>([...allowedOrigins, ...replitDomains]);
 app.use(
   cors({
     origin: (origin, cb) => {
+      // Same-origin / curl / server-to-server requests have no Origin
+      // header — allow them so health checks and SSR fetches still work.
       if (!origin) return cb(null, true);
-      if (corsAllowList.size === 0) return cb(null, true);
       if (corsAllowList.has(origin)) return cb(null, true);
+      // Fail-open ONLY in development when the operator hasn't configured
+      // an allowlist. In production an empty allowlist is treated as a
+      // misconfiguration and we refuse the request rather than wildcard.
+      if (!isProduction && corsAllowList.size === 0) return cb(null, true);
       cb(new Error("Origin not allowed"));
     },
     credentials: true,
@@ -58,12 +65,47 @@ app.use(
 );
 
 app.use(cookieParser());
-app.use(express.json({ limit: "100kb" }));
-app.use(express.urlencoded({ extended: true, limit: "100kb" }));
 
-app.use("/api/menu/upload", express.json({ limit: "15mb" }));
-app.use("/api/menu-assets", express.json({ limit: "15mb" }));
-app.use("/api/cms-agent", express.json({ limit: "2mb" }));
+// --- Body parsers -----------------------------------------------------------
+//
+// Express's body parsers short-circuit once any of them has consumed the
+// request body, so the *first* parser whose route matches wins. To keep
+// the global default tight (100kb) while still allowing larger payloads
+// for image-upload / agent endpoints, we mount the higher-limit parsers
+// FIRST against their specific path prefixes, then a 100kb catch-all.
+
+const jsonLarge = express.json({ limit: "15mb" });
+const jsonAgent = express.json({ limit: "2mb" });
+const jsonDefault = express.json({ limit: "100kb" });
+const urlEncodedDefault = express.urlencoded({ extended: true, limit: "100kb" });
+
+// Image / asset upload endpoints — base64 dataURL payloads can hit several MB.
+app.use("/api/menu/uploads", jsonLarge);
+app.use("/api/menu-assets", jsonLarge);
+// AI agent chat endpoints carry conversation history.
+app.use("/api/cms-agent", jsonAgent);
+app.use("/api/coach-agent", jsonAgent);
+app.use("/api/ops-agent", jsonAgent);
+app.use("/api/support-agent", jsonAgent);
+
+app.use(jsonDefault);
+app.use(urlEncodedDefault);
+
+// Surface body-parser failures as a clean 413 / 400 instead of a 500.
+app.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {
+  if (err && typeof err === "object" && "type" in err) {
+    const t = (err as { type?: string }).type;
+    if (t === "entity.too.large") {
+      res.status(413).json({ error: "payload too large" });
+      return;
+    }
+    if (t === "entity.parse.failed") {
+      res.status(400).json({ error: "invalid json" });
+      return;
+    }
+  }
+  next(err);
+});
 
 app.use(authMiddleware);
 

@@ -36,9 +36,9 @@ function userId(req: Request): string | null {
   return req.isAuthenticated() ? (req.user.id ?? null) : null;
 }
 
-function sendError(res: Response, err: unknown): void {
-  const msg = err instanceof Error ? err.message : String(err);
-  res.status(500).json({ error: msg });
+function sendError(res: Response, err: unknown, log?: (e: unknown) => void): void {
+  log?.(err);
+  res.status(500).json({ error: "internal error" });
 }
 
 const idParam = z.object({ id: z.coerce.number().int().positive() });

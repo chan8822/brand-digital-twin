@@ -56,6 +56,10 @@ function userId(req: Request): string | null {
 function sendAssetError(res: Response, err: unknown): void {
   const msg = err instanceof Error ? err.message : String(err);
   const lower = msg.toLowerCase();
+  // Map known domain prefixes to caller-visible status codes; for any
+  // unmapped error fall back to 500 with a generic message so we don't
+  // leak object-storage SDK internals (signed URLs, bucket ids, etc.)
+  // back to the client.
   let code = 500;
   if (lower.includes("not found") || lower.includes("has been deleted"))
     code = 404;
@@ -67,7 +71,8 @@ function sendAssetError(res: Response, err: unknown): void {
     lower.includes("dimensions")
   )
     code = 400;
-  res.status(code).json({ error: msg });
+  const exposed = code === 500 ? "internal error" : msg;
+  res.status(code).json({ error: exposed });
 }
 
 const slugParam = z.object({ slug: z.string().min(1).max(128) });

@@ -117,8 +117,11 @@ router.post("/challenges/:slug/posts", async (req: Request, res: Response) => {
       },
     });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    res.status(400).json({ error: msg });
+    // The challenge-join helper throws for both expected (already joined,
+    // capacity reached) and unexpected errors. Cap exposure at a generic
+    // message and log the detail server-side.
+    req.log.warn({ err }, "challenge join failed");
+    res.status(400).json({ error: "could not join challenge" });
   }
 });
 

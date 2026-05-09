@@ -64,7 +64,9 @@ function sendError(res: Response, err: unknown): void {
   if (lower.includes("not found")) code = 404;
   else if (lower.includes("already decided") || lower.includes("invalid"))
     code = 400;
-  res.status(code).json({ error: msg });
+  // Don't echo raw error text for unmapped 500s.
+  const exposed = code === 500 ? "internal error" : msg;
+  res.status(code).json({ error: exposed });
 }
 
 // ---- Menu engineering --------------------------------------------------------
