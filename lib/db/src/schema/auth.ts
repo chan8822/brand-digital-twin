@@ -1,7 +1,8 @@
 import { sql } from "drizzle-orm";
 import { index, jsonb, pgTable, timestamp, varchar } from "drizzle-orm/pg-core";
 
-// (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
+// Session storage. Used by the phone-OTP auth flow (Twilio Verify) — sessions
+// are looked up by `sid` cookie / Bearer token. Required by the auth lib.
 export const sessionsTable = pgTable(
   "sessions",
   {
@@ -12,9 +13,12 @@ export const sessionsTable = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
+// Users are identified by their verified phone number (E.164). `email` is now
+// optional and only set when the user explicitly adds one in their profile.
 export const usersTable = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  phoneE164: varchar("phone_e164").unique(),
+  phoneVerifiedAt: timestamp("phone_verified_at", { withTimezone: true }),
   email: varchar("email").unique(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),

@@ -1,35 +1,25 @@
-import * as oidc from "openid-client";
 import { Router, type IRouter, type Request, type Response } from "express";
 import {
   GetCurrentAuthUserResponse,
-  ExchangeMobileAuthorizationCodeBody,
-  ExchangeMobileAuthorizationCodeResponse,
-  LogoutMobileSessionResponse,
+  AuthUser,
+  PhoneSendOtpBody,
+  PhoneSendOtpResponse,
+  PhoneVerifyOtpBody,
+  PhoneVerifyOtpResponse,
+  LogoutResponse,
 } from "@workspace/api-zod";
-import { db, usersTable, sessionsTable } from "@workspace/db";
-import { and, gt, sql } from "drizzle-orm";
+import { db, usersTable } from "@workspace/db";
 import {
   clearSession,
-  getOidcConfig,
-  getSessionId,
   createSession,
-  deleteSession,
+  getSessionId,
   SESSION_COOKIE,
   SESSION_TTL,
-  ISSUER_URL,
-  type SessionData,
 } from "../lib/auth";
-
-const OIDC_COOKIE_TTL = 10 * 60 * 1000;
+import { normalisePhone, sendSmsOtp, verifySmsOtp } from "../lib/sms";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
-
-function getOrigin(req: Request): string {
-  const proto = req.headers["x-forwarded-proto"] || "https";
-  const host =
-    req.headers["x-forwarded-host"] || req.headers["host"] || "localhost";
-  return `${proto}://${host}`;
-}
 
 function setSessionCookie(res: Response, sid: string) {
   res.cookie(SESSION_COOKIE, sid, {
@@ -41,47 +31,35 @@ function setSessionCookie(res: Response, sid: string) {
   });
 }
 
-function setOidcCookie(res: Response, name: string, value: string) {
-  res.cookie(name, value, {
-    httpOnly: true,
-    secure: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: OIDC_COOKIE_TTL,
-  });
-}
+// --- In-memory rate limiting (per-IP and per-phone) -------------------------
 
-function getSafeReturnTo(value: unknown): string {
-  if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//")) {
-    return "/";
+interface RateBucket {
+  count: number;
+  resetAt: number;
+}
+const rateBuckets = new Map<string, RateBucket>();
+
+function rateLimit(key: string, windowMs: number, max: number): boolean {
+  const now = Date.now();
+  const bucket = rateBuckets.get(key);
+  if (!bucket || bucket.resetAt < now) {
+    rateBuckets.set(key, { count: 1, resetAt: now + windowMs });
+    return true;
   }
-  return value;
+  if (bucket.count >= max) return false;
+  bucket.count += 1;
+  return true;
 }
 
-async function upsertUser(claims: Record<string, unknown>) {
-  const userData = {
-    id: claims.sub as string,
-    email: (claims.email as string) || null,
-    firstName: (claims.first_name as string) || null,
-    lastName: (claims.last_name as string) || null,
-    profileImageUrl: (claims.profile_image_url || claims.picture) as
-      | string
-      | null,
-  };
-
-  const [user] = await db
-    .insert(usersTable)
-    .values(userData)
-    .onConflictDoUpdate({
-      target: usersTable.id,
-      set: {
-        ...userData,
-        updatedAt: new Date(),
-      },
-    })
-    .returning();
-  return user;
+function clientIp(req: Request): string {
+  const xff = req.headers["x-forwarded-for"];
+  if (typeof xff === "string" && xff.length > 0) {
+    return xff.split(",")[0]!.trim();
+  }
+  return req.socket.remoteAddress ?? "unknown";
 }
+
+// --- Routes -----------------------------------------------------------------
 
 router.get("/auth/user", (req: Request, res: Response) => {
   res.json(
@@ -91,275 +69,152 @@ router.get("/auth/user", (req: Request, res: Response) => {
   );
 });
 
-router.get("/login", async (req: Request, res: Response) => {
-  const config = await getOidcConfig();
-  const callbackUrl = `${getOrigin(req)}/api/callback`;
+router.post(
+  "/auth/phone/send-otp",
+  async (req: Request, res: Response): Promise<void> => {
+    const parsed = PhoneSendOtpBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "invalid phone" });
+      return;
+    }
+    const num = normalisePhone(parsed.data.countryCode, parsed.data.phone);
+    if (!num) {
+      res.status(400).json({ error: "invalid phone" });
+      return;
+    }
 
-  const returnTo = getSafeReturnTo(req.query.returnTo);
+    if (!rateLimit(`auth:otp:ip:${clientIp(req)}`, 60 * 60_000, 20)) {
+      res.status(429).json({ error: "too many requests" });
+      return;
+    }
+    if (!rateLimit(`auth:otp:ph:${num.e164}`, 60 * 60_000, 5)) {
+      res.status(429).json({ error: "too many requests" });
+      return;
+    }
 
-  const state = oidc.randomState();
-  const nonce = oidc.randomNonce();
-  const codeVerifier = oidc.randomPKCECodeVerifier();
-  const codeChallenge = await oidc.calculatePKCECodeChallenge(codeVerifier);
+    const result = await sendSmsOtp(num);
+    if (!result.ok) {
+      res.status(502).json({ error: result.error ?? "send failed" });
+      return;
+    }
+    logger.info({ e164: num.e164 }, "auth.phone.otp_sent");
+    res.json(
+      PhoneSendOtpResponse.parse({
+        ok: true,
+        ...(result.devCode ? { devCode: result.devCode } : {}),
+      }),
+    );
+  },
+);
 
-  const redirectTo = oidc.buildAuthorizationUrl(config, {
-    redirect_uri: callbackUrl,
-    scope: "openid email profile offline_access",
-    code_challenge: codeChallenge,
-    code_challenge_method: "S256",
-    prompt: "login consent",
-    state,
-    nonce,
-  });
+router.post(
+  "/auth/phone/verify-otp",
+  async (req: Request, res: Response): Promise<void> => {
+    const parsed = PhoneVerifyOtpBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "invalid input" });
+      return;
+    }
+    const num = normalisePhone(parsed.data.countryCode, parsed.data.phone);
+    if (!num) {
+      res.status(400).json({ error: "invalid phone" });
+      return;
+    }
 
-  setOidcCookie(res, "code_verifier", codeVerifier);
-  setOidcCookie(res, "nonce", nonce);
-  setOidcCookie(res, "state", state);
-  setOidcCookie(res, "return_to", returnTo);
+    if (!rateLimit(`auth:verify:ip:${clientIp(req)}`, 60 * 60_000, 30)) {
+      res.status(429).json({ error: "too many requests" });
+      return;
+    }
+    // Per-phone throttle so a leaked IP can't grind 30 attempts at one
+    // number's 6-digit code (Twilio Verify also throttles, but defence
+    // in depth is cheap).
+    if (!rateLimit(`auth:verify:ph:${num.e164}`, 15 * 60_000, 6)) {
+      res.status(429).json({ error: "too many requests" });
+      return;
+    }
 
-  res.redirect(redirectTo.href);
-});
+    const result = await verifySmsOtp(num, parsed.data.code);
+    if (!result.ok) {
+      res.status(401).json({ error: result.error ?? "incorrect code" });
+      return;
+    }
 
-// Query params are not validated because the OIDC provider may include
-// parameters not expressed in the schema.
-router.get("/callback", async (req: Request, res: Response) => {
-  const config = await getOidcConfig();
-  const callbackUrl = `${getOrigin(req)}/api/callback`;
+    // Upsert the user by their verified phone. We let the DB generate the
+    // user id on first sign-in (gen_random_uuid()).
+    const now = new Date();
+    const [user] = await db
+      .insert(usersTable)
+      .values({
+        phoneE164: num.e164,
+        phoneVerifiedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: usersTable.phoneE164,
+        set: {
+          phoneVerifiedAt: now,
+          updatedAt: now,
+        },
+      })
+      .returning();
 
-  const codeVerifier = req.cookies?.code_verifier;
-  const nonce = req.cookies?.nonce;
-  const expectedState = req.cookies?.state;
+    if (!user) {
+      logger.error({ e164: num.e164 }, "auth.phone.upsert_failed");
+      res.status(500).json({ error: "could not create session" });
+      return;
+    }
 
-  if (!codeVerifier || !expectedState) {
-    res.redirect("/api/login");
-    return;
-  }
-
-  const currentUrl = new URL(
-    `${callbackUrl}?${new URL(req.url, `http://${req.headers.host}`).searchParams}`,
-  );
-
-  let tokens: oidc.TokenEndpointResponse & oidc.TokenEndpointResponseHelpers;
-  try {
-    tokens = await oidc.authorizationCodeGrant(config, currentUrl, {
-      pkceCodeVerifier: codeVerifier,
-      expectedNonce: nonce,
-      expectedState,
-      idTokenExpected: true,
+    const authUser = AuthUser.parse({
+      id: user.id,
+      phoneE164: user.phoneE164,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      profileImageUrl: user.profileImageUrl,
     });
-  } catch {
-    res.redirect("/api/login");
-    return;
-  }
 
-  const returnTo = getSafeReturnTo(req.cookies?.return_to);
+    const sid = await createSession({
+      user: authUser,
+      kind: "phone-otp",
+      createdAt: Date.now(),
+    });
+    setSessionCookie(res, sid);
 
-  res.clearCookie("code_verifier", { path: "/" });
-  res.clearCookie("nonce", { path: "/" });
-  res.clearCookie("state", { path: "/" });
-  res.clearCookie("return_to", { path: "/" });
+    logger.info(
+      { userId: user.id, e164: num.e164 },
+      "auth.phone.session_created",
+    );
 
-  const claims = tokens.claims();
-  if (!claims) {
-    res.redirect("/api/login");
-    return;
-  }
+    res.json(
+      PhoneVerifyOtpResponse.parse({ ok: true, user: authUser }),
+    );
+  },
+);
 
-  const dbUser = await upsertUser(
-    claims as unknown as Record<string, unknown>,
-  );
-
-  const now = Math.floor(Date.now() / 1000);
-  const sessionData: SessionData = {
-    user: {
-      id: dbUser.id,
-      email: dbUser.email,
-      firstName: dbUser.firstName,
-      lastName: dbUser.lastName,
-      profileImageUrl: dbUser.profileImageUrl,
-    },
-    access_token: tokens.access_token,
-    refresh_token: tokens.refresh_token,
-    expires_at: tokens.expiresIn() ? now + tokens.expiresIn()! : claims.exp,
-  };
-
-  const sid = await createSession(sessionData);
-  setSessionCookie(res, sid);
-  res.redirect(returnTo);
-});
-
-router.get("/logout", async (req: Request, res: Response) => {
-  const config = await getOidcConfig();
-  const origin = getOrigin(req);
-
+router.post("/logout", async (req: Request, res: Response): Promise<void> => {
   const sid = getSessionId(req);
   await clearSession(res, sid);
-
-  const endSessionUrl = oidc.buildEndSessionUrl(config, {
-    client_id: process.env.REPL_ID!,
-    post_logout_redirect_uri: origin,
-  });
-
-  res.redirect(endSessionUrl.href);
+  res.json(LogoutResponse.parse({ success: true }));
 });
 
-router.post(
-  "/mobile-auth/token-exchange",
-  async (req: Request, res: Response) => {
-    const parsed = ExchangeMobileAuthorizationCodeBody.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: "Missing or invalid required parameters" });
-      return;
-    }
-
-    const { code, code_verifier, redirect_uri, state, nonce } = parsed.data;
-
-    try {
-      const config = await getOidcConfig();
-
-      const callbackUrl = new URL(redirect_uri);
-      callbackUrl.searchParams.set("code", code);
-      callbackUrl.searchParams.set("state", state);
-      callbackUrl.searchParams.set("iss", ISSUER_URL);
-
-      const tokens = await oidc.authorizationCodeGrant(config, callbackUrl, {
-        pkceCodeVerifier: code_verifier,
-        expectedNonce: nonce ?? undefined,
-        expectedState: state,
-        idTokenExpected: true,
-      });
-
-      const claims = tokens.claims();
-      if (!claims) {
-        res.status(401).json({ error: "No claims in ID token" });
-        return;
-      }
-
-      const dbUser = await upsertUser(
-        claims as unknown as Record<string, unknown>,
-      );
-
-      const now = Math.floor(Date.now() / 1000);
-      const sessionData: SessionData = {
-        user: {
-          id: dbUser.id,
-          email: dbUser.email,
-          firstName: dbUser.firstName,
-          lastName: dbUser.lastName,
-          profileImageUrl: dbUser.profileImageUrl,
-        },
-        access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token,
-        expires_at: tokens.expiresIn() ? now + tokens.expiresIn()! : claims.exp,
-      };
-
-      const sid = await createSession(sessionData);
-      res.json(ExchangeMobileAuthorizationCodeResponse.parse({ token: sid }));
-    } catch (err) {
-      req.log.error({ err }, "Mobile token exchange error");
-      res.status(500).json({ error: "Token exchange failed" });
-    }
-  },
-);
-
-router.post(
-  "/auth/mobile-pair",
-  async (req: Request, res: Response) => {
-    if (!req.isAuthenticated()) {
-      res.status(401).json({ error: "unauthorized" });
-      return;
-    }
-    const user = req.user;
-    const label =
-      typeof req.body?.label === "string" && req.body.label.trim().length > 0
-        ? String(req.body.label).slice(0, 60)
-        : "Mobile device";
-    const sessionData: SessionData = {
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        profileImageUrl: user.profileImageUrl,
-      },
-      access_token: "",
-      kind: "mobile",
-      label,
-      createdAt: Date.now(),
-    };
-    const sid = await createSession(sessionData);
-    res.json({ token: sid, ttlMs: SESSION_TTL });
-  },
-);
-
-router.get(
-  "/auth/mobile-sessions",
-  async (req: Request, res: Response) => {
-    if (!req.isAuthenticated()) {
-      res.status(401).json({ error: "unauthorized" });
-      return;
-    }
-    const userId = req.user.id;
-    const rows = await db
-      .select()
-      .from(sessionsTable)
-      .where(
-        and(
-          sql`${sessionsTable.sess}->>'kind' = 'mobile'`,
-          sql`${sessionsTable.sess}->'user'->>'id' = ${userId}`,
-          gt(sessionsTable.expire, new Date()),
-        ),
-      );
-    const sessions = rows.map((r) => {
-      const sess = r.sess as unknown as SessionData;
-      return {
-        id: r.sid.slice(0, 8),
-        label: sess.label ?? "Mobile device",
-        createdAt: sess.createdAt
-          ? new Date(sess.createdAt).toISOString()
-          : null,
-        expiresAt: r.expire.toISOString(),
-      };
-    });
-    res.json({ sessions });
-  },
-);
-
-router.post(
-  "/auth/mobile-sessions/revoke",
-  async (req: Request, res: Response) => {
-    if (!req.isAuthenticated()) {
-      res.status(401).json({ error: "unauthorized" });
-      return;
-    }
-    const userId = req.user.id;
-    const id = typeof req.body?.id === "string" ? req.body.id : "";
-    const all = req.body?.all === true;
-    if (!id && !all) {
-      res.status(400).json({ error: "id or all required" });
-      return;
-    }
-    const conditions = [
-      sql`${sessionsTable.sess}->>'kind' = 'mobile'`,
-      sql`${sessionsTable.sess}->'user'->>'id' = ${userId}`,
-    ];
-    if (!all) {
-      conditions.push(sql`left(${sessionsTable.sid}, 8) = ${id}`);
-    }
-    const result = await db
-      .delete(sessionsTable)
-      .where(and(...conditions))
-      .returning({ sid: sessionsTable.sid });
-    res.json({ revoked: result.length });
-  },
-);
-
-router.post("/mobile-auth/logout", async (req: Request, res: Response) => {
+// Legacy GET /logout — kept so any existing `<a href="/api/logout">` links
+// continue to work. Clears the session and redirects to the home page.
+router.get("/logout", async (req: Request, res: Response): Promise<void> => {
   const sid = getSessionId(req);
-  if (sid) {
-    await deleteSession(sid);
-  }
-  res.json(LogoutMobileSessionResponse.parse({ success: true }));
+  await clearSession(res, sid);
+  res.redirect("/");
+});
+
+// Legacy GET /login — the OIDC redirect is gone; bounce the browser to the
+// in-app login screen. Preserves a `returnTo` query if provided.
+router.get("/login", (req: Request, res: Response): void => {
+  const returnToRaw = req.query.returnTo;
+  const next =
+    typeof returnToRaw === "string" &&
+    returnToRaw.startsWith("/") &&
+    !returnToRaw.startsWith("//")
+      ? returnToRaw
+      : "/";
+  res.redirect(`/login?next=${encodeURIComponent(next)}`);
 });
 
 export default router;

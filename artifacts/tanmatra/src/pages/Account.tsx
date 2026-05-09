@@ -169,8 +169,18 @@ export default function Account() {
     : (vouchers.data?.purchased.length ?? 0) +
       (vouchers.data?.redeemed.length ?? 0);
 
-  const loginHref = `${API_BASE}/login?returnTo=${encodeURIComponent("/account")}`;
-  const logoutHref = `${API_BASE}/logout`;
+  const loginHref = `/login?next=${encodeURIComponent("/account")}`;
+  const handleLogout = async () => {
+    try {
+      await fetch(`${API_BASE}/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch {
+      // ignore — we still hard-redirect so cached UI clears
+    }
+    window.location.href = "/";
+  };
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
@@ -346,14 +356,13 @@ export default function Account() {
                   </p>
                 </div>
                 <Button
-                  asChild
+                  type="button"
                   variant="outline"
+                  onClick={handleLogout}
                   className="border-clinical-slate/40 text-clinical-zinc hover:text-white hover:border-clinical-gold/40 gap-2"
                 >
-                  <a href={logoutHref}>
-                    <SignOut className="w-4 h-4" aria-hidden />
-                    Sign out
-                  </a>
+                  <SignOut className="w-4 h-4" aria-hidden />
+                  Sign out
                 </Button>
               </div>
               <Separator className="bg-clinical-slate/20" />
@@ -362,7 +371,7 @@ export default function Account() {
                   className="w-3 h-3 text-clinical-sage"
                   aria-hidden
                 />
-                Secured by Replit Auth · ISO 22000 · FSSAI Licensed
+                Secured by Twilio Verify · ISO 22000 · FSSAI Licensed
               </p>
             </>
           ) : (
@@ -371,7 +380,7 @@ export default function Account() {
                 className="w-3 h-3 text-clinical-sage"
                 aria-hidden
               />
-              Secured by Replit Auth · ISO 22000 · FSSAI Licensed
+              Secured by Twilio Verify · ISO 22000 · FSSAI Licensed
             </p>
           )}
         </CardContent>

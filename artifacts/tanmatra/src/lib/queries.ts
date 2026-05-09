@@ -111,15 +111,8 @@ export function useGroupOrder(code: string | null | undefined) {
   });
 }
 
-const STATIC_MENU: MenuComboWithAvailability[] = [
-  { id: 1, name: "Grilled Atlantic Salmon", category: "wellness", kitchen: "continental", price: 48500, isAvailable: true, ingredients: ["Salmon", "Quinoa", "Broccoli"], imageUrl: "/dishes/salmon-quinoa.jpg", rdVerified: true },
-  { id: 2, name: "Performance Power Bowl", category: "performance", kitchen: "continental", price: 39500, isAvailable: true, ingredients: ["Chicken", "Brown Rice", "Sweet Potato", "Avocado"], imageUrl: "/dishes/buddha-bowl.jpg", rdVerified: true },
-  { id: 3, name: "Keto Prime Ribeye", category: "clinical", kitchen: "continental", price: 62500, isAvailable: true, ingredients: ["Ribeye", "Cauliflower", "Asparagus"], imageUrl: "/dishes/steak-keto.jpg", rdVerified: true },
-  { id: 4, name: "Miso Glazed Black Cod", category: "clinical", kitchen: "continental", price: 54500, isAvailable: true, ingredients: ["Black Cod", "Bok Choy", "Shiitake"], imageUrl: "/dishes/miso-cod.jpg", rdVerified: true },
-  { id: 5, name: "Superfood Smoothie Bowl", category: "wellness", kitchen: "continental", price: 28500, isAvailable: true, ingredients: ["Acai", "Berries", "Chia", "Almonds"], imageUrl: "/dishes/smoothie-bowl.jpg", rdVerified: true },
-  { id: 6, name: "Mediterranean Grain Salad", category: "wellness", kitchen: "continental", price: 32500, isAvailable: true, ingredients: ["Chickpeas", "Feta", "Olives"], imageUrl: "/dishes/mediterranean-salad.jpg", rdVerified: false },
-];
-
+// Public menu combos are sourced exclusively from the API/database.
+// On error, we return an empty list and let the UI render its empty state.
 export function usePublicMenu(category?: string) {
   return useQuery<MenuComboWithAvailability[]>({
     queryKey: ["menu", "public", category ?? "all"],
@@ -127,7 +120,7 @@ export function usePublicMenu(category?: string) {
       try {
         return await api<MenuComboWithAvailability[]>(`/menu${category ? `?category=${encodeURIComponent(category)}` : ""}`);
       } catch {
-        return category ? STATIC_MENU.filter((m) => m.category === category) : STATIC_MENU;
+        return [];
       }
     },
     staleTime: 1000 * 60,

@@ -5,6 +5,7 @@ import { z } from "zod";
 
 export const AuthUser = z.object({
   id: z.string(),
+  phoneE164: z.string().nullable(),
   email: z.string().nullable(),
   firstName: z.string().nullable(),
   lastName: z.string().nullable(),
@@ -19,27 +20,35 @@ export type GetCurrentAuthUserResponse = z.infer<
   typeof GetCurrentAuthUserResponse
 >;
 
-export const ExchangeMobileAuthorizationCodeBody = z.object({
-  code: z.string(),
-  code_verifier: z.string(),
-  redirect_uri: z.string(),
-  state: z.string(),
-  nonce: z.string().nullable().optional(),
-});
-export type ExchangeMobileAuthorizationCodeBody = z.infer<
-  typeof ExchangeMobileAuthorizationCodeBody
->;
+// --- Phone OTP (Twilio Verify) ---------------------------------------------
 
-export const ExchangeMobileAuthorizationCodeResponse = z.object({
-  token: z.string(),
+export const PhoneSendOtpBody = z.object({
+  countryCode: z.string().min(2).max(5),
+  phone: z.string().min(6).max(20),
 });
-export type ExchangeMobileAuthorizationCodeResponse = z.infer<
-  typeof ExchangeMobileAuthorizationCodeResponse
->;
+export type PhoneSendOtpBody = z.infer<typeof PhoneSendOtpBody>;
 
-export const LogoutMobileSessionResponse = z.object({
+export const PhoneSendOtpResponse = z.object({
+  ok: z.boolean(),
+  /** Present in dev/mock mode so the UI can show the code in a notice. */
+  devCode: z.string().optional(),
+});
+export type PhoneSendOtpResponse = z.infer<typeof PhoneSendOtpResponse>;
+
+export const PhoneVerifyOtpBody = z.object({
+  countryCode: z.string().min(2).max(5),
+  phone: z.string().min(6).max(20),
+  code: z.string().min(4).max(10),
+});
+export type PhoneVerifyOtpBody = z.infer<typeof PhoneVerifyOtpBody>;
+
+export const PhoneVerifyOtpResponse = z.object({
+  ok: z.boolean(),
+  user: AuthUser.nullable(),
+});
+export type PhoneVerifyOtpResponse = z.infer<typeof PhoneVerifyOtpResponse>;
+
+export const LogoutResponse = z.object({
   success: z.boolean(),
 });
-export type LogoutMobileSessionResponse = z.infer<
-  typeof LogoutMobileSessionResponse
->;
+export type LogoutResponse = z.infer<typeof LogoutResponse>;

@@ -7,7 +7,9 @@ interface AuthState {
   user: AuthUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  /** Navigate the browser to the in-app /login screen (phone-OTP flow). */
   login: () => void;
+  /** Clear the server session and reload to the home page. */
   logout: () => void;
 }
 
@@ -42,12 +44,21 @@ export function useAuth(): AuthState {
   }, []);
 
   const login = useCallback(() => {
-    const base = import.meta.env.BASE_URL.replace(/\/+$/, "") || "/";
-    window.location.href = `/api/login?returnTo=${encodeURIComponent(base)}`;
+    const next = window.location.pathname + window.location.search;
+    window.location.href = `/login?next=${encodeURIComponent(next)}`;
   }, []);
 
-  const logout = useCallback(() => {
-    window.location.href = "/api/logout";
+  const logout = useCallback(async () => {
+    try {
+      await fetch("/api/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch {
+      // Network errors during logout are non-fatal — we still send the user
+      // back to the home page so the cached UI clears.
+    }
+    window.location.href = "/";
   }, []);
 
   return {

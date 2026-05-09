@@ -58,7 +58,9 @@ export default function Checkout() {
   const navigate = useNavigate();
   const { items, bundleSlugs, subtotal, clear } = useCart();
   const { addOrder } = useOrders();
-  const [selectedAddress, setSelectedAddress] = useState("addr-1");
+  const [selectedAddress, setSelectedAddress] = useState<string>(
+    () => SAVED_ADDRESSES[0]?.id ?? "",
+  );
   const [selectedAddons, setSelectedAddons] = useState<Map<number, number>>(
     new Map(),
   );
