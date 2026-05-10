@@ -17,9 +17,7 @@ COPY lib lib
 COPY artifacts/api-server artifacts/api-server
 
 # `preinstall` script enforces pnpm — corepack already provides it.
-# CHANGED: Use --no-frozen-lockfile to bypass the lockfile mismatch
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
- pnpm install --no-frozen-lockfile --ignore-scripts
+RUN pnpm install --no-frozen-lockfile --ignore-scripts
 
 # Build the api-server bundle (esbuild → dist/index.mjs)
 RUN pnpm --filter @workspace/api-server run build
@@ -41,9 +39,7 @@ COPY --from=builder /app/artifacts/api-server/dist ./dist
 COPY --from=builder /app/artifacts/api-server/package.json ./package.json
 
 # Install only production deps for sharp & friends.
-# CHANGED: Use --no-frozen-lockfile to bypass the lockfile mismatch
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
- pnpm install --prod --no-frozen-lockfile --ignore-scripts
+RUN pnpm install --prod --no-frozen-lockfile --ignore-scripts
 
 # Drop privileges.
 RUN groupadd --system --gid 1001 app \
