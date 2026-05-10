@@ -22,8 +22,9 @@ RUN pnpm install --no-frozen-lockfile --ignore-scripts
 # Build the api-server bundle (esbuild → dist/index.mjs)
 RUN pnpm --filter @workspace/api-server run build
 
-# ADDED: Flatten the workspace package and create isolated production node_modules
-RUN pnpm deploy --filter @workspace/api-server --prod /app/isolated
+# Flatten the workspace package and create isolated production node_modules
+# CHANGED: Added --legacy flag to support pnpm v10+ deploy behavior
+RUN pnpm deploy --filter @workspace/api-server --prod /app/isolated --legacy
 
 # ---- runner ---------------------------------------------------------------
 FROM node:24-slim AS runner
