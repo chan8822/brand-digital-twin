@@ -16,17 +16,11 @@ node_modules
 **/*.log
 **/*.tsbuildinfo
 
-# Replit / dev-only
-.replit
-.replitignore
-replit.md
-replit.nix
+# Dev-only caches
 .cache
 .local
 
 # Repo-level dev artifacts that don't belong in a runtime image
-agent-skills
-.agents
 artifacts/mockup-sandbox
 artifacts/tanmatra-mobile
 attached_assets

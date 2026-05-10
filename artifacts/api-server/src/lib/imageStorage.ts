@@ -1,25 +1,14 @@
 import { Storage } from "@google-cloud/storage";
 import { randomUUID } from "node:crypto";
 
-// Replit sidecar GCS auth — same shape as the object-storage skill template
-// but trimmed to just the bits the menu-asset pipeline needs (upload bytes,
-// download bytes, build a public-serve URL).
-const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
-
-const storage = new Storage({
-  credentials: {
-    audience: "replit",
-    subject_token_type: "access_token",
-    token_url: `${REPLIT_SIDECAR_ENDPOINT}/token`,
-    type: "external_account",
-    credential_source: {
-      url: `${REPLIT_SIDECAR_ENDPOINT}/credential`,
-      format: { type: "json", subject_token_field_name: "access_token" },
-    },
-    universe_domain: "googleapis.com",
-  },
-  projectId: "",
-});
+// Standard Google Cloud Storage client. Authentication uses Application
+// Default Credentials (ADC) so the same code works across deploy targets
+// without modification:
+//   * Cloud Run / GKE / Cloud Build: runtime service account is used
+//   * Local dev: set GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json
+//   * CI: same env var, or workload-identity federation
+// See https://cloud.google.com/docs/authentication/application-default-credentials
+const storage = new Storage();
 
 function privateRoot(): { bucket: string; prefix: string } {
   const dir = process.env["PRIVATE_OBJECT_DIR"];

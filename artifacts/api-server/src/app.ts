@@ -39,13 +39,7 @@ const allowedOrigins = (process.env["ALLOWED_ORIGINS"] ?? "")
   .map((s) => s.trim())
   .filter(Boolean);
 
-const replitDomains = (process.env["REPLIT_DOMAINS"] ?? "")
-  .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean)
-  .flatMap((d) => [`https://${d}`, `http://${d}`]);
-
-const corsAllowList = new Set<string>([...allowedOrigins, ...replitDomains]);
+const corsAllowList = new Set<string>(allowedOrigins);
 
 app.use(
   cors({

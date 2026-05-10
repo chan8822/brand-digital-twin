@@ -41,16 +41,10 @@ function isOpsUser(userId: string | null): boolean {
 }
 
 function parseCorsAllowList(): string[] {
-  const allowed = (process.env["ALLOWED_ORIGINS"] ?? "")
+  return (process.env["ALLOWED_ORIGINS"] ?? "")
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
-  const replit = (process.env["REPLIT_DOMAINS"] ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .flatMap((d) => [`https://${d}`, `http://${d}`]);
-  return [...allowed, ...replit];
 }
 
 async function authenticate(req: IncomingMessage): Promise<SocketAuthState> {
