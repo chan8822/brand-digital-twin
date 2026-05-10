@@ -19,10 +19,10 @@ export interface DailyActivity {
  * We lazy-require them inside try/catch so the JS bundle still loads under
  * Expo Go (and on web), and only the actual `read*Activity` calls fail.
  *
- * For real device integration, build a custom dev client (or ship via
- * Replit's Expo Launch) — the config plugins in app.json then provision
- * the iOS HealthKit entitlement + Info.plist usage strings, and the
- * Android Health Connect intent filter + permissions.
+ * For real device integration, build a custom dev client — the config
+ * plugins in app.json then provision the iOS HealthKit entitlement +
+ * Info.plist usage strings, and the Android Health Connect intent
+ * filter + permissions.
  */
 
 type AppleHealthKit = {
