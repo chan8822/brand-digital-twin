@@ -283,15 +283,21 @@ function ApptCard({
             </a>
           )}
           {onCancel && appt.status === "scheduled" && (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => onCancel(appt.id)}
-              className="h-7 text-[11px] text-clinical-zinc hover:text-red-300 ml-auto"
-            >
-              <X className="w-3 h-3 mr-1" />
-              Cancel
-            </Button>
+            <div className="ml-auto flex items-center gap-2">
+              <span className="text-[10px] text-clinical-zinc/70 hidden sm:inline">
+                Free cancellation up to 12h before
+              </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => onCancel(appt.id)}
+                aria-label="Cancel appointment (free up to 12h before)"
+                className="min-h-9 text-[11px] text-clinical-zinc hover:text-red-300"
+              >
+                <X className="w-3 h-3 mr-1" />
+                Cancel
+              </Button>
+            </div>
           )}
         </div>
       </CardContent>

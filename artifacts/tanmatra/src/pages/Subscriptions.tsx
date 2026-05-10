@@ -12,6 +12,16 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import {
   CalendarClock,
@@ -172,6 +182,12 @@ export default function Subscriptions() {
       toast.error("Action failed", { description: m });
     }
   };
+
+  // ---------- Destructive-action safeguards ----------
+  // Cancel and Skip were previously one-click and irreversible. Both now
+  // gate behind a confirmation dialog. (audit dim 4.3)
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [skipConfirm, setSkipConfirm] = useState<{ deliveryId: number; date: string } | null>(null);
 
   if (unauthorized) {
     return (
@@ -354,9 +370,7 @@ export default function Subscriptions() {
         onResume={() =>
           wrap(subscriptionsApi.resume(detail.subscription.id), "Subscription resumed")
         }
-        onCancel={() =>
-          wrap(subscriptionsApi.cancel(detail.subscription.id), "Subscription cancelled")
-        }
+        onCancel={() => setCancelConfirmOpen(true)}
         onEditWindow={() => {
           setPendingWindow(detail.subscription.deliveryWindow);
           setWindowEditOpen(true);
@@ -368,7 +382,7 @@ export default function Subscriptions() {
           )
         }
         onSkip={(d) =>
-          wrap(subscriptionsApi.skip(d.id), "Delivery skipped — credits added")
+          setSkipConfirm({ deliveryId: d.id, date: d.scheduledFor })
         }
         onSwap={(d) => {
           const next = [...d.items];
@@ -520,6 +534,82 @@ export default function Subscriptions() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ------ Cancel confirmation (destructive) ------ */}
+      <AlertDialog open={cancelConfirmOpen} onOpenChange={setCancelConfirmOpen}>
+        <AlertDialogContent className="bg-clinical-surface border-clinical-slate/30">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">
+              Cancel this subscription?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-clinical-zinc text-xs">
+              All upcoming deliveries will be cancelled. Any prepaid credits
+              remain on your account and can be used for one-off orders.
+              You can re-subscribe at any time, but you'll lose your current
+              delivery window. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="min-h-11">
+              Keep subscription
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="min-h-11 bg-red-500 text-white hover:bg-red-600"
+              onClick={() => {
+                if (detail) {
+                  void wrap(
+                    subscriptionsApi.cancel(detail.subscription.id),
+                    "Subscription cancelled",
+                  );
+                }
+              }}
+            >
+              Yes, cancel subscription
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ------ Skip-delivery confirmation ------ */}
+      <AlertDialog
+        open={skipConfirm !== null}
+        onOpenChange={(open) => !open && setSkipConfirm(null)}
+      >
+        <AlertDialogContent className="bg-clinical-surface border-clinical-slate/30">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">
+              Skip this delivery?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-clinical-zinc text-xs">
+              {skipConfirm
+                ? `We'll skip your ${new Date(skipConfirm.date).toLocaleDateString(
+                    "en-IN",
+                    { weekday: "long", day: "numeric", month: "short" },
+                  )} delivery and credit the value back to your wallet. The next delivery in your schedule is unaffected.`
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="min-h-11">
+              Keep delivery
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="min-h-11 bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90"
+              onClick={() => {
+                if (skipConfirm) {
+                  void wrap(
+                    subscriptionsApi.skip(skipConfirm.deliveryId),
+                    "Delivery skipped — credits added",
+                  );
+                  setSkipConfirm(null);
+                }
+              }}
+            >
+              Yes, skip
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -596,7 +686,8 @@ function DetailView({
                   size="sm"
                   variant="ghost"
                   onClick={onCancel}
-                  className="text-clinical-zinc hover:text-red-400 gap-1.5 text-xs"
+                  aria-label="Cancel this subscription (free up to 24h before next delivery)"
+                  className="min-h-9 text-clinical-zinc hover:text-red-400 gap-1.5 text-xs"
                 >
                   <XCircle className="w-3.5 h-3.5" /> Cancel
                 </Button>

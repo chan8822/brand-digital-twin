@@ -6,6 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   useChallenge,
   useJoinChallenge,
   useLeaveChallenge,
@@ -96,9 +106,19 @@ export default function ChallengeDetail() {
   const upcomingCheckIns = checkIns ?? [];
   const SOON_MS = 24 * 60 * 60 * 1000;
 
+  const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
+
   const handleJoin = () => {
     join.mutate(undefined, {
-      onSuccess: () => toast.success(`Joined ${challenge.title}`),
+      onSuccess: () => {
+        // Reveal a "what happens next" panel so the user understands what
+        // they just signed up for. Per UX audit J-C finding 6.
+        setShowWelcome(true);
+        toast.success(`Joined ${challenge.title}`, {
+          description: "Check your email for your start-day instructions.",
+        });
+      },
       onError: (err: unknown) => {
         const msg = err instanceof Error ? err.message : "Could not join";
         if (msg.startsWith("401")) {
@@ -112,7 +132,10 @@ export default function ChallengeDetail() {
 
   const handleLeave = () => {
     leave.mutate(undefined, {
-      onSuccess: () => toast.success(`Left ${challenge.title}`),
+      onSuccess: () => {
+        toast.success(`Left ${challenge.title}`);
+        setLeaveConfirmOpen(false);
+      },
     });
   };
 
@@ -177,9 +200,9 @@ export default function ChallengeDetail() {
           {joined ? (
             <Button
               variant="outline"
-              onClick={handleLeave}
+              onClick={() => setLeaveConfirmOpen(true)}
               disabled={leave.isPending}
-              className="border-clinical-slate/40 text-clinical-zinc hover:text-white"
+              className="min-h-11 border-clinical-slate/40 text-clinical-zinc hover:text-white"
             >
               Leave challenge
             </Button>
@@ -187,7 +210,7 @@ export default function ChallengeDetail() {
             <Button
               onClick={handleJoin}
               disabled={join.isPending}
-              className="bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90"
+              className="min-h-11 bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90"
             >
               {join.isPending ? "Joining…" : "Join challenge"}
             </Button>
@@ -356,6 +379,89 @@ export default function ChallengeDetail() {
           </div>
         )}
       </section>
+
+      {/* ------ Leave-challenge confirmation ------ */}
+      <AlertDialog open={leaveConfirmOpen} onOpenChange={setLeaveConfirmOpen}>
+        <AlertDialogContent className="bg-clinical-surface border-clinical-slate/30">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">
+              Leave this challenge?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-clinical-zinc text-xs">
+              You'll lose your spot in the cohort. Your check-in history is
+              preserved if you re-join later, but your current streak resets
+              to zero. You can re-join while spots are open.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="min-h-11">
+              Stay in challenge
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="min-h-11 bg-red-500 text-white hover:bg-red-600"
+              onClick={handleLeave}
+            >
+              Yes, leave
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ------ Post-join welcome — sets expectations for first-time joiners ------ */}
+      <AlertDialog open={showWelcome} onOpenChange={setShowWelcome}>
+        <AlertDialogContent className="bg-clinical-surface border-clinical-gold/30">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">
+              You're in — here's what's next
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-clinical-zinc text-xs">
+              Welcome to {challenge.title}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <ul className="text-xs text-clinical-zinc space-y-2 leading-relaxed">
+            <li className="flex items-start gap-2">
+              <span className="mt-0.5 text-clinical-gold font-bold">1.</span>
+              <span>
+                <strong className="text-white">Starts {formatRelative(challenge.startsAt)}.</strong>
+                {" "}You'll get a kickoff email with your day-1 plan.
+              </span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="mt-0.5 text-clinical-gold font-bold">2.</span>
+              <span>
+                <strong className="text-white">Daily check-ins</strong> appear
+                on this page once the challenge is live — log meals, mood,
+                and metrics in 30 seconds.
+              </span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="mt-0.5 text-clinical-gold font-bold">3.</span>
+              <span>
+                <strong className="text-white">Cohort feed</strong> below lets
+                you ask questions and cheer on others. {challenge.rdName} drops
+                in a few times a week.
+              </span>
+            </li>
+            {challenge.bundleSlug && (
+              <li className="flex items-start gap-2">
+                <span className="mt-0.5 text-clinical-gold font-bold">4.</span>
+                <span>
+                  <strong className="text-white">Optional meal bundle</strong>{" "}
+                  available below — RD-curated dishes that fit the protocol.
+                </span>
+              </li>
+            )}
+          </ul>
+          <AlertDialogFooter>
+            <AlertDialogAction
+              className="min-h-11 bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold"
+              onClick={() => setShowWelcome(false)}
+            >
+              Got it
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
