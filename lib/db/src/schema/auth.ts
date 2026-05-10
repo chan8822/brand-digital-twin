@@ -8,7 +8,9 @@ export const sessionsTable = pgTable(
   {
     sid: varchar("sid").primaryKey(),
     sess: jsonb("sess").notNull(),
-    expire: timestamp("expire").notNull(),
+    // `withTimezone: true` to match every other timestamp column in
+    // the codebase. Drizzle emits `timestamp with time zone`.
+    expire: timestamp("expire", { withTimezone: true }).notNull(),
   },
   (table) => [index("IDX_session_expire").on(table.expire)],
 );

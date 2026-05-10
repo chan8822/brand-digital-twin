@@ -1,8 +1,11 @@
-import { pgTable, serial, varchar, integer, timestamp, jsonb, uniqueIndex, doublePrecision } from "drizzle-orm/pg-core";
+import { index, pgTable, serial, varchar, integer, timestamp, jsonb, uniqueIndex, doublePrecision } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./auth";
+import { ridersTable } from "./riders";
+import { deliverySlotsTable } from "./deliverySlots";
+import { pickupLocationsTable } from "./pickupLocations";
 
 export const ordersTable = pgTable(
   "orders",
@@ -27,10 +30,10 @@ export const ordersTable = pgTable(
     dropLat: doublePrecision("drop_lat"),
     dropLng: doublePrecision("drop_lng"),
     items: jsonb("items").notNull().$type<Array<{ id: number; name: string; qty: number; price: number }>>(),
-    riderId: integer("rider_id"),
+    riderId: integer("rider_id").references(() => ridersTable.id, { onDelete: "set null" }),
     scheduledFor: timestamp("scheduled_for", { withTimezone: true }),
-    deliverySlotId: integer("delivery_slot_id"),
-    pickupLocationId: integer("pickup_location_id"),
+    deliverySlotId: integer("delivery_slot_id").references(() => deliverySlotsTable.id, { onDelete: "set null" }),
+    pickupLocationId: integer("pickup_location_id").references(() => pickupLocationsTable.id, { onDelete: "set null" }),
     fulfillmentType: varchar("fulfillment_type", { length: 16 }).notNull().default("delivery"),
     ecoPackagingOptIn: integer("eco_packaging_opt_in").notNull().default(0),
     deliveryInstructions: varchar("delivery_instructions", { length: 512 }),
@@ -41,6 +44,14 @@ export const ordersTable = pgTable(
     uniqueIndex("uniq_orders_user_external")
       .on(table.userId, table.externalOrderId)
       .where(sql`external_order_id is not null`),
+    // Postgres does NOT auto-index FK columns. These three indexes back
+    // the most common access patterns:
+    //   - "my orders" page (filter by user, sort by createdAt desc)
+    //   - ops dashboards (filter by status, sort by createdAt desc)
+    //   - rider load heuristics (filter by riderId)
+    index("idx_orders_user_created").on(table.userId, table.createdAt.desc()),
+    index("idx_orders_status_created").on(table.status, table.createdAt.desc()),
+    index("idx_orders_rider").on(table.riderId),
   ],
 );
 

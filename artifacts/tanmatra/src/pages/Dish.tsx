@@ -577,6 +577,11 @@ export default function Dish() {
                               className="border-clinical-slate/40"
                             />
                             <span className="text-xs text-white">{opt.name}</span>
+                            {opt.default && (
+                              <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-clinical-gold/15 text-clinical-gold border border-clinical-gold/30 font-bold leading-none">
+                                Chef's pick
+                              </span>
+                            )}
                           </div>
                           <span
                             className={`tabular-nums text-xs font-medium ${
@@ -615,6 +620,11 @@ export default function Dish() {
                                 className="border-clinical-slate/40"
                               />
                               <span className="text-xs text-white">{opt.name}</span>
+                              {opt.default && (
+                                <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-clinical-gold/15 text-clinical-gold border border-clinical-gold/30 font-bold leading-none">
+                                  Recommended
+                                </span>
+                              )}
                             </div>
                             <span className="tabular-nums text-xs font-medium text-clinical-sage">
                               +{formatPrice(opt.priceModifier)}

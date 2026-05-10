@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   DISHES as STATIC_DISHES,
@@ -60,13 +59,22 @@ async function fetchPublicCatalog(): Promise<DishData[]> {
   const res = await fetch(`${API_BASE}/menu/public`, { credentials: "include" });
   if (!res.ok) throw new Error(`menu/public ${res.status}`);
   const json = (await res.json()) as { dishes: DishData[] };
-  return json.dishes;
+  // CRITICAL: never wipe the runtime cache with an empty payload. An
+  // empty `/menu/public` response (DB un-seeded, server misconfigured)
+  // would otherwise leave `getDishBySlug` returning undefined for every
+  // static dish — manifesting as blank Menu and "Dish not found" on
+  // every dish link. Keep the static seed as ground truth in that case.
+  if (json.dishes && json.dishes.length > 0) {
+    setRuntime(json.dishes);
+    return json.dishes;
+  }
+  return STATIC_DISHES;
 }
 
 /** React-Query hook that fetches the merged DB+static catalog. While loading
- * (or on error) returns the static fallback so the UI never blanks out.
- * Side-effect: keeps the module-level runtime cache in sync so the synchronous
- * `getDishById` / `getDishBySlug` helpers reflect editor changes. */
+ * (or on error or empty) returns the static fallback so the UI never blanks
+ * out. Side-effect: keeps the module-level runtime cache in sync so the
+ * synchronous `getDishById` / `getDishBySlug` helpers reflect editor changes. */
 export function useMenuCatalog(): {
   dishes: DishData[];
   isLoading: boolean;
@@ -79,14 +87,14 @@ export function useMenuCatalog(): {
     initialData: STATIC_DISHES,
   });
 
-  useEffect(() => {
-    if (q.data && q.data !== runtimeDishes) {
-      setRuntime(q.data);
-    }
-  }, [q.data]);
+  // `[] ?? STATIC_DISHES` returns `[]`, not the fallback — coerce empty
+  // arrays through the fallback so consumers that filter & paginate still
+  // have something to render.
+  const dishes =
+    q.data && q.data.length > 0 ? q.data : STATIC_DISHES;
 
   return {
-    dishes: q.data ?? STATIC_DISHES,
+    dishes,
     isLoading: q.isLoading,
     isError: q.isError,
   };

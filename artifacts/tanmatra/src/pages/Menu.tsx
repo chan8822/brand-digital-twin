@@ -31,6 +31,7 @@ import {
   type Lifestyle,
 } from "@/lib/dishEnrichment";
 import {
+  PROTOCOLS,
   PROTOCOL_LABELS,
   PROTOCOL_TAGLINES,
   isProtocol,
@@ -263,7 +264,7 @@ export default function Menu() {
         <h1 className="font-serif text-3xl sm:text-4xl font-semibold tracking-tight text-white">
           {activeProtocol
             ? `${PROTOCOL_LABELS[activeProtocol]} Protocol — qualifying dishes`
-            : "Curated Selections"}
+            : "Menu"}
         </h1>
         <p className="text-xs uppercase tracking-[0.18em] text-clinical-zinc font-medium">
           {activeProtocol
@@ -317,10 +318,10 @@ export default function Menu() {
             <div>
               <p className="text-[10px] uppercase tracking-[0.18em] text-clinical-zinc font-semibold flex items-center gap-1.5">
                 <Package className="w-3 h-3 text-clinical-gold" />
-                Combo Bundles
+                Curated Selections
               </p>
               <h2 className="text-lg font-serif text-white mt-0.5">
-                Save more with curated combos
+                RD-curated combos
               </h2>
             </div>
           </div>
@@ -519,6 +520,46 @@ export default function Menu() {
             <X className="w-4 h-4" />
           </button>
         )}
+      </div>
+
+      {/* Protocol filter chips — promotes the clinical-grade IA axis to
+          a first-class browsing dimension (was previously only reachable
+          via deep-link `?protocol=` from the Community → Wellness/
+          Performance/Clinical pages). Per UX audit dimension 1.2. */}
+      <div className="space-y-2">
+        <p className="text-[10px] uppercase tracking-[0.18em] text-clinical-zinc font-semibold">
+          Protocol
+        </p>
+        <div
+          className="flex gap-2 overflow-x-auto md:flex-wrap -mx-4 px-4 md:mx-0 md:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          role="group"
+          aria-label="Filter by clinical protocol"
+        >
+          {(["all", ...PROTOCOLS] as const).map((p) => {
+            const active = p === "all" ? !activeProtocol : activeProtocol === p;
+            const label = p === "all" ? "All Protocols" : PROTOCOL_LABELS[p];
+            return (
+              <button
+                key={p}
+                type="button"
+                onClick={() => {
+                  const next = new URLSearchParams(searchParams);
+                  if (p === "all") next.delete("protocol");
+                  else next.set("protocol", p);
+                  setSearchParams(next, { replace: true });
+                }}
+                aria-pressed={active}
+                className={`shrink-0 inline-flex items-center px-3 min-h-[36px] rounded-full border text-[11px] uppercase tracking-[0.12em] font-semibold transition-all ${
+                  active
+                    ? "border-clinical-gold/50 bg-clinical-gold/10 text-clinical-gold shadow-[0_0_12px_rgba(212,175,55,0.18)]"
+                    : "border-clinical-slate/30 text-clinical-zinc hover:border-clinical-gold/30 hover:text-clinical-gold"
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Lifestyle filter chips */}

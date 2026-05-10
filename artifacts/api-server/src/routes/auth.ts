@@ -21,12 +21,16 @@ import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
-const isProduction = process.env["NODE_ENV"] === "production";
+// Cookies are `secure` by default — only opt out when explicitly
+// running on plain HTTP (local dev). Production / staging / preview
+// envs are HTTPS-only, so a typo in NODE_ENV (e.g. "prod") cannot
+// silently downgrade the cookie to be sent over HTTP.
+const isInsecureLocalDev = process.env["INSECURE_DEV_COOKIE"] === "1";
 
 function setSessionCookie(res: Response, sid: string) {
   res.cookie(SESSION_COOKIE, sid, {
     httpOnly: true,
-    secure: isProduction,
+    secure: !isInsecureLocalDev,
     sameSite: "lax",
     path: "/",
     maxAge: SESSION_TTL,

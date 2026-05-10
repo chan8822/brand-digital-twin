@@ -65,7 +65,10 @@ const NAV_ROUTES: RouteEntry[] = [
   { label: "Therapeutic plans", to: "/plans", icon: Stethoscope, group: "Plan", keywords: "rd protocols" },
   { label: "Book a dietitian", to: "/rd", icon: HandHeart, group: "Plan", keywords: "consult appointment" },
   { label: "My care", to: "/appointments", icon: Calendar, group: "Plan", keywords: "appointments visits" },
+  { label: "Checkout appointment", to: "/checkout-appointment", icon: Calendar, group: "Plan", keywords: "rd consult booking pay" },
   { label: "Subscribe to a plan", to: "/subscribe", icon: Notepad, group: "Plan" },
+  { label: "Become an RD partner", to: "/rd-partners", icon: Stethoscope, group: "Plan", keywords: "dietitian apply join" },
+  { label: "Apply to be an RD partner", to: "/rd-partners/apply", icon: Notepad, group: "Plan", keywords: "wizard rd onboarding application" },
 
   { label: "Track current order", to: "/track", icon: MapPin, group: "Track" },
   { label: "Order history", to: "/orders", icon: Package, group: "Track" },

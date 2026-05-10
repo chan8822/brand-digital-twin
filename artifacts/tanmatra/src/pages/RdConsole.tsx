@@ -458,7 +458,7 @@ function UserDetail({
                     <a
                       href={l.fileUrl}
                       target="_blank"
-                      rel="noreferrer"
+                      rel="noopener noreferrer"
                       className="text-xs text-white hover:text-clinical-gold inline-flex items-center gap-1"
                     >
                       {l.fileName}

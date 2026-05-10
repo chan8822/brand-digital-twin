@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,7 +28,7 @@ import {
 } from "@/lib/fulfillmentApi";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Sparkles, Leaf, Store, Truck, NotebookPen } from "lucide-react";
+import { Sparkles, Leaf, Store, Truck, NotebookPen, ArrowRight } from "lucide-react";
 import AddOnRail from "@/components/checkout/AddOnRail";
 import { addonsApi } from "@/lib/marketplaceApi";
 import {
@@ -878,6 +878,29 @@ export default function Checkout() {
               </div>
               <ShieldCheck className="w-4 h-4 text-clinical-sage ml-auto" aria-label="Encrypted payment" />
             </div>
+
+            {/* Recurring upsell — closes the missing one-off → subscription
+                bridge. Per UX audit Journey-B finding 4. We don't toggle
+                the order itself into a subscription (that requires backend
+                contract changes); we deep-link into /subscribe with the
+                current cart's items so the user finishes there post-payment. */}
+            <Link
+              to={`/subscribe?fromCart=1&cadence=weekly`}
+              className="block rounded-md border border-clinical-gold/30 bg-clinical-gold/5 px-3 py-3 hover:bg-clinical-gold/10"
+            >
+              <div className="flex items-start gap-2">
+                <Sparkles className="w-4 h-4 text-clinical-gold mt-0.5 shrink-0" aria-hidden="true" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-white leading-tight">
+                    Make this a weekly subscription — save up to 15%
+                  </p>
+                  <p className="text-[10px] text-clinical-zinc leading-tight mt-0.5">
+                    Skip checkout next week. Pause, swap or cancel any time.
+                  </p>
+                </div>
+                <ArrowRight className="w-3.5 h-3.5 text-clinical-gold mt-1 shrink-0" aria-hidden="true" />
+              </div>
+            </Link>
           </CardContent>
         </Card>
       </div>

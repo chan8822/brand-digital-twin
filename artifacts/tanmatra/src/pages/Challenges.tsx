@@ -89,10 +89,22 @@ export default function Challenges() {
                     {c.tagline}
                   </p>
                 </div>
+                {c.goalTags.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {c.goalTags.slice(0, 3).map((tag) => (
+                      <span
+                        key={tag}
+                        className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-clinical-surface-elevated text-clinical-zinc border border-clinical-slate/30"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 <div className="flex items-center gap-3 text-[10px] text-clinical-zinc/80 tabular-nums">
                   <span className="flex items-center gap-1">
                     <CalendarDays className="w-3 h-3 text-clinical-gold" />
-                    {c.durationDays} days
+                    {c.durationDays}-day program
                   </span>
                   <span className="flex items-center gap-1">
                     <Users className="w-3 h-3 text-clinical-gold" />
@@ -104,11 +116,15 @@ export default function Challenges() {
                 </p>
                 <div className="mt-auto pt-2">
                   <Link to={`/challenges/${c.slug}`}>
+                    {/* CTA promoted from outline to solid gold so non-members
+                        can identify the join action from the index page —
+                        per UX audit Journey-C finding 5. Mobile-first
+                        min-h-11 touch target. */}
                     <Button
                       size="sm"
-                      className="w-full bg-clinical-gold/15 text-clinical-gold border border-clinical-gold/40 hover:bg-clinical-gold/25 h-9 text-xs"
+                      className="w-full min-h-11 bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold text-xs"
                     >
-                      View challenge
+                      View challenge →
                     </Button>
                   </Link>
                 </div>

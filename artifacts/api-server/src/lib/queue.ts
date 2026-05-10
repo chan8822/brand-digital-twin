@@ -17,6 +17,7 @@ export interface OrderPipelineJob {
 let connection: Redis | null = null;
 let orderPipelineQueue: Queue<OrderPipelineJob> | null = null;
 let workersStarted = false;
+let activeWorker: Worker<OrderPipelineJob> | null = null;
 
 function getConnection(): Redis | null {
   if (connection) return connection;
@@ -102,13 +103,33 @@ export function startWorkers(): void {
     return;
   }
   workersStarted = true;
+  const concurrency = Number(process.env["ORDER_PIPELINE_CONCURRENCY"] ?? 4);
   const worker = new Worker<OrderPipelineJob>(QUEUE_NAMES.orderPipeline, orderPipelineProcessor, {
     connection: conn,
+    concurrency: Number.isFinite(concurrency) && concurrency > 0 ? concurrency : 4,
   });
   worker.on("failed", (job, err) =>
-    logger.error({ err, jobId: job?.id }, "order pipeline job failed"),
+    logger.error({ err, jobId: job?.id, attemptsMade: job?.attemptsMade }, "order pipeline job failed"),
   );
-  logger.info("BullMQ worker started for order-pipeline");
+  worker.on("error", (err) =>
+    logger.error({ err }, "order pipeline worker error"),
+  );
+  activeWorker = worker;
+  logger.info({ concurrency }, "BullMQ worker started for order-pipeline");
+}
+
+/**
+ * Drain the worker so in-flight jobs complete cleanly. Called from the
+ * SIGTERM handler in index.ts.
+ */
+export async function stopWorkers(): Promise<void> {
+  if (!activeWorker) return;
+  try {
+    await activeWorker.close();
+  } finally {
+    activeWorker = null;
+    workersStarted = false;
+  }
 }
 
 export async function scheduleOrderAdvance(
@@ -121,7 +142,16 @@ export async function scheduleOrderAdvance(
   await queue.add(
     `advance-${orderId}-${step}`,
     { orderId, step },
-    { delay: delayMs, attempts: 3, backoff: { type: "exponential", delay: 2000 } },
+    {
+      delay: delayMs,
+      attempts: 3,
+      backoff: { type: "exponential", delay: 2000 },
+      // Keep the last 1k completed and last 5k failed jobs so we have a
+      // visible failure trail without unbounded Redis growth. (Default
+      // is unbounded.)
+      removeOnComplete: { count: 1000 },
+      removeOnFail: { count: 5000 },
+    },
   );
   return true;
 }

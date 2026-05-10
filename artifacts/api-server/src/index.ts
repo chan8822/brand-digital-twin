@@ -2,7 +2,7 @@ import { createServer } from "node:http";
 import app from "./app";
 import { logger } from "./lib/logger";
 import { initRealtime } from "./lib/realtime";
-import { startWorkers } from "./lib/queue";
+import { startWorkers, stopWorkers } from "./lib/queue";
 import { startLoyaltyScheduler } from "./lib/loyaltyScheduler";
 import { startAnomalyScheduler } from "./lib/anomalyScheduler";
 import { startAnomalyDigestSender } from "./lib/anomalyDigestSender";
@@ -11,6 +11,8 @@ import { startMealPlanScheduler } from "./lib/mealPlanScheduler";
 import { startAnalyticsScheduler } from "./lib/analyticsScheduler";
 import { ensureSafeViews } from "./lib/safeSql";
 import { resumeActiveSimulations } from "./lib/riderSim";
+import { purgeExpiredRateLimits } from "./lib/rateLimit";
+import { purgeExpiredSessions } from "./lib/auth";
 
 const rawPort = process.env["PORT"];
 
@@ -54,3 +56,69 @@ async function start(): Promise<void> {
   });
 }
 void start();
+
+// --- Background hygiene -----------------------------------------------------
+//
+// `rateLimitsTable` and `sessionsTable` rows are only deleted as a side effect
+// of the next request that hits the same key. Without a sweeper, expired rows
+// accumulate forever under attack. Run a low-frequency cleanup on every node;
+// concurrent purges are safe.
+const HOUR = 60 * 60 * 1000;
+const purgeTimer = setInterval(() => {
+  Promise.all([
+    purgeExpiredRateLimits().catch((err) =>
+      logger.error({ err }, "purgeExpiredRateLimits failed"),
+    ),
+    purgeExpiredSessions().catch((err) =>
+      logger.error({ err }, "purgeExpiredSessions failed"),
+    ),
+  ]).catch(() => {
+    /* swallowed above */
+  });
+}, HOUR);
+purgeTimer.unref();
+
+// --- Process-level safety nets ---------------------------------------------
+process.on("unhandledRejection", (reason) => {
+  logger.error({ reason }, "unhandledRejection");
+});
+process.on("uncaughtException", (err) => {
+  logger.fatal({ err }, "uncaughtException");
+  // Exit so the orchestrator can restart us cleanly. We don't try to
+  // continue — node's invariants are no longer guaranteed.
+  process.exit(1);
+});
+
+// --- Graceful shutdown ------------------------------------------------------
+//
+// SIGTERM is what Cloud Run / Kubernetes / Docker send on rollout.
+// Stop accepting connections, drain in-flight work, then exit.
+let shuttingDown = false;
+async function shutdown(signal: NodeJS.Signals): Promise<void> {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  logger.info({ signal }, "shutdown initiated");
+  // Give the load balancer ~10 s to notice the readiness flip before
+  // we slam the connection. Tunable per environment.
+  const HARD_DEADLINE_MS = 15_000;
+  const killer = setTimeout(() => {
+    logger.error("hard shutdown deadline reached — exiting");
+    process.exit(1);
+  }, HARD_DEADLINE_MS);
+  killer.unref();
+
+  httpServer.close((err) => {
+    if (err) logger.error({ err }, "httpServer.close failed");
+  });
+
+  try {
+    await stopWorkers();
+  } catch (err) {
+    logger.error({ err }, "stopWorkers failed");
+  }
+  clearInterval(purgeTimer);
+  logger.info("shutdown complete");
+  process.exit(0);
+}
+process.on("SIGTERM", () => void shutdown("SIGTERM"));
+process.on("SIGINT", () => void shutdown("SIGINT"));

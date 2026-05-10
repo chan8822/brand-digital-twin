@@ -3,6 +3,8 @@ import type { ModelMessage } from "ai";
 import { z } from "zod/v4";
 import { runAgent, type GatewayEvent } from "../lib/ai";
 import { getUserBriefForRequest } from "../lib/userBrief";
+import { requireAuth } from "../middlewares/requireAuth";
+import { rateLimit } from "../lib/rateLimit";
 
 const router: IRouter = Router();
 
@@ -10,10 +12,14 @@ const ChatTurnSchema = z.object({
   role: z.enum(["user", "agent"]),
   text: z.string(),
 });
+// `dishSlug` is interpolated into the model prompt below. Constrain it
+// to a strict slug regex so it can't smuggle quotes / instructions
+// through the `[Context: ...]` envelope (prompt-injection mitigation).
+const SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,118}[a-z0-9])?$/;
 const ChatBodySchema = z.object({
   message: z.string().min(1).max(8000),
   history: z.array(ChatTurnSchema).max(50).optional(),
-  dishSlug: z.string().max(120).optional(),
+  dishSlug: z.string().max(120).regex(SLUG_PATTERN).optional(),
 });
 
 function writeEvent(res: Response, event: object): void {
@@ -28,7 +34,7 @@ function startStream(res: Response): void {
   res.flushHeaders?.();
 }
 
-router.post("/coach-agent/chat", async (req: Request, res: Response) => {
+router.post("/coach-agent/chat", requireAuth, async (req: Request, res: Response) => {
   const parsed = ChatBodySchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "invalid body" });
@@ -36,6 +42,14 @@ router.post("/coach-agent/chat", async (req: Request, res: Response) => {
   }
   const body = parsed.data;
   const message = body.message.trim();
+
+  // Per-user rate limit so a compromised account can't drive Gemini
+  // calls at unbounded cost. 30 chats / 5 min window.
+  const userId = req.user!.id;
+  if (!(await rateLimit(`coach-agent:user:${userId}`, 5 * 60_000, 30))) {
+    res.status(429).json({ error: "too many requests" });
+    return;
+  }
 
   startStream(res);
 
@@ -57,10 +71,7 @@ router.post("/coach-agent/chat", async (req: Request, res: Response) => {
   // Resolve brief up-front so refusal-synthesized RD cards can include
   // the same premium-consult balance a real book_rd_appointment call
   // would surface.
-  const userId = req.user?.id ?? null;
-  const brief = userId
-    ? await getUserBriefForRequest(req, userId).catch(() => null)
-    : null;
+  const brief = await getUserBriefForRequest(req, userId).catch(() => null);
   const premiumConsultsRemaining = brief?.premium?.rdConsultsRemaining ?? null;
 
   let refusedReason: string | null = null;

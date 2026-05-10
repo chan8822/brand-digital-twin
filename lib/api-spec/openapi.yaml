@@ -7,6 +7,12 @@ info:
 servers:
   - url: /api
     description: Base API path
+# Default security: every operation accepts a session cookie. Public
+# operations (e.g. /menu/public, /auth/phone/send-otp) override with
+# `security: []` to declare they do not require auth. Admin operations
+# may additionally accept `adminToken`.
+security:
+  - sessionCookie: []
 tags:
   - name: health
     description: Health operations
@@ -899,6 +905,28 @@ paths:
         "404": { description: Not found }
         "409": { description: Plan is not draft }
 components:
+  securitySchemes:
+    # Phone-OTP session — server reads the `sid` cookie set by
+    # /auth/phone/verify-otp.
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: sid
+      description: |
+        Phone-OTP session id. Set automatically by the server on
+        /auth/phone/verify-otp. Sent on every same-origin request as
+        an httpOnly cookie. Routes annotated "(auth required)" require
+        a valid session.
+    # Operator / RD admin static-token gate. Sent in the
+    # `x-admin-token` request header for ops & catalog endpoints.
+    adminToken:
+      type: apiKey
+      in: header
+      name: x-admin-token
+      description: |
+        Operator-only static token for admin / catalog routes. Falls
+        back to OPS_USER_IDS / CATALOG_USER_IDS allowlist matching
+        when the caller has a valid session cookie.
   schemas:
     MealPlanSlot:
       type: string

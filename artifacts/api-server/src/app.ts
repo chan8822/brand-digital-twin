@@ -111,4 +111,18 @@ app.use(authMiddleware);
 
 app.use("/api", router);
 
+// Catch-all error handler. Must be the LAST middleware so any route
+// that calls `next(err)` (or throws inside an async handler that
+// Express 5 forwards) lands here. We log the full error server-side
+// but only surface a generic shape to the client — never the stack.
+app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
+  const status =
+    err && typeof err === "object" && "status" in err && typeof (err as { status?: unknown }).status === "number"
+      ? ((err as { status: number }).status as number)
+      : 500;
+  req.log?.error({ err, status }, "unhandled error");
+  if (res.headersSent) return;
+  res.status(status).json({ error: status >= 500 ? "internal error" : "bad request" });
+});
+
 export default app;

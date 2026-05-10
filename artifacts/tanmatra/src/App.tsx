@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
@@ -43,19 +44,21 @@ import RdProfile from "@/pages/RdProfile";
 import Appointments from "@/pages/Appointments";
 import RdConsole from "@/pages/RdConsole";
 import CheckoutAppointment from "@/pages/CheckoutAppointment";
-import AdminOpsDashboard from "@/pages/AdminOpsDashboard";
-import AdminAiRuns from "@/pages/AdminAiRuns";
-import AdminOpsAgent from "@/pages/AdminOpsAgent";
-import AdminCmsAgent from "@/pages/AdminCmsAgent";
-import AdminForecasting from "@/pages/AdminForecasting";
-import AdminMenuEngineering from "@/pages/AdminMenuEngineering";
-import AdminAnalytics from "@/pages/AdminAnalytics";
-import AdminSupportTickets from "@/pages/AdminSupportTickets";
+// Admin surfaces are gated behind /admin/* and 99% of customers never
+// hit them — code-split so they don't ship in the customer bundle.
+const AdminOpsDashboard = lazy(() => import("@/pages/AdminOpsDashboard"));
+const AdminAiRuns = lazy(() => import("@/pages/AdminAiRuns"));
+const AdminOpsAgent = lazy(() => import("@/pages/AdminOpsAgent"));
+const AdminCmsAgent = lazy(() => import("@/pages/AdminCmsAgent"));
+const AdminForecasting = lazy(() => import("@/pages/AdminForecasting"));
+const AdminMenuEngineering = lazy(() => import("@/pages/AdminMenuEngineering"));
+const AdminAnalytics = lazy(() => import("@/pages/AdminAnalytics"));
+const AdminSupportTickets = lazy(() => import("@/pages/AdminSupportTickets"));
 import RdPartnersLanding from "@/pages/RdPartnersLanding";
 import RdPartnersWizard from "@/pages/RdPartnersWizard";
-import AdminRdApplications from "@/pages/AdminRdApplications";
-import AdminCommunityModeration from "@/pages/AdminCommunityModeration";
-import AdminModeration from "@/pages/AdminModeration";
+const AdminRdApplications = lazy(() => import("@/pages/AdminRdApplications"));
+const AdminCommunityModeration = lazy(() => import("@/pages/AdminCommunityModeration"));
+const AdminModeration = lazy(() => import("@/pages/AdminModeration"));
 import GroupOrder from "@/pages/GroupOrder";
 import Recipes from "@/pages/Recipes";
 import RecipeDetail from "@/pages/RecipeDetail";
@@ -67,13 +70,13 @@ import CorporateAdmin from "@/pages/CorporateAdmin";
 import CorporateInvite from "@/pages/CorporateInvite";
 import OfficeLunch from "@/pages/OfficeLunch";
 import CorporateLunchPlanner from "@/pages/CorporateLunchPlanner";
-import AdminSalesConsole from "@/pages/AdminSalesConsole";
-import AdminSalesAccount from "@/pages/AdminSalesAccount";
+const AdminSalesConsole = lazy(() => import("@/pages/AdminSalesConsole"));
+const AdminSalesAccount = lazy(() => import("@/pages/AdminSalesAccount"));
 import Vouchers from "@/pages/Vouchers";
 import Premium from "@/pages/Premium";
 import Marketplace from "@/pages/Marketplace";
 import MarketplaceItemPage from "@/pages/MarketplaceItem";
-import Styleguide from "@/pages/Styleguide";
+const Styleguide = lazy(() => import("@/pages/Styleguide"));
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -118,6 +121,7 @@ export default function App() {
                 <Header />
                 <OnboardingQuizGate />
                 <main className="flex-1 pb-20 md:pb-0">
+                  <Suspense fallback={null}>
                   <Routes>
                     <Route path="/" element={<Home />} />
                     <Route path="/menu" element={<Menu />} />
@@ -284,6 +288,7 @@ export default function App() {
                     )}
                     <Route path="*" element={<NotFound />} />
                   </Routes>
+                  </Suspense>
                 </main>
                 <Footer />
                 <BottomNav />

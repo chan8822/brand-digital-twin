@@ -36,6 +36,12 @@ npm-debug.log
 yarn-error.log
 testem.log
 /typings
+*.log
+
+# Environment files (never commit secrets)
+.env
+.env.*
+!.env.example
 
 # System Files
 .DS_Store

@@ -1,28 +1,55 @@
-# Use the same Node version you are using on Replit
-FROM node:24-slim
+# syntax=docker/dockerfile:1.7
 
-# Enable pnpm
+# ---- builder ---------------------------------------------------------------
+FROM node:24-slim AS builder
+
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+ENV NODE_ENV=production
+RUN corepack enable
+
+WORKDIR /app
+
+# Install all deps (including dev) so we can run the build.
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc ./
+COPY tsconfig.base.json tsconfig.json ./
+COPY artifacts/api-server/package.json artifacts/api-server/
+COPY lib lib
+COPY artifacts/api-server artifacts/api-server
+
+# `preinstall` script enforces pnpm — corepack already provides it.
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+    pnpm install --frozen-lockfile --ignore-scripts
+
+# Build the api-server bundle (esbuild → dist/index.mjs)
+RUN pnpm --filter @workspace/api-server run build
+
+# ---- runner ---------------------------------------------------------------
+FROM node:24-slim AS runner
+
+ENV NODE_ENV=production
+WORKDIR /app
+
+# `sharp` is externalised by the api-server bundle, so we need its node
+# binary at runtime. Install just the production deps for the api-server
+# package — workspaces are flattened by pnpm deploy.
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
 
-# Set the working directory
-WORKDIR /app
+COPY --from=builder /app/artifacts/api-server/dist ./dist
+COPY --from=builder /app/artifacts/api-server/package.json ./package.json
 
-# Copy all your workspace files into the container
-COPY . .
+# Install only production deps for sharp & friends.
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+    pnpm install --prod --no-frozen-lockfile --ignore-scripts
 
-# TRICK THE BOUNCER: Force the environment variable so the preinstall script passes
-ENV npm_config_user_agent="pnpm/9.0.0"
+# Drop privileges.
+RUN groupadd --system --gid 1001 app \
+ && useradd  --system --uid 1001 --gid app --home /app app \
+ && chown -R app:app /app
+USER app
 
-# Install dependencies for the whole monorepo
-RUN pnpm install
-
-# Build only the API server
-RUN pnpm --filter @workspace/api-server run build
-
-# Expose the port Google Cloud expects
 EXPOSE 8080
 
-# The command to start the API in production mode
-CMD ["pnpm", "--filter", "@workspace/api-server", "run", "start"]
+CMD ["node", "--enable-source-maps", "./dist/index.mjs"]

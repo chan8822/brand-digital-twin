@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { type Request, type Response } from "express";
 import { db, sessionsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { AuthUser } from "@workspace/api-zod";
 
 export const SESSION_COOKIE = "sid";
@@ -70,4 +70,13 @@ export function getSessionId(req: Request): string | undefined {
     return authHeader.slice(7);
   }
   return req.cookies?.[SESSION_COOKIE];
+}
+
+/**
+ * Sweep sessions whose expiry has passed. Without this, abandoned
+ * sessions (user never returns) accumulate in `sessionsTable` forever.
+ * Safe to call concurrently from multiple replicas.
+ */
+export async function purgeExpiredSessions(): Promise<void> {
+  await db.delete(sessionsTable).where(sql`${sessionsTable.expire} < now()`);
 }

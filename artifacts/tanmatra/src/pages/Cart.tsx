@@ -26,7 +26,9 @@ import {
   findSmartSwap,
 } from "@/lib/preferencesMatch";
 import { getDishById, useMenuCatalog } from "@/lib/menuData";
-import { ShieldAlert, Sparkles } from "lucide-react";
+import { ShieldAlert, Sparkles, AlertCircle, Clock } from "lucide-react";
+import { fulfillmentApi, type DeliverySlotOption } from "@/lib/fulfillmentApi";
+import { useEffect } from "react";
 
 export default function Cart() {
   const navigate = useNavigate();
@@ -35,10 +37,40 @@ export default function Cart() {
   // Hydrate the runtime menu cache so getDishById reflects CMS edits.
   useMenuCatalog();
 
+  // Surface the next-available delivery slot in the cart so users see the
+  // fulfillment commitment BEFORE checkout instead of discovering it at
+  // payment time. Per UX audit Journey-B finding 1.
+  const [nextSlot, setNextSlot] = useState<DeliverySlotOption | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void fulfillmentApi
+      .listSlots()
+      .then((r) => {
+        if (!alive) return;
+        const candidate =
+          r.slots
+            .filter((s) => !s.full)
+            .sort((a, b) => a.startsAt.localeCompare(b.startsAt))[0] ?? null;
+        setNextSlot(candidate);
+      })
+      .catch(() => {
+        /* slot info is best-effort; cart still works */
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   const conflictMap = (() => {
     const out = new Map<
       string,
-      { warnings: string[]; blocked: boolean; swapSlug: string | null; swapName: string | null }
+      {
+        warnings: string[];
+        blocked: boolean;
+        matchedAllergens: string[];
+        swapSlug: string | null;
+        swapName: string | null;
+      }
     >();
     if (!preferences) return out;
     for (const item of items) {
@@ -50,6 +82,7 @@ export default function Cart() {
       out.set(item.lineId, {
         warnings: m.warnings,
         blocked: m.blocked,
+        matchedAllergens: m.matchedAllergens,
         swapSlug: swap?.slug ?? null,
         swapName: swap?.name ?? null,
       });
@@ -57,6 +90,9 @@ export default function Cart() {
     return out;
   })();
   const conflictCount = conflictMap.size;
+  const allergenCount = Array.from(conflictMap.values()).filter(
+    (c) => c.matchedAllergens.length > 0,
+  ).length;
 
   const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
   const total = subtotal + deliveryFee;
@@ -109,19 +145,35 @@ export default function Cart() {
         </div>
 
         {conflictCount > 0 && (
-          <Card className="bg-orange-500/5 border-orange-500/30">
-            <CardContent className="p-3 text-xs text-orange-400 flex items-start gap-2">
-              <ShieldAlert className="w-4 h-4 mt-0.5 shrink-0" />
+          <Card className={
+            allergenCount > 0
+              ? "bg-red-500/10 border-red-500/40"
+              : "bg-orange-500/5 border-orange-500/30"
+          }>
+            <CardContent className={`p-3 text-xs flex items-start gap-2 ${
+              allergenCount > 0 ? "text-red-300" : "text-orange-400"
+            }`}>
+              {allergenCount > 0 ? (
+                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />
+              ) : (
+                <ShieldAlert className="w-4 h-4 mt-0.5 shrink-0" />
+              )}
               <span>
-                {conflictCount} item{conflictCount === 1 ? "" : "s"} in your
-                cart conflict with your{" "}
+                {allergenCount > 0 && (
+                  <strong className="block uppercase tracking-wider text-[10px] text-red-300 mb-0.5">
+                    Allergen warning
+                  </strong>
+                )}
+                {allergenCount > 0
+                  ? `${allergenCount} item${allergenCount === 1 ? "" : "s"} contain${allergenCount === 1 ? "s" : ""} ingredients flagged in your `
+                  : `${conflictCount} item${conflictCount === 1 ? "" : "s"} in your cart conflict with your `}
                 <Link
                   to="/preferences"
-                  className="underline underline-offset-2 hover:text-orange-300"
+                  className="underline underline-offset-2 hover:text-white"
                 >
-                  preferences
+                  {allergenCount > 0 ? "allergen profile" : "preferences"}
                 </Link>
-                . Smart Swap suggestions are shown below.
+                . {allergenCount > 0 ? "Review carefully before checkout." : "Smart Swap suggestions are shown below."}
               </span>
             </CardContent>
           </Card>
@@ -249,33 +301,61 @@ export default function Cart() {
                       {formatPrice(item.unitPrice * item.quantity)}
                     </p>
 
-                    {conflictMap.get(item.lineId) && (
-                      <div className="mt-2 rounded-lg border border-orange-500/30 bg-orange-500/5 p-2.5 space-y-2">
-                        <div className="flex items-start gap-1.5 text-[11px] text-orange-400">
-                          <ShieldAlert className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                          <span className="leading-tight">
-                            {conflictMap.get(item.lineId)!.warnings[0]}
-                          </span>
-                        </div>
-                        {conflictMap.get(item.lineId)!.swapSlug && (
+                    {conflictMap.get(item.lineId) && (() => {
+                      const c = conflictMap.get(item.lineId)!;
+                      const hasAllergen = c.matchedAllergens.length > 0;
+                      // Allergen mismatches get a louder treatment than
+                      // preference warnings — different border/icon/badge —
+                      // so users can't miss a clinically-significant flag
+                      // among generic "this is high-spice" notes.
+                      return (
+                      <div className={`mt-2 rounded-lg border p-2.5 space-y-2 ${
+                        hasAllergen
+                          ? "border-red-500/50 bg-red-500/10"
+                          : "border-orange-500/30 bg-orange-500/5"
+                      }`}>
+                        {hasAllergen && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-red-500/20 text-red-300 border border-red-500/40">
+                              <AlertCircle className="w-2.5 h-2.5" aria-hidden="true" />
+                              Allergen
+                            </span>
+                            <span className="text-[11px] text-red-300 font-semibold">
+                              Contains {c.matchedAllergens.join(", ")}
+                            </span>
+                          </div>
+                        )}
+                        {c.warnings
+                          .filter((w) => !hasAllergen || !w.toLowerCase().includes("allergens"))
+                          .map((w, i) => (
+                            <div
+                              key={i}
+                              className={`flex items-start gap-1.5 text-[11px] ${
+                                hasAllergen ? "text-red-200" : "text-orange-400"
+                              }`}
+                            >
+                              <ShieldAlert className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                              <span className="leading-tight">{w}</span>
+                            </div>
+                          ))}
+                        {c.swapSlug && (
                           <div className="flex items-center justify-between gap-2 text-[11px]">
                             <span className="flex items-center gap-1 text-clinical-gold">
                               <Sparkles className="w-3 h-3" />
                               Smart swap:{" "}
-                              <span className="text-white">
-                                {conflictMap.get(item.lineId)!.swapName}
-                              </span>
+                              <span className="text-white">{c.swapName}</span>
                             </span>
                             <Link
-                              to={`/dish/${conflictMap.get(item.lineId)!.swapSlug}`}
-                              className="text-clinical-gold hover:underline shrink-0"
+                              to={`/dish/${c.swapSlug}`}
+                              className="min-h-9 inline-flex items-center text-clinical-gold hover:underline shrink-0"
                             >
                               View →
                             </Link>
                           </div>
                         )}
                       </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 </div>
               </CardContent>
@@ -317,6 +397,27 @@ export default function Cart() {
               <span className="text-sm font-semibold text-white">Total</span>
               <span className="tabular-nums text-lg font-bold text-clinical-gold">{formatPrice(total)}</span>
             </div>
+
+            {nextSlot && (
+              <div className="flex items-center justify-between gap-2 rounded-md border border-clinical-slate/30 bg-clinical-surface-elevated/50 px-3 py-2 text-[11px]">
+                <div className="flex items-center gap-1.5 text-clinical-zinc min-w-0">
+                  <Clock className="w-3 h-3 text-clinical-gold shrink-0" aria-hidden="true" />
+                  <span className="truncate">
+                    Next slot:{" "}
+                    <span className="text-white font-medium">
+                      {new Date(nextSlot.startsAt).toLocaleString("en-IN", {
+                        weekday: "short",
+                        day: "numeric",
+                        month: "short",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </span>
+                </div>
+                <span className="text-clinical-zinc/70 shrink-0">Change at checkout</span>
+              </div>
+            )}
 
             <Button
               onClick={() => navigate("/checkout")}
