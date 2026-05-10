@@ -18,8 +18,7 @@ COPY lib lib
 COPY artifacts/api-server artifacts/api-server
 
 # `preinstall` script enforces pnpm — corepack already provides it.
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-    pnpm install --frozen-lockfile --ignore-scripts
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 # Build the api-server bundle (esbuild → dist/index.mjs)
 RUN pnpm --filter @workspace/api-server run build
