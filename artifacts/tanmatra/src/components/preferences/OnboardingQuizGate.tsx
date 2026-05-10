@@ -4,7 +4,20 @@ import { Sparkles, X } from "lucide-react";
 import IntakeQuiz from "./IntakeQuiz";
 import { usePreferences } from "@/lib/preferencesContext";
 
-const DISMISS_KEY = "tanmatra:quiz-banner-dismissed:v1";
+// Store the dismissal as a timestamp in localStorage rather than a flag
+// in sessionStorage, so dismissing once silences the banner for 7 days
+// across tabs and sessions instead of re-popping on every new tab.
+const DISMISS_KEY = "tanmatra:quiz-banner-dismissed-at:v2";
+const DISMISS_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+function isDismissed(): boolean {
+  if (typeof window === "undefined") return false;
+  const raw = window.localStorage.getItem(DISMISS_KEY);
+  if (!raw) return false;
+  const ts = Number(raw);
+  if (!Number.isFinite(ts)) return false;
+  return Date.now() - ts < DISMISS_TTL_MS;
+}
 
 export default function OnboardingQuizGate() {
   const { needsQuiz } = usePreferences();
@@ -23,7 +36,7 @@ export default function OnboardingQuizGate() {
       setBannerVisible(false);
       return;
     }
-    if (typeof window !== "undefined" && window.sessionStorage.getItem(DISMISS_KEY) === "1") {
+    if (isDismissed()) {
       setBannerVisible(false);
       return;
     }
@@ -33,7 +46,7 @@ export default function OnboardingQuizGate() {
   const dismissBanner = () => {
     setBannerVisible(false);
     if (typeof window !== "undefined") {
-      window.sessionStorage.setItem(DISMISS_KEY, "1");
+      window.localStorage.setItem(DISMISS_KEY, String(Date.now()));
     }
   };
 

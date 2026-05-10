@@ -320,16 +320,20 @@ export default function Home() {
               your metabolic profile, and prepared in ISO-certified kitchens.
             </p>
 
-            <div className="flex flex-wrap gap-3 pt-2">
-              <Link to="/preferences">
-                <Button className="bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold gap-2 h-11 px-6 shadow-clinical-lg">
-                  Take 60-second assessment <ArrowRight className="w-4 h-4" />
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <Link to="/preferences" className="flex-1 sm:flex-none">
+                <Button className="w-full sm:w-auto bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold gap-2 h-12 sm:h-11 px-6 shadow-clinical-lg">
+                  Take metabolic assessment <ArrowRight className="w-4 h-4" />
                 </Button>
               </Link>
-              <Link to="/menu">
-                <Button variant="outline" className="border-clinical-slate/40 text-clinical-zinc hover:text-white hover:border-clinical-gold/40 h-11 px-6">
-                  Explore Menu
-                </Button>
+              {/* Demoted from outline button to text link so the assessment
+                  is unambiguously the primary CTA. The Menu is reachable
+                  from the bottom nav on mobile and the top nav on desktop. */}
+              <Link
+                to="/menu"
+                className="inline-flex items-center justify-center gap-1 text-xs text-clinical-zinc hover:text-white underline-offset-4 hover:underline px-2 min-h-11"
+              >
+                or browse the menu first <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
 
@@ -352,10 +356,13 @@ export default function Home() {
           </p>
           <div className="grid grid-cols-4 gap-2">
             {[
+              // Assessment is the highest-leverage first-time CTA.
+              // Orders is reachable from the bottom nav, so we drop it
+              // here in favour of the assessment tile.
+              { to: "/preferences", label: "Assess", icon: SparklesIcon },
               { to: "/menu", label: "Menu", icon: Utensils },
               { to: "/meal-planner", label: "Plan", icon: CalendarClock },
               { to: "/rd", label: "Book RD", icon: HeartHandshake },
-              { to: "/orders", label: "Orders", icon: RefreshCw },
             ].map((a) => (
               <Link
                 key={a.to}
