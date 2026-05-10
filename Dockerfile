@@ -16,11 +16,14 @@ COPY artifacts/api-server/package.json artifacts/api-server/
 COPY lib lib
 COPY artifacts/api-server artifacts/api-server
 
-# `preinstall` script enforces pnpm — corepack already provides it.
+# Enforce pnpm install without frozen lockfile validation
 RUN pnpm install --no-frozen-lockfile --ignore-scripts
 
 # Build the api-server bundle (esbuild → dist/index.mjs)
 RUN pnpm --filter @workspace/api-server run build
+
+# ADDED: Flatten the workspace package and create isolated production node_modules
+RUN pnpm deploy --filter @workspace/api-server --prod /app/isolated
 
 # ---- runner ---------------------------------------------------------------
 FROM node:24-slim AS runner
@@ -28,18 +31,12 @@ FROM node:24-slim AS runner
 ENV NODE_ENV=production
 WORKDIR /app
 
-# `sharp` is externalised by the api-server bundle, so we need its node
-# binary at runtime. Install just the production deps for the api-server
-# package — workspaces are flattened by pnpm deploy.
-ENV PNPM_HOME="/pnpm"
-ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable
+# We no longer need pnpm or corepack in the runner stage! 
+# We just copy the isolated node_modules directly from the builder.
 
 COPY --from=builder /app/artifacts/api-server/dist ./dist
-COPY --from=builder /app/artifacts/api-server/package.json ./package.json
-
-# Install only production deps for sharp & friends.
-RUN pnpm install --prod --no-frozen-lockfile --ignore-scripts
+COPY --from=builder /app/isolated/package.json ./package.json
+COPY --from=builder /app/isolated/node_modules ./node_modules
 
 # Drop privileges.
 RUN groupadd --system --gid 1001 app \
