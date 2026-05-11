@@ -31,6 +31,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Sparkles, Leaf, Store, Truck, NotebookPen, ArrowRight } from "lucide-react";
 import AddOnRail from "@/components/checkout/AddOnRail";
+import CheckoutStepper, { type CheckoutStep } from "@/components/checkout/CheckoutStepper";
 import { addonsApi } from "@/lib/marketplaceApi";
 import {
   MapPin,
@@ -484,9 +485,21 @@ export default function Checkout() {
     navigate(`/track?orderId=${encodeURIComponent(orderId)}`);
   };
 
+  const stepperStep: CheckoutStep = confirmOpen ? "payment" : "address";
+  const stepperAddressComplete =
+    !!activeAddr &&
+    (fulfillmentType === "delivery"
+      ? selectedSlotId !== null
+      : selectedPickupId !== null);
+
   return (
     <div className="max-w-4xl mx-auto p-4 pb-40 lg:pb-4 grid grid-cols-1 lg:grid-cols-5 gap-6 animate-in fade-in duration-500">
       <div className="lg:col-span-3 space-y-5">
+        <CheckoutStepper
+          current={stepperStep}
+          reviewComplete={items.length > 0}
+          addressComplete={stepperAddressComplete}
+        />
         <Card className="bg-clinical-surface border-clinical-slate/20">
           <CardContent className="p-5 space-y-4">
             <div className="flex items-center gap-2">

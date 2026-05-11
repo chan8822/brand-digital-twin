@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import MacroOverlay from "@/components/dish/MacroOverlay";
 import NutritionLabelModal from "@/components/dish/NutritionLabelModal";
+import DishNutritionCard from "@/components/dish/DishNutritionCard";
 import { buildNutritionLabel } from "@/lib/nutritionLabel";
 import WhyThisMealPanel from "@/components/dish/WhyThisMealPanel";
 import CoachAgentWidget from "@/components/ai/CoachAgent";
@@ -348,6 +349,8 @@ export default function Dish() {
               )}
             </div>
           </div>
+
+          <DishNutritionCard macros={meal.macros} />
 
           {preferences &&
             meal &&
