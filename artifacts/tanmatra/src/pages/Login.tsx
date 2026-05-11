@@ -37,6 +37,14 @@ export default function Login() {
   const next =
     rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/";
 
+  // Reveal the admin shortcut in any environment when the URL carries
+  // `?unlock=<UNLOCK_PHRASE>`. Keeps the button hidden from regular users
+  // (it's gated by `import.meta.env.DEV` in dev too as a fallback) without
+  // requiring DevTools. Rotate UNLOCK_PHRASE if it leaks.
+  const UNLOCK_PHRASE = "tanmatra-ops-2026";
+  const adminShortcutVisible =
+    import.meta.env.DEV || params.get("unlock") === UNLOCK_PHRASE;
+
   const [step, setStep] = useState<Step>("phone");
   const [countryCode, setCountryCode] = useState("+91");
   const [phone, setPhone] = useState("");
@@ -223,7 +231,7 @@ export default function Login() {
             Secured by Twilio Verify
           </p>
 
-          {import.meta.env.DEV && (
+          {adminShortcutVisible && (
             <>
               <Separator className="bg-clinical-slate/20 my-2" />
               <Button
@@ -232,10 +240,10 @@ export default function Login() {
                 className="w-full border-clinical-slate/30 text-clinical-zinc hover:text-clinical-gold hover:border-clinical-gold/40 gap-2 text-xs"
               >
                 <Pulse className="w-3.5 h-3.5" />
-                Continue as Operations (dev)
+                Continue as Operations
               </Button>
               <p className="text-[10px] text-clinical-zinc text-center">
-                Local dev shortcut for /admin/ops dashboards
+                Internal shortcut to /admin
               </p>
             </>
           )}
