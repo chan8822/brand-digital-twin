@@ -26,6 +26,24 @@ export interface PhoneE164 {
   e164: string;
 }
 
+/**
+ * Mask an E.164 number for log output. Keeps the country code and the
+ * last 2 digits visible (enough for ops staff to disambiguate two
+ * concurrent OTP attempts on the same line) but hides the rest. We
+ * deliberately log the masked form at info level only — the unmasked
+ * number stays in the DB row that the OTP belongs to. Error-level
+ * logs that need the full number for forensics still pass it raw.
+ */
+export function maskE164(e164: string): string {
+  const m = /^(\+\d{1,4})(\d+)$/.exec(e164);
+  if (!m) return "***";
+  const cc = m[1] ?? "";
+  const rest = m[2] ?? "";
+  if (rest.length <= 2) return `${cc}**`;
+  const tail = rest.slice(-2);
+  return `${cc}${"*".repeat(rest.length - 2)}${tail}`;
+}
+
 export function normalisePhone(
   countryCodeRaw: string,
   phoneRaw: string,
@@ -100,7 +118,10 @@ export async function sendSmsOtp(number: PhoneE164): Promise<SendOtpResult> {
         error: "Phone verification is temporarily unavailable",
       };
     }
-    logger.info({ e164: number.e164, code: MOCK_CODE }, "sms.otp.mock_send");
+    logger.info(
+      { e164: maskE164(number.e164), code: MOCK_CODE },
+      "sms.otp.mock_send",
+    );
     return { ok: true, devCode: MOCK_CODE };
   }
 
@@ -117,7 +138,7 @@ export async function sendSmsOtp(number: PhoneE164): Promise<SendOtpResult> {
       return { ok: false, error: "Could not send verification code" };
     }
     logger.info(
-      { e164: number.e164, status: result.status },
+      { e164: maskE164(number.e164), status: result.status },
       "sms.otp.sent",
     );
     return { ok: true };
@@ -145,10 +166,10 @@ export async function verifySmsOtp(
       return { ok: false, error: "Phone verification is temporarily unavailable" };
     }
     if (code === MOCK_CODE) {
-      logger.info({ e164: number.e164 }, "sms.otp.mock_verify_ok");
+      logger.info({ e164: maskE164(number.e164) }, "sms.otp.mock_verify_ok");
       return { ok: true };
     }
-    logger.info({ e164: number.e164 }, "sms.otp.mock_verify_bad_code");
+    logger.info({ e164: maskE164(number.e164) }, "sms.otp.mock_verify_bad_code");
     return { ok: false, error: "Incorrect code" };
   }
 
@@ -165,7 +186,7 @@ export async function verifySmsOtp(
       return { ok: false, error: "Could not verify code" };
     }
     if (result.status === "approved") {
-      logger.info({ e164: number.e164 }, "sms.otp.verified");
+      logger.info({ e164: maskE164(number.e164) }, "sms.otp.verified");
       return { ok: true };
     }
     return { ok: false, error: "Incorrect code" };

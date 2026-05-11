@@ -37,6 +37,27 @@ const sessionSameSite = ((): "lax" | "strict" | "none" => {
   return v === "none" || v === "strict" ? v : "lax";
 })();
 
+// Browsers reject SameSite=None cookies that aren't also Secure, which
+// would silently break login on the cross-origin deployment. Refuse to
+// boot if the operator sets that combination — it's never what they
+// meant. (Production never sets INSECURE_DEV_COOKIE, so this only
+// catches misconfigured dev/preview environments.)
+if (sessionSameSite === "none" && isInsecureLocalDev) {
+  throw new Error(
+    "SESSION_SAMESITE=none requires Secure cookies; unset INSECURE_DEV_COOKIE.",
+  );
+}
+// In production, "lax" is the right default for same-origin SPA+API
+// deployments, but a cross-origin deployment will silently lose its
+// session on every cross-site request. Surface the choice loudly so
+// ops sees it in boot logs.
+if (process.env["NODE_ENV"] === "production") {
+  logger.info(
+    { sameSite: sessionSameSite },
+    "session cookie SameSite policy",
+  );
+}
+
 function setSessionCookie(res: Response, sid: string) {
   res.cookie(SESSION_COOKIE, sid, {
     httpOnly: true,

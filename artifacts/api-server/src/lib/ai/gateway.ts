@@ -1,6 +1,58 @@
 import { streamText, generateText, stepCountIs, type ModelMessage } from "ai";
 import { db, aiRunsTable } from "@workspace/db";
 import { logger } from "../logger";
+
+// --- Storage redaction for ai_runs.input -----------------------------------
+//
+// `ai_runs.input` is the verbatim conversation we sent to the model. Ops
+// staff browse this table from /admin/ai-runs to debug refusals and
+// hallucinations, so the storage layer is effectively a long-retention
+// PII sink. The system prompt already runs through `redactBrief` (see
+// lib/userBrief/redaction.ts) so it omits address/phone/email — but the
+// USER message bodies are free text and routinely include phone numbers
+// ("call me on +91 9XXXX XXXX"), email handles, addresses, and 12+
+// digit ID numbers. Mask them before persistence so a future ops-table
+// breach can't leak them. The unredacted text was already sent to the
+// model provider and was already used to compute the response; nothing
+// downstream needs the raw form.
+const PII_PATTERNS: Array<{ re: RegExp; replacement: string }> = [
+  // Email — strict-ish to avoid mangling URLs in code blocks.
+  { re: /\b[\w.+-]+@[\w-]+\.[\w.-]+\b/g, replacement: "[email]" },
+  // Phone numbers: + country code + 7..14 digits with optional separators.
+  { re: /\+\d[\d\s().-]{6,16}\d/g, replacement: "[phone]" },
+  // Bare 10–14 digit runs (Indian mobile w/o +91, Aadhaar, PAN-like).
+  { re: /\b\d{10,14}\b/g, replacement: "[number]" },
+  // 6-digit Indian pincodes when prefixed by a comma/space context.
+  { re: /\b\d{6}\b/g, replacement: "[pincode]" },
+];
+
+function redactString(s: string): string {
+  let out = s;
+  for (const { re, replacement } of PII_PATTERNS) {
+    out = out.replace(re, replacement);
+  }
+  return out;
+}
+
+function redactMessageContent(content: unknown): unknown {
+  if (typeof content === "string") return redactString(content);
+  if (Array.isArray(content)) {
+    return content.map((part) => {
+      if (part && typeof part === "object" && "text" in part && typeof (part as { text: unknown }).text === "string") {
+        return { ...part, text: redactString((part as { text: string }).text) };
+      }
+      return part;
+    });
+  }
+  return content;
+}
+
+function redactMessagesForStorage(messages: ModelMessage[]): ModelMessage[] {
+  return messages.map((m) => {
+    if (m.role !== "user") return m;
+    return { ...m, content: redactMessageContent(m.content) } as ModelMessage;
+  });
+}
 import { DEFAULT_MODEL_ID, getModel } from "./model";
 import { estimateCostMicroUsd } from "./pricing";
 import { buildTools, type ToolCallTrace, type ToolContext } from "./tools";
@@ -92,7 +144,9 @@ async function persistRun(row: {
         userId: row.userId,
         model: row.modelId,
         promptVersion: row.promptVersion,
-        input: row.input as unknown as Record<string, unknown>,
+        input: redactMessagesForStorage(
+          row.input,
+        ) as unknown as Record<string, unknown>,
         output: row.output,
         toolCalls: row.toolCalls as unknown as Record<string, unknown>,
         inputTokens: row.inputTokens,

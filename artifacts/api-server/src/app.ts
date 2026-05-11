@@ -25,9 +25,25 @@ app.use(
   }),
 );
 
+// The API server only emits JSON, never HTML, so a browser shouldn't
+// ever execute a response from us. CSP at the API layer is mostly
+// belt-and-braces — the SPA's own index.html ships its own CSP via
+// <meta http-equiv> for the document context. We still set Helmet's
+// other headers (HSTS, X-Frame-Options=DENY, X-Content-Type-Options,
+// Referrer-Policy, etc.) which DO apply to non-HTML responses.
 app.use(
   helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: {
+      // Tight policy suitable for a JSON API: refuse all sub-resource
+      // loading from the response. If a future route ever returns HTML
+      // (it should not), nothing can be loaded into it.
+      directives: {
+        defaultSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+        baseUri: ["'none'"],
+        formAction: ["'none'"],
+      },
+    },
     crossOriginResourcePolicy: { policy: "cross-origin" },
   }),
 );
