@@ -83,3 +83,4 @@ Operator / RD surfaces (admin-gated routes under `/admin/*` and `/rd-console`).
 
 - See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
 - See `.local/skills/artifacts` for the artifact lifecycle (creating new artifacts, registering them).
+
