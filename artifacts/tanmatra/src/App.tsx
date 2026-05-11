@@ -65,6 +65,7 @@ const RdConsole = lazy(() => import("@/pages/RdConsole"));
 const CheckoutAppointment = lazy(() => import("@/pages/CheckoutAppointment"));
 // Admin surfaces are gated behind /admin/* and 99% of customers never
 // hit them — code-split so they don't ship in the customer bundle.
+const AdminIndex = lazy(() => import("@/pages/AdminIndex"));
 const AdminOpsDashboard = lazy(() => import("@/pages/AdminOpsDashboard"));
 const AdminAiRuns = lazy(() => import("@/pages/AdminAiRuns"));
 const AdminOpsAgent = lazy(() => import("@/pages/AdminOpsAgent"));
@@ -176,6 +177,14 @@ export default function App() {
                     <Route
                       path="/checkout-appointment"
                       element={<CheckoutAppointment />}
+                    />
+                    <Route
+                      path="/admin"
+                      element={
+                        <AdminGate>
+                          <AdminIndex />
+                        </AdminGate>
+                      }
                     />
                     <Route
                       path="/admin/ops"
