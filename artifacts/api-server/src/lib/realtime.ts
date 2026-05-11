@@ -39,6 +39,9 @@ function isOpsUser(userId: string | null): boolean {
     .filter(Boolean);
   return ops.includes(userId);
 }
+// Note: realtime auth uses a request-shaped helper rather than `lib/adminGate`
+// because socket.io hands us a raw `IncomingMessage`, not an Express `Request`.
+// The OPS_USER_IDS list semantics must stay in sync with `lib/adminGate.ts`.
 
 function parseCorsAllowList(): string[] {
   return (process.env["ALLOWED_ORIGINS"] ?? "")
@@ -90,7 +93,7 @@ export function initRealtime(httpServer: HttpServer): IOServer {
 
   io.on("connection", (socket) => {
     socket.on("subscribe:order", async (orderId: number) => {
-      if (typeof orderId !== "number" || !Number.isFinite(orderId)) return;
+      if (!Number.isInteger(orderId) || orderId <= 0) return;
       const userId = socket.data.userId as string | null;
       if (!userId && !socket.data.isOps) {
         socket.emit("subscribe:order:error", { orderId, error: "unauthenticated" });

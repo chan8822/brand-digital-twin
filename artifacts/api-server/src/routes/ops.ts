@@ -17,27 +17,12 @@ import {
   snoozeAlert,
 } from "../lib/anomalies";
 import { sendDailyDigest } from "../lib/anomalyDigestSender";
+import { requireOps as gateRequireOps } from "../lib/adminGate";
 
 const router: IRouter = Router();
 
-function isOpsRequest(req: Request): boolean {
-  const adminToken = process.env["RD_ADMIN_TOKEN"];
-  const headerToken = req.header("x-admin-token");
-  if (adminToken && headerToken && headerToken === adminToken) return true;
-  const allowlist = (process.env["OPS_USER_IDS"] ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  if (req.isAuthenticated() && allowlist.includes(req.user.id)) return true;
-  return false;
-}
-
 function requireOps(req: Request, res: Response): boolean {
-  if (!isOpsRequest(req)) {
-    res.status(403).json({ error: "ops scope required" });
-    return false;
-  }
-  return true;
+  return gateRequireOps(req, res) !== null;
 }
 
 router.get("/anomalies", async (req: Request, res: Response) => {

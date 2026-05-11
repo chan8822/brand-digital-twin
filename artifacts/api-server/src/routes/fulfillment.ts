@@ -13,21 +13,14 @@ import {
 import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { z } from "zod/v4";
 import { issueCredit } from "../lib/loyaltyEngine";
+import { isOpsRequest } from "../lib/adminGate";
 
 const router: IRouter = Router();
 
 // requireAuth: see shared middleware/requireAuth.ts
 
 function resolveOps(req: Request): boolean {
-  const adminToken = process.env["RD_ADMIN_TOKEN"];
-  const headerToken = req.header("x-admin-token");
-  if (adminToken && headerToken && headerToken === adminToken) return true;
-  const allowlist = (process.env["OPS_USER_IDS"] ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  if (req.isAuthenticated() && allowlist.includes(req.user.id)) return true;
-  return false;
+  return isOpsRequest(req).allowed;
 }
 
 // ─── Seeding (idempotent, runs lazily on first read) ────────────────────────

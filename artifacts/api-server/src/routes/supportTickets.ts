@@ -12,24 +12,12 @@ import {
   sendReply,
   triageTicket,
 } from "../lib/supportTriage";
+import { requireOps as gateRequireOps } from "../lib/adminGate";
 
 const router: IRouter = Router();
 
-function isOpsRequest(req: Request): boolean {
-  const adminToken = process.env["RD_ADMIN_TOKEN"];
-  const headerToken = req.header("x-admin-token");
-  if (adminToken && headerToken && headerToken === adminToken) return true;
-  const allow = (process.env["OPS_USER_IDS"] ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  return req.isAuthenticated() && allow.includes(req.user.id);
-}
-
 function requireOps(req: Request, res: Response): boolean {
-  if (isOpsRequest(req)) return true;
-  res.status(403).json({ error: "ops scope required" });
-  return false;
+  return gateRequireOps(req, res) !== null;
 }
 
 function userId(req: Request): string | null {

@@ -21,36 +21,12 @@ import {
   type CopyField,
 } from "../lib/menuCopy";
 import { recordOpsAction } from "../lib/opsAudit";
+import { requireCatalog as gateRequireCatalog } from "../lib/adminGate";
 
 const router: IRouter = Router();
 
-function isCatalogRequest(req: Request): boolean {
-  const adminToken = process.env["RD_ADMIN_TOKEN"];
-  const headerToken = req.header("x-admin-token");
-  if (adminToken && headerToken && headerToken === adminToken) return true;
-  const opsAllow = (process.env["OPS_USER_IDS"] ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  const catalogAllow = (process.env["CATALOG_USER_IDS"] ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  if (
-    req.isAuthenticated() &&
-    (catalogAllow.includes(req.user.id) || opsAllow.includes(req.user.id))
-  ) {
-    return true;
-  }
-  return false;
-}
-
 function requireCatalog(req: Request, res: Response): boolean {
-  if (!isCatalogRequest(req)) {
-    res.status(403).json({ error: "catalog scope required" });
-    return false;
-  }
-  return true;
+  return gateRequireCatalog(req, res) !== null;
 }
 
 // Public, unauthenticated catalog: merges editable DB fields (price, name,

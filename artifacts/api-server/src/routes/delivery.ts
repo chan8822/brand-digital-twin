@@ -18,6 +18,7 @@ import {
   dispatchComparison,
   recentDispatchDecisions,
 } from "../lib/dispatch";
+import { isOpsRequest } from "../lib/adminGate";
 import { recordRiderPosition, startSimulation, stopSimulation } from "../lib/riderSim";
 
 const router: IRouter = Router();
@@ -236,15 +237,7 @@ router.post("/delivery/eta/record-actual", async (req: Request, res: Response) =
 });
 
 function resolveOps(req: Request): boolean {
-  const adminToken = process.env["RD_ADMIN_TOKEN"];
-  const headerToken = req.header("x-admin-token");
-  if (adminToken && headerToken && headerToken === adminToken) return true;
-  const allowlist = (process.env["OPS_USER_IDS"] ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  if (req.isAuthenticated() && allowlist.includes(req.user.id)) return true;
-  return false;
+  return isOpsRequest(req).allowed;
 }
 
 // ─── Smart dispatch & batching ─────────────────────────────────────────────

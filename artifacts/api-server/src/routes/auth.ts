@@ -196,14 +196,6 @@ router.post("/logout", async (req: Request, res: Response): Promise<void> => {
   res.json(LogoutResponse.parse({ success: true }));
 });
 
-// Legacy GET /logout — kept so any existing `<a href="/api/logout">` links
-// continue to work. Clears the session and redirects to the home page.
-router.get("/logout", async (req: Request, res: Response): Promise<void> => {
-  const sid = getSessionId(req);
-  await clearSession(res, sid);
-  res.redirect("/");
-});
-
 // Legacy GET /login — the OIDC redirect is gone; bounce the browser to the
 // in-app login screen. Preserves a `returnTo` query if provided.
 router.get("/login", (req: Request, res: Response): void => {

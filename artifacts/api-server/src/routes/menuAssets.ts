@@ -16,34 +16,12 @@ import {
   softDeleteAsset,
 } from "../lib/menuAssets";
 import { serveStoredAsset } from "../lib/imageStorage";
+import { requireCatalog as gateRequireCatalog } from "../lib/adminGate";
 
 const router: IRouter = Router();
 
-function isCatalogRequest(req: Request): boolean {
-  const adminToken = process.env["RD_ADMIN_TOKEN"];
-  const headerToken = req.header("x-admin-token");
-  if (adminToken && headerToken && headerToken === adminToken) return true;
-  const opsAllow = (process.env["OPS_USER_IDS"] ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  const catalogAllow = (process.env["CATALOG_USER_IDS"] ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  if (
-    req.isAuthenticated() &&
-    (catalogAllow.includes(req.user.id) || opsAllow.includes(req.user.id))
-  ) {
-    return true;
-  }
-  return false;
-}
-
 function requireCatalog(req: Request, res: Response): boolean {
-  if (isCatalogRequest(req)) return true;
-  res.status(403).json({ error: "catalog scope required" });
-  return false;
+  return gateRequireCatalog(req, res) !== null;
 }
 
 function userId(req: Request): string | null {

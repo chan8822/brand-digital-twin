@@ -3,8 +3,13 @@ import type { ModelMessage } from "ai";
 import { z } from "zod/v4";
 import { runAgent, type GatewayEvent } from "../lib/ai";
 import { getUserBriefForRequest } from "../lib/userBrief";
+import { requireAuthUser } from "../middlewares/requireAuth";
+import { rateLimit } from "../lib/rateLimit";
 
 const router: IRouter = Router();
+
+const SUPPORT_CHAT_WINDOW_MS = 5 * 60_000;
+const SUPPORT_CHAT_MAX = 20;
 
 const ChatTurnSchema = z.object({
   role: z.enum(["user", "agent"]),
@@ -34,6 +39,17 @@ function startStream(res: Response): void {
 }
 
 router.post("/support-agent/chat", async (req: Request, res: Response) => {
+  const userId = requireAuthUser(req, res);
+  if (!userId) return;
+  const allowed = await rateLimit(
+    `support-agent:chat:${userId}`,
+    SUPPORT_CHAT_WINDOW_MS,
+    SUPPORT_CHAT_MAX,
+  );
+  if (!allowed) {
+    res.status(429).json({ error: "rate limited" });
+    return;
+  }
   const parsed = ChatBodySchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "invalid body" });
