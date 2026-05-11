@@ -1,0 +1,104 @@
+chandanrathore8@cloudshell:~ (omnismtp)$ gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="wellness-foods" AND severity>=ERROR' --project=omnismtp --limit=3 --freshness=30m
+---
+httpRequest:
+  latency: 0.009745463s
+  protocol: HTTP/1.1
+  remoteIp: 34.47.217.187
+  requestMethod: GET
+  requestSize: '304'
+  requestUrl: https://wellness-foods-1076775857511.asia-south2.run.app/api/challenges
+  responseSize: '593'
+  serverIp: 34.143.76.2
+  status: 500
+  userAgent: curl/8.14.1
+insertId: 6a0211dc000973c10eaa536e
+labels:
+  commit-sha: 9d6e52a5b719f6796ac0e0889f0b8ba6daec3204
+  gcb-build-id: aa42b705-a8ff-4c04-bcff-fe1e89fbd450
+  gcb-trigger-id: 5f27cfef-52a8-4c9f-b541-eff0f6ceec9a
+  gcb-trigger-region: global
+  instanceId: 0007b734d96d178e5816dce7affe75f4e913cd55c6ae679484c49505acff115b7e5a5f9f4c166889043e9a2970eee72dbdb03423ee23414532ed63a1d9ebaa90d9023af959fc8ca3b6f3b34cfaae
+  managed-by: gcp-cloud-build-deploy-cloud-run
+logName: projects/omnismtp/logs/run.googleapis.com%2Frequests
+receiveTimestamp: '2026-05-11T17:29:00.627232940Z'
+resource:
+  labels:
+    configuration_name: wellness-foods
+    location: asia-south2
+    project_id: omnismtp
+    revision_name: wellness-foods-00012-swh
+    service_name: wellness-foods
+  type: cloud_run_revision
+severity: ERROR
+spanId: 799b76de7e664561
+timestamp: '2026-05-11T17:29:00.608513Z'
+trace: projects/omnismtp/traces/4fe2f0f251300c265a8f8ff88c5c18d7
+---
+httpRequest:
+  latency: 0.008099884s
+  protocol: HTTP/1.1
+  remoteIp: 34.47.217.187
+  requestMethod: GET
+  requestSize: '301'
+  requestUrl: https://wellness-foods-1076775857511.asia-south2.run.app/api/bundles
+  responseSize: '593'
+  serverIp: 34.143.76.2
+  status: 500
+  userAgent: curl/8.14.1
+insertId: 6a0211dc0005eb8b872d2376
+labels:
+  commit-sha: 9d6e52a5b719f6796ac0e0889f0b8ba6daec3204
+  gcb-build-id: aa42b705-a8ff-4c04-bcff-fe1e89fbd450
+  gcb-trigger-id: 5f27cfef-52a8-4c9f-b541-eff0f6ceec9a
+  gcb-trigger-region: global
+  instanceId: 0007b734d96d178e5816dce7affe75f4e913cd55c6ae679484c49505acff115b7e5a5f9f4c166889043e9a2970eee72dbdb03423ee23414532ed63a1d9ebaa90d9023af959fc8ca3b6f3b34cfaae
+  managed-by: gcp-cloud-build-deploy-cloud-run
+logName: projects/omnismtp/logs/run.googleapis.com%2Frequests
+receiveTimestamp: '2026-05-11T17:29:00.627232940Z'
+resource:
+  labels:
+    configuration_name: wellness-foods
+    location: asia-south2
+    project_id: omnismtp
+    revision_name: wellness-foods-00012-swh
+    service_name: wellness-foods
+  type: cloud_run_revision
+severity: ERROR
+spanId: e9c68e416d8e9b91
+timestamp: '2026-05-11T17:29:00.378881Z'
+trace: projects/omnismtp/traces/5df201908f518942b694e9749fabf554
+---
+httpRequest:
+  latency: 0.010159552s
+  protocol: HTTP/1.1
+  remoteIp: 34.47.217.187
+  requestMethod: GET
+  requestSize: '304'
+  requestUrl: https://wellness-foods-1076775857511.asia-south2.run.app/api/menu/public
+  responseSize: '593'
+  serverIp: 34.143.76.2
+  status: 500
+  userAgent: curl/8.14.1
+insertId: 6a0211dc000264c27b16712d
+labels:
+  commit-sha: 9d6e52a5b719f6796ac0e0889f0b8ba6daec3204
+  gcb-build-id: aa42b705-a8ff-4c04-bcff-fe1e89fbd450
+  gcb-trigger-id: 5f27cfef-52a8-4c9f-b541-eff0f6ceec9a
+  gcb-trigger-region: global
+  instanceId: 0007b734d96d178e5816dce7affe75f4e913cd55c6ae679484c49505acff115b7e5a5f9f4c166889043e9a2970eee72dbdb03423ee23414532ed63a1d9ebaa90d9023af959fc8ca3b6f3b34cfaae
+  managed-by: gcp-cloud-build-deploy-cloud-run
+logName: projects/omnismtp/logs/run.googleapis.com%2Frequests
+receiveTimestamp: '2026-05-11T17:29:00.293927827Z'
+resource:
+  labels:
+    configuration_name: wellness-foods
+    location: asia-south2
+    project_id: omnismtp
+    revision_name: wellness-foods-00012-swh
+    service_name: wellness-foods
+  type: cloud_run_revision
+severity: ERROR
+spanId: 1e8eed005c9578cf
+timestamp: '2026-05-11T17:29:00.145567Z'
+trace: projects/omnismtp/traces/5108b1cac84f9d0bde43aa1a56174390
+chandanrathore8@cloudshell:~ (omnismtp)$ 
