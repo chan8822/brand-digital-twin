@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import crypto from "crypto";
+import { hasAdminSession } from "./adminAuth";
 
 /**
  * Constant-time comparison for shared-secret tokens. Both inputs must be
@@ -33,10 +34,14 @@ export interface GateResult {
   operatorId: string | null;
 }
 
-/** Ops scope: x-admin-token OR authenticated user in OPS_USER_IDS. */
+/** Ops scope: x-admin-token OR signed admin cookie OR user in OPS_USER_IDS. */
 export function isOpsRequest(req: Request): GateResult {
   if (hasAdminToken(req)) {
     return { allowed: true, operatorId: req.user?.id ?? "admin-token" };
+  }
+  const adminSession = hasAdminSession(req);
+  if (adminSession) {
+    return { allowed: true, operatorId: `admin:${adminSession.username}` };
   }
   const allowlist = envList("OPS_USER_IDS");
   if (req.isAuthenticated() && allowlist.includes(req.user.id)) {
@@ -45,10 +50,14 @@ export function isOpsRequest(req: Request): GateResult {
   return { allowed: false, operatorId: null };
 }
 
-/** Catalog scope: x-admin-token OR user in CATALOG_USER_IDS or OPS_USER_IDS. */
+/** Catalog scope: x-admin-token OR signed admin cookie OR user in CATALOG_USER_IDS/OPS_USER_IDS. */
 export function isCatalogRequest(req: Request): GateResult {
   if (hasAdminToken(req)) {
     return { allowed: true, operatorId: req.user?.id ?? "admin-token" };
+  }
+  const adminSession = hasAdminSession(req);
+  if (adminSession) {
+    return { allowed: true, operatorId: `admin:${adminSession.username}` };
   }
   const allow = [...envList("CATALOG_USER_IDS"), ...envList("OPS_USER_IDS")];
   if (req.isAuthenticated() && allow.includes(req.user.id)) {

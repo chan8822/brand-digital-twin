@@ -1,6 +1,7 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { apiPath } from "@/lib/apiBase";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CartProvider } from "@/lib/cartContext";
@@ -22,6 +23,7 @@ import Dish from "@/pages/Dish";
 import Cart from "@/pages/Cart";
 import Checkout from "@/pages/Checkout";
 import Login from "@/pages/Login";
+import AdminLogin from "@/pages/AdminLogin";
 import NotFound from "@/pages/not-found";
 import { useParams } from "react-router";
 
@@ -103,12 +105,63 @@ const basename = import.meta.env.BASE_URL.replace(/\/$/, "") || "/";
 
 const ADMIN_KEY = "tanmatra:admin:v1";
 
+type AdminAuthState = "checking" | "authed" | "anon";
+
+function useAdminAuth(): AdminAuthState {
+  const [state, setState] = useState<AdminAuthState>("checking");
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(apiPath("/admin/me"), {
+          credentials: "include",
+        });
+        if (cancelled) return;
+        if (res.ok) {
+          try {
+            window.localStorage.setItem(ADMIN_KEY, "1");
+          } catch {
+            /* ignore */
+          }
+          setState("authed");
+        } else {
+          try {
+            window.localStorage.removeItem(ADMIN_KEY);
+          } catch {
+            /* ignore */
+          }
+          setState("anon");
+        }
+      } catch {
+        if (!cancelled) setState("anon");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return state;
+}
+
 function AdminGate({ children }: { children: React.ReactNode }) {
   const location = useLocation();
-  if (typeof window === "undefined") return null;
-  const flag = window.localStorage.getItem(ADMIN_KEY);
-  if (flag !== "1") {
-    return <Navigate to={`/login?next=${encodeURIComponent(location.pathname)}`} replace />;
+  const state = useAdminAuth();
+  if (state === "checking") {
+    return (
+      <div className="px-4 py-12 text-center text-sm text-clinical-muted">
+        Checking admin session…
+      </div>
+    );
+  }
+  if (state !== "authed") {
+    return (
+      <Navigate
+        to={`/admin/login?next=${encodeURIComponent(
+          location.pathname + location.search,
+        )}`}
+        replace
+      />
+    );
   }
   return <>{children}</>;
 }
@@ -117,13 +170,24 @@ const RD_KEY = "tanmatra:rd:v1";
 
 function RdGate({ children }: { children: React.ReactNode }) {
   const location = useLocation();
+  const adminState = useAdminAuth();
   if (typeof window === "undefined") return null;
   const rdFlag = window.localStorage.getItem(RD_KEY);
-  const adminFlag = window.localStorage.getItem(ADMIN_KEY);
-  if (rdFlag !== "1" && adminFlag !== "1") {
-    return <Navigate to={`/login?next=${encodeURIComponent(location.pathname)}`} replace />;
+  if (rdFlag === "1") return <>{children}</>;
+  if (adminState === "checking") {
+    return (
+      <div className="px-4 py-12 text-center text-sm text-clinical-muted">
+        Checking session…
+      </div>
+    );
   }
-  return <>{children}</>;
+  if (adminState === "authed") return <>{children}</>;
+  return (
+    <Navigate
+      to={`/login?next=${encodeURIComponent(location.pathname)}`}
+      replace
+    />
+  );
 }
 
 export default function App() {
@@ -310,6 +374,7 @@ export default function App() {
                     <Route path="/marketplace" element={<Marketplace />} />
                     <Route path="/marketplace/:slug" element={<MarketplaceItemPage />} />
                     <Route path="/login" element={<Login />} />
+                    <Route path="/admin/login" element={<AdminLogin />} />
                     {import.meta.env.DEV && (
                       <Route path="/__styleguide" element={<Styleguide />} />
                     )}

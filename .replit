@@ -18,3 +18,12 @@ externalPort = 3001
 [[ports]]
 localPort = 24926
 externalPort = 3000
+
+[userenv]
+
+[userenv.shared]
+ADMIN_USERNAME = "admin"
+ADMIN_PASSWORD_HASH = "scrypt$16384$8$1$e580d5d60399864fe615096bac5f9956$688fd5eb3ecc061600c9f62b51b92417a181b077085d70d86ab43c11048da4bbc1946d3486226739f402826ace8b6ff89b3cea60955bbb9717784412ac68ea85"
+ADMIN_SESSION_SECRET = "d6ad80592d4620825b89eafa0aa98638254b7eff13e7cedf6b9d1e14bf0212ca"
+
+[workflows]
