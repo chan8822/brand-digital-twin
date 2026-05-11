@@ -1,0 +1,48 @@
+~/workspace$ git add .npmrc
+git commit -m "fix(build): set pnpm resolution-mode=highest to bypass broken yaml registry metadata"
+git push origin main
+fatal: Unable to create '/home/runner/workspace/.git/index.lock': File exists.
+
+Another git process seems to be running in this repository, e.g.
+an editor opened by 'git commit'. Please make sure all processes
+are terminated then try again. If it still fails, a git process
+may have crashed in this repository earlier:
+remove the file manually to continue.
+fatal: Unable to create '/home/runner/workspace/.git/index.lock': File exists.
+
+Another git process seems to be running in this repository, e.g.
+an editor opened by 'git commit'. Please make sure all processes
+are terminated then try again. If it still fails, a git process
+may have crashed in this repository earlier:
+remove the file manually to continue.
+Everything up-to-date
+~/workspace$ rm -f .git/index.lock
+git status
+On branch main
+Your branch is ahead of 'origin/main' by 1 commit.
+  (use "git push" to publish your local commits)
+
+nothing to commit, working tree clean
+~/workspace$ git add .npmrc
+git commit -m "fix(build): set pnpm resolution-mode=highest to bypass broken yaml registry metadata"
+git push origin main
+On branch main
+Your branch is ahead of 'origin/main' by 1 commit.
+  (use "git push" to publish your local commits)
+
+nothing to commit, working tree clean
+Enumerating objects: 8, done.
+Counting objects: 100% (8/8), done.
+Delta compression using up to 8 threads
+Compressing objects: 100% (5/5), done.
+Writing objects: 100% (5/5), 457.39 KiB | 35.18 MiB/s, done.
+Total 5 (delta 2), reused 0 (delta 0), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (2/2), completed with 2 local objects.
+To https://github.com/chan8822/Wellness-Foods
+   47b2c38..6cfd09d  main -> main
+~/workspace$ git log --oneline -3
+git diff HEAD .npmrc          # should be empty if committed; show + line if not
+6cfd09d (HEAD -> main, origin/main, origin/HEAD) Add a screenshot to document a build process
+47b2c38 test: verify Replit→GitHub→Cloud Run loop
+fff371f Update index.ts
+~/workspace$ 
