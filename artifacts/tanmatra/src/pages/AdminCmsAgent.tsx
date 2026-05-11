@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MenuPhotosPanel } from "@/components/cms/MenuPhotosPanel";
+import { API_BASE } from "@/lib/apiBase";
 
 const ADMIN_TOKEN_KEY = "tanmatra:admin-token:v1";
 
@@ -271,7 +272,7 @@ export default function AdminCmsAgent() {
 
   const loadAudit = async () => {
     try {
-      const res = await fetch("/api/cms-agent/audit?limit=20", {
+      const res = await fetch(`${API_BASE}/cms-agent/audit?limit=20`, {
         credentials: "include",
         headers: authedHeaders(),
       });
@@ -290,7 +291,7 @@ export default function AdminCmsAgent() {
 
   const loadItems = async () => {
     try {
-      const res = await fetch("/api/menu/items", {
+      const res = await fetch(`${API_BASE}/menu/items`, {
         credentials: "include",
         headers: authedHeaders(),
       });
@@ -324,7 +325,7 @@ export default function AdminCmsAgent() {
       setCopyEdits({});
     }
     try {
-      const res = await fetch(`/api/menu/items/${slug}/generate-copy`, {
+      const res = await fetch(`${API_BASE}/menu/items/${slug}/generate-copy`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json", ...authedHeaders() },
@@ -372,7 +373,7 @@ export default function AdminCmsAgent() {
     setCopyBusy(true);
     setCopyError(null);
     try {
-      const res = await fetch(`/api/menu/items/${copyDraft.slug}/copy`, {
+      const res = await fetch(`${API_BASE}/menu/items/${copyDraft.slug}/copy`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json", ...authedHeaders() },
@@ -415,7 +416,7 @@ export default function AdminCmsAgent() {
     try {
       const qs = new URLSearchParams();
       if (bulkCategory) qs.set("category", bulkCategory);
-      const res = await fetch(`/api/menu/copy/missing?${qs.toString()}`, {
+      const res = await fetch(`${API_BASE}/menu/copy/missing?${qs.toString()}`, {
         credentials: "include",
         headers: authedHeaders(),
       });
@@ -448,7 +449,7 @@ export default function AdminCmsAgent() {
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const res = await fetch("/api/menu/uploads", {
+      const res = await fetch(`${API_BASE}/menu/uploads`, {
         method: "POST",
         credentials: "include",
         headers: authedHeaders(),
@@ -523,7 +524,7 @@ export default function AdminCmsAgent() {
     try {
       const headers: HeadersInit = { "Content-Type": "application/json" };
       if (adminToken) headers["x-admin-token"] = adminToken;
-      const res = await fetch("/api/cms-agent/chat", {
+      const res = await fetch(`${API_BASE}/cms-agent/chat`, {
         method: "POST",
         credentials: "include",
         headers,

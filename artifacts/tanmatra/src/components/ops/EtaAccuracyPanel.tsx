@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Clock } from "lucide-react";
+import { API_BASE } from "@/lib/apiBase";
 
 interface AccuracyRow {
   zone: string;
@@ -35,7 +36,7 @@ export default function EtaAccuracyPanel() {
       try {
         const headers: Record<string, string> = {};
         if (adminToken) headers["x-admin-token"] = adminToken;
-        const base = `${import.meta.env.BASE_URL.replace(/\/$/, "")}/api`;
+        const base = API_BASE;
         const r = await fetch(
           `${base}/delivery/eta/accuracy/by-zone?sinceDays=${sinceDays}`,
           { credentials: "include", headers },

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { API_BASE } from "@/lib/apiBase";
 import {
   Dialog,
   DialogContent,
@@ -444,7 +445,7 @@ function PairMobileCard() {
   const [sessions, setSessions] = useState<MobileSession[]>([]);
   const [label, setLabel] = useState("");
 
-  const apiBase = `${import.meta.env.BASE_URL}api`;
+  const apiBase = API_BASE;
 
   async function loadSessions() {
     try {

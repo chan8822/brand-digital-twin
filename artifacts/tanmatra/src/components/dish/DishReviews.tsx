@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { Star, MessageSquare, Sparkles, TrendingUp, TrendingDown, Minus } from "lucide-react";
 
-const API_BASE = `${import.meta.env.BASE_URL}api`;
+import { API_BASE as API_BASE } from "@/lib/apiBase";
 
 interface PublicReviewer {
   label: string;

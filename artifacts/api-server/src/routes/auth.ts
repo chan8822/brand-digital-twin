@@ -27,11 +27,21 @@ const router: IRouter = Router();
 // silently downgrade the cookie to be sent over HTTP.
 const isInsecureLocalDev = process.env["INSECURE_DEV_COOKIE"] === "1";
 
+// When the SPA and API live on different origins (e.g. tanmatra.food →
+// wellness-foods.run.app), cookies must be issued with SameSite=None so
+// the browser includes them on cross-site fetches. SameSite=None *requires*
+// Secure, which is already the default in non-dev. Operators set
+// SESSION_SAMESITE=none on the cross-origin deployment.
+const sessionSameSite = ((): "lax" | "strict" | "none" => {
+  const v = (process.env["SESSION_SAMESITE"] ?? "lax").toLowerCase();
+  return v === "none" || v === "strict" ? v : "lax";
+})();
+
 function setSessionCookie(res: Response, sid: string) {
   res.cookie(SESSION_COOKIE, sid, {
     httpOnly: true,
     secure: !isInsecureLocalDev,
-    sameSite: "lax",
+    sameSite: sessionSameSite,
     path: "/",
     maxAge: SESSION_TTL,
   });

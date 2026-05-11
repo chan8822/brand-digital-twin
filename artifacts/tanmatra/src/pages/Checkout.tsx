@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { API_BASE } from "@/lib/apiBase";
 import {
   Dialog,
   DialogContent,
@@ -250,7 +251,7 @@ export default function Checkout() {
     // Falls back to legacy 25-min static if the model errors or is disabled.
     let etaAt = new Date(Date.now() + 25 * 60 * 1000).toISOString();
     try {
-      const apiBase = `${import.meta.env.BASE_URL.replace(/\/$/, "")}/api`;
+      const apiBase = API_BASE;
       const r = await fetch(`${apiBase}/delivery/eta/estimate`, {
         method: "POST",
         credentials: "include",

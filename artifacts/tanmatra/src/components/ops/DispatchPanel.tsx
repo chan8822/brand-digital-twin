@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Truck, Play } from "lucide-react";
+import { API_BASE } from "@/lib/apiBase";
 
 interface ComparisonRow {
   day: string;
@@ -25,7 +26,7 @@ interface DecisionRow {
   createdAt: string;
 }
 
-const apiBase = `${import.meta.env.BASE_URL.replace(/\/$/, "")}/api`;
+const apiBase = API_BASE;
 
 export default function DispatchPanel() {
   const [adminToken, setAdminToken] = useState<string>(() =>

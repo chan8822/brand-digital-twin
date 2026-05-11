@@ -3,6 +3,8 @@
  * pulling in a third-party analytics SDK. Failures are swallowed —
  * analytics must never break the wizard. */
 
+import { API_BASE } from "./apiBase";
+
 const SESSION_KEY = "tanmatra:rd-partners:session";
 
 /** Canonical event names — kept in sync with the spec so the funnel
@@ -48,7 +50,7 @@ export async function trackRdPartnersEvent(
   payload: EventPayload = {},
 ): Promise<void> {
   try {
-    await fetch("/api/rd-partners/events", {
+    await fetch(`${API_BASE}/rd-partners/events`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

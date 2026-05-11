@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 
-const API_BASE = `${import.meta.env.BASE_URL}api`;
+import { API_BASE as API_BASE } from "./apiBase";
 
 export type DishRationaleSource = "cache" | "generated" | "fallback";
 

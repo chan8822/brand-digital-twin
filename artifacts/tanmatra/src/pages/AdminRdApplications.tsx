@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { CheckCircle2, Loader2, Mail, MessageCircle, Phone } from "lucide-react";
+import { API_BASE } from "@/lib/apiBase";
 
 type Status = "new" | "contacted" | "approved" | "rejected";
 interface Application {
@@ -78,7 +79,7 @@ export default function AdminRdApplications() {
     setLoading(true);
     setError(null);
     try {
-      const url = new URL("/api/admin/rd-applications", window.location.origin);
+      const url = new URL(`${API_BASE}/admin/rd-applications`, window.location.origin);
       if (filter !== "all") url.searchParams.set("status", filter);
       const res = await fetch(url.toString(), {
         credentials: "include",

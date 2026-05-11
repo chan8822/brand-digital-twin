@@ -6,6 +6,7 @@ import {
   type CoachActionAddToCart,
   type CoachActionBookRd,
 } from "@/lib/queries";
+import { API_BASE } from "@/lib/apiBase";
 import { useCart, type CartItem } from "@/lib/cartContext";
 import { getDishBySlug } from "@/lib/menuData";
 import { Button } from "@/components/ui/button";
@@ -167,8 +168,7 @@ export default function CoachAgentWidget({
     }
     if (a.target === "next_delivery") {
       try {
-        const base = import.meta.env.BASE_URL.replace(/\/$/, "");
-        const res = await fetch(`${base}/api/subscriptions/next-delivery/add-item`, {
+        const res = await fetch(`${API_BASE}/subscriptions/next-delivery/add-item`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",

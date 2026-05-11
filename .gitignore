@@ -42,6 +42,9 @@ testem.log
 .env
 .env.*
 !.env.example
+# .env.production holds only PUBLIC client-side build vars (VITE_*) that
+# are baked into the static bundle anyway. Safe to commit.
+!.env.production
 
 # System Files
 .DS_Store

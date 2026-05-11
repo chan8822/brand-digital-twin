@@ -746,7 +746,7 @@ function ResultsStep({
         protocolHref: "/wellness",
       };
     }
-    if (goal === "manage_condition") {
+    if ((goal as string) === "manage_condition") {
       return {
         label: "Clinical protocol",
         summary:

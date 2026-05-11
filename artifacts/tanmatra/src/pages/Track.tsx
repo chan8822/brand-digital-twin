@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useDeliveryTimeline, useRecordDeliveryEvent } from "@/lib/queries";
 import { useOrders } from "@/lib/ordersContext";
 import { getSocket } from "@/lib/socket";
+import { API_BASE } from "@/lib/apiBase";
 // RiderMap pulls in leaflet + react-leaflet (~150kB gzip). Only the live
 // tracking screen needs it, so split it out of the customer entry chunk.
 const RiderMap = lazy(() => import("@/components/track/RiderMap"));
@@ -195,7 +196,7 @@ export default function Track() {
     let cancelled = false;
     const fetchEta = async () => {
       try {
-        const base = `${import.meta.env.BASE_URL.replace(/\/$/, "")}/api`;
+        const base = API_BASE;
         const r = await fetch(`${base}/delivery/eta/${numericOrderId}`, {
           credentials: "include",
         });
@@ -245,7 +246,7 @@ export default function Track() {
   useEffect(() => {
     if (!numericOrderId) return;
     if (order?.status !== "ready" && order?.status !== "out_for_delivery") return;
-    const base = `${import.meta.env.BASE_URL.replace(/\/$/, "")}/api`;
+    const base = API_BASE;
     void fetch(`${base}/delivery/auto-assign`, {
       method: "POST",
       credentials: "include",
@@ -263,7 +264,7 @@ export default function Track() {
     let cancelled = false;
     void (async () => {
       try {
-        const base = `${import.meta.env.BASE_URL.replace(/\/$/, "")}/api`;
+        const base = API_BASE;
         const r = await fetch(`${base}/delivery/schedule-advance`, {
           method: "POST",
           credentials: "include",

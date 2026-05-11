@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { API_BASE } from "@/lib/apiBase";
 
 const ADMIN_TOKEN_KEY = "tanmatra:admin-token:v1";
 
@@ -111,11 +112,11 @@ export default function AdminMenuEngineering() {
   async function refresh() {
     try {
       const [matrixRes, suggRes] = await Promise.all([
-        fetch("/api/menu-engineering/matrix", {
+        fetch(`${API_BASE}/menu-engineering/matrix`, {
           credentials: "include",
           headers: headers(),
         }),
-        fetch("/api/menu-engineering/pricing-suggestions", {
+        fetch(`${API_BASE}/menu-engineering/pricing-suggestions`, {
           credentials: "include",
           headers: headers(),
         }),
@@ -144,7 +145,7 @@ export default function AdminMenuEngineering() {
     setBusy(true);
     setMsg("");
     try {
-      const res = await fetch("/api/menu-engineering/run", {
+      const res = await fetch(`${API_BASE}/menu-engineering/run`, {
         method: "POST",
         credentials: "include",
         headers: headers(),
@@ -166,7 +167,7 @@ export default function AdminMenuEngineering() {
     setMsg("");
     try {
       const res = await fetch(
-        "/api/menu-engineering/pricing-suggestions/run",
+        `${API_BASE}/menu-engineering/pricing-suggestions/run`,
         {
           method: "POST",
           credentials: "include",
@@ -189,7 +190,7 @@ export default function AdminMenuEngineering() {
     setBusy(true);
     setMsg("");
     try {
-      const res = await fetch("/api/dish-reviews/summarize-all", {
+      const res = await fetch(`${API_BASE}/dish-reviews/summarize-all`, {
         method: "POST",
         credentials: "include",
         headers: headers(),

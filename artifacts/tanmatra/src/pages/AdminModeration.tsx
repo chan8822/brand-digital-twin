@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { API_BASE } from "@/lib/apiBase";
 
 const ADMIN_TOKEN_KEY = "tanmatra:admin-token:v1";
 
@@ -34,7 +35,7 @@ async function adminFetch<T>(
     ...(init.headers ?? {}),
   };
   if (token) (headers as Record<string, string>)["x-admin-token"] = token;
-  const res = await fetch(`/api${path}`, {
+  const res = await fetch(`${API_BASE}${path}`, {
     credentials: "include",
     ...init,
     headers,

@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { API_BASE } from "@/lib/apiBase";
 import type {
   ModerationAppealDTO,
   ModerationDecisionDTO,
@@ -25,7 +26,7 @@ async function adminFetch<T>(
     ...(init.headers ?? {}),
   };
   if (token) (headers as Record<string, string>)["x-admin-token"] = token;
-  const res = await fetch(`/api${path}`, {
+  const res = await fetch(`${API_BASE}${path}`, {
     credentials: "include",
     ...init,
     headers,

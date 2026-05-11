@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { API_BASE } from "@/lib/apiBase";
 
 const ADMIN_TOKEN_KEY = "tanmatra:admin-token:v1";
 
@@ -98,7 +99,7 @@ export default function AdminOpsAgent() {
 
   const loadAudit = async () => {
     try {
-      const res = await fetch("/api/ops-agent/audit?limit=20", {
+      const res = await fetch(`${API_BASE}/ops-agent/audit?limit=20`, {
         credentials: "include",
         headers: authedHeaders(),
       });
@@ -117,7 +118,7 @@ export default function AdminOpsAgent() {
 
   const loadLiveQueue = async () => {
     try {
-      const res = await fetch("/api/ops-agent/live-queue", {
+      const res = await fetch(`${API_BASE}/ops-agent/live-queue`, {
         credentials: "include",
         headers: authedHeaders(),
       });
@@ -180,7 +181,7 @@ export default function AdminOpsAgent() {
     try {
       const headers: HeadersInit = { "Content-Type": "application/json" };
       if (adminToken) headers["x-admin-token"] = adminToken;
-      const res = await fetch("/api/ops-agent/chat", {
+      const res = await fetch(`${API_BASE}/ops-agent/chat`, {
         method: "POST",
         credentials: "include",
         headers,

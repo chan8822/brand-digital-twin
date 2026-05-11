@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { API_BASE } from "@/lib/apiBase";
 
 interface AiRunRow {
   id: number;
@@ -47,7 +48,7 @@ export default function AdminAiRuns() {
     setLoading(true);
     setError(null);
     try {
-      const url = new URL("/api/ai/runs", window.location.origin);
+      const url = new URL(`${API_BASE}/ai/runs`, window.location.origin);
       url.searchParams.set("limit", "50");
       if (agentFilter) url.searchParams.set("agent", agentFilter);
       if (userFilter) url.searchParams.set("userId", userFilter);

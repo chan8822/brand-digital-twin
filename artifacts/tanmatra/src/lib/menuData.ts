@@ -15,7 +15,7 @@ export {
   type DishMacros,
 } from "@workspace/menu-catalog";
 
-const API_BASE = `${import.meta.env.BASE_URL}api`;
+import { API_BASE as API_BASE } from "./apiBase";
 
 // Module-level mutable cache. Initially seeded with the static catalog so
 // synchronous helpers work at import time (build-time fallback). Replaced at

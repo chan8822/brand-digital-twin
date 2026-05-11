@@ -74,7 +74,7 @@ export interface UserProfile {
   updatedAt: string;
 }
 
-const API_BASE = `${import.meta.env.BASE_URL}api`;
+import { API_BASE as API_BASE } from "./apiBase";
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {

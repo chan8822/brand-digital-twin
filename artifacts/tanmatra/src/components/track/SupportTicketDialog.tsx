@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { API_BASE } from "@/lib/apiBase";
 import {
   Dialog,
   DialogContent,
@@ -51,7 +52,7 @@ export default function SupportTicketDialog({
     setSubmitting(true);
     setError(null);
     try {
-      const base = `${import.meta.env.BASE_URL.replace(/\/$/, "")}/api`;
+      const base = API_BASE;
       const payload: {
         subject: string;
         body: string;

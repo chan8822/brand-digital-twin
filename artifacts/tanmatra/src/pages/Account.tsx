@@ -32,7 +32,7 @@ interface AuthUser {
   profileImageUrl: string | null;
 }
 
-const API_BASE = `${import.meta.env.BASE_URL}api`.replace(/\/+/g, "/");
+import { API_BASE } from "@/lib/apiBase";
 
 function useAuthUser() {
   return useQuery({

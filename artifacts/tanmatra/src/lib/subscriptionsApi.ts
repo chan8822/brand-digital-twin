@@ -73,7 +73,7 @@ export interface MealCredit {
   createdAt: string;
 }
 
-const API_BASE = `${import.meta.env.BASE_URL}api`;
+import { API_BASE as API_BASE } from "./apiBase";
 
 async function request<T>(
   path: string,

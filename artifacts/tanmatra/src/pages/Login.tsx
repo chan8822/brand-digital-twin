@@ -14,7 +14,7 @@ import {
 } from "@phosphor-icons/react";
 import { toast } from "sonner";
 
-const API_BASE = `${import.meta.env.BASE_URL}api`;
+import { API_BASE as API_BASE } from "@/lib/apiBase";
 
 type Step = "phone" | "code";
 

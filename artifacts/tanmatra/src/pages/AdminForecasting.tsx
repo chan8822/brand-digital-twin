@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { API_BASE } from "@/lib/apiBase";
 
 const ADMIN_TOKEN_KEY = "tanmatra:admin-token:v1";
 
@@ -110,11 +111,11 @@ export default function AdminForecasting() {
   const loadAll = async () => {
     try {
       const [f, s, p, a, sn] = await Promise.all([
-        fetch(`/api/forecasting/forecast?granularity=${granularity}`, { credentials: "include", headers: headers() }),
-        fetch("/api/forecasting/stock", { credentials: "include", headers: headers() }),
-        fetch("/api/forecasting/purchase-orders", { credentials: "include", headers: headers() }),
-        fetch(`/api/forecasting/accuracy?sinceDays=${mapeWindowDays}`, { credentials: "include", headers: headers() }),
-        fetch("/api/forecasting/snapshots", { credentials: "include", headers: headers() }),
+        fetch(`${API_BASE}/forecasting/forecast?granularity=${granularity}`, { credentials: "include", headers: headers() }),
+        fetch(`${API_BASE}/forecasting/stock`, { credentials: "include", headers: headers() }),
+        fetch(`${API_BASE}/forecasting/purchase-orders`, { credentials: "include", headers: headers() }),
+        fetch(`${API_BASE}/forecasting/accuracy?sinceDays=${mapeWindowDays}`, { credentials: "include", headers: headers() }),
+        fetch(`${API_BASE}/forecasting/snapshots`, { credentials: "include", headers: headers() }),
       ]);
       if (f.status === 403) {
         setError("Ops scope required — set an admin token below.");
@@ -174,7 +175,7 @@ export default function AdminForecasting() {
     const agentMsg: Msg = { id: newId(), role: "agent", text: "" };
     setMessages((prev) => [...prev, agentMsg]);
     try {
-      const res = await fetch("/api/forecasting/agent/chat", {
+      const res = await fetch(`${API_BASE}/forecasting/agent/chat`, {
         method: "POST",
         credentials: "include",
         headers: { ...headers(), "Content-Type": "application/json" },

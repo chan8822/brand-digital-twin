@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { MenuComboWithAvailability } from "./api/adapter";
 
-const API_BASE = `${import.meta.env.BASE_URL}api`;
+import { API_BASE as API_BASE } from "./apiBase";
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
@@ -203,8 +203,7 @@ export async function streamSupportAgentChat(
   vars: SupportChatRequest,
   handlers: SupportStreamHandlers = {},
 ): Promise<SupportChatResponse> {
-  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
-  const res = await fetch(`${base}/api/support-agent/chat`, {
+  const res = await fetch(`${API_BASE}/support-agent/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(vars),
@@ -352,8 +351,7 @@ export async function streamCoachAgentChat(
   vars: CoachChatRequest,
   handlers: CoachStreamHandlers = {},
 ): Promise<CoachChatResponse> {
-  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
-  const res = await fetch(`${base}/api/coach-agent/chat`, {
+  const res = await fetch(`${API_BASE}/coach-agent/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(vars),

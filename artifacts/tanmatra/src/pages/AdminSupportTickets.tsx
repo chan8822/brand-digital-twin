@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { API_BASE } from "@/lib/apiBase";
 
 const ADMIN_TOKEN_KEY = "tanmatra:admin-token:v1";
 
@@ -158,11 +159,11 @@ export default function AdminSupportTickets() {
     try {
       const qs = statusFilter ? `?status=${statusFilter}` : "";
       const [tRes, mRes] = await Promise.all([
-        fetch(`/api/support-tickets${qs}`, {
+        fetch(`${API_BASE}/support-tickets${qs}`, {
           credentials: "include",
           headers: headers(),
         }),
-        fetch("/api/support-tickets/metrics?days=7", {
+        fetch(`${API_BASE}/support-tickets/metrics?days=7`, {
           credentials: "include",
           headers: headers(),
         }),
@@ -209,7 +210,7 @@ export default function AdminSupportTickets() {
     setBusy(true);
     setMsg("");
     try {
-      const res = await fetch(`/api/support-tickets/${selected.id}/${path}`, {
+      const res = await fetch(`${API_BASE}/support-tickets/${selected.id}/${path}`, {
         method: "POST",
         credentials: "include",
         headers: headers(),

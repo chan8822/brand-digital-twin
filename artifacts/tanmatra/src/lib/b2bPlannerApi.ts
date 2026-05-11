@@ -2,7 +2,7 @@
  * Client for the B2B office lunch planner & account health agent.
  * Mirrors `routes/b2bPlanner.ts` on the server.
  */
-const API_BASE = `${import.meta.env.BASE_URL}api`;
+import { API_BASE as API_BASE } from "./apiBase";
 const ADMIN_TOKEN_KEY = "tanmatra:admin-token:v1";
 
 function adminHeaders(): Record<string, string> {

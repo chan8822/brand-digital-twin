@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { API_BASE } from "@/lib/apiBase";
 import {
   ArrowLeft,
   ArrowRight,
@@ -150,7 +151,7 @@ export default function RdPartnersWizard() {
     // Strip the param so a refresh doesn't re-trigger.
     params.delete("linked");
     setParams(params, { replace: true });
-    void fetch(`/api/rd-partners/applications/${id}/create-account`, {
+    void fetch(`${API_BASE}/rd-partners/applications/${id}/create-account`, {
       method: "POST",
       credentials: "include",
     }).then((res) => {
@@ -253,7 +254,7 @@ export default function RdPartnersWizard() {
         notifyPref: draft.notifyPref,
         sessionId: getRdPartnersSessionId(),
       };
-      const res = await fetch("/api/rd-partners/applications", {
+      const res = await fetch(`${API_BASE}/rd-partners/applications`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -631,7 +632,7 @@ function StepWhatsapp({
   async function sendOtp() {
     setSending(true);
     try {
-      const res = await fetch("/api/rd-partners/whatsapp/send-otp", {
+      const res = await fetch(`${API_BASE}/rd-partners/whatsapp/send-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -665,7 +666,7 @@ function StepWhatsapp({
   async function verify() {
     setVerifying(true);
     try {
-      const res = await fetch("/api/rd-partners/whatsapp/verify-otp", {
+      const res = await fetch(`${API_BASE}/rd-partners/whatsapp/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
