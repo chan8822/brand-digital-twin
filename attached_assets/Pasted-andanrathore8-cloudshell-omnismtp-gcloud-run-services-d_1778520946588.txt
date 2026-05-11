@@ -1,0 +1,35 @@
+andanrathore8@cloudshell:~ (omnismtp)$ gcloud run services describe wellness-foods --region=asia-south2 --project=omnismtp --format='value(spec.template.spec.containers[0].env)'
+{'name': 'DATABASE_URL', 'value': 'postgresql://postgres:Rep1tPush_2026_TempPass@34.131.245.136/neondb?sslmode=require'};{'name': 'GOOGLE_API_KEY', 'value': 'AIzaSyAyhIDU5E_AOJGhhuiHrAet7LcwqRtJFqI'};{'name': 'ALLOWED_ORIGINS', 'value': 'https://tanmatra.food'};{'name': 'SESSION_SAMESITE', 'value': 'none'}
+chandanrathore8@cloudshell:~ (omnismtp)$ gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="wellness-foods"' --project=omnismtp --limit=20 --freshness=5m --format='value(severity,jsonPayload.msg,jsonPayload.err.message,textPayload)' | head -60
+        shutdown complete
+        shutdown initiated
+        review summarizer tick failed   Failed query: select "slug", count(*)::int as "n" from "dish_reviews" group by "dish_reviews"."slug"
+params: : unable to verify the first certificate; if the root CA is installed locally, try running Node.js with --use-system-ca
+        request errored failed with status code 500
+        unhandled error Failed query: select "id", "slug", "name", "description", "price_paise", "category", "kitchen_location", "is_veg", "is_available", "availability_window", "tags", "image_url", "long_description", "allergens", "cuisine_tags", "vibe_tags", "seo_title", "seo_description", "macros", "macros_are_estimate", "rd_verified", "rd_note", "prep_time", "glycaemic_index", "sugar_per_serving", "ingredients", "customizations", "pairing_slug", "copy_generated_at", "copy_generated_by", "unavailable_reason", "unavailable_until", "created_at", "updated_at" from "menu_items" order by "menu_items"."name" asc limit $1
+params: 500: unable to verify the first certificate; if the root CA is installed locally, try running Node.js with --use-system-ca
+ERROR
+        request errored failed with status code 500
+        unhandled error Failed query: insert into "bundles" ("id", "slug", "name", "description", "badge", "price_paise", "original_price_paise", "dish_ids", "image") values (default, $1, $2, $3, $4, $5, $6, $7, $8) on conflict ("slug") do nothing
+params: morning-power,Morning Power Combo,Power House Smoothie + Activated Charcoal Smoothie. Start your day with 18g protein and antioxidant detox in one bundle.,BREAKFAST,11500,13000,[97,1],https://images.unsplash.com/photo-1570696516188-ade861b84a49?w=800&q=80: unable to verify the first certificate; if the root CA is installed locally, try running Node.js with --use-system-ca
+ERROR
+        loyalty sweep failed    Failed query: select distinct user_id from (
+      select user_id from "subscriptions"
+      union select user_id from "user_profile"
+      union select referee_user_id as user_id from "referral_redemptions"
+    ) u
+params: : unable to verify the first certificate; if the root CA is installed locally, try running Node.js with --use-system-ca
+        request completed
+INFO
+        request errored failed with status code 500
+        unhandled error Failed query: insert into "premium_meals" ("id", "dish_slug", "reason", "created_at") values (default, $1, $2, default) on conflict ("dish_slug") do nothing
+params: alfredo-pasta-prawns,Premium prawn pasta — chef's selection: unable to verify the first certificate; if the root CA is installed locally, try running Node.js with --use-system-ca
+        request errored failed with status code 500
+        unhandled error Failed query: insert into "premium_meals" ("id", "dish_slug", "reason", "created_at") values (default, $1, $2, default) on conflict ("dish_slug") do nothing
+params: alfredo-pasta-prawns,Premium prawn pasta — chef's selection: unable to verify the first certificate; if the root CA is installed locally, try running Node.js with --use-system-ca
+ERROR
+ERROR
+        request errored failed with status code 500
+        unhandled error Failed query: insert into "premium_meals" ("id", "dish_slug", "reason", "created_at") values (default, $1, $2, default) on conflict ("dish_slug") do nothing
+params: alfredo-pasta-prawns,Premium prawn pasta — chef's selection: unable to verify the first certificate; if the root CA is installed locally, try running Node.js with --use-system-ca
+chandanrathore8@cloudshell:~ (omnismtp)$ 
