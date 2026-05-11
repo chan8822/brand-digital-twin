@@ -14,6 +14,7 @@ import {
   slotReservationsTable,
   subscriptionDeliveriesTable,
   subscriptionsTable,
+  userPreferencesTable,
   userProfileTable,
   type CreditLedgerReason,
   type LoyaltyConfig,
@@ -436,6 +437,9 @@ export async function finalizeOrder(args: {
   let grossPaise = 0;
   // Resolve the merged catalog once; subsequent lookups are in-memory.
   const catalog = await makeBatchDishResolver();
+  // Track resolved dishes alongside validated line items so we can run
+  // allergen safety in one pass without re-resolving below.
+  const resolvedDishes: Array<{ name: string; allergens: string[] }> = [];
   for (const it of args.items) {
     const dish = catalog.byId(it.id);
     if (!dish) throw new Error(`unknown dish id: ${it.id}`);
@@ -444,9 +448,45 @@ export async function finalizeOrder(args: {
     if (qty <= 0) throw new Error(`invalid qty for dish ${dish.slug}`);
     grossPaise += dish.price * qty;
     validatedItems.push({ id: dish.id, name: dish.name, qty, price: dish.price });
+    resolvedDishes.push({
+      name: dish.name,
+      allergens: Array.isArray(dish.allergens) ? dish.allergens : [],
+    });
   }
   if (grossPaise <= 0) {
     throw new Error("order total must be positive");
+  }
+  // Clinical safety net: cross-check every cart dish against the user's
+  // saved allergen list before persisting an order. Fails CLOSED — a
+  // missing preferences row simply means "no allergens declared", but a
+  // single intersection rejects the whole order with a structured error
+  // the route maps to 422. There is intentionally no override path here
+  // (would need an audited acknowledgement field); the meal-planner /
+  // coach flows already filter, so a violation reaching finalize means
+  // the client bypassed those filters and we should refuse.
+  const [prefRow] = await db
+    .select({ allergens: userPreferencesTable.allergens })
+    .from(userPreferencesTable)
+    .where(eq(userPreferencesTable.userId, args.userId))
+    .limit(1);
+  const userAllergens = new Set(
+    (prefRow?.allergens ?? [])
+      .map((a) => a.toLowerCase().trim())
+      .filter(Boolean),
+  );
+  if (userAllergens.size > 0) {
+    const offenders: string[] = [];
+    for (const d of resolvedDishes) {
+      const hits = d.allergens
+        .map((a) => a.toLowerCase().trim())
+        .filter((a) => userAllergens.has(a));
+      if (hits.length > 0) {
+        offenders.push(`${d.name} (${[...new Set(hits)].join(", ")})`);
+      }
+    }
+    if (offenders.length > 0) {
+      throw new Error(`allergen violation: ${offenders.join("; ")}`);
+    }
   }
   // Bundle discount: for each requested bundle slug, verify every dish
   // in that bundle is present in the cart in sufficient quantity. If

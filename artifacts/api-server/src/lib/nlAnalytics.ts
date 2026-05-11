@@ -34,6 +34,10 @@ export interface AskResult {
   chartSpec: ChartSpec;
   rationale: string;
   result: SafeSqlResult;
+  /** True when the SQL came from the deterministic fallback (model
+   *  unavailable / unparsable). Clients should warn the analyst that
+   *  the result does not answer their question. */
+  fallback: boolean;
   saved?: AnalyticsQuery;
 }
 
@@ -61,6 +65,10 @@ interface ModelPlan {
   sql: string;
   chartSpec: ChartSpec;
   rationale: string;
+  /** True when the planner could not call the model and returned a
+   *  hardcoded recent-orders query. Surfaced to the UI so analysts know
+   *  the result does NOT answer their question. */
+  fallback: boolean;
 }
 
 async function planQuery(question: string): Promise<ModelPlan> {
@@ -81,14 +89,18 @@ async function planQuery(question: string): Promise<ModelPlan> {
       sql: parsed.sql,
       chartSpec: parsed.chartSpec ?? { kind: "table" },
       rationale: parsed.rationale ?? "",
+      fallback: false,
     };
   } catch (err) {
     logger.warn({ err }, "nl analytics plan failed, falling back");
     // Deterministic fallback so the surface still works without AI.
+    // Marked `fallback: true` so the UI can flag that the result does
+    // not answer the analyst's actual question.
     return {
       sql: "select date_trunc('day', created_at)::date as day, count(*) as orders, sum(total_paise) as revenue_paise from safe_orders where created_at > now() - interval '14 days' group by 1 order by 1",
       chartSpec: { kind: "line", xKey: "day", yKey: "orders", title: "Orders, last 14 days" },
       rationale: "Could not generate from question — showing recent order trend.",
+      fallback: true,
     };
   }
 }
@@ -118,6 +130,7 @@ export async function askDataQuestion(
     chartSpec: plan.chartSpec,
     rationale: plan.rationale,
     result,
+    fallback: plan.fallback,
     ...(saved ? { saved } : {}),
   };
 }

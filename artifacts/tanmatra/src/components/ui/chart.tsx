@@ -6,6 +6,18 @@ import { cn } from "@/lib/utils"
 // Format: { THEME_NAME: CSS_SELECTOR }
 const THEMES = { light: "", dark: ".dark" } as const
 
+// Defense-in-depth for the `dangerouslySetInnerHTML` style block below:
+// only allow shapes that can appear inside a CSS custom property value.
+// Blocks `}`, `;`, `<`, `/*`, and other characters that could break out
+// of the declaration and inject arbitrary CSS or markup if a chart
+// config is ever sourced from untrusted input.
+const SAFE_CHART_COLOR_RE =
+  /^(?:#[0-9a-fA-F]{3,8}|(?:rgb|rgba|hsl|hsla|oklch|color)\([0-9a-zA-Z%.,\s\-/]+\)|var\(--[A-Za-z0-9_-]+(?:,\s*[A-Za-z0-9_#%().,\s\-/]+)?\)|[a-zA-Z]+)$/
+
+function isSafeChartColor(c: unknown): c is string {
+  return typeof c === "string" && c.length <= 64 && SAFE_CHART_COLOR_RE.test(c.trim())
+}
+
 export type ChartConfig = {
   [k in string]: {
     label?: React.ReactNode
@@ -86,7 +98,12 @@ ${colorConfig
     const color =
       itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
       itemConfig.color
-    return color ? `  --color-${key}: ${color};` : null
+    // Drop both the color and the CSS variable when the value isn't
+    // demonstrably safe — never interpolate raw config into a style tag.
+    if (!isSafeChartColor(color)) return null
+    const safeKey = key.replace(/[^A-Za-z0-9_-]/g, "")
+    if (!safeKey) return null
+    return `  --color-${safeKey}: ${color};`
   })
   .join("\n")}
 }

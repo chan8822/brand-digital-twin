@@ -317,6 +317,10 @@ router.post("/orders/finalize", async (req: Request, res: Response) => {
       res.status(409).json({ error: msg });
       return;
     }
+    if (msg.startsWith("allergen violation:")) {
+      res.status(422).json({ error: msg, code: "allergen_violation" });
+      return;
+    }
     if (
       msg === "delivery slot required" ||
       msg === "delivery slot not found" ||
