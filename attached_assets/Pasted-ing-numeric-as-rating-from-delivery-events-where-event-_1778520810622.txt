@@ -1,0 +1,276 @@
+ing')::numeric as rating
+    from "delivery_events"
+    where event = 'order_rated'
+      and created_at >= $1 and created_at < $2
+      and meta ? 'rating'
+  
+params: Mon May 11 2026 16:00:00 GMT+0000 (Coordinated Universal Time),Mon May 11 2026 17:00:00 GMT+0000 (Coordinated Universal Time): pg_hba.conf rejects connection for host "34.96.33.114", user "postgres", database "neondb", no encryption        Error: Failed query: 
+    select (meta->>'rating')::numeric as rating
+    from "delivery_events"
+    where event = 'order_rated'
+      and created_at >= $1 and created_at < $2
+      and meta ? 'rating'
+  
+params: Mon May 11 2026 16:00:00 GMT+0000 (Coordinated Universal Time),Mon May 11 2026 17:00:00 GMT+0000 (Coordinated Universal Time)
+    at NodePgPreparedQuery.queryWithCache (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/pg-core/session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async sampleLowRatings (/app/src/lib/anomalies.ts:266:16)
+    at async evaluateMetric (/app/src/lib/anomalies.ts:374:19)
+    at async runAnomalyScan (/app/src/lib/anomalies.ts:526:20)
+    at async tick3 (/app/src/lib/anomalyScheduler.ts:16:21)
+caused by: error: pg_hba.conf rejects connection for host "34.96.33.114", user "postgres", database "neondb", no encryption
+    at <anonymous> (/node_modules/.pnpm/pg-pool@3.13.0_pg@8.20.0/node_modules/pg-pool/index.js:45:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/node-postgres/session.ts:149:14)
+    at async NodePgPreparedQuery.queryWithCache (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/pg-core/session.ts:71:12)
+    at async sampleLowRatings (/app/src/lib/anomalies.ts:266:16)
+    at async evaluateMetric (/app/src/lib/anomalies.ts:374:19)
+    at async runAnomalyScan (/app/src/lib/anomalies.ts:526:20)
+    at async tick3 (/app/src/lib/anomalyScheduler.ts:16:21)
+anomaly evaluator failed        Failed query: select count(*)::int from "orders" where ("orders"."created_at" >= $1 and "orders"."created_at" < $2)
+params: 2026-05-11T16:00:00.000Z,2026-05-11T17:00:00.000Z: pg_hba.conf rejects connection for host "34.96.33.114", user "postgres", database "neondb", no encryption    Error: Failed query: select count(*)::int from "orders" where ("orders"."created_at" >= $1 and "orders"."created_at" < $2)
+params: 2026-05-11T16:00:00.000Z,2026-05-11T17:00:00.000Z
+    at NodePgPreparedQuery.queryWithCache (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/pg-core/session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/node-postgres/session.ts:154:19)
+    at async samplePaymentFailures (/app/src/lib/anomalies.ts:235:22)
+    at async evaluateMetric (/app/src/lib/anomalies.ts:374:19)
+    at async runAnomalyScan (/app/src/lib/anomalies.ts:526:20)
+    at async tick3 (/app/src/lib/anomalyScheduler.ts:16:21)
+caused by: error: pg_hba.conf rejects connection for host "34.96.33.114", user "postgres", database "neondb", no encryption
+    at <anonymous> (/node_modules/.pnpm/pg-pool@3.13.0_pg@8.20.0/node_modules/pg-pool/index.js:45:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/node-postgres/session.ts:161:13)
+    at async NodePgPreparedQuery.queryWithCache (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/pg-core/session.ts:71:12)
+    at async <anonymous> (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/node-postgres/session.ts:154:19)
+    at async samplePaymentFailures (/app/src/lib/anomalies.ts:235:22)
+    at async evaluateMetric (/app/src/lib/anomalies.ts:374:19)
+    at async runAnomalyScan (/app/src/lib/anomalies.ts:526:20)
+    at async tick3 (/app/src/lib/anomalyScheduler.ts:16:21)
+anomaly evaluator failed        Failed query: 
+    select extract(epoch from (min(d2.created_at) - min(d1.created_at))) / 60.0 as minutes
+    from "delivery_events" d1
+    join "delivery_events" d2
+      on d2.order_id = d1.order_id and d2.event = 'out_for_delivery'
+    where d1.event = 'rider_assigned'
+      and d1.created_at >= $1 and d1.created_at < $2
+    group by d1.order_id
+  
+params: Mon May 11 2026 16:00:00 GMT+0000 (Coordinated Universal Time),Mon May 11 2026 17:00:00 GMT+0000 (Coordinated Universal Time): pg_hba.conf rejects connection for host "34.96.33.114", user "postgres", database "neondb", no encryption        Error: Failed query: 
+    select extract(epoch from (min(d2.created_at) - min(d1.created_at))) / 60.0 as minutes
+    from "delivery_events" d1
+    join "delivery_events" d2
+      on d2.order_id = d1.order_id and d2.event = 'out_for_delivery'
+    where d1.event = 'rider_assigned'
+      and d1.created_at >= $1 and d1.created_at < $2
+    group by d1.order_id
+  
+params: Mon May 11 2026 16:00:00 GMT+0000 (Coordinated Universal Time),Mon May 11 2026 17:00:00 GMT+0000 (Coordinated Universal Time)
+    at NodePgPreparedQuery.queryWithCache (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/pg-core/session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async sampleRiderAcceptance (/app/src/lib/anomalies.ts:209:16)
+    at async evaluateMetric (/app/src/lib/anomalies.ts:374:19)
+    at async runAnomalyScan (/app/src/lib/anomalies.ts:526:20)
+    at async tick3 (/app/src/lib/anomalyScheduler.ts:16:21)
+caused by: error: pg_hba.conf rejects connection for host "34.96.33.114", user "postgres", database "neondb", no encryption
+    at <anonymous> (/node_modules/.pnpm/pg-pool@3.13.0_pg@8.20.0/node_modules/pg-pool/index.js:45:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/node-postgres/session.ts:149:14)
+    at async NodePgPreparedQuery.queryWithCache (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/pg-core/session.ts:71:12)
+    at async sampleRiderAcceptance (/app/src/lib/anomalies.ts:209:16)
+    at async evaluateMetric (/app/src/lib/anomalies.ts:374:19)
+    at async runAnomalyScan (/app/src/lib/anomalies.ts:526:20)
+    at async tick3 (/app/src/lib/anomalyScheduler.ts:16:21)
+anomaly evaluator failed        Failed query: 
+    select extract(epoch from (min(de.created_at) - o.created_at)) / 60.0 as minutes
+    from "orders" o
+    join "delivery_events" de on de.order_id = o.id and de.event = 'ready'
+    where o.created_at >= $1 and o.created_at < $2
+    group by o.id
+  
+params: Mon May 11 2026 16:00:00 GMT+0000 (Coordinated Universal Time),Mon May 11 2026 17:00:00 GMT+0000 (Coordinated Universal Time): pg_hba.conf rejects connection for host "34.96.33.114", user "postgres", database "neondb", no encryption        Error: Failed query: 
+    select extract(epoch from (min(de.created_at) - o.created_at)) / 60.0 as minutes
+    from "orders" o
+    join "delivery_events" de on de.order_id = o.id and de.event = 'ready'
+    where o.created_at >= $1 and o.created_at < $2
+    group by o.id
+  
+params: Mon May 11 2026 16:00:00 GMT+0000 (Coordinated Universal Time),Mon May 11 2026 17:00:00 GMT+0000 (Coordinated Universal Time)
+    at NodePgPreparedQuery.queryWithCache (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/pg-core/session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async sampleKitchenReady (/app/src/lib/anomalies.ts:186:16)
+    at async evaluateMetric (/app/src/lib/anomalies.ts:374:19)
+    at async runAnomalyScan (/app/src/lib/anomalies.ts:526:20)
+    at async tick3 (/app/src/lib/anomalyScheduler.ts:16:21)
+caused by: error: pg_hba.conf rejects connection for host "34.96.33.114", user "postgres", database "neondb", no encryption
+    at <anonymous> (/node_modules/.pnpm/pg-pool@3.13.0_pg@8.20.0/node_modules/pg-pool/index.js:45:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/node-postgres/session.ts:149:14)
+    at async NodePgPreparedQuery.queryWithCache (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/pg-core/session.ts:71:12)
+    at async sampleKitchenReady (/app/src/lib/anomalies.ts:186:16)
+    at async evaluateMetric (/app/src/lib/anomalies.ts:374:19)
+    at async runAnomalyScan (/app/src/lib/anomalies.ts:526:20)
+    at async tick3 (/app/src/lib/anomalyScheduler.ts:16:21)
+anomaly evaluator failed        Failed query: select count(*)::int, sum(case when "status" = 'refunded' then 1 else 0 end)::int from "orders" where ("orders"."created_at" >= $1 and "orders"."created_at" < $2)
+params: 2026-05-11T16:00:00.000Z,2026-05-11T17:00:00.000Z: pg_hba.conf rejects connection for host "34.96.33.114", user "postgres", database "neondb", no encryption    Error: Failed query: select count(*)::int, sum(case when "status" = 'refunded' then 1 else 0 end)::int from "orders" where ("orders"."created_at" >= $1 and "orders"."created_at" < $2)
+params: 2026-05-11T16:00:00.000Z,2026-05-11T17:00:00.000Z
+    at NodePgPreparedQuery.queryWithCache (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/pg-core/session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/node-postgres/session.ts:154:19)
+    at async sampleRefundRate (/app/src/lib/anomalies.ts:159:17)
+    at async evaluateMetric (/app/src/lib/anomalies.ts:374:19)
+    at async runAnomalyScan (/app/src/lib/anomalies.ts:526:20)
+    at async tick3 (/app/src/lib/anomalyScheduler.ts:16:21)
+caused by: error: pg_hba.conf rejects connection for host "34.96.33.114", user "postgres", database "neondb", no encryption
+    at <anonymous> (/node_modules/.pnpm/pg-pool@3.13.0_pg@8.20.0/node_modules/pg-pool/index.js:45:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/node-postgres/session.ts:161:13)
+    at async NodePgPreparedQuery.queryWithCache (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/pg-core/session.ts:71:12)
+    at async <anonymous> (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/node-postgres/session.ts:154:19)
+    at async sampleRefundRate (/app/src/lib/anomalies.ts:159:17)
+    at async evaluateMetric (/app/src/lib/anomalies.ts:374:19)
+    at async runAnomalyScan (/app/src/lib/anomalies.ts:526:20)
+    at async tick3 (/app/src/lib/anomalyScheduler.ts:16:21)
+shutdown complete
+shutdown initiated
+request errored failed with status code 500     Error: failed with status code 500
+    at onResFinished (/node_modules/.pnpm/pino-http@10.5.0/node_modules/pino-http/logger.js:115:39)
+    at ServerResponse.onResponseComplete (/node_modules/.pnpm/pino-http@10.5.0/node_modules/pino-http/logger.js:178:14)
+    at ServerResponse.emit (node:events:521:24)
+    at onFinish (node:_http_outgoing:1026:10)
+    at callback (node:internal/streams/writable:764:21)
+    at afterWrite (node:internal/streams/writable:708:5)
+    at afterWriteTick (node:internal/streams/writable:694:10)
+    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
+unhandled error Failed query: insert into "challenges" ("id", "slug", "title", "tagline", "description", "image", "rd_name", "duration_days", "starts_at", "ends_at", "goal_tags", "bundle_slug", "featured", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, default) on conflict ("slug") do nothing
+params: 21-day-high-protein-reset,21-Day High-Protein Reset,Hit 1.6g/kg protein every day for three weeks with RD check-ins.,A three-week guided reset built around our highest-protein meals. You'll log daily protein, get two RD video check-ins, and share progress with the cohort.,https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=1200&q=80,Dr. Anika Rao,21,2026-05-09T17:26:29.963Z,2026-05-30T17:26:29.963Z,["high-protein","muscle","recovery"],performance-stack,1: pg_hba.conf rejects connection for host "34.96.33.114", user "postgres", database "neondb", no encryption Error: Failed query: insert into "challenges" ("id", "slug", "title", "tagline", "description", "image", "rd_name", "duration_days", "starts_at", "ends_at", "goal_tags", "bundle_slug", "featured", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, default) on conflict ("slug") do nothing
+params: 21-day-high-protein-reset,21-Day High-Protein Reset,Hit 1.6g/kg protein every day for three weeks with RD check-ins.,A three-week guided reset built around our highest-protein meals. You'll log daily protein, get two RD video check-ins, and share progress with the cohort.,https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=1200&q=80,Dr. Anika Rao,21,2026-05-09T17:26:29.963Z,2026-05-30T17:26:29.963Z,["high-protein","muscle","recovery"],performance-stack,1
+    at NodePgPreparedQuery.queryWithCache (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/pg-core/session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async ensureChallengeSeeds (/app/src/lib/challenges.ts:361:5)
+    at async <anonymous> (/app/src/routes/challenges.ts:28:3)
+caused by: error: pg_hba.conf rejects connection for host "34.96.33.114", user "postgres", database "neondb", no encryption
+    at <anonymous> (/node_modules/.pnpm/pg-pool@3.13.0_pg@8.20.0/node_modules/pg-pool/index.js:45:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/node-postgres/session.ts:149:14)
+    at async NodePgPreparedQuery.queryWithCache (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/pg-core/session.ts:71:12)
+    at async ensureChallengeSeeds (/app/src/lib/challenges.ts:361:5)
+    at async <anonymous> (/app/src/routes/challenges.ts:28:3)
+request errored failed with status code 500     Error: failed with status code 500
+    at onResFinished (/node_modules/.pnpm/pino-http@10.5.0/node_modules/pino-http/logger.js:115:39)
+    at ServerResponse.onResponseComplete (/node_modules/.pnpm/pino-http@10.5.0/node_modules/pino-http/logger.js:178:14)
+    at ServerResponse.emit (node:events:521:24)
+    at onFinish (node:_http_outgoing:1026:10)
+    at callback (node:internal/streams/writable:764:21)
+    at afterWrite (node:internal/streams/writable:708:5)
+    at afterWriteTick (node:internal/streams/writable:694:10)
+    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
+unhandled error Failed query: insert into "bundles" ("id", "slug", "name", "description", "badge", "price_paise", "original_price_paise", "dish_ids", "image") values (default, $1, $2, $3, $4, $5, $6, $7, $8) on conflict ("slug") do nothing
+params: morning-power,Morning Power Combo,Power House Smoothie + Activated Charcoal Smoothie. Start your day with 18g protein and antioxidant detox in one bundle.,BREAKFAST,11500,13000,[97,1],https://images.unsplash.com/photo-1570696516188-ade861b84a49?w=800&q=80: pg_hba.conf rejects connection for host "34.96.33.114", user "postgres", database "neondb", no encryption     Error: Failed query: insert into "bundles" ("id", "slug", "name", "description", "badge", "price_paise", "original_price_paise", "dish_ids", "image") values (default, $1, $2, $3, $4, $5, $6, $7, $8) on conflict ("slug") do nothing
+params: morning-power,Morning Power Combo,Power House Smoothie + Activated Charcoal Smoothie. Start your day with 18g protein and antioxidant detox in one bundle.,BREAKFAST,11500,13000,[97,1],https://images.unsplash.com/photo-1570696516188-ade861b84a49?w=800&q=80
+    at NodePgPreparedQuery.queryWithCache (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/pg-core/session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async ensureSeeded (/app/src/routes/bundles.ts:67:5)
+    at async <anonymous> (/app/src/routes/bundles.ts:76:3)
+caused by: error: pg_hba.conf rejects connection for host "34.96.33.114", user "postgres", database "neondb", no encryption
+    at <anonymous> (/node_modules/.pnpm/pg-pool@3.13.0_pg@8.20.0/node_modules/pg-pool/index.js:45:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/node-postgres/session.ts:149:14)
+    at async NodePgPreparedQuery.queryWithCache (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/pg-core/session.ts:71:12)
+    at async ensureSeeded (/app/src/routes/bundles.ts:67:5)
+    at async <anonymous> (/app/src/routes/bundles.ts:76:3)
+request errored failed with status code 500     Error: failed with status code 500
+    at onResFinished (/node_modules/.pnpm/pino-http@10.5.0/node_modules/pino-http/logger.js:115:39)
+    at ServerResponse.onResponseComplete (/node_modules/.pnpm/pino-http@10.5.0/node_modules/pino-http/logger.js:178:14)
+    at ServerResponse.emit (node:events:521:24)
+    at onFinish (node:_http_outgoing:1026:10)
+    at callback (node:internal/streams/writable:764:21)
+    at afterWrite (node:internal/streams/writable:708:5)
+    at afterWriteTick (node:internal/streams/writable:694:10)
+    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
+unhandled error Failed query: select "id", "slug", "name", "description", "price_paise", "category", "kitchen_location", "is_veg", "is_available", "availability_window", "tags", "image_url", "long_description", "allergens", "cuisine_tags", "vibe_tags", "seo_title", "seo_description", "macros", "macros_are_estimate", "rd_verified", "rd_note", "prep_time", "glycaemic_index", "sugar_per_serving", "ingredients", "customizations", "pairing_slug", "copy_generated_at", "copy_generated_by", "unavailable_reason", "unavailable_until", "created_at", "updated_at" from "menu_items" order by "menu_items"."name" asc limit $1
+params: 500: pg_hba.conf rejects connection for host "34.96.33.114", user "postgres", database "neondb", no encryption  Error: Failed query: select "id", "slug", "name", "description", "price_paise", "category", "kitchen_location", "is_veg", "is_available", "availability_window", "tags", "image_url", "long_description", "allergens", "cuisine_tags", "vibe_tags", "seo_title", "seo_description", "macros", "macros_are_estimate", "rd_verified", "rd_note", "prep_time", "glycaemic_index", "sugar_per_serving", "ingredients", "customizations", "pairing_slug", "copy_generated_at", "copy_generated_by", "unavailable_reason", "unavailable_until", "created_at", "updated_at" from "menu_items" order by "menu_items"."name" asc limit $1
+params: 500
+    at NodePgPreparedQuery.queryWithCache (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/pg-core/session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/node-postgres/session.ts:154:19)
+    at async listMenuItems (/app/src/lib/menu.ts:38:7)
+    at async getMergedCatalog (/app/src/lib/menuResolver.ts:47:18)
+    at async <anonymous> (/app/src/routes/menu.ts:62:18)
+caused by: error: pg_hba.conf rejects connection for host "34.96.33.114", user "postgres", database "neondb", no encryption
+    at <anonymous> (/node_modules/.pnpm/pg-pool@3.13.0_pg@8.20.0/node_modules/pg-pool/index.js:45:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/node-postgres/session.ts:161:13)
+    at async NodePgPreparedQuery.queryWithCache (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/pg-core/session.ts:71:12)
+    at async <anonymous> (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/node-postgres/session.ts:154:19)
+    at async listMenuItems (/app/src/lib/menu.ts:38:7)
+    at async getMergedCatalog (/app/src/lib/menuResolver.ts:47:18)
+    at async <anonymous> (/app/src/routes/menu.ts:62:18)
+request completed
+request completed
+analytics scheduler tick failed Failed query: select count(*)::int as orders,
+               coalesce(sum(total_paise), 0)::bigint as revenue_paise,
+               count(distinct user_id)::int as unique_users
+        from safe_orders
+        where created_at >= $1 and created_at < $2
+params: Mon May 04 2026 00:00:00 GMT+0000 (Coordinated Universal Time),Mon May 11 2026 00:00:00 GMT+0000 (Coordinated Universal Time): pg_hba.conf rejects connection for host "34.96.33.114", user "postgres", database "neondb", no encryption        Error: Failed query: select count(*)::int as orders,
+               coalesce(sum(total_paise), 0)::bigint as revenue_paise,
+               count(distinct user_id)::int as unique_users
+        from safe_orders
+        where created_at >= $1 and created_at < $2
+params: Mon May 04 2026 00:00:00 GMT+0000 (Coordinated Universal Time),Mon May 11 2026 00:00:00 GMT+0000 (Coordinated Universal Time)
+    at NodePgPreparedQuery.queryWithCache (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/pg-core/session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async aggregateWindow (/app/src/lib/wbr.ts:41:13)
+    at async Promise.all (index 0)
+    at async generateWbr (/app/src/lib/wbr.ts:146:43)
+    at async tick6 (/app/src/lib/analyticsScheduler.ts:26:17)
+caused by: error: pg_hba.conf rejects connection for host "34.96.33.114", user "postgres", database "neondb", no encryption
+    at <anonymous> (/node_modules/.pnpm/pg-pool@3.13.0_pg@8.20.0/node_modules/pg-pool/index.js:45:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/node-postgres/session.ts:149:14)
+    at async NodePgPreparedQuery.queryWithCache (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/pg-core/session.ts:71:12)
+    at async aggregateWindow (/app/src/lib/wbr.ts:41:13)
+    at async Promise.all (index 0)
+    at async generateWbr (/app/src/lib/wbr.ts:146:43)
+    at async tick6 (/app/src/lib/analyticsScheduler.ts:26:17)
+review summarizer tick failed   Failed query: select "slug", count(*)::int as "n" from "dish_reviews" group by "dish_reviews"."slug"
+params: : pg_hba.conf rejects connection for host "34.96.33.114", user "postgres", database "neondb", no encryption     Error: Failed query: select "slug", count(*)::int as "n" from "dish_reviews" group by "dish_reviews"."slug"
+params: 
+    at NodePgPreparedQuery.queryWithCache (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/pg-core/session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/node-postgres/session.ts:154:19)
+    at async summarizeAllReviews (/app/src/lib/dishReviews.ts:384:16)
+    at async tick4 (/app/src/lib/menuEngineeringScheduler.ts:18:17)
+caused by: error: pg_hba.conf rejects connection for host "34.96.33.114", user "postgres", database "neondb", no encryption
+    at <anonymous> (/node_modules/.pnpm/pg-pool@3.13.0_pg@8.20.0/node_modules/pg-pool/index.js:45:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/node-postgres/session.ts:161:13)
+    at async NodePgPreparedQuery.queryWithCache (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/pg-core/session.ts:71:12)
+    at async <anonymous> (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/node-postgres/session.ts:154:19)
+    at async summarizeAllReviews (/app/src/lib/dishReviews.ts:384:16)
+    at async tick4 (/app/src/lib/menuEngineeringScheduler.ts:18:17)
+request errored failed with status code 500     Error: failed with status code 500
+    at onResFinished (/node_modules/.pnpm/pino-http@10.5.0/node_modules/pino-http/logger.js:115:39)
+    at ServerResponse.onResponseComplete (/node_modules/.pnpm/pino-http@10.5.0/node_modules/pino-http/logger.js:178:14)
+    at ServerResponse.emit (node:events:521:24)
+    at onFinish (node:_http_outgoing:1026:10)
+    at callback (node:internal/streams/writable:764:21)
+    at afterWrite (node:internal/streams/writable:708:5)
+    at afterWriteTick (node:internal/streams/writable:694:10)
+    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
+unhandled error Failed query: insert into "challenges" ("id", "slug", "title", "tagline", "description", "image", "rd_name", "duration_days", "starts_at", "ends_at", "goal_tags", "bundle_slug", "featured", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, default) on conflict ("slug") do nothing
+params: 21-day-high-protein-reset,21-Day High-Protein Reset,Hit 1.6g/kg protein every day for three weeks with RD check-ins.,A three-week guided reset built around our highest-protein meals. You'll log daily protein, get two RD video check-ins, and share progress with the cohort.,https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=1200&q=80,Dr. Anika Rao,21,2026-05-09T17:26:29.963Z,2026-05-30T17:26:29.963Z,["high-protein","muscle","recovery"],performance-stack,1: pg_hba.conf rejects connection for host "34.96.33.114", user "postgres", database "neondb", no encryption Error: Failed query: insert into "challenges" ("id", "slug", "title", "tagline", "description", "image", "rd_name", "duration_days", "starts_at", "ends_at", "goal_tags", "bundle_slug", "featured", "created_at") values (default, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, default) on conflict ("slug") do nothing
+params: 21-day-high-protein-reset,21-Day High-Protein Reset,Hit 1.6g/kg protein every day for three weeks with RD check-ins.,A three-week guided reset built around our highest-protein meals. You'll log daily protein, get two RD video check-ins, and share progress with the cohort.,https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=1200&q=80,Dr. Anika Rao,21,2026-05-09T17:26:29.963Z,2026-05-30T17:26:29.963Z,["high-protein","muscle","recovery"],performance-stack,1
+    at NodePgPreparedQuery.queryWithCache (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/pg-core/session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async ensureChallengeSeeds (/app/src/lib/challenges.ts:361:5)
+    at async <anonymous> (/app/src/routes/challenges.ts:28:3)
+caused by: error: pg_hba.conf rejects connection for host "34.96.33.114", user "postgres", database "neondb", no encryption
+    at <anonymous> (/node_modules/.pnpm/pg-pool@3.13.0_pg@8.20.0/node_modules/pg-pool/index.js:45:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/node-postgres/session.ts:149:14)
+    at async NodePgPreparedQuery.queryWithCache (/node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/pg-core/session.ts:71:12)
+    at async ensureChallengeSeeds (/app/src/lib/challenges.ts:361:5)
+    at async <anonymous> (/app/src/routes/challenges.ts:28:3)
+chandanrathore8@cloudshell:~ (omnismtp)$ 
