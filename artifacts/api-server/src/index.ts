@@ -2,7 +2,11 @@ import { createServer } from "node:http";
 import app from "./app";
 import { logger } from "./lib/logger";
 import { initRealtime } from "./lib/realtime";
-import { startWorkers, stopWorkers } from "./lib/queue";
+import {
+  assertRedisAvailableInProduction,
+  startWorkers,
+  stopWorkers,
+} from "./lib/queue";
 import { startLoyaltyScheduler } from "./lib/loyaltyScheduler";
 import { startAnomalyScheduler } from "./lib/anomalyScheduler";
 import { startAnomalyDigestSender } from "./lib/anomalyDigestSender";
@@ -27,6 +31,10 @@ const port = Number(rawPort);
 if (Number.isNaN(port) || port <= 0) {
  throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
+
+// Refuse to boot in production without Redis — see queue.ts for why
+// silent degradation here is unsafe (orders accepted but never advanced).
+assertRedisAvailableInProduction();
 
 const httpServer = createServer(app);
 initRealtime(httpServer);

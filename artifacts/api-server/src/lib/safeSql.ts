@@ -139,6 +139,11 @@ const FORBIDDEN_SUBSTRINGS = [
   // matches unquoted lowercase identifiers) wouldn't catch. All safe_*
   // views are unquoted lowercase, so callers never need quoted identifiers.
   '"',
+  // Postgres dollar-quoted strings ($$...$$ or $tag$...$tag$) bypass the
+  // single-quote stripper in `stripStringLiterals`, so a `;` or DDL token
+  // hidden inside one would not be visible to the keyword/statement
+  // checks below. No legitimate analyst query needs them — refuse outright.
+  "$$", "$tag$",
   // Functions that execute dynamic SQL or read raw files/cross-database
   // data — defense in depth on top of the role-based privilege boundary.
   "dblink", "xpath", "query_to_xml", "query_to_json",
@@ -177,14 +182,20 @@ function stripStringLiterals(sql: string): string {
 export function validateSafeSql(sqlIn: string): string {
   const sql = sqlIn.trim().replace(/;+\s*$/g, "");
   if (!sql) throw new UnsafeSqlError("empty SQL");
-  if (sql.includes(";")) {
-    throw new UnsafeSqlError("only a single SELECT statement is allowed");
-  }
   const lowerFull = sql.toLowerCase();
   if (!lowerFull.startsWith("select ") && !lowerFull.startsWith("select\n")) {
     throw new UnsafeSqlError("only SELECT queries are allowed");
   }
   const stripped = stripStringLiterals(sql).toLowerCase();
+  // Run the statement-separator check on the string-literal-stripped form,
+  // not the raw input. A `;` inside a quoted literal (e.g. `where note =
+  // 'a;b'`) is harmless; a `;` outside any literal is an unambiguous
+  // attempt to chain a second statement and must be refused. Using `sql`
+  // directly here would both false-positive on benign literals and miss
+  // attacks that hide DDL after a `;` inside a malformed literal.
+  if (stripped.includes(";")) {
+    throw new UnsafeSqlError("only a single SELECT statement is allowed");
+  }
   for (const tok of FORBIDDEN_SUBSTRINGS) {
     if (stripped.includes(tok)) {
       throw new UnsafeSqlError(`forbidden token: ${tok.trim()}`);

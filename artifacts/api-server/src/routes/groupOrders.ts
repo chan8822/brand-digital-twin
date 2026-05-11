@@ -8,6 +8,7 @@ import {
   type GroupOrderLine,
 } from "@workspace/db";
 import { resolveDishById } from "../lib/menuResolver";
+import { rateLimit } from "../lib/rateLimit";
 
 const MAX_LINES_PER_GROUP = 50;
 
@@ -68,12 +69,30 @@ router.post("/group-orders", async (req: Request, res: Response) => {
   res.json({ group: inserted });
 });
 
+// Group codes are 6 hex chars (~16M space). Without throttling, an
+// attacker can enumerate the entire space in minutes and harvest the
+// participants list (names) from every active group. Limit lookups to
+// 30/min/IP — generous for a real invitee opening an invite link, far
+// below what a brute-force needs. Anonymous lookup is preserved so
+// invitees can preview a group before signing in.
 router.get("/group-orders/:code", async (req: Request, res: Response) => {
-  const code = String(req.params.code ?? "").toUpperCase();
+  const ip = req.ip ?? "unknown";
+  const allowed = await rateLimit(`group-order:lookup:ip:${ip}`, 60_000, 30);
+  if (!allowed) {
+    res.status(429).json({ error: "too many lookups" });
+    return;
+  }
+  const codeRaw = String(req.params.code ?? "").toUpperCase();
+  // Reject anything that isn't the canonical 6-hex shape before hitting
+  // the DB so the rate limiter is the only meaningful work for garbage.
+  if (!/^[0-9A-F]{6}$/.test(codeRaw)) {
+    res.status(404).json({ error: "group not found" });
+    return;
+  }
   const [row] = await db
     .select()
     .from(groupOrdersTable)
-    .where(eq(groupOrdersTable.code, code));
+    .where(eq(groupOrdersTable.code, codeRaw));
   if (!row) {
     res.status(404).json({ error: "group not found" });
     return;

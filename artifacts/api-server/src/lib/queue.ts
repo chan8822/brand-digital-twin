@@ -19,6 +19,10 @@ let orderPipelineQueue: Queue<OrderPipelineJob> | null = null;
 let workersStarted = false;
 let activeWorker: Worker<OrderPipelineJob> | null = null;
 
+export function isRedisConfigured(): boolean {
+  return !!process.env["REDIS_URL"];
+}
+
 function getConnection(): Redis | null {
   if (connection) return connection;
   const url = process.env["REDIS_URL"];
@@ -26,6 +30,41 @@ function getConnection(): Redis | null {
   connection = new IORedis(url, { maxRetriesPerRequest: null });
   connection.on("error", (err) => logger.error({ err }, "redis connection error"));
   return connection;
+}
+
+/**
+ * Probe BullMQ's Redis connection. Returns "ok" when a `PING` succeeds,
+ * "down" when the client errors out, and "disabled" when REDIS_URL was
+ * never configured (dev-only path — production refuses to boot without
+ * REDIS_URL; see `assertRedisAvailableInProduction`).
+ */
+export async function probeRedis(): Promise<"ok" | "down" | "disabled"> {
+  if (!isRedisConfigured()) return "disabled";
+  const conn = getConnection();
+  if (!conn) return "disabled";
+  try {
+    const reply = await conn.ping();
+    return reply === "PONG" ? "ok" : "down";
+  } catch (err) {
+    logger.error({ err }, "redis ping failed");
+    return "down";
+  }
+}
+
+/**
+ * Fail-closed boot check for production. The order pipeline (preparing
+ * → ready → out_for_delivery → delivered transitions, auto-dispatch,
+ * wellness auto-log, ETA actuals) ALL run inside the BullMQ worker. A
+ * production node booted without Redis would silently accept orders that
+ * never advance, never dispatch, and never log nutrition — a clinical
+ * data integrity issue, not just a reliability one. Refuse to boot.
+ */
+export function assertRedisAvailableInProduction(): void {
+  if (process.env["NODE_ENV"] === "production" && !isRedisConfigured()) {
+    throw new Error(
+      "REDIS_URL must be set in production: order pipeline worker would otherwise be silently disabled.",
+    );
+  }
 }
 
 export function getOrderPipelineQueue(): Queue<OrderPipelineJob> | null {
