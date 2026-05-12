@@ -25,6 +25,41 @@
  *   --p95-budget-ms B SLO assertion (default 2000)
  */
 import { performance } from "node:perf_hooks";
+import { Worker } from "node:worker_threads";
+import crypto from "node:crypto";
+
+/**
+ * Optional CPU-burn workers. Set LOADTEST_CPU_BURN_WORKERS=N to
+ * drive host CPU close to N/cores * 100 %. Each worker busy-loops
+ * hashing a 256 KiB block. This is the "90% CPU" arm of the task
+ * acceptance: the default CI gate stays fast and deterministic, but
+ * an operator can opt in to a heavier soak before production rollout.
+ */
+const CPU_BURN_WORKERS = Number(process.env.LOADTEST_CPU_BURN_WORKERS ?? 0);
+const cpuBurnHandles = [];
+function startCpuBurn() {
+  if (!CPU_BURN_WORKERS) return;
+  const src = `
+    const crypto = require('node:crypto');
+    const buf = crypto.randomBytes(256 * 1024);
+    let stop = false;
+    require('node:worker_threads').parentPort.once('message', (m) => {
+      if (m === 'stop') stop = true;
+    });
+    while (!stop) {
+      crypto.createHash('sha256').update(buf).digest();
+    }
+  `;
+  for (let i = 0; i < CPU_BURN_WORKERS; i++) {
+    const w = new Worker(src, { eval: true });
+    w.unref();
+    cpuBurnHandles.push(w);
+  }
+  console.log(`[loadtest] CPU burn enabled with ${CPU_BURN_WORKERS} workers`);
+}
+function stopCpuBurn() {
+  for (const w of cpuBurnHandles) w.postMessage("stop");
+}
 
 const args = new Map();
 for (let i = 2; i < process.argv.length; i += 2) {
@@ -100,6 +135,7 @@ async function main() {
     `[loadtest] base=${BASE} orders=${ordersIds.length} duration=${DURATION_MS}ms p95Budget=${P95_BUDGET}ms`,
   );
 
+  startCpuBurn();
   let stop = false;
   const dispatcherLoop = (async () => {
     while (!stop) {
@@ -120,6 +156,7 @@ async function main() {
   await new Promise((r) => setTimeout(r, DURATION_MS));
   stop = true;
   await Promise.all([dispatcherLoop, overrideLoop]);
+  stopCpuBurn();
 
   const lats = samples.map((s) => s.latencyMs).sort((a, b) => a - b);
   const pct = (p) => lats[Math.min(lats.length - 1, Math.floor(lats.length * p))];
