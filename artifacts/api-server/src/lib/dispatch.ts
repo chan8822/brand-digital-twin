@@ -461,8 +461,19 @@ export async function dispatchOrder(
       | { id: number; rider_id: number | null; status: string }
       | undefined;
     if (!locked) {
-      // Two cases collapse here: row truly missing, or row locked by
-      // the override path. Both mean "don't assign in this pass".
+      // SKIP LOCKED returns zero rows for either "row missing" or
+      // "row currently locked by another tx" (e.g. the override
+      // path). Distinguish the two with a cheap unlocked existence
+      // check so the API contract preserves "not_found" fidelity:
+      // dispatch loop callers treat lock_busy as "try later" but
+      // not_found as a real client error.
+      const exists = await tx.execute<{ id: number }>(
+        sql`select 1 as id from ${ordersTable} where id = ${orderId} limit 1`,
+      );
+      const found = (exists.rows ?? exists)[0] as { id: number } | undefined;
+      if (!found) {
+        return { ok: false as const, reason: "order not found" };
+      }
       return { ok: false as const, reason: "lock_busy" };
     }
     if (locked.rider_id != null) {
