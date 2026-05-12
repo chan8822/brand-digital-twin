@@ -7,6 +7,14 @@ import {
 } from "@workspace/db";
 import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { logger } from "./logger";
+import { etaBreaker } from "./circuitBreaker";
+
+// Test/admin hook: a synchronous slow-path injector. When set, the
+// next gatherFeatures() call sleeps for `ETA_INJECT_DELAY_MS` before
+// hitting the DB. Used by the dispatch latency stress harness and
+// breaker tests to simulate a degraded ETA model without mocking
+// network code. Defaults to 0 (no delay) in production.
+const INJECT_DELAY_MS = Number(process.env["ETA_INJECT_DELAY_MS"] ?? 0);
 
 export const ETA_MODEL_VERSION = "v1-heuristic";
 export const STATIC_FALLBACK_MINUTES = 25;
@@ -142,6 +150,9 @@ export async function gatherFeatures(args: {
   items: EtaCartItem[];
   now?: Date;
 }): Promise<EtaFeatures> {
+  if (INJECT_DELAY_MS > 0) {
+    await new Promise((r) => setTimeout(r, INJECT_DELAY_MS));
+  }
   const now = args.now ?? new Date();
   const zone = zoneForAddress(args.address);
   const distanceKm = pseudoDistanceKm(args.address);
@@ -210,21 +221,57 @@ export async function estimateEtaForCart(args: {
   items: EtaCartItem[];
 }): Promise<EtaResult> {
   if (!isModelEnabled()) return staticFallback("model disabled");
-  try {
-    const f = await gatherFeatures({ address: args.address, items: args.items });
-    const minutes = predictMinutes(f);
-    return {
-      etaMinutes: minutes,
-      etaAt: new Date(Date.now() + minutes * 60_000).toISOString(),
-      zone: f.zone,
-      source: "model",
-      modelVersion: ETA_MODEL_VERSION,
-      features: f,
-    };
-  } catch (err) {
-    logger.error({ err }, "estimateEtaForCart failed; falling back to static");
-    return staticFallback("error");
+  // Task #8 — circuit breaker. The dispatch loop calls into ETA on
+  // every decision; a single slow probe must not stall the loop.
+  // Breaker timeouts/errors return the deterministic distance-based
+  // fallback so callers never block past the breaker timeout.
+  const result = await etaBreaker.call<EtaResult>(
+    async () => {
+      const f = await gatherFeatures({
+        address: args.address,
+        items: args.items,
+      });
+      const minutes = predictMinutes(f);
+      return {
+        etaMinutes: minutes,
+        etaAt: new Date(Date.now() + minutes * 60_000).toISOString(),
+        zone: f.zone,
+        source: "model",
+        modelVersion: ETA_MODEL_VERSION,
+        features: f,
+      };
+    },
+    () => deterministicFallback(args.address, args.items),
+  );
+  if (result.source === "fallback" && result.reason) {
+    logger.warn(
+      { reason: result.reason, breakerState: result.state },
+      "estimateEtaForCart used breaker fallback",
+    );
   }
+  return result.value;
+}
+
+// Distance-based fallback. Pure function of inputs (no DB reads),
+// so it cannot itself be slow. Mirrors `predictMinutes` shape but
+// uses only static pricing terms — operators can still trust the
+// number even when the model is degraded.
+function deterministicFallback(
+  address: EtaAddress | null,
+  items: EtaCartItem[],
+): EtaResult {
+  const zone = zoneForAddress(address);
+  const distanceKm = pseudoDistanceKm(address);
+  const itemCount = items.reduce((t, i) => t + (i.qty || 0), 0);
+  const minutes = Math.round(15 + 1.2 * itemCount + 3 * distanceKm);
+  return {
+    etaMinutes: minutes,
+    etaAt: new Date(Date.now() + minutes * 60_000).toISOString(),
+    zone,
+    source: "static",
+    modelVersion: ETA_MODEL_VERSION,
+    reason: "breaker fallback",
+  };
 }
 
 export async function getDeliveryEta(orderId: number): Promise<EtaResult | null> {
@@ -239,55 +286,81 @@ export async function getDeliveryEta(orderId: number): Promise<EtaResult | null>
     dropLng: typeof order.dropLng === "number" ? order.dropLng : null,
   };
   if (!isModelEnabled()) return { ...staticFallback("model disabled"), ...dropCoords };
-  try {
-    // Reuse the most recent prediction for this order if it's <2min old, so
-    // the customer sees a stable arrival time across polls/refreshes.
-    const [latest] = await db
-      .select()
-      .from(etaPredictionsTable)
-      .where(eq(etaPredictionsTable.orderId, orderId))
-      .orderBy(desc(etaPredictionsTable.createdAt))
-      .limit(1);
-    if (
-      latest &&
-      Date.now() - new Date(latest.createdAt).getTime() < 2 * 60_000
-    ) {
-      return {
-        etaMinutes: Math.round(latest.predictedMinutes),
-        etaAt: new Date(latest.predictedEtaAt).toISOString(),
-        zone: latest.zone,
-        source: "model",
-        modelVersion: latest.modelVersion,
-        ...dropCoords,
-      };
-    }
-    const f = await gatherFeatures({
-      address: { city: order.city, pincode: order.pincode, line: order.addressLine },
-      items: (order.items ?? []).map((it) => ({ id: it.id, qty: it.qty })),
-    });
-    const minutes = predictMinutes(f);
-    const etaAt = new Date(Date.now() + minutes * 60_000);
-    await db.insert(etaPredictionsTable).values({
-      orderId,
-      zone: f.zone,
-      modelVersion: ETA_MODEL_VERSION,
-      predictedMinutes: minutes,
-      predictedEtaAt: etaAt,
-      features: f as unknown as Record<string, number | string>,
-    });
+  // Cache reuse runs OUTSIDE the breaker so a tripped breaker still
+  // serves the most-recent prediction (<2 min old) — polling clients
+  // see a stable ETA during a model outage instead of jumping between
+  // the cached number and the deterministic fallback.
+  const [latest] = await db
+    .select()
+    .from(etaPredictionsTable)
+    .where(eq(etaPredictionsTable.orderId, orderId))
+    .orderBy(desc(etaPredictionsTable.createdAt))
+    .limit(1);
+  if (
+    latest &&
+    Date.now() - new Date(latest.createdAt).getTime() < 2 * 60_000
+  ) {
     return {
-      etaMinutes: minutes,
-      etaAt: etaAt.toISOString(),
-      zone: f.zone,
+      etaMinutes: Math.round(latest.predictedMinutes),
+      etaAt: new Date(latest.predictedEtaAt).toISOString(),
+      zone: latest.zone,
       source: "model",
-      modelVersion: ETA_MODEL_VERSION,
-      features: f,
+      modelVersion: latest.modelVersion,
       ...dropCoords,
     };
-  } catch (err) {
-    logger.error({ err, orderId }, "getDeliveryEta failed; falling back to static");
-    return { ...staticFallback("error"), ...dropCoords };
   }
+  const result = await etaBreaker.call<EtaResult>(
+    async () => predictAndPersist(order),
+    () => ({
+      ...deterministicFallback(
+        { city: order.city, pincode: order.pincode, line: order.addressLine },
+        (order.items ?? []).map((it) => ({ id: it.id, qty: it.qty })),
+      ),
+      ...dropCoords,
+    }),
+  );
+  if (result.source === "fallback" && result.reason) {
+    logger.warn(
+      { orderId, reason: result.reason, breakerState: result.state },
+      "getDeliveryEta used breaker fallback",
+    );
+  }
+  return result.value;
+}
+
+// Heavy path inside the breaker: gather features (DB) + predict +
+// insert. This is what slows when the model degrades.
+async function predictAndPersist(
+  order: typeof ordersTable.$inferSelect,
+): Promise<EtaResult> {
+  const orderId = order.id;
+  const dropCoords = {
+    dropLat: typeof order.dropLat === "number" ? order.dropLat : null,
+    dropLng: typeof order.dropLng === "number" ? order.dropLng : null,
+  };
+  const f = await gatherFeatures({
+    address: { city: order.city, pincode: order.pincode, line: order.addressLine },
+    items: (order.items ?? []).map((it) => ({ id: it.id, qty: it.qty })),
+  });
+  const minutes = predictMinutes(f);
+  const etaAt = new Date(Date.now() + minutes * 60_000);
+  await db.insert(etaPredictionsTable).values({
+    orderId,
+    zone: f.zone,
+    modelVersion: ETA_MODEL_VERSION,
+    predictedMinutes: minutes,
+    predictedEtaAt: etaAt,
+    features: f as unknown as Record<string, number | string>,
+  });
+  return {
+    etaMinutes: minutes,
+    etaAt: etaAt.toISOString(),
+    zone: f.zone,
+    source: "model",
+    modelVersion: ETA_MODEL_VERSION,
+    features: f,
+    ...dropCoords,
+  };
 }
 
 // Called when a `delivered` delivery_event is recorded. Computes actual

@@ -12,6 +12,7 @@ import { and, asc, desc, eq, gte, inArray, isNull, lte, sql } from "drizzle-orm"
 import { logger } from "./logger";
 import { recordOpsAction, enqueueOpsAuditOutbox } from "./opsAudit";
 import { emitDeliveryEvent } from "./realtime";
+import { recordDispatchDuration } from "./dispatchMetrics";
 
 export const DISPATCH_MODEL_VERSION = "v1-heuristic";
 
@@ -295,6 +296,24 @@ function newBatchKey(): string {
   return `b_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+// Spatial+time bound for batch-partner selection. Replaces the old
+// "pincode-prefix LIKE + LIMIT 20" scan, which silently dropped the
+// optimal partner under 10× load (it returned the first 20 rows by
+// table-scan order, not by proximity). The new query bounds the
+// candidate set by:
+//
+//   - bounding box around the new drop (BATCH_MAX_DETOUR_KM converted
+//     to lat/lng degrees), so the planner uses idx_orders_drop_geo
+//     instead of a seq scan;
+//   - createdAt within BATCH_WINDOW_MIN of the new order, so a stale
+//     partner from yesterday cannot be picked;
+//   - status / rider / priority filters as before.
+//
+// Result: every geographically-eligible partner is evaluated, but the
+// SQL still returns a small, bounded row set. Haversine refinement
+// happens in JS exactly as before, so partner choice is a strict
+// superset of the previous behaviour — never worse.
+const KM_PER_LAT_DEGREE = 111.0;
 async function findBatchPartner(
   order: Order,
   drop: { lat: number; lng: number },
@@ -303,26 +322,62 @@ async function findBatchPartner(
   // a routine partner would silently extend its delivery time by the
   // detour, defeating the entire point of marking it STAT.
   if (order.priority === "stat") return null;
-  // Look for an order in the same zone-ish (same pincode prefix) that has
-  // already been assigned to a rider but not yet picked up.
   const partnerStatuses = ["rider_assigned", "ready"];
-  const sameZonePrefix = (order.pincode ?? "").slice(0, 3);
-  if (!sameZonePrefix) return null;
+  const latDelta = BATCH_MAX_DETOUR_KM / KM_PER_LAT_DEGREE;
+  // Longitude degrees shrink with latitude; guard against div-by-zero
+  // at the poles even though we never operate there.
+  const lngDelta =
+    BATCH_MAX_DETOUR_KM /
+    Math.max(1, KM_PER_LAT_DEGREE * Math.cos((drop.lat * Math.PI) / 180));
+  const minLat = drop.lat - latDelta;
+  const maxLat = drop.lat + latDelta;
+  const minLng = drop.lng - lngDelta;
+  const maxLng = drop.lng + lngDelta;
+  const windowSinceMs = order.createdAt.getTime() - BATCH_WINDOW_MIN * 60_000;
+  const windowUntilMs = order.createdAt.getTime() + BATCH_WINDOW_MIN * 60_000;
   const candidates = await db
     .select()
     .from(ordersTable)
     .where(
       and(
         inArray(ordersTable.status, partnerStatuses),
-        sql`${ordersTable.pincode} like ${sameZonePrefix + "%"}`,
         sql`${ordersTable.riderId} is not null`,
         // Symmetric guard: a routine order also refuses to share a bag
         // with a STAT order — the STAT order's rider is committed to it
         // exclusively.
         sql`${ordersTable.priority} <> 'stat'`,
+        // Spatial bbox; rows without geocoded drops are excluded here
+        // and picked up by the legacy pincode fallback below.
+        sql`${ordersTable.dropLat} between ${minLat} and ${maxLat}`,
+        sql`${ordersTable.dropLng} between ${minLng} and ${maxLng}`,
+        // Time bound: BATCH_WINDOW_MIN around the new order.
+        gte(ordersTable.createdAt, new Date(windowSinceMs)),
+        lte(ordersTable.createdAt, new Date(windowUntilMs)),
       ),
-    )
-    .limit(20);
+    );
+  // Legacy fallback: rows missing dropLat/dropLng are invisible to the
+  // bbox query. Scan the same pincode prefix (capped, time-bounded) so
+  // they remain eligible without re-introducing the original cap on
+  // geocoded rows.
+  const sameZonePrefix = (order.pincode ?? "").slice(0, 3);
+  if (sameZonePrefix) {
+    const legacy = await db
+      .select()
+      .from(ordersTable)
+      .where(
+        and(
+          inArray(ordersTable.status, partnerStatuses),
+          sql`${ordersTable.riderId} is not null`,
+          sql`${ordersTable.priority} <> 'stat'`,
+          isNull(ordersTable.dropLat),
+          sql`${ordersTable.pincode} like ${sameZonePrefix + "%"}`,
+          gte(ordersTable.createdAt, new Date(windowSinceMs)),
+          lte(ordersTable.createdAt, new Date(windowUntilMs)),
+        ),
+      )
+      .limit(50);
+    candidates.push(...legacy);
+  }
   const baseGroup = orderFoodGroup(order);
   for (const partner of candidates) {
     if (partner.id === order.id) continue;
@@ -366,6 +421,22 @@ export interface DispatchOptions {
 }
 
 export async function dispatchOrder(
+  orderId: number,
+  opts: DispatchOptions = {},
+): Promise<DispatchResult> {
+  const dispatchStartedAt = Date.now();
+  try {
+    return await dispatchOrderInner(orderId, opts);
+  } finally {
+    // Record on every exit — success, early-return (order not found,
+    // no riders available, lock_busy), and thrown errors. The metric
+    // budget alert fires on the dispatcher's actual wall-clock cost,
+    // not just the happy path.
+    recordDispatchDuration(Date.now() - dispatchStartedAt);
+  }
+}
+
+async function dispatchOrderInner(
   orderId: number,
   opts: DispatchOptions = {},
 ): Promise<DispatchResult> {
