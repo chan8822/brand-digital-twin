@@ -7,12 +7,17 @@ import {
   PhoneVerifyOtpBody,
   PhoneVerifyOtpResponse,
   LogoutResponse,
+  UpdateProfileInfoBody,
+  UpdateProfileInfoResponse,
 } from "@workspace/api-zod";
 import { db, usersTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 import {
   clearSession,
   createSession,
+  getSession,
   getSessionId,
+  updateSession,
   SESSION_COOKIE,
   SESSION_TTL,
 } from "../lib/auth";
@@ -162,19 +167,47 @@ router.post(
 
     // Upsert the user by their verified phone. We let the DB generate the
     // user id on first sign-in (gen_random_uuid()).
+    //
+    // Attribution semantics: utm_*, signup_source, referral_code are
+    // first-touch — set ONLY on initial user creation, never overwritten on
+    // subsequent sign-ins. Otherwise a returning user clicking a re-targeted
+    // ad would clobber their original acquisition channel, which is the
+    // signal we actually want for channel-mix analysis. Consent timestamps,
+    // by contrast, ARE updated on every sign-in (so a user who opts in later
+    // gets their flag flipped without us needing a separate mutation).
     const now = new Date();
+    const attr = parsed.data.attribution;
+    const consentUpdates: Record<string, Date | string> = {
+      phoneVerifiedAt: now,
+      updatedAt: now,
+    };
+    if (attr?.marketingSmsConsent === true) {
+      consentUpdates["marketingSmsConsentAt"] = now;
+    }
+    if (attr?.dpdpConsent === true) {
+      consentUpdates["dpdpConsentAt"] = now;
+    }
+    if (attr?.tosVersion) {
+      consentUpdates["tosAcceptedVersion"] = attr.tosVersion;
+    }
     const [user] = await db
       .insert(usersTable)
       .values({
         phoneE164: num.e164,
         phoneVerifiedAt: now,
+        signupSource: attr?.signupSource,
+        utmSource: attr?.utmSource,
+        utmMedium: attr?.utmMedium,
+        utmCampaign: attr?.utmCampaign,
+        referralCode: attr?.referralCode,
+        marketingSmsConsentAt:
+          attr?.marketingSmsConsent === true ? now : undefined,
+        dpdpConsentAt: attr?.dpdpConsent === true ? now : undefined,
+        tosAcceptedVersion: attr?.tosVersion,
       })
       .onConflictDoUpdate({
         target: usersTable.phoneE164,
-        set: {
-          phoneVerifiedAt: now,
-          updatedAt: now,
-        },
+        set: consentUpdates,
       })
       .returning();
 
@@ -208,6 +241,87 @@ router.post(
     res.json(
       PhoneVerifyOtpResponse.parse({ ok: true, user: authUser }),
     );
+  },
+);
+
+// PATCH /auth/profile-info — first name / last name / email capture. Used by
+// the post-OTP "what should we call you?" modal AND any future inline edit
+// in /account. PATCH semantics: omitted fields stay untouched.
+router.patch(
+  "/auth/profile-info",
+  async (req: Request, res: Response): Promise<void> => {
+    if (!req.isAuthenticated() || !req.user) {
+      res.status(401).json({ error: "not authenticated" });
+      return;
+    }
+    const parsed = UpdateProfileInfoBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "invalid input" });
+      return;
+    }
+    const updates: Partial<typeof usersTable.$inferInsert> = {};
+    if (parsed.data.firstName !== undefined) {
+      updates.firstName = parsed.data.firstName;
+    }
+    if (parsed.data.lastName !== undefined) {
+      updates.lastName = parsed.data.lastName;
+    }
+    if (parsed.data.email !== undefined) {
+      updates.email = parsed.data.email.toLowerCase();
+    }
+    if (Object.keys(updates).length === 0) {
+      res.status(400).json({ error: "no fields to update" });
+      return;
+    }
+    try {
+      const [updated] = await db
+        .update(usersTable)
+        .set(updates)
+        .where(eq(usersTable.id, req.user.id))
+        .returning();
+      if (!updated) {
+        res.status(404).json({ error: "user not found" });
+        return;
+      }
+      const freshUser = AuthUser.parse({
+        id: updated.id,
+        phoneE164: updated.phoneE164,
+        email: updated.email,
+        firstName: updated.firstName,
+        lastName: updated.lastName,
+        profileImageUrl: updated.profileImageUrl,
+      });
+      // Refresh the session blob so subsequent requests in the same session
+      // (e.g. /auth/user, headers reading req.user.firstName) see the new
+      // values immediately. Without this, a brand-new user would complete
+      // the WelcomeModal but the header would still show "no name" until
+      // they re-logged in. We re-read the session before writing so we
+      // don't clobber other fields the session might carry.
+      const sid = getSessionId(req);
+      if (sid) {
+        const existing = await getSession(sid);
+        if (existing) {
+          await updateSession(sid, { ...existing, user: freshUser });
+        }
+      }
+      res.json(
+        UpdateProfileInfoResponse.parse({
+          ok: true,
+          user: freshUser,
+        }),
+      );
+    } catch (e) {
+      // Most likely cause: unique constraint on email (another account
+      // already owns this address). Surface as 409 so the client can show a
+      // sensible message instead of a generic 500.
+      const msg = String(e instanceof Error ? e.message : e);
+      if (msg.includes("unique") || msg.includes("duplicate")) {
+        res.status(409).json({ error: "email already in use" });
+        return;
+      }
+      logger.error({ err: msg, userId: req.user.id }, "auth.profile.update_failed");
+      res.status(500).json({ error: "could not update profile" });
+    }
   },
 );
 

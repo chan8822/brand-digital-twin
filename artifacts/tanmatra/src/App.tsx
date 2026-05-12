@@ -51,6 +51,8 @@ const Rewards = lazy(() => import("@/pages/Rewards"));
 const Preferences = lazy(() => import("@/pages/Preferences"));
 const Account = lazy(() => import("@/pages/Account"));
 const Addresses = lazy(() => import("@/pages/Addresses"));
+const Terms = lazy(() => import("@/pages/Terms"));
+const Privacy = lazy(() => import("@/pages/Privacy"));
 // Clinical / wellness surfaces — heavy chart deps (recharts), niche audience
 const Wellness = lazy(() => import("@/pages/Wellness"));
 const Performance = lazy(() => import("@/pages/Performance"));
@@ -374,6 +376,8 @@ export default function App() {
                     <Route path="/marketplace" element={<Marketplace />} />
                     <Route path="/marketplace/:slug" element={<MarketplaceItemPage />} />
                     <Route path="/login" element={<Login />} />
+                    <Route path="/terms" element={<Terms />} />
+                    <Route path="/privacy" element={<Privacy />} />
                     <Route path="/admin/login" element={<AdminLogin />} />
                     {import.meta.env.DEV && (
                       <Route path="/__styleguide" element={<Styleguide />} />

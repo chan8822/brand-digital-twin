@@ -1,0 +1,104 @@
+tanmatra.food — Audit Observations
+Verified by direct probing of 35+ routes, JS bundle inspection (/assets/index-BRqVIZZL.js, 1.07MB), security headers, and screenshot capture. Date: May 2026.
+
+Recalibration: what I had wrong on the first pass
+Original claim	Reality
+"Site has ~10 pages"	60+ routes in the SPA bundle
+"No auth flow"	Twilio Verify OTP works; admin has separate login at /admin/login
+"No payment integration"	Razorpay confirmed (UPI · Cards · Net Banking · Wallets, PCI-DSS L1)
+"No B2B"	/corporate, /rd-partners, /vouchers, /team all built
+"Checkout untested = broken"	Empty-cart redirect works correctly; flow gated behind cart contents
+"/wellness broken"	Loads dashboard skeleton; auth-gated as designed
+The platform is dramatically more built-out than the original audit portrayed. It is not an under-built MVP — it's a substantial multi-sided product (D2C + B2B + admin + RD network) with mature engineering hygiene.
+
+What's actually built (verified)
+Customer-facing (24+ routes): /, /menu, /dish/:slug, /cart, /checkout, /orders, /track, /account, /account/addresses, /preferences, /login, /wellness, /performance, /clinical, /recipes, /recipes/:slug, /plans, /plans/:slug, /meal-planner, /marketplace, /marketplace/:slug, /premium, /subscribe, /subscriptions, /rewards, /vouchers, /team, /rd/:slug, /challenges, /challenges/:slug, /group/:code
+
+B2B / Partner (10 routes): /corporate, /corporate/:slug, /corporate/:slug/lunch-planner, /corporate/invite/:token, /office-lunch/:id, /rd-partners, /rd-partners/apply, /rd-console, /appointments, /checkout-appointment
+
+Admin / Ops (15 routes): /admin, /admin/login, /admin/ai-runs, /admin/analytics, /admin/cms-agent, /admin/community-moderation, /admin/forecasting, /admin/menu-engineering, /admin/moderation, /admin/ops, /admin/ops-agent, /admin/rd-applications, /admin/sales-console, /admin/sales-console/:slug, /admin/support-tickets
+
+P0 issues (fix immediately)
+1. Marketing claim ↔ data mismatch (credibility risk)
+Homepage states "24 RD Advisors" with prominence
+/team page lists 3 RDs (Dr. Anjali Nair, Dr. Vikram Sethi, Dr. Kavya Menon)
+/clinical shows "2 CLINICAL RDs" stat
+/wellness heading: "1 RDs for wellness coaching" (also a singular/plural grammar bug)
+Either staff up to 24 or change the home stat to match reality (~3). First reporter who counts will publish the discrepancy.
+
+2. Broken nav labels → 404 destinations
+The persistent top nav shows Eat / Plan / Orders / Community / Account — but these labels don't match the actual route names. So /eat, /plan, /community all 404 even though equivalent pages exist as /menu, /plans, /team. The nav anchors must be repointed to existing routes.
+
+3. robots.txt and sitemap.xml return SPA HTML
+GET /robots.txt    → returns full HTML page (200 OK, content-type: text/html)
+GET /sitemap.xml   → returns full HTML page (200 OK, content-type: text/html)
+
+Search engines cannot index this site. For a content-heavy nutrition site in India competing on therapeutic-meal queries, this is significant SEO loss.
+
+4. Footer links → 404
+/health-assessment, /clinical-menu, /therapeutic-plans, /for-dietitians, /assessment (homepage CTA) — none exist. Either repoint to /preferences, /clinical, /plans, /rd-partners respectively, or build them.
+
+5. Unverified clinical claims (regulatory exposure)
+"HbA1c reduction of 1.2% observed in diabetic patients after 12-week MNT adherence"
+"Demonstrated 23% improvement in time-to-exhaustion after 6-week adherence"
+Under India's ASCI Code and the Drugs and Magic Remedies (Objectionable Advertisements) Act, unsubstantiated therapeutic claims are actionable. Either publish the underlying study/citation or remove the specific numbers.
+
+6. Missing regulatory disclosures
+No FSSAI license number displayed (only "FSSAI Licensed" text). FSSAI requires the 14-digit license number on packaging and on the website.
+No DPDP Act 2023 consent banner for personal/health data collection
+No privacy policy or terms of service linked anywhere visible
+P1 issues
+7. Cloud Run cold-start UX
+Backend is wellness-foods-1076775857511.asia-south2.run.app (Delhi region). Multiple pages show prolonged "Loading..." states (/wellness, /preferences, /rewards, /subscriptions, /recipes, /marketplace, /meal-planner, /challenges). Consistent with Cloud Run cold starts on min-instances=0. Either set min-instances ≥ 1, or add proper skeleton states with timeout/retry instead of indefinite "Loading…".
+
+8. Single 1MB JS bundle, no code splitting
+/assets/index-BRqVIZZL.js = 1,073KB uncompressed. For a 60-route SPA, this is a meaningful TTI/LCP penalty on Indian mobile networks. Should be route-split (Vite supports this with React.lazy + dynamic import()).
+
+9. No /search page despite Cmd+K being prominent
+The header shows "Search ⌘K" prominently. /search 404s. The Cmd+K modal works on the menu page only. Either build a global /search route or remove the keyboard hint from the header on pages where it doesn't work.
+
+10. /signup 404
+Login flow is OTP (no separate signup), which is fine — but the route /signup is broken. Redirect /signup → /login to handle inbound traffic from anywhere referencing it.
+
+11. Inconsistent auth-gated UX
+/appointments, /checkout-appointment render completely blank without auth. Other pages (/rd-console) correctly redirect to /login?next=.... Standardize on the redirect pattern.
+
+12. Concept duplication in nav
+/plans, /meal-planner, /subscribe, /subscriptions are four similar concepts. /team and /community (404) — what's the intended difference? User confusion likely. Worth a content audit.
+
+What's genuinely strong (worth preserving)
+CSP properly configured: script-src 'self', no unsafe-eval or unsafe-inline on scripts. Above industry baseline.
+HSTS enabled (max-age=31556926)
+Razorpay PCI-DSS L1 integration for payments
+Per-dish nutrition transparency: kcal/protein/carbs/fat/GI/sugar/allergens, plus named RD signoff and named chef signoff. Best-in-class for the category.
+Twilio Verify OTP auth — clean, no friction
+Admin breadth: AI-runs review, forecasting, sales console, RD applications, support tickets, ops-agent, CMS-agent. Real ops infrastructure, not theatre.
+B2B funnel (/rd-partners): well-designed, 70/30 split, free intro consult, 3-day response SLA, monthly payouts.
+Vouchers and corporate plans: functional gift/subsidy infrastructure.
+6 actual subscription plans with proper macros, RD authors, weight-loss / muscle / PCOS / diabetic targeting.
+Premium tier at Rs.999/month with concrete benefits, not vague promises.
+Still untested (cannot verify without credentials)
+OTP code delivery and validation end-to-end
+Razorpay payment completion and refund handling
+Order confirmation SMS/email
+Subscription billing cycle (Rs.5490/week recurring charge)
+Pincode/delivery zone validation at checkout
+Address book CRUD operations
+Voucher purchase and redemption end-to-end
+RD application form submission (/rd-partners/apply)
+Corporate company creation flow
+Admin login (no creds)
+AI meal planner generation (/meal-planner)
+Reorder, cancellation, refund flows
+Mobile viewport behavior (external screenshot tool is desktop-only; needs real device or full Playwright env)
+To test these, I'd need either a real Indian phone number authorized for OTP testing, or a pre-loaded test account.
+
+Bottom line
+The real risks are commercial and compliance, not technical:
+
+The "24 RDs" claim vs the reality of 3 — fix or face credibility damage on first scrutiny
+Unsubstantiated clinical outcome claims — legal exposure under ASCI and Drugs & Magic Remedies Act
+Missing FSSAI number, DPDP consent, privacy policy — regulatory exposure
+Broken nav and footer links scatter trust on every page load
+No SEO infrastructure (robots, sitemap) — competitors will outrank you on therapeutic-meal queries
+Engineering quality is above category baseline. Marketing claims and compliance posture are the weak links.

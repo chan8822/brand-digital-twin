@@ -29,7 +29,12 @@ import {
 } from "@/lib/fulfillmentApi";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Sparkles, Leaf, Store, Truck, NotebookPen, ArrowRight } from "lucide-react";
+import { Sparkles, Leaf, Store, Truck, NotebookPen, ArrowRight, ChevronDown } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import AddOnRail from "@/components/checkout/AddOnRail";
 import CheckoutStepper, { type CheckoutStep } from "@/components/checkout/CheckoutStepper";
 import { addonsApi } from "@/lib/marketplaceApi";
@@ -94,6 +99,12 @@ export default function Checkout() {
   const [fulfillmentType, setFulfillmentType] = useState<"delivery" | "pickup">("delivery");
   const [slots, setSlots] = useState<DeliverySlotOption[]>([]);
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
+  // Inline error message rendered directly under the slot grid. Populated
+  // when the server rejects checkout with "delivery slot full" or
+  // "delivery slot required" (replacing what used to be a toast-only
+  // signal — toasts are easy to miss and disappear before the user
+  // re-engages with the picker). Cleared on any slot interaction.
+  const [slotErrorMsg, setSlotErrorMsg] = useState<string | null>(null);
   const [pickupLocations, setPickupLocations] = useState<PickupLocationOption[]>([]);
   const [selectedPickupId, setSelectedPickupId] = useState<number | null>(null);
   const [ecoPackagingOptIn, setEcoPackagingOptIn] = useState(false);
@@ -385,14 +396,15 @@ export default function Checkout() {
           /* noop */
         }
         setSelectedSlotId(null);
-        toast.error("That delivery slot is full", {
-          description: "Pick another delivery window to continue.",
-          action: { label: "Pick a slot", onClick: scrollToFulfillment },
-        });
+        setSlotErrorMsg(
+          "That delivery window just sold out. Please pick another.",
+        );
+        scrollToFulfillment();
+        toast.error("That delivery slot is full");
       } else if (msg.includes("delivery slot required")) {
-        toast.error("Please pick a delivery window before placing the order", {
-          action: { label: "Pick a slot", onClick: scrollToFulfillment },
-        });
+        setSlotErrorMsg("Please pick a delivery window before placing the order.");
+        scrollToFulfillment();
+        toast.error("Please pick a delivery window before placing the order");
       } else if (
         msg.includes("pickup location required") ||
         msg.includes("pickup location unavailable")
@@ -682,7 +694,13 @@ export default function Checkout() {
                 {slots.length === 0 ? (
                   <p className="text-xs text-clinical-zinc">Loading available windows…</p>
                 ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-56 overflow-y-auto pr-1">
+                  <div
+                    className={`grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-56 overflow-y-auto pr-1 ${
+                      slotErrorMsg ? "ring-1 ring-red-400/40 rounded-md p-1" : ""
+                    }`}
+                    aria-invalid={slotErrorMsg ? true : undefined}
+                    aria-describedby={slotErrorMsg ? "slot-error" : undefined}
+                  >
                     {slots.map((slot) => {
                       const start = new Date(slot.startsAt);
                       const end = new Date(slot.endsAt);
@@ -702,7 +720,13 @@ export default function Checkout() {
                           key={slot.id}
                           type="button"
                           disabled={slot.full}
-                          onClick={() => setSelectedSlotId(slot.id)}
+                          onClick={() => {
+                            setSelectedSlotId(slot.id);
+                            // Any slot interaction clears the inline error
+                            // so the red outline doesn't linger after the
+                            // user has actively responded to it.
+                            if (slotErrorMsg) setSlotErrorMsg(null);
+                          }}
                           className={`p-2 rounded-md border text-left text-[11px] transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
                             selected
                               ? "border-clinical-gold/60 bg-clinical-gold/10 text-white"
@@ -720,6 +744,16 @@ export default function Checkout() {
                       );
                     })}
                   </div>
+                )}
+                {slotErrorMsg && (
+                  <p
+                    id="slot-error"
+                    role="alert"
+                    className="text-[10px] text-red-400 flex items-center gap-1"
+                  >
+                    <AlertTriangle className="w-2.5 h-2.5" />
+                    {slotErrorMsg}
+                  </p>
                 )}
               </div>
             )}
@@ -1162,6 +1196,68 @@ export default function Checkout() {
 
             <Separator className="bg-clinical-slate/20" />
 
+            {/* Total savings summary (C8). Sums every discount applied to
+                this order so the user sees a single trustworthy "you saved
+                X" line — and can expand to see exactly where it came from.
+                We compute from the same primitives the price uses so it can
+                never drift from the actual price. The constituent rows are
+                already rendered above; the expander is the *summary*. */}
+            {(() => {
+              const totalSavings =
+                preorderDiscount +
+                pickupDiscount +
+                creditApplied +
+                subsidyAvailable;
+              if (totalSavings <= 0) return null;
+              return (
+                <Collapsible className="rounded-lg border border-clinical-sage/30 bg-clinical-sage/5">
+                  <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2 text-left group">
+                    <div className="flex items-center gap-2">
+                      <Tag className="w-3.5 h-3.5 text-clinical-sage" />
+                      <span className="text-xs font-medium text-clinical-sage">
+                        You saved {formatPrice(totalSavings)} on this order
+                      </span>
+                    </div>
+                    <ChevronDown className="w-3.5 h-3.5 text-clinical-sage transition-transform group-data-[state=open]:rotate-180" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="px-3 pb-2.5 pt-0.5 space-y-1 border-t border-clinical-sage/20 text-[11px] text-clinical-zinc">
+                    {preorderDiscount > 0 && (
+                      <div className="flex justify-between">
+                        <span>Pre-order discount (5%)</span>
+                        <span className="tabular-nums text-clinical-sage">
+                          -{formatPrice(preorderDiscount)}
+                        </span>
+                      </div>
+                    )}
+                    {pickupDiscount > 0 && (
+                      <div className="flex justify-between">
+                        <span>Pickup partner discount</span>
+                        <span className="tabular-nums text-clinical-sage">
+                          -{formatPrice(pickupDiscount)}
+                        </span>
+                      </div>
+                    )}
+                    {creditApplied > 0 && (
+                      <div className="flex justify-between">
+                        <span>Loyalty credits</span>
+                        <span className="tabular-nums text-clinical-sage">
+                          -{formatPrice(creditApplied)}
+                        </span>
+                      </div>
+                    )}
+                    {subsidyAvailable > 0 && (
+                      <div className="flex justify-between">
+                        <span>Company subsidy</span>
+                        <span className="tabular-nums text-clinical-sage">
+                          -{formatPrice(subsidyAvailable)}
+                        </span>
+                      </div>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
+              );
+            })()}
+
             <div className="flex justify-between items-baseline">
               <span className="text-sm font-semibold text-white">Total</span>
               <div className="text-right">
@@ -1186,34 +1282,84 @@ export default function Checkout() {
         </Card>
       </div>
 
-      {/* Mobile sticky bottom action bar (sits above the bottom nav) */}
-      <div
+      {/* Mobile sticky bottom action bar (sits above the bottom nav).
+          Wrapped in a Collapsible (C5) so tapping the price area expands a
+          breakdown panel — viewport real estate on mobile is tight, so the
+          full sidebar isn't visible while the user is filling out the form
+          and they can lose track of why the total came out to X. The
+          breakdown panel slides UP from the chip (above), not down, since
+          the chip is already at the bottom of the screen. */}
+      <Collapsible
         className="lg:hidden fixed left-0 right-0 z-30 px-3 pb-2 pointer-events-none"
         style={{ bottom: "calc(4rem + env(safe-area-inset-bottom))" }}
+        asChild
       >
-        <div className="pointer-events-auto rounded-xl border border-clinical-slate/40 bg-clinical-surface/95 backdrop-blur-xl shadow-2xl p-3 flex items-center gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] text-clinical-zinc leading-none truncate">
-              {fulfillmentType === "pickup" ? "Self-collect" : deliveryFee === 0 ? "FREE delivery" : `+ ${formatPrice(deliveryFee)} delivery`}
-              {preorderDiscount > 0 && ` · -${formatPrice(preorderDiscount)} preorder`}
-              {pickupDiscount > 0 && ` · -${formatPrice(pickupDiscount)} pickup`}
-              {creditApplied > 0 && ` · -${formatPrice(creditApplied)} credits`}
-              {subsidyAvailable > 0 && ` · -${formatPrice(subsidyAvailable)} company`}
-              {effectiveTip > 0 && ` · +${formatPrice(effectiveTip)} tip`}
-            </p>
-            <p className="tabular-nums text-lg font-bold text-clinical-gold leading-tight mt-0.5">
-              {formatPrice(razorpayTotal)}
-            </p>
+        <div>
+          <CollapsibleContent className="pointer-events-auto rounded-xl border border-clinical-slate/40 bg-clinical-surface/95 backdrop-blur-xl shadow-2xl p-3 mb-2 space-y-1 text-[11px]">
+            <div className="flex justify-between text-clinical-zinc">
+              <span>Subtotal</span>
+              <span className="tabular-nums text-white">{formatPrice(subtotal)}</span>
+            </div>
+            <div className="flex justify-between text-clinical-zinc">
+              <span>{fulfillmentType === "pickup" ? "Pickup" : "Delivery"}</span>
+              <span className="tabular-nums">
+                {fulfillmentType === "pickup" || deliveryFee === 0
+                  ? <span className="text-clinical-sage">FREE</span>
+                  : <span className="text-white">{formatPrice(deliveryFee)}</span>}
+              </span>
+            </div>
+            {preorderDiscount > 0 && (
+              <div className="flex justify-between"><span className="text-clinical-zinc">Pre-order discount</span><span className="tabular-nums text-clinical-sage">-{formatPrice(preorderDiscount)}</span></div>
+            )}
+            {pickupDiscount > 0 && (
+              <div className="flex justify-between"><span className="text-clinical-zinc">Pickup discount</span><span className="tabular-nums text-clinical-sage">-{formatPrice(pickupDiscount)}</span></div>
+            )}
+            {creditApplied > 0 && (
+              <div className="flex justify-between"><span className="text-clinical-zinc">Loyalty credits</span><span className="tabular-nums text-clinical-sage">-{formatPrice(creditApplied)}</span></div>
+            )}
+            {subsidyAvailable > 0 && (
+              <div className="flex justify-between"><span className="text-clinical-zinc">Company subsidy</span><span className="tabular-nums text-clinical-sage">-{formatPrice(subsidyAvailable)}</span></div>
+            )}
+            {effectiveTip > 0 && (
+              <div className="flex justify-between"><span className="text-clinical-zinc">Rider tip</span><span className="tabular-nums text-clinical-gold">+{formatPrice(effectiveTip)}</span></div>
+            )}
+            <Separator className="bg-clinical-slate/20 my-1" />
+            <div className="flex justify-between font-semibold pt-0.5">
+              <span className="text-white">Total</span>
+              <span className="tabular-nums text-clinical-gold">{formatPrice(razorpayTotal)}</span>
+            </div>
+          </CollapsibleContent>
+          <div className="pointer-events-auto rounded-xl border border-clinical-slate/40 bg-clinical-surface/95 backdrop-blur-xl shadow-2xl p-3 flex items-center gap-3">
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="min-w-0 flex-1 text-left group"
+                aria-label="Toggle order breakdown"
+              >
+                <p className="text-[10px] text-clinical-zinc leading-none truncate flex items-center gap-1">
+                  <span>
+                    {fulfillmentType === "pickup" ? "Self-collect" : deliveryFee === 0 ? "FREE delivery" : `+ ${formatPrice(deliveryFee)} delivery`}
+                  </span>
+                  <ChevronDown className="w-3 h-3 text-clinical-zinc transition-transform group-data-[state=open]:rotate-180 shrink-0" />
+                  <span className="text-clinical-zinc/70 truncate">
+                    See breakdown
+                  </span>
+                </p>
+                <p className="tabular-nums text-lg font-bold text-clinical-gold leading-tight mt-0.5">
+                  {formatPrice(razorpayTotal)}
+                </p>
+              </button>
+            </CollapsibleTrigger>
+            <Button
+              onClick={() => setConfirmOpen(true)}
+              className="h-12 px-4 bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold gap-2 shrink-0"
+            >
+              <CreditCard className="w-4 h-4" />
+              Review & Pay
+            </Button>
           </div>
-          <Button
-            onClick={() => setConfirmOpen(true)}
-            className="h-12 px-4 bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold gap-2 shrink-0"
-          >
-            <CreditCard className="w-4 h-4" />
-            Review & Pay
-          </Button>
         </div>
-      </div>
+      </Collapsible>
 
       {/* Payment confirmation dialog */}
       <Dialog open={confirmOpen} onOpenChange={(open) => !isProcessing && setConfirmOpen(open)}>

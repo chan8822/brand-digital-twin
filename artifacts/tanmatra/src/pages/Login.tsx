@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Flask,
   ShieldCheck,
@@ -15,6 +16,8 @@ import {
 import { toast } from "sonner";
 
 import { API_BASE as API_BASE } from "@/lib/apiBase";
+import { captureAttribution, getAttribution } from "@/lib/attribution";
+import { WelcomeModal } from "@/components/auth/WelcomeModal";
 
 type Step = "phone" | "code";
 
@@ -40,6 +43,10 @@ function minPhoneLen(cc: string): number {
 // prevent accidental double-tap burns without making real users wait.
 const RESEND_COOLDOWN_SECS = 30;
 
+// Bumped whenever the Terms / Privacy doc materially changes. Persisted
+// per-user as `tos_accepted_version` so we can re-prompt on update.
+const TOS_VERSION = "2026-05";
+
 interface SendOtpResponse {
   ok: boolean;
   devCode?: string;
@@ -48,7 +55,7 @@ interface SendOtpResponse {
 
 interface VerifyOtpResponse {
   ok: boolean;
-  user: { id: string } | null;
+  user: { id: string; firstName: string | null } | null;
   error?: string;
 }
 
@@ -74,6 +81,23 @@ export default function Login() {
   const [devCode, setDevCode] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  // SMS marketing consent. Default false — DPDP Act 2023 requires explicit
+  // opt-in (no pre-checked boxes for marketing communication).
+  const [smsConsent, setSmsConsent] = useState(false);
+  // Shown after a successful OTP verify when the user has no firstName yet
+  // (i.e. brand-new account). Skippable. While open, we DON'T navigate away
+  // — that happens in onComplete/onSkip so the modal closes cleanly first.
+  const [showWelcome, setShowWelcome] = useState(false);
+
+  // Capture first-touch attribution from the URL on mount. Idempotent: if
+  // we've already captured a record from a previous visit, this is a no-op.
+  // Done here (rather than App.tsx) because the login page is the most
+  // common landing page for ad clicks (`/login?utm_source=…`); root-level
+  // capture is a Phase-3 nice-to-have if we want to attribute browse-then-
+  // signup users.
+  useEffect(() => {
+    captureAttribution();
+  }, []);
   // Seconds until "Resend code" re-enables. Counts down via the
   // useEffect below. Starts at RESEND_COOLDOWN_SECS after each successful
   // send and on initial OTP-step entry.
@@ -137,17 +161,42 @@ export default function Login() {
     }
     setIsVerifying(true);
     try {
+      // Send the persisted first-touch attribution + the user's explicit
+      // consent choices. The server stamps attribution only on first user
+      // creation; consent flags update on every sign-in.
+      const attr = getAttribution();
       const res = await fetch(`${API_BASE}/auth/phone/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ countryCode, phone, code }),
+        body: JSON.stringify({
+          countryCode,
+          phone,
+          code,
+          attribution: {
+            ...(attr ?? {}),
+            // Continuing past the login form *is* the DPDP consent moment
+            // — we display the Terms/Privacy footer right above the Send
+            // Code button, so by the time they verify they've had the
+            // notice in front of them.
+            dpdpConsent: true,
+            tosVersion: TOS_VERSION,
+            // SMS opt-in is the only thing the user explicitly toggles.
+            marketingSmsConsent: smsConsent,
+          },
+        }),
       });
       const data = (await res.json().catch(() => ({}))) as VerifyOtpResponse & {
         error?: string;
       };
       if (!res.ok || !data.ok || !data.user) {
         toast.error(data.error ?? "Incorrect code");
+        return;
+      }
+      // Brand-new account → ask for name+email before navigating away.
+      // Returning user with firstName already set → straight to next.
+      if (data.user.firstName === null) {
+        setShowWelcome(true);
         return;
       }
       toast.success("Signed in");
@@ -203,6 +252,21 @@ export default function Login() {
                   />
                 </div>
               </div>
+              <div className="flex items-start gap-2">
+                <Checkbox
+                  id="sms-consent"
+                  checked={smsConsent}
+                  onCheckedChange={(c) => setSmsConsent(c === true)}
+                  className="mt-0.5 border-clinical-slate/40 data-[state=checked]:bg-clinical-gold data-[state=checked]:border-clinical-gold"
+                />
+                <Label
+                  htmlFor="sms-consent"
+                  className="text-[11px] text-clinical-zinc font-normal leading-snug cursor-pointer"
+                >
+                  Send me menu updates and offers by SMS. You can unsubscribe
+                  any time by replying STOP.
+                </Label>
+              </div>
               <Button
                 onClick={sendOtp}
                 disabled={isSending}
@@ -212,6 +276,23 @@ export default function Login() {
                 <Phone className="w-4 h-4" weight="bold" aria-hidden />
                 {isSending ? "Sending…" : "Send code"}
               </Button>
+              <p className="text-[10px] text-clinical-zinc text-center leading-snug">
+                By continuing you agree to our{" "}
+                <Link
+                  to="/terms"
+                  className="text-clinical-gold hover:underline underline-offset-2"
+                >
+                  Terms
+                </Link>{" "}
+                and{" "}
+                <Link
+                  to="/privacy"
+                  className="text-clinical-gold hover:underline underline-offset-2"
+                >
+                  Privacy Policy
+                </Link>
+                .
+              </p>
             </>
           ) : (
             <>
@@ -320,6 +401,19 @@ export default function Login() {
           )}
         </CardContent>
       </Card>
+      <WelcomeModal
+        open={showWelcome}
+        onComplete={() => {
+          setShowWelcome(false);
+          toast.success("Signed in");
+          navigate(next, { replace: true });
+        }}
+        onSkip={() => {
+          setShowWelcome(false);
+          toast.success("Signed in");
+          navigate(next, { replace: true });
+        }}
+      />
     </div>
   );
 }
