@@ -70,6 +70,8 @@ function slugify(s: string): string {
     .slice(0, 128);
 }
 
+export type AllergenReviewState = "pending_review" | "reviewed" | "blocked";
+
 export interface CreateInput {
   name: string;
   pricePaise: number;
@@ -81,6 +83,10 @@ export interface CreateInput {
   tags?: string[];
   imageUrl?: string | null;
   slug?: string;
+  // Optional explicit override; defaults to `pending_review` so newly
+  // created CMS dishes are never publicly orderable until an RD
+  // explicitly reviews them.
+  allergenReviewState?: AllergenReviewState;
 }
 
 export async function createMenuItem(input: CreateInput): Promise<MenuItem> {
@@ -101,6 +107,7 @@ export async function createMenuItem(input: CreateInput): Promise<MenuItem> {
         : null,
     tags: input.tags ?? null,
     imageUrl: input.imageUrl ?? null,
+    allergenReviewState: input.allergenReviewState ?? "pending_review",
   };
   const [row] = await db.insert(menuItemsTable).values(values).returning();
   if (!row) throw new Error("insert failed");
@@ -194,7 +201,20 @@ export interface UpdateInput {
     }>;
   }> | null;
   pairingSlug?: string | null;
+  // Explicit transition. When omitted, edits that touch safety-
+  // relevant fields (ingredients, isVeg) automatically reset the row
+  // to `pending_review` so a previously-reviewed dish cannot silently
+  // remain "reviewed" after its allergen-relevant content changes.
+  allergenReviewState?: AllergenReviewState;
 }
+
+/** Fields that, if edited, invalidate a prior RD review and force the
+ * row back to `pending_review` unless the caller explicitly sets a
+ * new `allergenReviewState`. */
+const SAFETY_RELEVANT_FIELDS: ReadonlyArray<keyof UpdateInput> = [
+  "ingredients",
+  "isVeg",
+];
 
 export async function updateItem(
   slug: string,
@@ -232,6 +252,15 @@ export async function updateItem(
         ? patch.customizations
         : null;
   if (patch.pairingSlug !== undefined) set["pairingSlug"] = patch.pairingSlug;
+  // Review-state handling: explicit value wins; otherwise any edit
+  // touching a safety-relevant field demotes the row to pending_review.
+  if (patch.allergenReviewState !== undefined) {
+    set["allergenReviewState"] = patch.allergenReviewState;
+  } else if (
+    SAFETY_RELEVANT_FIELDS.some((f) => patch[f] !== undefined)
+  ) {
+    set["allergenReviewState"] = "pending_review";
+  }
   if (Object.keys(set).length === 0) return findBySlug(slug);
   const [row] = await db
     .update(menuItemsTable)

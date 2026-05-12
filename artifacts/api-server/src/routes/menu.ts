@@ -78,6 +78,9 @@ const createSchema = z.object({
   tags: z.array(z.string().max(64)).optional(),
   imageUrl: z.string().url().optional(),
   slug: z.string().max(128).optional(),
+  allergenReviewState: z
+    .enum(["pending_review", "reviewed", "blocked"])
+    .optional(),
 });
 
 router.post("/menu/items", async (req: Request, res: Response) => {
@@ -143,6 +146,9 @@ router.patch("/menu/items/:slug", async (req: Request, res: Response) => {
     ingredients: z.array(z.string().max(200)).max(50).nullable().optional(),
     customizations: z.array(customizationSchema).max(20).nullable().optional(),
     pairingSlug: z.string().max(128).nullable().optional(),
+    allergenReviewState: z
+      .enum(["pending_review", "reviewed", "blocked"])
+      .optional(),
   });
   const bp = patchSchema.safeParse(req.body);
   if (!sp.success || !bp.success) {

@@ -402,6 +402,61 @@ test("DB-backed pending-review menu_items row: surfaces as rdReviewState='pendin
   }
 });
 
+test("edit-time gate: editing ingredients on a reviewed dish demotes it to pending_review and checkout refuses it", async () => {
+  // Lazy import to avoid pulling these into the top of the file.
+  const { createMenuItem, updateItem, findBySlug } = await import("./menu");
+  const userId = await makeUser();
+  await setPrefs(userId, {});
+  const pickupId = await makePickup();
+  const slugSeed = `gate-edit-${randomUUID().slice(0, 8)}`;
+  // 1. Create a dish that an RD has explicitly reviewed.
+  const created = await createMenuItem({
+    name: "Edit Flow Bowl",
+    slug: slugSeed,
+    pricePaise: 30000,
+    category: "bowls",
+    kitchenLocation: "continental",
+    isVeg: true,
+    allergenReviewState: "reviewed",
+  });
+  try {
+    // It should be orderable in this state — sanity-check the resolver.
+    const reviewed = await resolveDishBySlug(created.slug);
+    assert.equal(reviewed!.rdReviewState, "reviewed");
+    // 2. Edit a safety-relevant field (ingredients) WITHOUT explicitly
+    //    re-asserting allergenReviewState. The row must be demoted.
+    await updateItem(created.slug, { ingredients: ["peanuts"] });
+    const after = await findBySlug(created.slug);
+    assert.equal(after!.allergenReviewState, "pending_review");
+    // 3. Checkout must now refuse the dish with `unreviewed_dish`.
+    const merged = await resolveDishBySlug(created.slug);
+    assert.equal(merged!.rdReviewState, "pending_review");
+    const orderId = `gate-edit-${randomUUID()}`;
+    await assert.rejects(
+      finalizeOrder({
+        userId,
+        orderId,
+        items: [
+          { id: merged!.id, name: merged!.name, qty: 1, price: merged!.price },
+        ],
+        fulfillmentType: "pickup",
+        pickupLocationId: pickupId,
+      }),
+      (err: unknown) => {
+        const e = err as Error & { safetyBlock?: { codes: string[] } };
+        assert.ok(e.safetyBlock!.codes.includes("unreviewed_dish"));
+        return true;
+      },
+    );
+    // 4. An explicit RD re-review restores orderability.
+    await updateItem(created.slug, { allergenReviewState: "reviewed" });
+    const reReviewed = await resolveDishBySlug(created.slug);
+    assert.equal(reReviewed!.rdReviewState, "reviewed");
+  } finally {
+    await db.delete(menuItemsTable).where(eq(menuItemsTable.slug, created.slug));
+  }
+});
+
 test("diet_block (pescatarian): refuses chicken/meat dish", async () => {
   const userId = await makeUser();
   await setPrefs(userId, { dietaryStyle: "pescatarian" });
