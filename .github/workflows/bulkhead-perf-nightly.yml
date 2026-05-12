@@ -41,12 +41,25 @@ jobs:
           echo "order_ids=$ids" >> "$GITHUB_OUTPUT"
           echo "Seeded orders: $ids"
       - name: Boot api-server
-        run: pnpm --filter @workspace/api-server run start &
+        env:
+          PORT: "8080"
+          BASE_PATH: "/"
+          NODE_ENV: "production"
+        run: |
+          pnpm --filter @workspace/api-server run start \
+            > /tmp/api-server.log 2>&1 &
+          echo $! > /tmp/api-server.pid
       - name: Wait for /healthz
         run: |
-          for i in $(seq 1 30); do
-            curl -fsS http://localhost:8080/api/healthz && exit 0 || sleep 1
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:8080/api/healthz; then
+              echo "api-server up after ${i}s"
+              exit 0
+            fi
+            sleep 1
           done
+          echo "::error::api-server failed to start"
+          tail -200 /tmp/api-server.log
           exit 1
       - name: Loadtest with 90% CPU burn
         env:
