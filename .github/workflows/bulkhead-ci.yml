@@ -55,3 +55,48 @@ jobs:
       - run: pnpm --filter @workspace/db run push-force
       - name: Run bulkhead smoke (lock semantics + outbox + p95<2s)
         run: pnpm --filter @workspace/api-server run ci:bulkhead
+
+      # HTTP-level acceptance proof: boot the api-server, seed orders +
+      # a rider through the override flow, then peg /dispatch/run while
+      # firing concurrent /dispatch/override requests. Asserts override
+      # p95 < 2000ms via the loadtest script. This is the explicit
+      # endpoint-level SLO gate the task requires.
+      - name: Build api-server
+        env:
+          PORT: "8080"
+          BASE_PATH: "/"
+        run: pnpm --filter @workspace/api-server run build
+      - name: Boot api-server in background
+        env:
+          PORT: "8080"
+          BASE_PATH: "/"
+          RD_ADMIN_TOKEN: "ci-bulkhead-admin-token"
+          NODE_ENV: "test"
+        run: |
+          pnpm --filter @workspace/api-server run start > /tmp/api-server.log 2>&1 &
+          echo $! > /tmp/api-server.pid
+          for i in {1..40}; do
+            if curl -fsS http://localhost:8080/api/healthz >/dev/null 2>&1; then
+              echo "api-server is up"; exit 0
+            fi
+            sleep 0.5
+          done
+          echo "api-server failed to boot"; tail -200 /tmp/api-server.log; exit 1
+      - name: Seed override fixtures (orders + rider)
+        id: seed
+        run: |
+          IDS=$(node ./artifacts/api-server/scripts/seed-loadtest-fixtures.mjs)
+          echo "fixtures=$IDS" >> "$GITHUB_OUTPUT"
+      - name: HTTP loadtest — override p95 must stay under 2s
+        env:
+          BASE_URL: "http://localhost:8080"
+          RD_ADMIN_TOKEN: "ci-bulkhead-admin-token"
+          ORDER_IDS: ${{ steps.seed.outputs.fixtures }}
+          RIDER_ID: "1"
+        run: pnpm --filter @workspace/api-server run loadtest:override -- --duration-ms 8000 --p95-budget-ms 2000
+      - name: Tail api-server log on failure
+        if: failure()
+        run: tail -300 /tmp/api-server.log || true
+      - name: Stop api-server
+        if: always()
+        run: kill "$(cat /tmp/api-server.pid)" 2>/dev/null || true

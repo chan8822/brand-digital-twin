@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { type Request, type Response } from "express";
-import { db, sessionsTable } from "@workspace/db";
+import { db, type DrizzleDb, sessionsTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import type { AuthUser } from "@workspace/api-zod";
 
@@ -25,8 +25,21 @@ export async function createSession(data: SessionData): Promise<string> {
   return sid;
 }
 
-export async function getSession(sid: string): Promise<SessionData | null> {
-  const [row] = await db
+/**
+ * Look up a session row.
+ *
+ * Task #7 bulkhead: callers on the manual-override critical path
+ * pass the carve-out `overrideDb` so the lookup never queues on the
+ * saturated main connection pool. All other callers default to the
+ * main `db`. Both readers see the same `sessions` table — Postgres
+ * is the source of truth, and the carve-out pool is just a separate
+ * set of connections.
+ */
+export async function getSession(
+  sid: string,
+  dbInstance: DrizzleDb = db,
+): Promise<SessionData | null> {
+  const [row] = await dbInstance
     .select()
     .from(sessionsTable)
     .where(eq(sessionsTable.sid, sid));

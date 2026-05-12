@@ -45,4 +45,11 @@ export const overridePool = new Pool({
 });
 export const overrideDb = drizzle(overridePool, { schema });
 
+/**
+ * Concrete drizzle-pg type for both `db` and `overrideDb` so callers
+ * can accept either pool. Inferred from the export to avoid drift if
+ * the schema set ever changes.
+ */
+export type DrizzleDb = typeof db;
+
 export * from "./schema";

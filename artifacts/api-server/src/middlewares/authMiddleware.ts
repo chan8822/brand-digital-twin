@@ -1,6 +1,19 @@
 import { type Request, type Response, type NextFunction } from "express";
 import type { AuthUser } from "@workspace/api-zod";
+import { overrideDb } from "@workspace/db";
 import { clearSession, getSession, getSessionId } from "../lib/auth";
+
+/**
+ * Task #7 bulkhead: any request matched here is routed off the main
+ * DB pool for its session lookup. Keep the matcher tight — only the
+ * clinical override path needs this carve-out today.
+ */
+function isOverrideCriticalPath(req: Request): boolean {
+  return (
+    req.method === "POST" &&
+    req.url.startsWith("/api/delivery/dispatch/override")
+  );
+}
 
 declare global {
   namespace Express {
@@ -32,31 +45,23 @@ export async function authMiddleware(
     return this.user != null;
   } as Request["isAuthenticated"];
 
-  // Task #7 bulkhead fast path: the clinical override route enforces
-  // its OWN ops scope via `isOpsRequest` (x-admin-token / admin cookie
-  // / OPS_USER_IDS allowlist). When the request is gated by the admin
-  // token there is no session SID anyway, so we deliberately skip the
-  // main-pool `getSession()` lookup to keep the override path off the
-  // saturated main DB pool. If a SID *is* present (operator logged in
-  // via session) we fall through to the normal lookup so req.user is
-  // populated for audit logging.
-  if (
-    req.method === "POST" &&
-    req.url.startsWith("/api/delivery/dispatch/override") &&
-    req.header("x-admin-token") &&
-    !getSessionId(req)
-  ) {
-    next();
-    return;
-  }
-
   const sid = getSessionId(req);
   if (!sid) {
     next();
     return;
   }
 
-  const session = await getSession(sid);
+  // Task #7 bulkhead: the clinical override critical path NEVER
+  // touches the main DB pool. If the staff member is session-authed
+  // we still resolve `req.user` (so audit logs carry their identity),
+  // but we do it via the dedicated `overrideDb` carve-out — even
+  // when the main pool is fully saturated by background dispatch
+  // work, the override path can always resolve its session. The
+  // route handler still enforces ops scope via `isOpsRequest`.
+  const sessionDb = isOverrideCriticalPath(req) ? overrideDb : undefined;
+  const session = sessionDb
+    ? await getSession(sid, sessionDb)
+    : await getSession(sid);
   if (!session?.user?.id) {
     await clearSession(res, sid);
     next();
