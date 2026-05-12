@@ -8,6 +8,7 @@ export * from "./packagingReturns";
 export * from "./deliverySlots";
 export * from "./pickupLocations";
 export * from "./addressInstructions";
+export * from "./userAddresses";
 export * from "./inventory";
 export * from "./recipes";
 export * from "./teamProfiles";

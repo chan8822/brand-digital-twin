@@ -57,7 +57,7 @@ import {
   Ticket,
 } from "lucide-react";
 
-import { SAVED_ADDRESSES } from "@/lib/savedAddresses";
+import { addressesApi, type UserAddress } from "@/lib/userAddressesApi";
 
 // Order matters — the first preset is what users see "first" and most
 // successful tip UIs lead with a positive amount instead of zero, so
@@ -69,9 +69,14 @@ export default function Checkout() {
   const navigate = useNavigate();
   const { items, bundleSlugs, subtotal, clear } = useCart();
   const { addOrder } = useOrders();
-  const [selectedAddress, setSelectedAddress] = useState<string>(
-    () => SAVED_ADDRESSES[0]?.id ?? "",
-  );
+  const [savedAddresses, setSavedAddresses] = useState<UserAddress[]>([]);
+  const [selectedAddress, setSelectedAddress] = useState<string>("");
+  const [savingAddress, setSavingAddress] = useState(false);
+  const [addressFormError, setAddressFormError] = useState<string | null>(null);
+  // Distinguishes "logged in but has no saved addresses yet" from
+  // "not signed in at all" — the inline new-address form would otherwise
+  // tease an unauth user into filling fields that fail on submit.
+  const [addressAuthRequired, setAddressAuthRequired] = useState(false);
   const [selectedAddons, setSelectedAddons] = useState<Map<number, number>>(
     new Map(),
   );
@@ -157,9 +162,42 @@ export default function Checkout() {
     };
   }, []);
 
+  // Load the user's saved addresses on mount; auto-select the default
+  // (or first) so checkout always has a pre-selected option. If the user
+  // has none yet, open the inline new-address form.
+  useEffect(() => {
+    let alive = true;
+    void addressesApi
+      .list()
+      .then((r) => {
+        if (!alive) return;
+        setSavedAddresses(r.addresses);
+        if (r.addresses.length === 0) {
+          setShowNewAddress(true);
+          setSelectedAddress("new");
+        } else {
+          const def = r.addresses.find((a) => a.isDefault) ?? r.addresses[0];
+          setSelectedAddress(def.id);
+        }
+      })
+      .catch((err: Error) => {
+        if (!alive) return;
+        setSavedAddresses([]);
+        // 401 from list() means the session expired or the user landed on
+        // checkout without signing in. Surface a sign-in CTA instead of
+        // baiting them into the new-address form (architect P1).
+        if (String(err.message).startsWith("401")) {
+          setAddressAuthRequired(true);
+        }
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   // Hydrate the instructions field from the persisted value for the
   // currently-selected saved address.
-  const activeAddrLabel = SAVED_ADDRESSES.find((a) => a.id === selectedAddress)?.label;
+  const activeAddrLabel = savedAddresses.find((a) => a.id === selectedAddress)?.label;
   useEffect(() => {
     if (!activeAddrLabel) return;
     setDeliveryInstructions(savedInstructions[activeAddrLabel] ?? "");
@@ -251,7 +289,54 @@ export default function Checkout() {
     }
   };
 
-  const activeAddr = SAVED_ADDRESSES.find((a) => a.id === selectedAddress);
+  const activeAddr = savedAddresses.find((a) => a.id === selectedAddress);
+
+  const handleSaveNewAddress = async () => {
+    setAddressFormError(null);
+    if (
+      !newAddr.label.trim() ||
+      !newAddr.line1.trim() ||
+      !newAddr.city.trim() ||
+      !newAddr.pincode.trim() ||
+      !newAddr.phone.trim()
+    ) {
+      setAddressFormError("Please fill label, line 1, city, pincode and phone");
+      return;
+    }
+    setSavingAddress(true);
+    try {
+      const r = await addressesApi.create({
+        label: newAddr.label.trim(),
+        line1: newAddr.line1.trim(),
+        line2: newAddr.line2.trim() || undefined,
+        city: newAddr.city.trim(),
+        pincode: newAddr.pincode.trim(),
+        phone: newAddr.phone.trim(),
+      });
+      setSavedAddresses((prev) => [r.address, ...prev]);
+      setSelectedAddress(r.address.id);
+      setShowNewAddress(false);
+      setNewAddr({
+        label: "",
+        line1: "",
+        line2: "",
+        city: "",
+        pincode: "",
+        phone: "",
+      });
+      toast.success("Address saved");
+    } catch (e) {
+      const msg = String((e as Error).message);
+      // Server returns the zod issue message for 400s (e.g. "invalid pincode");
+      // surface it inline so the user can correct the offending field instead
+      // of a generic "could not save". Strip the "400: " prefix our request
+      // wrapper attaches.
+      const cleaned = msg.replace(/^\d{3}:\s*/, "");
+      setAddressFormError(cleaned || "Could not save address");
+    } finally {
+      setSavingAddress(false);
+    }
+  };
 
   if (items.length === 0) {
     return (
@@ -546,7 +631,7 @@ export default function Checkout() {
               }}
             >
               <div className="space-y-2">
-                {SAVED_ADDRESSES.map((addr) => (
+                {savedAddresses.map((addr) => (
                   <Label
                     key={addr.id}
                     htmlFor={addr.id}
@@ -578,17 +663,29 @@ export default function Checkout() {
                   </Label>
                 ))}
 
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start gap-2 text-xs text-clinical-gold hover:bg-clinical-gold/10 h-10"
-                  onClick={() => {
-                    setShowNewAddress(true);
-                    setSelectedAddress("new");
-                  }}
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  Add New Address
-                </Button>
+                {addressAuthRequired ? (
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start gap-2 text-xs text-clinical-gold hover:bg-clinical-gold/10 h-10"
+                    onClick={() =>
+                      navigate(`/login?next=${encodeURIComponent("/checkout")}`)
+                    }
+                  >
+                    Sign in to save an address
+                  </Button>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start gap-2 text-xs text-clinical-gold hover:bg-clinical-gold/10 h-10"
+                    onClick={() => {
+                      setShowNewAddress(true);
+                      setSelectedAddress("new");
+                    }}
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Add New Address
+                  </Button>
+                )}
               </div>
             </RadioGroup>
 
@@ -634,6 +731,20 @@ export default function Checkout() {
                 </div>
                 <Input placeholder="Address line 1 (street, building)" value={newAddr.line1} onChange={(e) => setNewAddr({ ...newAddr, line1: e.target.value })} className="h-9 text-xs bg-clinical-surface border-clinical-slate/30" />
                 <Input placeholder="Address line 2 (apt, floor — optional)" value={newAddr.line2} onChange={(e) => setNewAddr({ ...newAddr, line2: e.target.value })} className="h-9 text-xs bg-clinical-surface border-clinical-slate/30" />
+                {addressFormError && (
+                  <p className="text-[11px] text-red-400" role="alert">
+                    {addressFormError}
+                  </p>
+                )}
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleSaveNewAddress}
+                  disabled={savingAddress}
+                  className="bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold w-full h-9 text-xs"
+                >
+                  {savingAddress ? "Saving…" : "Save address"}
+                </Button>
               </div>
             )}
           </CardContent>
