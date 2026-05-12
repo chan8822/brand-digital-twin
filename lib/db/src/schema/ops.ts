@@ -93,7 +93,12 @@ export const opsAuditOutboxTable = pgTable(
   },
   (table) => [
     // Drain worker query: find unclaimed-or-expired unprocessed rows,
-    // oldest first. Partial index keeps it tiny once rows are processed.
+    // oldest first. Composite (processedAt, claimedAt, createdAt) so
+    // the planner can range-scan unprocessed rows ordered by claim
+    // freshness then age. We deliberately use a regular composite
+    // index rather than a partial one so it remains writable from
+    // any path (drizzle's index builder doesn't emit WHERE clauses
+    // here); index bloat is bounded by the periodic outbox prune.
     index("idx_ops_audit_outbox_drain")
       .on(table.processedAt, table.claimedAt, table.createdAt),
   ],

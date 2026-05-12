@@ -11,7 +11,8 @@
  *
  * Usage:
  *   BASE_URL=http://localhost:8080 OPS_TOKEN=... \
- *     node ./scripts/loadtest-override.mjs --orders 20 --duration-ms 8000
+ *     ORDER_IDS=1,2,3 RIDER_ID=1 \
+ *     node ./scripts/loadtest-override.mjs --duration-ms 8000
  *
  * Env / flags:
  *   BASE_URL          (default http://localhost:8080)
@@ -20,9 +21,12 @@
  *   OPS_TOKEN         legacy alias for RD_ADMIN_TOKEN (also accepted)
  *   ORDER_IDS         comma-separated list of seeded order ids
  *   RIDER_ID          rider id for override (default 1)
- *   --orders N        number of orders to seed (default 20)
  *   --duration-ms M   how long to run the dispatcher contention loop
  *   --p95-budget-ms B SLO assertion (default 2000)
+ *
+ * Required env: ORDER_IDS (comma-separated) and RIDER_ID name the
+ * fixtures the loadtest will hammer. Use scripts/seed-loadtest-
+ * fixtures.mjs to create them and read the order ids from stdout.
  */
 import { performance } from "node:perf_hooks";
 import { Worker } from "node:worker_threads";
@@ -85,7 +89,6 @@ const BASE = process.env.BASE_URL ?? "http://localhost:8080";
 // bulkhead by routing through the main DB pool's session store.
 const ADMIN_TOKEN =
   process.env.RD_ADMIN_TOKEN ?? process.env.OPS_TOKEN ?? "";
-const N = Number(args.get("orders") ?? 20);
 const DURATION_MS = Number(args.get("duration-ms") ?? 8_000);
 const P95_BUDGET = Number(args.get("p95-budget-ms") ?? 2_000);
 
