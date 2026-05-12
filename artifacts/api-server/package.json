@@ -27,6 +27,7 @@
     "@workspace/db": "workspace:*",
     "@workspace/integrations-gemini-ai": "workspace:*",
     "@workspace/menu-catalog": "workspace:*",
+    "@workspace/preferences-match": "workspace:*",
     "ai": "^6.0.175",
     "bullmq": "^5.76.6",
     "cookie-parser": "^1.4.7",

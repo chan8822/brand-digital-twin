@@ -1,0 +1,30 @@
+1. Visibility of System Status (Clinical Monitoring)
+In a high-stress clinical setting, users must know the exact status of critical nutritional orders without ambiguity ( Overview - Deep Dive).
+
+Audit Point: Is the order lifecycle (e.g., Submitted → Verified by Nutritionist → Out for Delivery → Patient Received) clearly visible in a real-time dashboard?
+Clinical Criticality: Delayed meal delivery in clinical settings (e.g., for diabetic patients) can have direct medical consequences.
+2. Match Between System and Real World (Clinical Terminology)
+The app must use medical and nutritional terminology that clinicians and hospital staff expect, rather than generic e-commerce jargon ( source).
+
+Audit Point: Are dietary labels (e.g., NPO, Clear Liquid, Low Sodium) consistent with standard Electronic Health Record (EHR) naming conventions?
+Clinical Criticality: Misinterpretation of a "restricted diet" label could lead to patient harm.
+3. User Control and Freedom (Emergency Overrides)
+Clinicians need the ability to quickly override or cancel orders in emergency situations (e.g., a sudden change in patient status).
+
+Audit Point: Is there a highly visible "STAT Cancel" or "Emergency Modify" button that is accessible within one tap?
+Clinical Criticality: A patient may be moved to surgery (NPO) suddenly; the automation flow must allow an instant "Emergency Stop" for pending food deliveries.
+4. Error Prevention (Allergen & Safety Checks)
+The system should proactively prevent errors before they occur, particularly concerning patient allergies.
+
+Audit Point: Does the UI block the "Confirm Order" action if a selected item contains a conflict with the patient's recorded allergies in the Medical ID?
+Clinical Criticality: Automated "Error Prevention" is the primary defense against anaphylaxis or dietary non-compliance.
+5. Recognition Rather than Recall (Patient Context)
+Minimize the cognitive load on hospital staff by displaying relevant patient history and dietary needs on-screen ( Heuristic evaluation -...).
+
+Audit Point: Does the ordering screen display the patient's last three meals and current medical alerts (e.g., "Insulin Dependent")?
+Clinical Criticality: Clinicians should not have to "recall" patient data from a separate system; the app should provide this context "at a glance".
+6. Aesthetic and Minimalist Design (High-Stress UX)
+In a hospital environment, UI clutter can lead to fatal mistakes or "alarm fatigue".
+
+Audit Point: Does the UI follow a "high-contrast, low-clutter" design that is readable under varied medical lighting (e.g., dimmed patient rooms or bright operating theaters)?
+Clinical Criticality: Clarity in "Alert" colors (e.g., Red for allergens, Green for safe) must be absolute ( Overview - Deep Dive).

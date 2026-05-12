@@ -79,6 +79,7 @@
   },
   "dependencies": {
     "@tanstack/react-table": "^8.21.3",
+    "@workspace/preferences-match": "workspace:*",
     "leaflet": "^1.9.4",
     "react-leaflet": "^5.0.0",
     "socket.io-client": "^4.8.3",

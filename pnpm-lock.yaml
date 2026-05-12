@@ -386,6 +386,9 @@ importers:
       '@workspace/menu-catalog':
         specifier: workspace:*
         version: link:../../lib/menu-catalog
+      '@workspace/preferences-match':
+        specifier: workspace:*
+        version: link:../../lib/preferences-match
       ai:
         specifier: ^6.0.175
         version: 6.0.175(zod@3.25.76)
@@ -654,6 +657,9 @@ importers:
       '@tanstack/react-table':
         specifier: ^8.21.3
         version: 8.21.3(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      '@workspace/preferences-match':
+        specifier: workspace:*
+        version: link:../../lib/preferences-match
       leaflet:
         specifier: ^1.9.4
         version: 1.9.4
@@ -1073,6 +1079,12 @@ importers:
         version: 7.1.1
 
   lib/menu-catalog: {}
+
+  lib/preferences-match:
+    dependencies:
+      '@workspace/menu-catalog':
+        specifier: workspace:*
+        version: link:../menu-catalog
 
   scripts:
     dependencies:

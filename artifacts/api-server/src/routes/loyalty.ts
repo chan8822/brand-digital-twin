@@ -317,6 +317,20 @@ router.post("/orders/finalize", async (req: Request, res: Response) => {
       res.status(409).json({ error: msg });
       return;
     }
+    if (msg.startsWith("safety_block:")) {
+      const safety = (err as Error & {
+        safetyBlock?: { codes: string[]; blocked: unknown };
+      }).safetyBlock;
+      res.status(422).json({
+        error: msg,
+        code: "safety_block",
+        codes: safety?.codes ?? [],
+        blocked: safety?.blocked ?? [],
+      });
+      return;
+    }
+    // Legacy: pre-shared-evaluator gate threw "allergen violation:". Keep
+    // the mapping for any code path that still surfaces that string.
     if (msg.startsWith("allergen violation:")) {
       res.status(422).json({ error: msg, code: "allergen_violation" });
       return;

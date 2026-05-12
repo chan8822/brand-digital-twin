@@ -23,6 +23,12 @@ import {
 } from "@workspace/db";
 import { inArray } from "drizzle-orm";
 import { makeBatchDishResolver } from "./menuResolver";
+import {
+  evaluateDishForPreferences,
+  type PreferencesForMatch,
+} from "@workspace/preferences-match";
+import { recordOpsAction } from "./opsAudit";
+import type { DishData } from "@workspace/menu-catalog";
 import type { PgTransaction } from "drizzle-orm/pg-core";
 import {
   defaultChannelForKind,
@@ -438,8 +444,8 @@ export async function finalizeOrder(args: {
   // Resolve the merged catalog once; subsequent lookups are in-memory.
   const catalog = await makeBatchDishResolver();
   // Track resolved dishes alongside validated line items so we can run
-  // allergen safety in one pass without re-resolving below.
-  const resolvedDishes: Array<{ name: string; allergens: string[] }> = [];
+  // allergen + dietary-style safety in one pass without re-resolving below.
+  const resolvedDishes: DishData[] = [];
   for (const it of args.items) {
     const dish = catalog.byId(it.id);
     if (!dish) throw new Error(`unknown dish id: ${it.id}`);
@@ -448,45 +454,89 @@ export async function finalizeOrder(args: {
     if (qty <= 0) throw new Error(`invalid qty for dish ${dish.slug}`);
     grossPaise += dish.price * qty;
     validatedItems.push({ id: dish.id, name: dish.name, qty, price: dish.price });
-    resolvedDishes.push({
-      name: dish.name,
-      allergens: Array.isArray(dish.allergens) ? dish.allergens : [],
-    });
+    resolvedDishes.push(dish);
   }
   if (grossPaise <= 0) {
     throw new Error("order total must be positive");
   }
   // Clinical safety net: cross-check every cart dish against the user's
-  // saved allergen list before persisting an order. Fails CLOSED — a
-  // missing preferences row simply means "no allergens declared", but a
-  // single intersection rejects the whole order with a structured error
-  // the route maps to 422. There is intentionally no override path here
-  // (would need an audited acknowledgement field); the meal-planner /
-  // coach flows already filter, so a violation reaching finalize means
-  // the client bypassed those filters and we should refuse.
+  // saved allergens AND dietary style before persisting an order. The
+  // shared evaluator (@workspace/preferences-match) is the single source
+  // of truth used by client + server, so what the patient sees in the
+  // menu UI matches what the server enforces. Fails CLOSED — a missing
+  // preferences row means "nothing declared", but a single block rejects
+  // the whole order with a structured `safety_block` payload (per-dish
+  // codes: `allergen_block`, `diet_block`) that the route maps to 422.
+  // There is intentionally no override path; the meal-planner / coach
+  // flows already filter, so a block reaching finalize means the client
+  // bypassed those filters and we refuse + audit.
   const [prefRow] = await db
-    .select({ allergens: userPreferencesTable.allergens })
+    .select()
     .from(userPreferencesTable)
     .where(eq(userPreferencesTable.userId, args.userId))
     .limit(1);
-  const userAllergens = new Set(
-    (prefRow?.allergens ?? [])
-      .map((a) => a.toLowerCase().trim())
-      .filter(Boolean),
-  );
-  if (userAllergens.size > 0) {
-    const offenders: string[] = [];
+  const prefs: PreferencesForMatch | null = prefRow
+    ? {
+        allergens: prefRow.allergens ?? [],
+        dislikedIngredients: prefRow.dislikedIngredients ?? [],
+        cuisines: prefRow.cuisines ?? [],
+        dietaryStyle: prefRow.dietaryStyle,
+        goal: prefRow.goal,
+        calorieTarget: prefRow.calorieTarget,
+      }
+    : null;
+  const blocked: Array<{
+    dishId: number;
+    dishName: string;
+    reasons: ReturnType<typeof evaluateDishForPreferences>["blockReasons"];
+  }> = [];
+  if (prefs) {
     for (const d of resolvedDishes) {
-      const hits = d.allergens
-        .map((a) => a.toLowerCase().trim())
-        .filter((a) => userAllergens.has(a));
-      if (hits.length > 0) {
-        offenders.push(`${d.name} (${[...new Set(hits)].join(", ")})`);
+      const m = evaluateDishForPreferences(d, prefs);
+      if (m.blocked) {
+        blocked.push({ dishId: d.id, dishName: d.name, reasons: m.blockReasons });
       }
     }
-    if (offenders.length > 0) {
-      throw new Error(`allergen violation: ${offenders.join("; ")}`);
-    }
+  }
+  if (blocked.length > 0) {
+    const codes = Array.from(
+      new Set(blocked.flatMap((b) => b.reasons.map((r) => r.code))),
+    );
+    const summary = blocked
+      .map(
+        (b) =>
+          `${b.dishName} (${b.reasons.map((r) => r.code).join(",")})`,
+      )
+      .join("; ");
+    // Audit the block before throwing. We `await` so the insert is
+    // attempted before the safety error reaches the caller; the default
+    // `db` executor already catches + logs write failures internally so
+    // a logging outage here cannot mask the safety block. (Strict
+    // "every block has an audit row" durability would need an outbox /
+    // queue — tracked separately.)
+    await recordOpsAction({
+      operatorId: args.userId,
+      agent: "checkout",
+      action: "safety_block",
+      params: {
+        orderId: args.orderId,
+        codes,
+        blocked: blocked.map((b) => ({
+          dishId: b.dishId,
+          dishName: b.dishName,
+          reasons: b.reasons,
+        })),
+      },
+      beforeState: null,
+      afterState: null,
+      status: "blocked",
+      reasoning: `safety gate refused checkout: ${summary}`,
+    });
+    const err = new Error(`safety_block: ${summary}`) as Error & {
+      safetyBlock: { codes: string[]; blocked: typeof blocked };
+    };
+    err.safetyBlock = { codes, blocked };
+    throw err;
   }
   // Bundle discount: for each requested bundle slug, verify every dish
   // in that bundle is present in the cart in sufficient quantity. If
