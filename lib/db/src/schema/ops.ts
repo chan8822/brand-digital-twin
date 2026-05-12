@@ -1,6 +1,7 @@
 import {
   boolean,
   index,
+  integer,
   jsonb,
   pgTable,
   serial,
@@ -35,6 +36,18 @@ export const opsActionsTable = pgTable(
     status: varchar("status", { length: 32 }).notNull(),
     error: text("error"),
     reasoning: text("reasoning"),
+    // Task #7 bulkhead: consumer-side idempotency. The outbox drainer
+    // copies ops_audit_outbox.dedupe_key into this column with
+    // ON CONFLICT DO NOTHING so concurrent drainers across pods can
+    // never produce duplicate ops_actions rows for the same logical
+    // event. Nullable for legacy/non-outbox callers (recordOpsAction);
+    // Postgres treats NULLs as distinct in unique constraints, so a
+    // regular UNIQUE on a nullable column works without a partial
+    // predicate. We deliberately avoid a partial unique index because
+    // Postgres ON CONFLICT inference cannot target a partial index by
+    // column alone — it would require repeating the WHERE clause and
+    // drizzle's `target:` builder doesn't emit that.
+    dedupeKey: varchar("dedupe_key", { length: 128 }).unique(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -70,15 +83,19 @@ export const opsAuditOutboxTable = pgTable(
       .notNull()
       .defaultNow(),
     processedAt: timestamp("processed_at", { withTimezone: true }),
-    attempts: serial("attempts"),
+    // Lease: when a drainer claims a row it stamps claimed_at = now().
+    // A separate drainer (different pod) ignores rows whose claim is
+    // still fresh; once the lease expires (CLAIM_LEASE_SECONDS) the row
+    // becomes claimable again so a crashed drainer can't strand work.
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
+    attempts: integer("attempts").notNull().default(0),
     lastError: text("last_error"),
   },
   (table) => [
-    // Drain worker query: find unprocessed rows, oldest first.
-    index("idx_ops_audit_outbox_unprocessed").on(
-      table.processedAt,
-      table.createdAt,
-    ),
+    // Drain worker query: find unclaimed-or-expired unprocessed rows,
+    // oldest first. Partial index keeps it tiny once rows are processed.
+    index("idx_ops_audit_outbox_drain")
+      .on(table.processedAt, table.claimedAt, table.createdAt),
   ],
 );
 

@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "python-3.11"]
+modules = ["nodejs-20", "python-3.11", "postgresql-16"]
 
 [agent]
 expertMode = true
@@ -32,3 +32,6 @@ ADMIN_SESSION_SECRET = "d6ad80592d4620825b89eafa0aa98638254b7eff13e7cedf6b9d1e14
 
 [workflows]
 runButton = "Project"
+
+[nix]
+channel = "stable-25_05"

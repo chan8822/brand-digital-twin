@@ -438,6 +438,70 @@ test("poison-row resilience: a malformed outbox row does not block siblings", as
   assert.ok(m.drainFailuresTotal >= 1, "drainFailuresTotal must increment");
 });
 
+test("multi-drainer concurrency: two parallel drainers produce ONE ops_actions row per dedupeKey", async () => {
+  __resetOpsAuditOutboxMetricsForTests();
+  // Pre-populate the outbox with a known set of dedupe keys, then run
+  // two drainers concurrently. The Phase-A atomic claim + Phase-B
+  // ON CONFLICT(dedupe_key) DO NOTHING combo must guarantee exactly
+  // one ops_actions row per dedupe key, never zero, never two.
+  const N = 8;
+  const keys: string[] = [];
+  for (let i = 0; i < N; i++) {
+    const k = `concurrent_${randomUUID()}`;
+    keys.push(k);
+    CREATED_OUTBOX_KEYS.push(k);
+    await db.insert(opsAuditOutboxTable).values({
+      dedupeKey: k,
+      payload: {
+        operatorId: `concurrent_op_${i}`,
+        agent: "ops_console",
+        action: "test_outbox_action",
+        params: { i },
+        status: "success",
+      } as unknown as Record<string, unknown>,
+    });
+  }
+
+  // Two drainers in parallel — same process, same DB pool, but each
+  // call is a separate transaction. With the lease + atomic claim
+  // they must NOT both grab the same row.
+  const [a, b] = await Promise.all([
+    drainOpsAuditOutbox(50),
+    drainOpsAuditOutbox(50),
+  ]);
+  // The two drainers between them must have processed every row
+  // exactly once. Either drainer may see 0..N depending on timing,
+  // but the SUM must equal N (no row may be processed twice — that's
+  // enforced separately below — and none may be skipped).
+  assert.equal(a + b, N, `expected ${N} drained total, got ${a}+${b}`);
+
+  // Hard invariant: exactly one ops_actions row per dedupe key.
+  for (const k of keys) {
+    const rows = await db
+      .select()
+      .from(opsActionsTable)
+      .where(eq(opsActionsTable.dedupeKey, k));
+    assert.equal(
+      rows.length,
+      1,
+      `dedupe key ${k} produced ${rows.length} ops_actions rows`,
+    );
+  }
+
+  // Every outbox row should be marked processed.
+  const outboxRows = await db
+    .select()
+    .from(opsAuditOutboxTable)
+    .where(inArray(opsAuditOutboxTable.dedupeKey, keys));
+  for (const o of outboxRows) {
+    assert.notEqual(
+      o.processedAt,
+      null,
+      `outbox row ${o.dedupeKey} not marked processed after concurrent drain`,
+    );
+  }
+});
+
 test("metrics: outbox enqueued/drained counters increment", async () => {
   __resetOpsAuditOutboxMetricsForTests();
   const dedupeKey = `metrics_test_${randomUUID()}`;

@@ -94,62 +94,94 @@ export async function enqueueOpsAuditOutbox(
   }
 }
 
+// How long a Phase-A claim is honoured. A drainer that crashes mid-Phase-B
+// strands its claimed rows for at most this long before another drainer
+// re-claims them. Tuned > 2 × the longest possible per-row processing
+// time (a single ops_actions insert), so a healthy drainer never races
+// itself for the same row.
+const OPS_AUDIT_CLAIM_LEASE_SECONDS = 30;
+
 /**
  * Drain up to `limit` unprocessed outbox rows into `ops_actions` and mark
- * them processed.
+ * them processed. Safe to run concurrently across pods.
  *
- * Critical correctness note: in Postgres, a statement error aborts the
- * surrounding transaction, so we CANNOT loop "try insert / on error mark
- * failed" inside a single tx — every statement after the first failure
- * runs in an aborted-tx state and the whole batch rolls back at COMMIT.
+ * Correctness model: at-least-once delivery + idempotent consumer.
  *
- * Instead we do a TWO-PHASE drain:
- *   Phase A: a single short-lived tx selects ids with FOR UPDATE
- *            SKIP LOCKED, immediately stamps a sentinel `attempts`
- *            increment so concurrent drainers + restarts don't
- *            re-pick them, then commits, releasing the row locks.
- *   Phase B: each row is processed in its own top-level tx
- *            (separate connection from the pool). Per-row failures
- *            update only that row and never affect other rows.
+ *   Phase A — atomic CLAIM (single round-trip).
+ *     `UPDATE ... FROM (SELECT ... FOR UPDATE SKIP LOCKED) RETURNING ...`
+ *     stamps `claimed_at = now()` and bumps `attempts`. The lock from
+ *     the inner SKIP LOCKED is held for the duration of the UPDATE,
+ *     and the COMMITTED claim is what subsequent drainers see — they
+ *     filter rows whose claim is still inside the lease window. This
+ *     closes the "claim then release lock then someone else picks the
+ *     same row" hole.
  *
- * The sentinel-attempt bump in Phase A doubles as a redrive counter:
- * an operator can `select * from ops_audit_outbox where attempts > N
- * and processed_at is null and last_error is not null` to spot poison.
+ *   Phase B — per-row transaction with consumer dedupe.
+ *     Each claimed row is inserted into ops_actions with
+ *     `ON CONFLICT (dedupe_key) DO NOTHING`. Even if two drainers race
+ *     past Phase A (e.g. exactly at the lease boundary), at most one
+ *     ops_actions row materialises. The per-row tx model also means a
+ *     poison row's tx aborts in isolation; sibling rows still commit.
+ *
+ *   Lease expiry. Rows whose `claimed_at < now() - lease` are eligible
+ *     for re-claim, so a crashed drainer cannot strand work indefinitely.
+ *
+ * Postgres correctness note: a statement error aborts the surrounding
+ * transaction. Per-row tx is therefore mandatory — the previous batch-tx
+ * implementation (rolled back here) rolled back the whole batch when one
+ * row's insert failed.
  */
 export async function drainOpsAuditOutbox(limit = 50): Promise<number> {
-  // ── Phase A: claim a batch of ids ────────────────────────────────────
+  // ── Phase A: atomic claim ────────────────────────────────────────────
   type ClaimedRow = {
     id: number;
     dedupe_key: string;
     payload: Record<string, unknown>;
   };
-  const claimed: ClaimedRow[] = await db.transaction(async (tx) => {
-    const result = await tx.execute<ClaimedRow>(sql`
-      select id, dedupe_key, payload
+  const claimResult = await db.execute<ClaimedRow>(sql`
+    update ${opsAuditOutboxTable} as o
+    set claimed_at = now(), attempts = coalesce(o.attempts, 0) + 1
+    from (
+      select id
       from ${opsAuditOutboxTable}
       where processed_at is null
+        and (
+          claimed_at is null
+          or claimed_at < now() - ${sql.raw(`interval '${OPS_AUDIT_CLAIM_LEASE_SECONDS} seconds'`)}
+        )
       order by created_at asc
       limit ${limit}
       for update skip locked
-    `);
-    const rows =
-      (result as unknown as { rows?: ClaimedRow[] }).rows
-      ?? (result as unknown as ClaimedRow[]);
-    return rows ?? [];
-  });
+    ) as picks
+    where o.id = picks.id
+    returning o.id, o.dedupe_key, o.payload
+  `);
+  const claimed: ClaimedRow[] =
+    (claimResult as unknown as { rows?: ClaimedRow[] }).rows
+    ?? (claimResult as unknown as ClaimedRow[])
+    ?? [];
   if (claimed.length === 0) return 0;
 
-  // ── Phase B: per-row tx so a poison row cannot abort siblings ────────
+  // ── Phase B: per-row tx with consumer-side ON CONFLICT dedupe ────────
   let drained = 0;
   for (const r of claimed) {
     try {
       await db.transaction(async (rowTx) => {
+        // Stamp dedupeKey on the ops_actions row so the unique index
+        // (`ux_ops_actions_dedupe_key`) collapses concurrent inserts
+        // to one row even if two drainers race past Phase A.
+        const payload = r.payload as Record<string, unknown>;
+        const insertRow = {
+          ...(payload as unknown as InsertOpsAction),
+          dedupeKey: r.dedupe_key,
+        };
         await rowTx
           .insert(opsActionsTable)
-          .values(r.payload as unknown as InsertOpsAction);
+          .values(insertRow)
+          .onConflictDoNothing({ target: opsActionsTable.dedupeKey });
         await rowTx.execute(sql`
           update ${opsAuditOutboxTable}
-          set processed_at = now()
+          set processed_at = now(), last_error = null
           where id = ${r.id}
         `);
       });
@@ -158,11 +190,13 @@ export async function drainOpsAuditOutbox(limit = 50): Promise<number> {
       opsAuditOutboxDrainFailuresTotal += 1;
       const msg = err instanceof Error ? err.message : String(err);
       // Failure path runs in its OWN fresh tx; the failed insert tx
-      // is already rolled back, so this update is unaffected.
+      // is already rolled back. We also clear claimed_at so the lease
+      // doesn't have to expire before someone retries — but we keep
+      // last_error so an operator sees the failure trail.
       try {
         await db.execute(sql`
           update ${opsAuditOutboxTable}
-          set attempts = coalesce(attempts, 0) + 1, last_error = ${msg}
+          set last_error = ${msg}, claimed_at = null
           where id = ${r.id}
         `);
       } catch (markErr) {
