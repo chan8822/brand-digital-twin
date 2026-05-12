@@ -152,6 +152,24 @@ async function main() {
     console.error("[loadtest] FAIL: no override samples collected");
     process.exit(1);
   }
+
+  // Stronger assertion: the loadtest is meaningless if every response
+  // is a fast 409 rider_unavailable / not_found, because those bail
+  // out *before* the lock + commit path that the bulkhead protects.
+  // A real run must show that we exercised the slow path: either
+  // successful assignments (200) or the contention signal (503).
+  const exercised = (counts[200] ?? 0) + (counts[503] ?? 0);
+  const unavailable409 = samples.filter(
+    (s) => s.status === 409 && s.body && /unavailable|not_found/i.test(JSON.stringify(s.body)),
+  ).length;
+  if (exercised < Math.max(1, Math.floor(samples.length * 0.5))) {
+    console.error(
+      `[loadtest] FAIL: only ${exercised}/${samples.length} responses exercised the lock/commit path (200 or 503). ` +
+        `${unavailable409} were rider_unavailable/not_found short-circuits. ` +
+        `Check that seeded rider is 'online' and that ORDER_IDS point at non-terminal orders. statusCounts=${JSON.stringify(counts)}`,
+    );
+    process.exit(1);
+  }
   if (summary.p95 > P95_BUDGET) {
     console.error(
       `[loadtest] FAIL: override p95=${summary.p95}ms exceeded ${P95_BUDGET}ms`,

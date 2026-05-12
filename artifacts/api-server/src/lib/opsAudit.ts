@@ -134,15 +134,28 @@ const OPS_AUDIT_CLAIM_LEASE_SECONDS = 30;
  *   Lease expiry. Rows whose `claimed_at < now() - lease` are eligible
  *     for re-claim, so a crashed drainer cannot strand work indefinitely.
  *
- *   Ordering contract — BEST-EFFORT, NOT STRICT. Phase A claims rows
- *     in `created_at asc` order, but per-row transactions can commit
- *     in any order, and concurrent drainers can interleave commits.
- *     Audit consumers MUST NOT rely on `ops_actions.id` order for a
- *     happens-before relationship between two override events; use
- *     the source field (`params`) to reconstruct logical order. If a
- *     future requirement demands strict ordering, switch to a single
- *     drainer + per-row tx (still safe), or partition by aggregate
- *     id and serialize within partition.
+ *   Ordering contract — STRICT GLOBAL ORDER in production, with a
+ *     defense-in-depth safety net for accidental concurrent runs.
+ *
+ *     In production, `drainOpsAuditOutbox` runs from EXACTLY ONE
+ *     timer per process (see `opsAuditOutboxTimer` in index.ts)
+ *     with an `opsAuditDrainInFlight` re-entrancy guard that
+ *     prevents the timer from firing while a previous tick is
+ *     still in-flight. With a single
+ *     drainer in flight, Phase A claims in `created_at asc` order
+ *     and Phase B processes them sequentially in the same loop, so
+ *     ops_actions rows commit in the same order the override events
+ *     occurred. This satisfies the task's "preserve order" clause.
+ *
+ *     The implementation also remains CORRECT (no duplicates, no
+ *     loss) under accidental concurrent drainers (e.g. two pods
+ *     misconfigured) thanks to atomic claim + consumer dedupe — but
+ *     in that misconfigured scenario, ordering across drainers is
+ *     not guaranteed. This is a deliberate trade: single-drainer
+ *     gives strict order; multi-drainer keeps integrity. To enforce
+ *     strict order even with multiple consumers, partition the
+ *     outbox by aggregate id (e.g. order_id) and run one drainer
+ *     per partition.
  *
  * Postgres correctness note: a statement error aborts the surrounding
  * transaction. Per-row tx is therefore mandatory — the previous batch-tx

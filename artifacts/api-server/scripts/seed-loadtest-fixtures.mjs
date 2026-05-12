@@ -31,12 +31,15 @@ async function main() {
   const c = await pool.connect();
   try {
     await c.query("begin");
-    // Upsert rider id=1 in 'available' state.
+    // Upsert rider id=1 in 'online' state.
+    // overrideAssignment() refuses any rider whose status !== 'online'
+    // (returns 409 rider_unavailable), so the loadtest MUST seed
+    // 'online' to actually exercise the lock + commit path.
     await c.query(
       `insert into riders (id, name, phone, zone, status)
-       values (1, 'CI Test Rider', '+10000000000', 'ci-zone', 'available')
+       values (1, 'CI Test Rider', '+10000000000', 'ci-zone', 'online')
        on conflict (id) do update
-         set status = 'available',
+         set status = 'online',
              zone = excluded.zone,
              phone = excluded.phone,
              name = excluded.name`,
