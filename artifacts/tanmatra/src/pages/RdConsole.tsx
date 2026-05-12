@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,16 @@ import {
   type RdProgressLog,
 } from "@/lib/rdAdvisoryApi";
 import { RdCopilotPanel } from "@/components/rd/RdCopilotPanel";
+import { StatCancelButton } from "@/components/track/StatCancelButton";
+import { useSocketStatus } from "@/lib/useSocketStatus";
+import {
+  statusToClinicalStage,
+  CLINICAL_STAGES,
+  clinicalStageIndex,
+  type ClinicalStage,
+} from "@/lib/clinicalLifecycle";
+import { API_BASE } from "@/lib/apiBase";
+import { getSocket } from "@/lib/socket";
 import {
   APPOINTMENT_KIND_META,
   formatRupees,
@@ -26,6 +36,7 @@ import {
   MessageCircle,
   Save,
   Send,
+  ShieldAlert,
   TrendingUp,
 } from "lucide-react";
 
@@ -200,6 +211,8 @@ export default function RdConsole() {
         </div>
       </header>
 
+      <ActivePatientOrdersPanel />
+
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-4">
         {/* Appointment column */}
         <Card className="bg-clinical-surface border-clinical-slate/30">
@@ -291,6 +304,346 @@ export default function RdConsole() {
             </Card>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+interface ActivePatientOrder {
+  serverOrderId: number;
+  externalOrderId: string;
+  status: string;
+  totalPaise: number;
+  addressLabel: string | null;
+  createdAt: string;
+  patientUserId: string | null;
+}
+
+interface ActiveOrdersResponse {
+  callerIsClinician: boolean;
+  orders: ActivePatientOrder[];
+}
+
+const ACTIVE_STATUS_SET = new Set([
+  "placed",
+  "preparing",
+  "ready",
+  "out_for_delivery",
+]);
+
+/**
+ * Server-sourced "Active patient orders" panel for the RD console.
+ *
+ * This panel intentionally does NOT read from the patient-side
+ * `ordersContext` (which is localStorage-backed for the signed-in
+ * patient). Instead it queries `/api/orders/active`, which returns every
+ * order in an active lifecycle stage across all patients when the caller
+ * is a clinician. STAT cancels here go through a clinician-targeted POST
+ * that runs against the canonical server row.
+ */
+interface DeliveryEventPayload {
+  orderId: number;
+  event: string;
+  meta?: { reason?: string; priority?: "stat" | "routine" };
+}
+
+function ActivePatientOrdersPanel() {
+  const { connected } = useSocketStatus();
+  const [data, setData] = useState<ActiveOrdersResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchOrders = useCallback(async () => {
+    try {
+      const r = await fetch(`${API_BASE}/orders/active`, {
+        credentials: "include",
+      });
+      if (!r.ok) {
+        // 401 / 403 → caller is not a clinician (or not signed in). Hide
+        // panel quietly rather than render an error to non-RD users.
+        if (r.status === 401 || r.status === 403) {
+          setData({ callerIsClinician: false, orders: [] });
+          return;
+        }
+        throw new Error(`Failed to load active orders (${r.status})`);
+      }
+      const body = (await r.json()) as ActiveOrdersResponse;
+      setData(body);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Initial load + periodic safety-net polling. Live updates come from
+  // the socket subscription effect below.
+  useEffect(() => {
+    void fetchOrders();
+    const t = setInterval(fetchOrders, 30_000);
+    return () => clearInterval(t);
+  }, [fetchOrders]);
+
+  // -----------------------------------------------------------------------
+  // Live updates
+  //
+  // Subscribe to the socket room of every visible active order so the panel
+  // updates the moment the kitchen / dispatcher emits an event, instead of
+  // waiting on the 30-second poll. Apply the transition optimistically to
+  // local state and fall back to a refetch only when we don't recognise
+  // the event (e.g. unrelated meta updates).
+  // -----------------------------------------------------------------------
+  const subscribedRef = useRef<Set<number>>(new Set());
+  useEffect(() => {
+    if (!data?.callerIsClinician) return;
+    const socket = getSocket();
+    const desired = new Set(data.orders.map((o) => o.serverOrderId));
+    for (const id of desired) {
+      if (!subscribedRef.current.has(id)) {
+        socket.emit("subscribe:order", id);
+        subscribedRef.current.add(id);
+      }
+    }
+    for (const id of Array.from(subscribedRef.current) as number[]) {
+      if (!desired.has(id)) {
+        socket.emit("unsubscribe:order", id);
+        subscribedRef.current.delete(id);
+      }
+    }
+  }, [data]);
+
+  useEffect(() => {
+    const socket = getSocket();
+    const onEvent = (payload: DeliveryEventPayload) => {
+      // Map the canonical event name to the new status. Unknown events
+      // (rider position, ETA, sla_breach, etc.) are ignored.
+      let nextStatus: string | null = null;
+      switch (payload.event) {
+        case "order_preparing":
+        case "preparing":
+        case "status_preparing":
+          nextStatus = "preparing";
+          break;
+        case "rider_at_kitchen":
+        case "ready":
+        case "status_ready":
+          nextStatus = "ready";
+          break;
+        case "order_picked_up":
+        case "rider_en_route_to_customer":
+        case "out_for_delivery":
+        case "status_out_for_delivery":
+          nextStatus = "out_for_delivery";
+          break;
+        case "delivered":
+        case "status_delivered":
+        case "order_cancelled":
+          nextStatus = payload.event === "order_cancelled" ? "cancelled" : "delivered";
+          break;
+        default:
+          return;
+      }
+      setData((prev) => {
+        if (!prev) return prev;
+        // Cancelled / delivered orders drop out of the active feed.
+        if (nextStatus && !ACTIVE_STATUS_SET.has(nextStatus)) {
+          return {
+            ...prev,
+            orders: prev.orders.filter(
+              (o) => o.serverOrderId !== payload.orderId,
+            ),
+          };
+        }
+        return {
+          ...prev,
+          orders: prev.orders.map((o) =>
+            o.serverOrderId === payload.orderId
+              ? { ...o, status: nextStatus ?? o.status }
+              : o,
+          ),
+        };
+      });
+    };
+    socket.on("delivery:event", onEvent);
+    return () => {
+      socket.off("delivery:event", onEvent);
+    };
+  }, []);
+
+  if (loading) return null;
+  if (!data || !data.callerIsClinician) return null;
+
+  const active = data.orders;
+
+  const handleRowCancelled = useCallback(
+    async (
+      args:
+        | { kind: "optimistic-remove"; serverOrderId: number }
+        | { kind: "rollback"; serverOrderId: number }
+        | { kind: "refetch" },
+    ) => {
+      if (args.kind === "optimistic-remove") {
+        setData((prev) =>
+          prev
+            ? {
+                ...prev,
+                orders: prev.orders.filter(
+                  (o) => o.serverOrderId !== args.serverOrderId,
+                ),
+              }
+            : prev,
+        );
+        return;
+      }
+      // Rollback or refetch both re-pull canonical state from the server.
+      await fetchOrders();
+    },
+    [fetchOrders],
+  );
+
+  return (
+    <Card className="bg-clinical-surface border-clinical-slate/30">
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="w-4 h-4 text-red-400" />
+            <p className="text-xs text-white font-medium">
+              Active patient orders ({active.length})
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            {!connected && (
+              <span className="text-[10px] text-amber-300">
+                Live updates paused — reconnecting…
+              </span>
+            )}
+            <p className="text-[10px] text-clinical-zinc">
+              STAT cancel notifies kitchen and rider instantly.
+            </p>
+          </div>
+        </div>
+        {error && (
+          <p className="text-[11px] text-red-300">{error}</p>
+        )}
+        {active.length === 0 ? (
+          <p className="text-[11px] text-clinical-zinc">
+            No active patient orders right now.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {active.map((order) => (
+              <ActivePatientOrderRow
+                key={order.serverOrderId}
+                order={order}
+                onCancelled={handleRowCancelled}
+              />
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ActivePatientOrderRow({
+  order,
+  onCancelled,
+}: {
+  order: ActivePatientOrder;
+  onCancelled: (
+    args:
+      | { kind: "optimistic-remove"; serverOrderId: number }
+      | { kind: "rollback"; serverOrderId: number }
+      | { kind: "refetch" },
+  ) => void | Promise<void>;
+}) {
+  // The server feed doesn't carry the patient-side `verifiedAt` flag, so
+  // treat anything past "placed" as verified for stepper purposes.
+  const stage: ClinicalStage = statusToClinicalStage(
+    order.status as Parameters<typeof statusToClinicalStage>[0],
+    order.status !== "placed",
+  );
+  const stageIndex = clinicalStageIndex(stage);
+
+  const handleCancel = useCallback(
+    async ({
+      reason,
+      priority,
+    }: {
+      reason: string;
+      priority: "stat";
+    }) => {
+      // Optimistically remove the order from the active panel so the
+      // clinician sees immediate feedback. We roll back if the server
+      // rejects the cancel.
+      await onCancelled({
+        kind: "optimistic-remove",
+        serverOrderId: order.serverOrderId,
+      });
+      try {
+        const r = await fetch(
+          `${API_BASE}/orders/${encodeURIComponent(order.externalOrderId)}/cancel`,
+          {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ reason, priority }),
+          },
+        );
+        if (!r.ok) {
+          const text = await r.text().catch(() => "");
+          throw new Error(`Cancel failed (${r.status}): ${text || r.statusText}`);
+        }
+        // Refetch to pick up any side-effects (e.g. fresh patientUserId).
+        await onCancelled({ kind: "refetch" });
+      } catch (err) {
+        await onCancelled({
+          kind: "rollback",
+          serverOrderId: order.serverOrderId,
+        });
+        throw err;
+      }
+    },
+    [order.externalOrderId, order.serverOrderId, onCancelled],
+  );
+
+  return (
+    <div className="rounded-md border border-clinical-slate/30 p-3 space-y-2">
+      <div className="flex items-start justify-between gap-2 flex-wrap">
+        <div>
+          <p className="font-mono text-[11px] text-clinical-gold">
+            {order.externalOrderId}
+          </p>
+          <p className="text-[10px] text-clinical-zinc">
+            Patient ID: {order.patientUserId ?? "unknown"}
+          </p>
+          {order.addressLabel && (
+            <p className="text-[10px] text-clinical-zinc">
+              Drop: {order.addressLabel}
+            </p>
+          )}
+        </div>
+        <StatCancelButton
+          orderId={order.externalOrderId}
+          size="sm"
+          onCancel={handleCancel}
+        />
+      </div>
+      <div className="flex items-center gap-1.5 text-[10px]">
+        {CLINICAL_STAGES.map((s, i) => (
+          <span
+            key={s.key}
+            className={
+              i <= stageIndex
+                ? "text-clinical-gold"
+                : "text-clinical-zinc/60"
+            }
+          >
+            {s.shortLabel}
+            {i < CLINICAL_STAGES.length - 1 ? " ›" : ""}
+          </span>
+        ))}
       </div>
     </div>
   );

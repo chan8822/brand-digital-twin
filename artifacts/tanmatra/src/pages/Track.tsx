@@ -5,6 +5,10 @@ import { useDeliveryTimeline, useRecordDeliveryEvent } from "@/lib/queries";
 import { useOrders } from "@/lib/ordersContext";
 import { getSocket } from "@/lib/socket";
 import { API_BASE } from "@/lib/apiBase";
+import { ClinicalLifecycleStepper } from "@/components/track/ClinicalLifecycleStepper";
+import { StatCancelButton } from "@/components/track/StatCancelButton";
+import { useSocketStatus } from "@/lib/useSocketStatus";
+import { isCancellable } from "@/lib/clinicalLifecycle";
 // RiderMap pulls in leaflet + react-leaflet (~150kB gzip). Only the live
 // tracking screen needs it, so split it out of the customer entry chunk.
 const RiderMap = lazy(() => import("@/components/track/RiderMap"));
@@ -20,7 +24,6 @@ import {
   Phone,
   Package,
   ChefHat,
-  CheckCircle2,
   User,
   Navigation,
   MapPin,
@@ -36,14 +39,6 @@ import {
 import { fulfillmentApi, type PackagingReturnRow } from "@/lib/fulfillmentApi";
 import SupportTicketDialog from "@/components/track/SupportTicketDialog";
 
-const STEPS = [
-  { status: "placed", label: "Placed", icon: CheckCircle2 },
-  { status: "preparing", label: "Preparing", icon: ChefHat },
-  { status: "ready", label: "Ready", icon: Package },
-  { status: "out_for_delivery", label: "Delivery", icon: Navigation },
-  { status: "delivered", label: "Delivered", icon: CheckCircle2 },
-];
-
 const EVENT_LABELS: Record<string, string> = {
   rider_assigned: "Rider assigned",
   rider_en_route_to_kitchen: "Rider heading to kitchen",
@@ -54,25 +49,6 @@ const EVENT_LABELS: Record<string, string> = {
   delivered: "Delivered",
   delivery_failed: "Delivery failed",
 };
-
-function statusToStepIndex(status: string): number {
-  switch (status) {
-    case "placed":
-      return 0;
-    case "preparing":
-      return 1;
-    case "ready":
-      return 2;
-    case "out_for_delivery":
-      return 3;
-    case "delivered":
-      return 4;
-    case "cancelled":
-      return -1;
-    default:
-      return 0;
-  }
-}
 
 function formatAbsoluteTime(iso: string): string {
   return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -170,6 +146,7 @@ export default function Track() {
 
   const { orders, latest, getOrder, updateStatus } = useOrders();
   const order = orderIdParam ? getOrder(orderIdParam) : latest();
+  const { connected: socketConnected } = useSocketStatus();
 
   const numericOrderId = useMemo(() => {
     if (!order) return 0;
@@ -221,8 +198,6 @@ export default function Track() {
   }, [numericOrderId, order]);
 
   const displayEtaAt = dynamicEta?.etaAt ?? order?.etaAt;
-
-  const currentStepIndex = order ? statusToStepIndex(order.status) : -1;
 
   // Subscribe to live delivery events for this order; invalidate the timeline cache
   // on any push from the server (replaces the previous polling interval).
@@ -347,21 +322,30 @@ export default function Track() {
             <h1 className="text-2xl font-bold tracking-tight text-white">Track Order</h1>
             <p className="font-mono text-xs text-clinical-gold mt-1">{order.orderId}</p>
           </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setSupportOpen(true)}
-            className="gap-1.5 border-clinical-gold/40 text-clinical-gold hover:bg-clinical-gold/10"
-          >
-            <LifeBuoy className="w-3.5 h-3.5" />
-            Need help with this order?
-          </Button>
+          <div className="flex items-center gap-2 flex-wrap">
+            {isCancellable(order.status) && (
+              <StatCancelButton
+                orderId={order.orderId}
+                patientName={order.patientName}
+                size="sm"
+              />
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setSupportOpen(true)}
+              className="gap-1.5 border-clinical-gold/40 text-clinical-gold hover:bg-clinical-gold/10"
+            >
+              <LifeBuoy className="w-3.5 h-3.5" />
+              Need help with this order?
+            </Button>
+          </div>
         </div>
 
         <Card className="bg-clinical-surface border-clinical-slate/20">
           <CardContent className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
             <div>
-              <p className="text-clinical-zinc text-[10px] uppercase tracking-wide">Placed</p>
+              <p className="text-clinical-zinc text-[10px] uppercase tracking-wide">Submitted</p>
               <p className="text-white tabular-nums font-medium">{formatAbsoluteTime(order.placedAt)}</p>
             </div>
             <div>
@@ -387,43 +371,10 @@ export default function Track() {
         </Card>
       </div>
 
-      {/* Stepper */}
+      {/* Clinical lifecycle stepper */}
       <Card>
-        <CardContent className="p-6">
-          <div className="relative flex items-start justify-between">
-            {STEPS.map((step, idx) => {
-              const isActive = idx <= currentStepIndex;
-              const isCurrent = idx === currentStepIndex;
-              const Icon = step.icon;
-              return (
-                <div key={step.status} className="flex flex-col items-center gap-2 flex-1 relative z-10">
-                  <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-colors ${
-                      isActive
-                        ? "bg-[#D4AF37] border-[#D4AF37] text-[#050505]"
-                        : "bg-muted border-muted-foreground/20 text-muted-foreground"
-                    } ${isCurrent ? "ring-2 ring-[#D4AF37]/30" : ""}`}
-                  >
-                    <Icon className="w-5 h-5" />
-                  </div>
-                  <span
-                    className={`text-[10px] text-center leading-tight ${
-                      isActive ? "text-foreground font-medium" : "text-muted-foreground"
-                    }`}
-                  >
-                    {step.label}
-                  </span>
-                  {idx < STEPS.length - 1 && (
-                    <div
-                      className={`absolute top-5 left-1/2 w-full h-0.5 -z-10 ${
-                        isActive ? "bg-[#D4AF37]/40" : "bg-muted"
-                      }`}
-                    />
-                  )}
-                </div>
-              );
-            })}
-          </div>
+        <CardContent className="p-4 sm:p-6">
+          <ClinicalLifecycleStepper order={order} socketConnected={socketConnected} />
         </CardContent>
       </Card>
 

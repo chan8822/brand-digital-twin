@@ -1,6 +1,6 @@
 import type { Server as HttpServer, IncomingMessage } from "node:http";
 import { Server as IOServer } from "socket.io";
-import { db, ordersTable } from "@workspace/db";
+import { db, ordersTable, rdUsersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { getSession, SESSION_COOKIE } from "./auth";
 import { logger } from "./logger";
@@ -29,6 +29,10 @@ let io: IOServer | null = null;
 interface SocketAuthState {
   userId: string | null;
   isOps: boolean;
+  // Authenticated user is a clinician (RD) — has a row in `rd_users`.
+  // Clinicians may subscribe to any patient order room so STAT cancel
+  // and lifecycle updates stream live in the RD console.
+  isClinician: boolean;
 }
 
 function isOpsUser(userId: string | null): boolean {
@@ -53,10 +57,19 @@ function parseCorsAllowList(): string[] {
 async function authenticate(req: IncomingMessage): Promise<SocketAuthState> {
   const parsed = parseCookieHeader(req.headers.cookie);
   const sid = parsed[SESSION_COOKIE];
-  if (!sid) return { userId: null, isOps: false };
+  if (!sid) return { userId: null, isOps: false, isClinician: false };
   const session = await getSession(sid);
   const userId = session?.user?.id ?? null;
-  return { userId, isOps: isOpsUser(userId) };
+  let isClinician = false;
+  if (userId) {
+    const rows = await db
+      .select({ id: rdUsersTable.id })
+      .from(rdUsersTable)
+      .where(eq(rdUsersTable.userId, userId))
+      .limit(1);
+    isClinician = rows.length > 0;
+  }
+  return { userId, isOps: isOpsUser(userId), isClinician };
 }
 
 export function initRealtime(httpServer: HttpServer): IOServer {
@@ -84,6 +97,7 @@ export function initRealtime(httpServer: HttpServer): IOServer {
       const state = await authenticate(socket.request);
       socket.data.userId = state.userId;
       socket.data.isOps = state.isOps;
+      socket.data.isClinician = state.isClinician;
       next();
     } catch (err) {
       logger.error({ err }, "socket auth error");
@@ -99,9 +113,10 @@ export function initRealtime(httpServer: HttpServer): IOServer {
         socket.emit("subscribe:order:error", { orderId, error: "unauthenticated" });
         return;
       }
-      // Ops users can subscribe to any order. Customers can only join
-      // a room for an order that belongs to them.
-      if (!socket.data.isOps) {
+      // Ops users and clinicians (RD) can subscribe to any order.
+      // Customers can only join a room for an order that belongs to
+      // them.
+      if (!socket.data.isOps && !socket.data.isClinician) {
         const [row] = await db
           .select({ userId: ordersTable.userId })
           .from(ordersTable)

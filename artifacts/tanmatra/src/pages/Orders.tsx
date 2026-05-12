@@ -17,7 +17,6 @@ import { useOrders, formatRelativeTime, type PastOrder } from "@/lib/ordersConte
 import { useCart } from "@/lib/cartContext";
 import { formatPrice } from "@/lib/api/adapter";
 import {
-  ClipboardList,
   Package,
   RefreshCw,
   AlertTriangle,
@@ -26,20 +25,25 @@ import {
   MapPin,
   CheckCircle2,
 } from "lucide-react";
+import { ClinicalLifecycleStepper } from "@/components/track/ClinicalLifecycleStepper";
+import { StatCancelButton } from "@/components/track/StatCancelButton";
+import { useSocketStatus } from "@/lib/useSocketStatus";
+import { isCancellable } from "@/lib/clinicalLifecycle";
 
 const STATUS_BADGE: Record<PastOrder["status"], { label: string; className: string }> = {
-  placed: { label: "Placed", className: "bg-clinical-gold/15 text-clinical-gold border-clinical-gold/40" },
-  preparing: { label: "Preparing", className: "bg-orange-500/15 text-orange-300 border-orange-500/40" },
-  ready: { label: "Ready", className: "bg-orange-500/15 text-orange-300 border-orange-500/40" },
+  placed: { label: "Submitted", className: "bg-clinical-gold/15 text-clinical-gold border-clinical-gold/40" },
+  preparing: { label: "In Preparation", className: "bg-orange-500/15 text-orange-300 border-orange-500/40" },
+  ready: { label: "In Preparation", className: "bg-orange-500/15 text-orange-300 border-orange-500/40" },
   out_for_delivery: { label: "Out for Delivery", className: "bg-clinical-blue/15 text-clinical-blue border-clinical-blue/40" },
-  delivered: { label: "Delivered", className: "bg-green-500/15 text-green-400 border-green-500/40" },
-  cancelled: { label: "Cancelled", className: "bg-red-500/15 text-red-400 border-red-500/40" },
+  delivered: { label: "Patient Received", className: "bg-green-500/15 text-green-400 border-green-500/40" },
+  cancelled: { label: "STAT Cancelled", className: "bg-red-500/15 text-red-400 border-red-500/40" },
 };
 
 export default function Orders() {
   const navigate = useNavigate();
   const { orders } = useOrders();
   const { addItem } = useCart();
+  const { connected: socketConnected } = useSocketStatus();
   const [disputeFor, setDisputeFor] = useState<PastOrder | null>(null);
   const [disputeText, setDisputeText] = useState("");
 
@@ -125,13 +129,30 @@ export default function Orders() {
                   <div className="space-y-1">
                     <p className="font-mono text-xs text-clinical-gold">{order.orderId}</p>
                     <p className="text-[10px] text-clinical-zinc">
-                      Placed {formatRelativeTime(order.placedAt)}
+                      Submitted {formatRelativeTime(order.placedAt)}
+                      {order.patientName ? ` · ${order.patientName}` : ""}
                     </p>
                   </div>
-                  <Badge variant="outline" className={`text-[10px] ${badge.className}`}>
-                    {badge.label}
-                  </Badge>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant="outline" className={`text-[10px] ${badge.className}`}>
+                      {badge.label}
+                    </Badge>
+                    {isCancellable(order.status) && (
+                      <StatCancelButton
+                        orderId={order.orderId}
+                        patientName={order.patientName}
+                        size="sm"
+                      />
+                    )}
+                  </div>
                 </div>
+
+                {/* Clinical lifecycle stepper */}
+                <ClinicalLifecycleStepper
+                  order={order}
+                  socketConnected={socketConnected}
+                  compact
+                />
 
                 {/* Item thumbnails */}
                 <div className="flex gap-2 overflow-x-auto pb-1">
