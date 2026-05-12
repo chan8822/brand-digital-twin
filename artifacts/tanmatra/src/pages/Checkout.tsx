@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -90,6 +90,13 @@ export default function Checkout() {
   const [isCustomTip, setIsCustomTip] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  // Holds the Idempotency-Key for the in-flight finalize attempt.
+  // Minted on first click and reused on any subsequent click made
+  // before a terminal result, so a user-driven retry after a
+  // timeout/network blip hits the server's replay cache instead of
+  // creating a second order. Cleared on terminal success so the
+  // next checkout intent gets its own key.
+  const idempotencyRef = useRef<string | null>(null);
   const [creditBalance, setCreditBalance] = useState(0);
   const [applyCredits, setApplyCredits] = useState(true);
   const [preorderTomorrow, setPreorderTomorrow] = useState(false);
@@ -401,7 +408,8 @@ export default function Checkout() {
         // Same key for every retry of THIS submit attempt; the server
         // dedupes via its idempotency_keys cache, so a network blip or
         // 5xx-then-retry won't double-charge the customer.
-        idempotencyKey: submitOrderIdempotencyKey(orderId),
+        idempotencyKey: (idempotencyRef.current ??=
+          submitOrderIdempotencyKey(orderId)),
         orderId,
         items: items.map((it) => ({
           id: it.dishId,
@@ -608,6 +616,8 @@ export default function Checkout() {
       toast.success("Referral reward unlocked for your friend");
     }
 
+    // Terminal success — next checkout is a new intent.
+    idempotencyRef.current = null;
     clear();
     setIsProcessing(false);
     setConfirmOpen(false);

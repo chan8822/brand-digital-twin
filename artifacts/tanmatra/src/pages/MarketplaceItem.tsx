@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
@@ -34,6 +34,13 @@ export default function MarketplaceItemPage() {
   );
   const [bundleOrderId, setBundleOrderId] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Holds the Idempotency-Key for the in-flight submit attempt. We
+  // mint on first click and reuse the same key on any subsequent
+  // click made before a terminal result (so a user-driven retry
+  // after a timeout still hits the server's replay cache and does
+  // NOT create a second order). Cleared on success so the next
+  // distinct purchase intent gets its own key.
+  const idempotencyRef = useRef<string | null>(null);
 
   const q = useQuery({
     queryKey: ["marketplace", "item", slug],
@@ -67,13 +74,18 @@ export default function MarketplaceItemPage() {
     if (qty < 1) return;
     setSubmitting(true);
     try {
+      if (!idempotencyRef.current) {
+        idempotencyRef.current = marketplaceCheckoutIdempotencyKey();
+      }
       const r = await marketplaceApi.checkout({
-        idempotencyKey: marketplaceCheckoutIdempotencyKey(),
+        idempotencyKey: idempotencyRef.current,
         items: [{ itemId: item.id, qty }],
         deliveryMode,
         bundleWithOrderId:
           deliveryMode === "bundle_with_meal" ? bundleOrderId : null,
       });
+      // Terminal success — next "Buy" click is a new intent.
+      idempotencyRef.current = null;
       toast.success(
         deliveryMode === "ship"
           ? "Order placed — ships in 24h"

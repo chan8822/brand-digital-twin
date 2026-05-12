@@ -156,8 +156,8 @@ export const marketplaceApi = {
     /** Server-managed idempotency key. Reuse the SAME value for every
      * retry of one submit attempt so the server replays its cached
      * response instead of double-charging / double-decrementing stock.
-     * Use `marketplaceCheckoutIdempotencyKey()` to get a stable key
-     * that survives soft refreshes via sessionStorage. */
+     * Use `marketplaceCheckoutIdempotencyKey()` to mint a fresh key
+     * once per "Buy" click. */
     idempotencyKey: string;
     items: Array<{ itemId: number; qty: number }>;
     deliveryMode: "ship" | "bundle_with_meal";
@@ -182,18 +182,10 @@ export const marketplaceApi = {
 };
 
 /**
- * Mints a fresh `Idempotency-Key` for ONE marketplace checkout submit
- * attempt. Call this exactly once per "Buy" click and reuse the
- * returned key only across retries of that same in-flight request
- * (e.g. a transient 5xx → fetch retry). A new click is a new intent
- * and gets a new key, so it correctly creates a new order.
- *
- * Deliberately does NOT persist to sessionStorage: persisting would
- * collapse two intentional purchases of the same item into one order
- * (the server would replay the cached response). Surviving a soft
- * refresh mid-flight is intentionally NOT supported here — a refresh
- * mid-purchase is a new intent, and the user gets to decide whether
- * to click Buy again.
+ * Mints a fresh `Idempotency-Key` (UUID). The caller is responsible
+ * for holding onto the returned value (e.g. in a `useRef`) so that
+ * any retry of the same in-flight request reuses it, and for minting
+ * a new value when the user clicks "Buy" again.
  */
 export function marketplaceCheckoutIdempotencyKey(): string {
   return typeof crypto !== "undefined" && crypto.randomUUID

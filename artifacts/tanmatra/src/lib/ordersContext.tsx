@@ -96,14 +96,10 @@ export function generateOrderId(): string {
 }
 
 /**
- * Mints a fresh `Idempotency-Key` for ONE order-finalize submit
- * attempt. Call this once per "Place order" click and reuse the
- * returned key only across retries of THAT in-flight request
- * (transient 5xx, fetch timeout). A subsequent click is a new
- * intent and must get a new key, otherwise the server would replay
- * the cached response and hide a real duplicate. Stateless on
- * purpose — sessionStorage persistence keyed by orderId would
- * collapse two intentional placements into one.
+ * Mints a fresh `Idempotency-Key` (UUID). The caller is responsible
+ * for reusing the same returned value across retries of ONE submit
+ * attempt (e.g. by holding it in a `useRef` until the request
+ * terminates) and for minting a new value for a new click.
  */
 export function submitOrderIdempotencyKey(_orderId: string): string {
   return typeof crypto !== "undefined" && crypto.randomUUID
