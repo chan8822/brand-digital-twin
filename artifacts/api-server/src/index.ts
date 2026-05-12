@@ -94,21 +94,29 @@ const purgeTimer = setInterval(() => {
  sweepExpiredIdempotencyKeys().catch((err) =>
  logger.error({ err }, "sweepExpiredIdempotencyKeys failed"),
  ),
- // Reserve-and-create saga (Task #6) compensator. Reclaims slot
- // reservations whose owning order vanished mid-flight so capacity
- // can't be permanently exhausted by orphan rows.
- sweepOrphanSlotReservations()
- .then((n) => {
- if (n > 0) logger.info({ reclaimed: n }, "sweepOrphanSlotReservations reclaimed");
- })
- .catch((err) =>
- logger.error({ err }, "sweepOrphanSlotReservations failed"),
- ),
  ]).catch(() => {
  /* swallowed above */
  });
 }, HOUR);
 purgeTimer.unref();
+
+// Reserve-and-create saga (Task #6) compensator runs on a SHORT cadence
+// so a connection drop that leaves a phantom slot reservation behind is
+// reclaimed within ~SLOT_RECLAIM_INTERVAL_MS + graceMs (≈90s with the
+// defaults below), not the hourly hygiene window. This bounds the worst-
+// case capacity-starvation latency under load.
+const SLOT_RECLAIM_INTERVAL_MS = 30_000;
+const SLOT_RECLAIM_GRACE_MS = 60_000;
+const slotReclaimTimer = setInterval(() => {
+ sweepOrphanSlotReservations({ graceMs: SLOT_RECLAIM_GRACE_MS })
+ .then((n) => {
+ if (n > 0) logger.info({ reclaimed: n }, "sweepOrphanSlotReservations reclaimed");
+ })
+ .catch((err) =>
+ logger.error({ err }, "sweepOrphanSlotReservations failed"),
+ );
+}, SLOT_RECLAIM_INTERVAL_MS);
+slotReclaimTimer.unref();
 
 // --- Process-level safety nets ---------------------------------------------
 process.on("unhandledRejection", (reason) => {
@@ -149,6 +157,7 @@ async function shutdown(signal: NodeJS.Signals): Promise<void> {
  logger.error({ err }, "stopWorkers failed");
  }
  clearInterval(purgeTimer);
+ clearInterval(slotReclaimTimer);
  logger.info("shutdown complete");
  process.exit(0);
 }

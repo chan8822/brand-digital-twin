@@ -14,6 +14,10 @@ import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { z } from "zod/v4";
 import { issueCredit } from "../lib/loyaltyEngine";
 import { isOpsRequest } from "../lib/adminGate";
+import {
+  incOrphanReclaimed,
+  incReserveSlotInvariantViolation,
+} from "../lib/saga-metrics";
 
 const router: IRouter = Router();
 
@@ -502,6 +506,7 @@ export async function reserveSlot(args: {
   // Enforce at the write site so we never depend on the compensating
   // sweeper to clean up an avoidable orphan.
   if (!Number.isInteger(args.orderId) || args.orderId <= 0) {
+    incReserveSlotInvariantViolation();
     throw new Error("reserveSlot: orderId is required");
   }
   return db.transaction(async (tx) => {
@@ -581,6 +586,7 @@ export async function sweepOrphanSlotReservations(opts: {
           })
           .where(eq(deliverySlotsTable.id, r.slot_id));
         reclaimed += 1;
+        incOrphanReclaimed(1);
       });
     } catch {
       // Best-effort; the next sweep tick retries.

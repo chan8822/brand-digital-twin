@@ -40,6 +40,10 @@ import {
 import marketplaceRouter from "./marketplace";
 import { reserveSlot, sweepOrphanSlotReservations } from "./fulfillment";
 import { ordersTable } from "@workspace/db";
+import {
+  __resetSagaMetricsForTests,
+  snapshotSagaMetrics,
+} from "../lib/saga-metrics";
 
 interface TestUser {
   id: string;
@@ -423,6 +427,126 @@ test("reserveSlot rejects null orderId and rolls back atomically when slot full"
   await db
     .delete(ordersTable)
     .where(inArray(ordersTable.id, [order!.id, order2!.id]));
+});
+
+test("crash-injection: connection drop after reserveSlot is reclaimed within SLA", async () => {
+  // Reproduces the failure mode the saga is designed to defend against:
+  // an order-create flow that successfully reserves a slot then crashes
+  // before persisting the order. We simulate that by calling reserveSlot
+  // with a real order row, then HARD-DELETING the order to mimic the
+  // tx never committing the order side. The orphan sweeper, configured
+  // with a 0ms grace, must reclaim the slot capacity in a single tick.
+  __resetSagaMetricsForTests();
+  const user = await makeUser();
+  const start = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const end = new Date(start.getTime() + 60 * 60 * 1000);
+  const [slot] = await db
+    .insert(deliverySlotsTable)
+    .values({
+      slotDate: start.toISOString().slice(0, 10),
+      startsAt: start,
+      endsAt: end,
+      zone: `mkt-crash-${randomUUID().slice(0, 8)}`,
+      capacity: 1,
+      reservedCount: 0,
+    })
+    .returning();
+  CREATED_SLOT_IDS.push(slot!.id);
+
+  const [doomed] = await db
+    .insert(ordersTable)
+    .values({
+      userId: user.id,
+      status: "placed",
+      totalPaise: 0,
+      items: [],
+      fulfillmentType: "delivery",
+    })
+    .returning();
+  const ok = await reserveSlot({
+    slotId: slot!.id,
+    userId: user.id,
+    orderId: doomed!.id,
+  });
+  assert.equal(ok, true);
+
+  // Slot is at capacity; a SECOND reservation attempt must currently fail.
+  const [order2] = await db
+    .insert(ordersTable)
+    .values({
+      userId: user.id,
+      status: "placed",
+      totalPaise: 0,
+      items: [],
+      fulfillmentType: "delivery",
+    })
+    .returning();
+  const blocked = await reserveSlot({
+    slotId: slot!.id,
+    userId: user.id,
+    orderId: order2!.id,
+  });
+  assert.equal(blocked, false, "slot is full while orphan exists");
+
+  // SIMULATE THE CRASH: the order row vanishes (rollback that wasn't
+  // co-tx with the reservation). In production the sweeper detects this.
+  await db.delete(ordersTable).where(eq(ordersTable.id, doomed!.id));
+
+  // Reclaim with grace=0 to model "fast cadence with bounded SLA".
+  const t0 = Date.now();
+  const reclaimed = await sweepOrphanSlotReservations({ graceMs: 0 });
+  const elapsedMs = Date.now() - t0;
+  assert.equal(reclaimed, 1, "must reclaim the orphan in one sweep");
+  assert.ok(elapsedMs < 5_000, `sweep too slow: ${elapsedMs}ms`);
+
+  // After reclaim, the slot must accept a fresh reservation.
+  const okAfter = await reserveSlot({
+    slotId: slot!.id,
+    userId: user.id,
+    orderId: order2!.id,
+  });
+  assert.equal(okAfter, true, "capacity restored after reclaim");
+
+  // Metrics must reflect the reclaim event.
+  const m = await snapshotSagaMetrics();
+  assert.ok(
+    m.orphanReclaimedTotal >= 1,
+    `orphanReclaimedTotal expected >=1, got ${m.orphanReclaimedTotal}`,
+  );
+
+  // Cleanup.
+  await db
+    .delete(slotReservationsTable)
+    .where(eq(slotReservationsTable.slotId, slot!.id));
+  await db.delete(ordersTable).where(eq(ordersTable.id, order2!.id));
+});
+
+test("saga metrics counters track invariant violations + checkout rollbacks", async () => {
+  __resetSagaMetricsForTests();
+  const user = await makeUser();
+  // (a) invariant violation: reserveSlot with orderId=0
+  await assert.rejects(
+    () =>
+      reserveSlot({
+        slotId: 1,
+        userId: user.id,
+        orderId: 0,
+      }),
+    /orderId is required/,
+  );
+  // (b) marketplace checkout rollback: out-of-stock item
+  const item = await makeItem(0);
+  const r = await api(
+    "POST",
+    "/marketplace/checkout",
+    { items: [{ itemId: item.id, qty: 1 }], deliveryMode: "ship" },
+    user,
+  );
+  assert.equal(r.status, 409);
+
+  const m = await snapshotSagaMetrics();
+  assert.equal(m.reserveSlotInvariantViolationsTotal, 1);
+  assert.equal(m.marketplaceCheckoutRollbackTotal, 1);
 });
 
 // Sanity: ensure we can't poison the slots table by sweeping fresh rows.

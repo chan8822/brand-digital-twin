@@ -8,6 +8,7 @@ import {
   type MarketplaceOrderLine,
 } from "@workspace/db";
 import { idempotencyMiddleware } from "../middlewares/idempotency";
+import { incMarketplaceCheckoutRollback } from "../lib/saga-metrics";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod/v4";
 
@@ -299,9 +300,13 @@ router.post("/marketplace/checkout", idempotencyMiddleware, async (req: Request,
     res.status(201).json({ order: result });
   } catch (err) {
     if (err instanceof MarketplaceCheckoutError) {
+      // Counts every saga rollback (out-of-stock, bundle target missing,
+      // item inactive). Useful for spotting catalog/seed bugs.
+      incMarketplaceCheckoutRollback();
       res.status(err.status).json({ error: err.message });
       return;
     }
+    incMarketplaceCheckoutRollback();
     throw err;
   }
 });
