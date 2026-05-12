@@ -11,6 +11,8 @@
 
 import { useEffect, useSyncExternalStore } from "react";
 import type { DishData } from "@workspace/menu-catalog";
+import type { PastOrder } from "./ordersContext";
+import { CLINICAL_STAGES, statusToClinicalStage } from "./clinicalLifecycle";
 
 export type DietOrderId =
   | "regular"
@@ -298,4 +300,121 @@ export function useEnableClinicalMode() {
   useEffect(() => {
     clinicalModeStore.enable();
   }, []);
+}
+
+// ---------------------------------------------------------------------------
+// derived patient-context helpers (read-only — the PatientContextStrip on
+// the ordering screens is a display surface; editing happens elsewhere)
+// ---------------------------------------------------------------------------
+
+export interface MedicalAlert {
+  id: string;
+  /** Short, ALL-CAPS code for chip rendering (e.g. "NPO", "ALLERGY"). */
+  code: string;
+  /** Plain-language detail. */
+  detail: string;
+  severity: "high" | "medium" | "low";
+}
+
+/**
+ * Build the patient's active medical-alerts list. Allergens map to severity
+ * "high" (anaphylactic risk model), and the active diet order contributes a
+ * second flag whenever it carries operational impact (NPO, neutropenic,
+ * insulin-dependent diabetic-CCHO).
+ */
+export function buildMedicalAlerts(
+  allergens: string[] | undefined | null,
+  dietOrderId: DietOrderId,
+): MedicalAlert[] {
+  const out: MedicalAlert[] = [];
+  for (const a of allergens ?? []) {
+    out.push({
+      id: `allergy:${a}`,
+      code: "ALLERGY",
+      detail: a.charAt(0).toUpperCase() + a.slice(1),
+      severity: "high",
+    });
+  }
+  switch (dietOrderId) {
+    case "npo":
+      out.push({
+        id: "npo",
+        code: "NPO",
+        detail: "Nil per os — no oral intake permitted.",
+        severity: "high",
+      });
+      break;
+    case "diabetic_carb":
+      out.push({
+        id: "insulin",
+        code: "INSULIN-DEP",
+        detail: "Insulin-dependent — keep CHO consistent meal-to-meal.",
+        severity: "medium",
+      });
+      break;
+    case "neutropenic":
+      out.push({
+        id: "neutropenic",
+        code: "NEUTROPENIC",
+        detail: "Immunocompromised — cooked items only, no raw produce.",
+        severity: "high",
+      });
+      break;
+    case "renal":
+      out.push({
+        id: "renal",
+        code: "RENAL",
+        detail: "Impaired renal function — protein and fat caps apply.",
+        severity: "medium",
+      });
+      break;
+    default:
+      break;
+  }
+  return out.slice(0, 3);
+}
+
+export interface RecentMeal {
+  orderId: string;
+  /** Display string, e.g. "Tue 12:40" — short and tabular. */
+  whenLabel: string;
+  /** Sort key. */
+  whenIso: string;
+  /** Clinical lifecycle stage label, e.g. "Patient Received". */
+  stageLabel: string;
+  /** First 1–2 dish names of the order. */
+  itemSummary: string;
+}
+
+/**
+ * Pull the patient's three most recent meals with the timestamp and clinical
+ * stage required by the patient-context strip spec. Cancelled orders are
+ * excluded — they didn't reach the patient.
+ */
+export function buildRecentMeals(orders: PastOrder[]): RecentMeal[] {
+  const stageByKey = new Map(CLINICAL_STAGES.map((s) => [s.key, s.label]));
+  return orders
+    .filter((o) => o.status !== "cancelled")
+    .slice(0, 3)
+    .map((o) => {
+      const when = new Date(o.placedAt);
+      const whenLabel = when.toLocaleString([], {
+        weekday: "short",
+        hour: "numeric",
+        minute: "2-digit",
+      });
+      const stage = statusToClinicalStage(o.status, !!o.verifiedByName);
+      const stageLabel = stageByKey.get(stage) ?? stage;
+      const itemSummary = o.items
+        .slice(0, 2)
+        .map((i) => i.name)
+        .join(" + ");
+      return {
+        orderId: o.orderId,
+        whenLabel,
+        whenIso: o.placedAt,
+        stageLabel,
+        itemSummary: itemSummary || "—",
+      };
+    });
 }

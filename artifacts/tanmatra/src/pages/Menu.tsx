@@ -249,8 +249,15 @@ export default function Menu() {
     ).length;
   }, [preferences, catalogDishes]);
 
-  const lifestyleTag =
-    lifestyle !== "all" ? LIFESTYLE_TAGS[lifestyle as Exclude<Lifestyle, "all">] : null;
+  const lifestyleTag = (() => {
+    if (lifestyle === "all") return null;
+    const consumer = LIFESTYLE_TAGS[lifestyle as Exclude<Lifestyle, "all">];
+    if (!clinicalMode) return consumer;
+    // Replace the marketing tag printed on each MenuCard's hero image with
+    // the EHR-aligned vocabulary so clinicians see "Cardiac" / "Soft" /
+    // "Diabetic-CCHO" rather than "Heart Healthy" / "Silver Vitality".
+    return LIFESTYLE_EHR_LABEL[lifestyle as string] ?? consumer;
+  })();
 
   // Lazy "why this meal" rationales for the visible dishes. Only enabled
   // when the user has a saved taste profile (otherwise the rationale has

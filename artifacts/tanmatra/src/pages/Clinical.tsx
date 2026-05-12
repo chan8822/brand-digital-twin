@@ -1,5 +1,10 @@
 import { useMemo } from "react";
-import { useEnableClinicalMode } from "@/lib/clinicalDiet";
+import {
+  DIET_ORDERS,
+  clinicalModeStore,
+  useClinicalMode,
+  useEnableClinicalMode,
+} from "@/lib/clinicalDiet";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import MacroOverlay from "@/components/dish/MacroOverlay";
@@ -18,6 +23,7 @@ import {
   Utensils,
   CalendarDays,
   Stethoscope,
+  ClipboardList,
 } from "lucide-react";
 import { useMenuCatalog, type DishData } from "@/lib/menuData";
 import { formatPrice } from "@/lib/api/adapter";
@@ -45,6 +51,10 @@ export default function Clinical() {
   // the diet-order + allergen confirm-block. Stays on until the user
   // explicitly exits via the strip's affordance.
   useEnableClinicalMode();
+  // Diet-order assignment lives on this clinician console (not on the
+  // ordering screens, where editing the patient's Medical ID is explicitly
+  // out of scope).
+  const { dietOrderId } = useClinicalMode();
   const { dishes } = useMenuCatalog();
   const qualifying = useMemo(
     () => dishesForProtocol(dishes, "clinical"),
@@ -133,6 +143,38 @@ export default function Clinical() {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="py-4 border-b border-clinical-slate/20 bg-clinical-surface/50">
+        <div className="max-w-7xl mx-auto px-4 flex flex-wrap items-center gap-3">
+          <ClipboardList className="w-4 h-4 text-clinical-gold shrink-0" />
+          <label
+            htmlFor="clinical-diet-order"
+            className="text-[10px] uppercase tracking-[0.14em] font-semibold text-clinical-zinc"
+          >
+            Active patient diet order
+          </label>
+          <select
+            id="clinical-diet-order"
+            value={dietOrderId}
+            onChange={(e) =>
+              clinicalModeStore.setDietOrder(
+                e.target.value as (typeof DIET_ORDERS)[number]["id"],
+              )
+            }
+            className="rounded-md border border-clinical-gold/30 bg-clinical-dark text-white text-xs px-2 py-1 focus:outline-none focus:ring-2 focus:ring-clinical-gold/50"
+          >
+            {DIET_ORDERS.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.label}
+              </option>
+            ))}
+          </select>
+          <p className="text-[11px] text-clinical-zinc">
+            Drives the Menu / Cart / Checkout safety gate. Ordering screens
+            display this value read-only.
+          </p>
         </div>
       </section>
 

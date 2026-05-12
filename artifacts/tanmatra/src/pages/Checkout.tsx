@@ -66,6 +66,7 @@ import {
   useClinicalMode,
 } from "@/lib/clinicalDiet";
 import PatientContextStrip from "@/components/clinical/PatientContextStrip";
+import ConflictsPanel from "@/components/clinical/ConflictsPanel";
 
 // Order matters — the first preset is what users see "first" and most
 // successful tip UIs lead with a positive amount instead of zero, so
@@ -733,38 +734,13 @@ export default function Checkout() {
 
   return (
     <div className="max-w-4xl mx-auto p-4 pb-40 lg:pb-4 grid grid-cols-1 lg:grid-cols-5 gap-6 animate-in fade-in duration-500">
-      <div className="lg:col-span-5">
+      <div className="lg:col-span-5 space-y-3">
         <PatientContextStrip />
+        <ConflictsPanel
+          panelId="checkout-server-block"
+          serverMessage={serverAllergenError}
+        />
       </div>
-      {(serverAllergenError || (checkoutBlocked && checkoutBlockedReason)) && (
-        <div
-          id="checkout-server-block"
-          role="alert"
-          className="lg:col-span-5 rounded-xl border border-red-500/50 bg-red-500/10 px-4 py-3 space-y-1"
-        >
-          <p className="text-[10px] uppercase tracking-[0.16em] font-semibold text-red-300 flex items-center gap-1">
-            <AlertTriangle className="w-3.5 h-3.5" aria-hidden />
-            Order blocked
-          </p>
-          <p className="text-sm text-red-200">
-            {serverAllergenError ?? checkoutBlockedReason}
-          </p>
-          {cartConflicts.reasons.length > 0 && (
-            <ul className="list-disc list-inside text-[11px] text-red-200/90 space-y-0.5">
-              {cartConflicts.reasons.slice(0, 5).map((r, i) => (
-                <li key={i}>{r}</li>
-              ))}
-            </ul>
-          )}
-          <p className="text-[11px] text-red-200/80 pt-1">
-            Edit your{" "}
-            <Link to="/cart" className="underline">
-              cart
-            </Link>{" "}
-            to remove flagged items, then return to checkout.
-          </p>
-        </div>
-      )}
       <div className="lg:col-span-3 space-y-5">
         <CheckoutStepper
           current={stepperStep}
