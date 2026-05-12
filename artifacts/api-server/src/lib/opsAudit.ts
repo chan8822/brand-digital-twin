@@ -82,12 +82,20 @@ export async function enqueueOpsAuditOutbox(
   }
   const payload = row as unknown as InsertOpsAuditOutbox["payload"];
   try {
-    // ON CONFLICT DO NOTHING — producer-side dedupe.
-    await executor
+    // ON CONFLICT DO NOTHING — producer-side dedupe. We use the
+    // RETURNING clause to distinguish "actually inserted" from
+    // "swallowed as duplicate" so the metrics tell operators
+    // whether a retry storm is happening.
+    const inserted = await executor
       .insert(opsAuditOutboxTable)
       .values({ dedupeKey, payload })
-      .onConflictDoNothing({ target: opsAuditOutboxTable.dedupeKey });
-    opsAuditOutboxEnqueuedTotal += 1;
+      .onConflictDoNothing({ target: opsAuditOutboxTable.dedupeKey })
+      .returning({ id: opsAuditOutboxTable.id });
+    if (inserted.length === 0) {
+      opsAuditOutboxDuplicatesIgnoredTotal += 1;
+    } else {
+      opsAuditOutboxEnqueuedTotal += 1;
+    }
   } catch (err) {
     // Inside a transaction we MUST propagate so the override rolls back.
     throw err;

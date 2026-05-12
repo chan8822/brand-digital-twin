@@ -58,7 +58,7 @@ async function fireOverride(orderId, riderId) {
   let status = 0;
   let body = null;
   try {
-    const r = await fetch(`${BASE}/delivery/dispatch/override`, {
+    const r = await fetch(`${BASE}/api/delivery/dispatch/override`, {
       method: "POST",
       headers,
       body: JSON.stringify({ orderId, riderId, notes: "loadtest" }),
@@ -75,7 +75,7 @@ async function fireOverride(orderId, riderId) {
 async function fireDispatcher() {
   // Pegs the auto-dispatcher path; should NOT block override.
   try {
-    await fetch(`${BASE}/delivery/dispatch/run`, {
+    await fetch(`${BASE}/api/delivery/dispatch/run`, {
       method: "POST",
       headers,
     });
@@ -136,6 +136,22 @@ async function main() {
     statusCounts: counts,
   };
   console.log("[loadtest]", JSON.stringify(summary, null, 2));
+
+  // Defense in depth: if the route 404s the latency would be near zero
+  // and the SLO would FALSELY pass. Reject any run whose responses are
+  // not predominantly the contract (200 success, 409 conflict, 503
+  // lock_busy). 404/0 must never be a majority.
+  const ok = (counts[200] ?? 0) + (counts[409] ?? 0) + (counts[503] ?? 0);
+  if (ok < samples.length * 0.95) {
+    console.error(
+      `[loadtest] FAIL: only ${ok}/${samples.length} responses were on-contract (200/409/503). statusCounts=${JSON.stringify(counts)}. The endpoint is likely not being reached.`,
+    );
+    process.exit(1);
+  }
+  if (samples.length === 0) {
+    console.error("[loadtest] FAIL: no override samples collected");
+    process.exit(1);
+  }
   if (summary.p95 > P95_BUDGET) {
     console.error(
       `[loadtest] FAIL: override p95=${summary.p95}ms exceeded ${P95_BUDGET}ms`,
