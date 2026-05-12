@@ -5,6 +5,11 @@ import {
   type MenuItem,
 } from "@workspace/db";
 
+/** Minimal executor shape — accepts either the global `db` or a `tx`
+ *  handle from `db.transaction`. Use this on read paths that need to
+ *  observe writes made earlier in the same transaction. */
+export type DbReadExecutor = Pick<typeof db, "select">;
+
 type InsertMenuItem = typeof menuItemsTable.$inferInsert;
 
 export type AvailabilitySlot = "breakfast" | "lunch" | "dinner" | "all_day";
@@ -30,9 +35,12 @@ function whereForFilter(filter: ListFilter) {
   return conds.length > 0 ? and(...conds) : undefined;
 }
 
-export async function listMenuItems(filter: ListFilter = {}): Promise<MenuItem[]> {
+export async function listMenuItems(
+  filter: ListFilter = {},
+  executor: DbReadExecutor = db,
+): Promise<MenuItem[]> {
   const w = whereForFilter(filter);
-  const base = db.select().from(menuItemsTable);
+  const base = executor.select().from(menuItemsTable);
   return w
     ? await base.where(w).orderBy(asc(menuItemsTable.name)).limit(500)
     : await base.orderBy(asc(menuItemsTable.name)).limit(500);

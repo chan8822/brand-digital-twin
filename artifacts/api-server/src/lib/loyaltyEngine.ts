@@ -692,14 +692,17 @@ export async function finalizeOrder(args: {
   const discountedGross = grossAfterBundles - preorderDiscountPaise;
   const requested = Math.max(0, Math.floor(args.applyCreditsPaise ?? 0));
   const pendingDispatches: Notification[] = [];
-  const result = await db.transaction(async (tx) => {
+  const txPromise = db.transaction(async (tx) => {
     // 0. Re-validate safety inside the transaction against a fresh
     //    catalog snapshot. Closes a TOCTOU window where a dish (or its
     //    review state) was edited after the initial gate above but
     //    before the order row is written. If anything trips here we
-    //    abort the tx so no order is persisted; the audit row is best-
-    //    effort outside the tx since this re-check is the redundant arm.
-    const txCatalog = await makeBatchDishResolver();
+    //    abort the tx so no order is persisted; an audit row is appended
+    //    outside the tx (the global `db` write survives the rollback).
+    // Use the tx handle as the read executor so the catalog snapshot
+    // observes any menu_items writes made earlier in this transaction
+    // (and is genuinely tx-scoped for TOCTOU purposes).
+    const txCatalog = await makeBatchDishResolver(tx);
     const reResolved = validatedItems.map((it) => {
       const d = txCatalog.byId(it.id);
       if (!d) throw new Error(`unknown dish id: ${it.id}`);
@@ -733,8 +736,10 @@ export async function finalizeOrder(args: {
         .join("; ");
       const err = new Error(`safety_block: ${summary2}`) as Error & {
         safetyBlock: { codes: string[]; blocked: typeof txBlocked };
+        safetyBlockOrigin?: "tx";
       };
       err.safetyBlock = { codes: codes2, blocked: txBlocked };
+      err.safetyBlockOrigin = "tx";
       throw err;
     }
     // 1. Persist a real server-side order row, idempotent on
@@ -943,6 +948,37 @@ export async function finalizeOrder(args: {
       referral,
     };
   });
+  let result: Awaited<typeof txPromise>;
+  try {
+    result = await txPromise;
+  } catch (err) {
+    // If the in-tx safety re-check fired, persist an audit row using
+    // the global `db` so the rollback of the order tx does not also
+    // erase the audit. Same payload shape as the pre-tx audit so the
+    // ops console can render both uniformly.
+    const e = err as Error & {
+      safetyBlock?: { codes: string[]; blocked: unknown };
+      safetyBlockOrigin?: "tx";
+    };
+    if (e.safetyBlockOrigin === "tx" && e.safetyBlock) {
+      await recordOpsAction({
+        operatorId: args.userId,
+        agent: "checkout",
+        action: "safety_block",
+        params: {
+          orderId: args.orderId,
+          origin: "tx",
+          codes: e.safetyBlock.codes,
+          blocked: e.safetyBlock.blocked,
+        },
+        beforeState: null,
+        afterState: null,
+        status: "blocked",
+        reasoning: `safety gate refused checkout (in-tx revalidation): ${e.message.replace(/^safety_block:\s*/, "")}`,
+      });
+    }
+    throw err;
+  }
   // Dispatch any email notifications now that the transaction has committed.
   // Doing this after commit avoids a race where the dispatcher's row update
   // beats the insert visibility, which would leave email rows stuck in

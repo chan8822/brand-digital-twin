@@ -5,7 +5,7 @@ import {
   type DishKitchen,
   type DishCustomGroup,
 } from "@workspace/menu-catalog";
-import { listMenuItems } from "./menu";
+import { listMenuItems, type DbReadExecutor } from "./menu";
 import { getSummariesForSlugs } from "./dishReviews";
 
 const VALID_CATEGORIES = new Set<DishCategory>([
@@ -43,8 +43,10 @@ export function syntheticIdFor(dbRowId: number): number {
  * (price, name, description, image, isAvailable, macros, etc.) overridden by
  * matching menu_items rows. CMS-only rows (no static counterpart) get
  * synthetic ids in the SYNTHETIC_ID_OFFSET+ range. */
-export async function getMergedCatalog(): Promise<DishData[]> {
-  const dbRows = await listMenuItems({});
+export async function getMergedCatalog(
+  executor?: DbReadExecutor,
+): Promise<DishData[]> {
+  const dbRows = await listMenuItems({}, executor);
   const dbBySlug = new Map(dbRows.map((r) => [r.slug, r]));
   const allSlugs = Array.from(
     new Set([...DISHES.map((d) => d.slug), ...dbRows.map((r) => r.slug)]),
@@ -104,9 +106,7 @@ export async function getMergedCatalog(): Promise<DishData[]> {
       customizations:
         (row.customizations as DishCustomGroup[] | null) ?? [],
       ...(row.pairingSlug ? { pairingSlug: row.pairingSlug } : {}),
-      ...(coerceReviewState(row.allergenReviewState)
-        ? { rdReviewState: coerceReviewState(row.allergenReviewState)! }
-        : {}),
+      rdReviewState: coerceReviewState(row.allergenReviewState),
     });
   }
 
@@ -152,21 +152,26 @@ export async function getMergedCatalog(): Promise<DishData[]> {
         (row.customizations as DishCustomGroup[] | null) ?? [],
       ...(row.pairingSlug ? { pairingSlug: row.pairingSlug } : {}),
       isAvailable: row.isAvailable,
-      ...(coerceReviewState(row.allergenReviewState)
-        ? { rdReviewState: coerceReviewState(row.allergenReviewState)! }
-        : { rdReviewState: "pending_review" as const }),
+      rdReviewState: coerceReviewState(row.allergenReviewState),
     });
   }
   return merged.map(enrich);
 }
 
 const REVIEW_STATES = new Set(["pending_review", "reviewed", "blocked"]);
+/**
+ * Map a raw `allergen_review_state` value to a known state. Unknown or
+ * malformed values fail CLOSED to `pending_review` — never silently
+ * fall through to `reviewed`. The DB CHECK constraint should make this
+ * unreachable in production, but the coercion is the defense-in-depth
+ * layer.
+ */
 function coerceReviewState(
   v: string | null | undefined,
-): DishData["rdReviewState"] {
+): "pending_review" | "reviewed" | "blocked" {
   return v && REVIEW_STATES.has(v)
-    ? (v as DishData["rdReviewState"])
-    : undefined;
+    ? (v as "pending_review" | "reviewed" | "blocked")
+    : "pending_review";
 }
 
 /** Lookup a dish by its catalog id (static id 1..N or synthetic id 100000+).
@@ -190,12 +195,14 @@ export async function resolveDishBySlug(
  * answers many lookups against the in-memory snapshot. Use this in any
  * server flow that needs to resolve multiple dishes in a tight loop
  * (e.g. checkout finalize, bundle expansion) to avoid N round-trips. */
-export async function makeBatchDishResolver(): Promise<{
+export async function makeBatchDishResolver(
+  executor?: DbReadExecutor,
+): Promise<{
   byId: (id: number) => DishData | undefined;
   bySlug: (slug: string) => DishData | undefined;
   all: DishData[];
 }> {
-  const merged = await getMergedCatalog();
+  const merged = await getMergedCatalog(executor);
   const byIdMap = new Map(merged.map((d) => [d.id, d]));
   const bySlugMap = new Map(merged.map((d) => [d.slug, d]));
   return {

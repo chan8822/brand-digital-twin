@@ -1,5 +1,7 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   index,
   integer,
   jsonb,
@@ -91,6 +93,14 @@ export const menuItemsTable = pgTable(
       table.kitchenLocation,
     ),
     index("idx_menu_items_available").on(table.isAvailable),
+    // Patient-safety: refuse rows whose review state isn't one of the
+    // three known values. Combined with the NOT NULL + default, this
+    // means a corrupted/migrated row can never silently appear as
+    // "reviewed" to the merged catalog.
+    check(
+      "menu_items_allergen_review_state_chk",
+      sql`${table.allergenReviewState} in ('pending_review','reviewed','blocked')`,
+    ),
   ],
 );
 
