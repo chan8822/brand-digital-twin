@@ -1,4 +1,4 @@
-import { index, pgTable, serial, varchar, integer, timestamp, jsonb, uniqueIndex, doublePrecision } from "drizzle-orm/pg-core";
+import { check, index, pgTable, serial, varchar, integer, timestamp, jsonb, uniqueIndex, doublePrecision } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -68,6 +68,13 @@ export const ordersTable = pgTable(
     index("idx_orders_stat_unassigned")
       .on(table.createdAt)
       .where(sql`priority = 'stat' and rider_id is null`),
+    // DB-level enum guard so any non-validated write path (raw SQL,
+    // backfill scripts, future routes) cannot poison the dispatcher
+    // with a priority value it doesn't understand.
+    check(
+      "orders_priority_chk",
+      sql`${table.priority} in ('routine','urgent','stat')`,
+    ),
   ],
 );
 

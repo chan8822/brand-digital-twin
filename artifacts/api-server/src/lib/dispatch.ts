@@ -631,6 +631,30 @@ export async function dispatchReadyOrders(opts: {
     }
     if (progressed === 0 && noRiders) break;
   }
+  // Hard-preemption gate: if any STAT order is still pending after the
+  // STAT pass (i.e. it broke on the no-riders sentinel), skip the
+  // routine pass entirely. Otherwise the routine pass — which is
+  // allowed to *batch* onto already-assigned riders — could place
+  // routine orders while STAT orders sit unassigned, defeating the
+  // entire preemption guarantee.
+  const [pendingStat] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(ordersTable)
+    .where(
+      and(
+        inArray(ordersTable.status, liveStatuses),
+        isNull(ordersTable.riderId),
+        eq(ordersTable.priority, "stat"),
+      ),
+    );
+  if ((pendingStat?.n ?? 0) > 0) {
+    return {
+      attempted: statAttempted,
+      assigned: results.filter((r) => r.ok).length,
+      slaBreaches,
+      results,
+    };
+  }
   // Routine pass only after STAT is fully drained. Same paging shape so
   // a saturated routine queue isn't truncated to 50 either.
   while (true) {

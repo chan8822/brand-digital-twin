@@ -238,6 +238,86 @@ test("SLA breach emit: stale STAT order produces exactly one sla_breach event, i
   assert.ok(out2.slaBreaches >= 0);
 });
 
+test("no-rider STAT backlog blocks routine batching: routine cannot piggy-back while a STAT waits", async () => {
+  const userId = await makeUser();
+  // Unique pincode so this test's batching candidates don't collide
+  // with leftovers from sibling tests.
+  const pin = `8${Math.floor(Math.random() * 90 + 10)}001`;
+  // Take every other rider offline so the only online candidate in
+  // the system is `partnerRider` below, who is already saturated.
+  await db
+    .update(ridersTable)
+    .set({ status: "offline" })
+    .where(eq(ridersTable.status, "online"));
+  // Pre-existing routine order already assigned to a rider. The
+  // routine batching pass would normally piggy-back our new routine
+  // order onto this rider via findBatchPartner. Bump activeOrderCount
+  // so smart-dispatch's rider scorer sees the rider as busy and won't
+  // hand the STAT order to him.
+  const partnerRider = await makeRider();
+  // Offline partnerRider too — the dispatcher must see ZERO online
+  // riders so the STAT order returns NO_RIDERS and the preemption gate
+  // engages. The pre-existing partner assignment doesn't require an
+  // online rider; only new dispatches do.
+  await db
+    .update(ridersTable)
+    .set({ status: "offline", activeOrderCount: 1 })
+    .where(eq(ridersTable.id, partnerRider));
+  const partner = await makeOrder({
+    userId,
+    priority: "routine",
+    ageMin: 30,
+    riderId: partnerRider,
+    status: "rider_assigned",
+    pincode: pin,
+  });
+  // STAT order pending — but no further online riders, so it cannot
+  // be dispatched. The routine pass must NOT run at all.
+  const stat = await makeOrder({
+    userId,
+    priority: "stat",
+    ageMin: 0,
+    pincode: pin,
+  });
+  const newRoutine = await makeOrder({
+    userId,
+    priority: "routine",
+    ageMin: 5,
+    pincode: pin,
+  });
+
+  const out = await dispatchReadyOrders({ operatorId: null });
+
+  const [statRow] = await db
+    .select({ riderId: ordersTable.riderId })
+    .from(ordersTable)
+    .where(eq(ordersTable.id, stat));
+  assert.equal(statRow!.riderId, null, "STAT correctly stayed unassigned (no rider)");
+
+  const [routineRow] = await db
+    .select({ riderId: ordersTable.riderId })
+    .from(ordersTable)
+    .where(eq(ordersTable.id, newRoutine));
+  assert.equal(
+    routineRow!.riderId,
+    null,
+    "routine MUST NOT be dispatched (or batched) while any STAT remains pending",
+  );
+  // Partner state untouched.
+  const [partnerRow] = await db
+    .select({ riderId: ordersTable.riderId })
+    .from(ordersTable)
+    .where(eq(ordersTable.id, partner));
+  assert.equal(partnerRow!.riderId, partnerRider);
+  // Result list must contain the STAT attempt but no routine result.
+  const orderedIds = out.results.map((r) => r.orderId);
+  assert.ok(orderedIds.includes(stat), "STAT was at least attempted");
+  assert.ok(
+    !orderedIds.includes(newRoutine),
+    "routine pass must be skipped entirely while STAT remains pending",
+  );
+});
+
 test("STAT backlog >50: routine orders are never dispatched while any STAT remains", async () => {
   const userId = await makeUser();
   const STAT_COUNT = 60; // > the 50-row page size
