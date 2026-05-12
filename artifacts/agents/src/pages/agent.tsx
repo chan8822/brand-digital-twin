@@ -5,6 +5,8 @@ import { ChevronRight, HomeIcon, ExternalLink } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
+import rehypeHighlight from "rehype-highlight";
+import "highlight.js/styles/github-dark.css";
 import NotFound from "./not-found";
 import { Button } from "@/components/ui/button";
 
@@ -67,7 +69,7 @@ export default function AgentDetail() {
         <article className="prose prose-slate dark:prose-invert prose-headings:font-bold prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl prose-a:text-primary max-w-4xl mx-auto pb-20">
           <ReactMarkdown 
             remarkPlugins={[remarkGfm]}
-            rehypePlugins={[rehypeRaw]}
+            rehypePlugins={[rehypeRaw, rehypeHighlight]}
           >
             {markdownBody}
           </ReactMarkdown>

@@ -51,6 +51,15 @@ function titleFromFilename(file: string): string {
     .join(" ");
 }
 
+function titleFromBody(body: string): string | undefined {
+  // Parse title from the first H1 heading.
+  for (const line of body.split(/\r?\n/)) {
+    const m = /^#\s+(.+?)\s*#*\s*$/.exec(line);
+    if (m) return m[1].trim();
+  }
+  return undefined;
+}
+
 function shortDescription(body: string): string {
   // First non-empty paragraph after the first H1, stripped of markdown
   // emphasis. Capped so card UIs stay tidy.
@@ -123,10 +132,17 @@ for (const division of divisionDirs.sort()) {
     const fileName = relFromDivision.split("/").pop() ?? relFromDivision;
     records.push({
       slug,
-      title: fm.name?.trim() || titleFromFilename(fileName),
+      // Prefer H1 from the body; fall back to frontmatter `name`,
+      // then a humanised filename.
+      title:
+        titleFromBody(body) ||
+        fm.name?.trim() ||
+        titleFromFilename(fileName),
       division,
       divisionLabel: divisionLabel(division),
-      description: fm.description?.trim() || shortDescription(body),
+      // Prefer the first body paragraph; fall back to frontmatter
+      // `description` when the body has no prose under the H1.
+      description: shortDescription(body) || fm.description?.trim() || "",
       color: fm.color?.trim() || undefined,
       emoji: fm.emoji?.trim() || undefined,
       vibe: fm.vibe?.trim() || undefined,
