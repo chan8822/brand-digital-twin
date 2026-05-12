@@ -190,6 +190,9 @@
   .hover\:alert-allergen-bg:hover {
     background-color: color-mix(in oklab, var(--color-alert-allergen) 12%, transparent);
   }
+  .focus\:alert-allergen-border:focus {
+    border-color: color-mix(in oklab, var(--color-alert-allergen) 50%, transparent);
+  }
 
   /* ─── Clinical theme variant ──────────────────────────────────────────
      Auto-applied by the ThemeManager when clinical mode is on (and the
