@@ -13,6 +13,10 @@ export function evaluateDishForPreferences(
   dish: DishData,
   prefs: UserPreferences | null,
 ): DishMatchResult {
+  // Client uses default (soft) mode: dislikes / keto carb-cap surface
+  // as warnings, not blocks, so users can still browse. The server
+  // checkout gate independently runs in `strict: true` mode — that is
+  // the canonical patient-safety enforcement point.
   return sharedEvaluate(dish, prefs as PreferencesForMatch | null);
 }
 

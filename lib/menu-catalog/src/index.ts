@@ -54,6 +54,15 @@ export interface DishCustomOption {
     isAvailable: boolean;
     averageRating?: number | null;
     reviewCount?: number;
+    /**
+     * RD (registered dietitian) safety review gate. Absent on legacy
+     * curated entries (treated as "reviewed" by the safety evaluator).
+     * CMS-managed dishes default to "pending_review" until an RD signs
+     * off — the server-side checkout gate refuses any state other than
+     * "reviewed", and the public menu route filters out non-reviewed
+     * dishes unless the caller is a staff/RD context.
+     */
+    rdReviewState?: "pending_review" | "reviewed" | "blocked";
   }
 
   export const CATEGORY_LABELS: Record<DishCategory, string> = {

@@ -41,7 +41,25 @@ export interface DishMatchResult {
 /** Discriminator for server-side 422 responses + audit logs. */
 export type BlockReason =
   | { code: "allergen_block"; allergens: string[] }
-  | { code: "diet_block"; style: DietaryStyle; detail: string };
+  | { code: "diet_block"; style: DietaryStyle; detail: string }
+  | { code: "ingredient_block"; ingredients: string[] }
+  | { code: "keto_block"; carbs: number }
+  | { code: "unreviewed_dish"; state: string };
+
+export interface EvaluateOptions {
+  /**
+   * When true, dietary-soft signals become hard blocks:
+   *  - disliked ingredients → `ingredient_block`
+   *  - keto carb-cap exceeded → `keto_block`
+   *  - dish.rdReviewState other than "reviewed" → `unreviewed_dish`
+   *
+   * Server-side checkout always passes `strict: true` so the wire payload
+   * a tampered/stale client sent cannot bypass any patient-safety rule.
+   * The menu/coach/meal-planner UI uses default (soft) mode so users
+   * still see warnings without being completely blocked from browsing.
+   */
+  strict?: boolean;
+}
 
 const norm = (s: string) => s.trim().toLowerCase();
 
@@ -81,10 +99,14 @@ const ANIMAL_HINTS = [
 ];
 const FISH_OK_HINTS = ["fish", "salmon", "tuna", "shrimp", "prawn"];
 
+const KETO_CARB_CAP_G = 30;
+
 export function evaluateDishForPreferences(
   dish: DishData,
   prefs: PreferencesForMatch | null,
+  opts: EvaluateOptions = {},
 ): DishMatchResult {
+  const strict = opts.strict === true;
   const result: DishMatchResult = {
     blocked: false,
     blockReasons: [],
@@ -94,6 +116,19 @@ export function evaluateDishForPreferences(
     matchedDislikes: [],
     cuisineMatch: true,
   };
+  // RD-review gate (strict only): a dish whose review state is anything
+  // other than "reviewed" cannot be ordered. Legacy dishes (field absent)
+  // are treated as reviewed so the existing curated catalog continues to
+  // ship; only explicit pending_review/blocked rows are refused.
+  if (strict) {
+    const state = dish.rdReviewState;
+    if (state && state !== "reviewed") {
+      result.blocked = true;
+      result.blockReasons.push({ code: "unreviewed_dish", state });
+      result.warnings.push(`Dish is ${state} — not approved for ordering`);
+    }
+  }
+
   if (!prefs) return result;
 
   const allergens = dishAllergens(dish);
@@ -120,6 +155,13 @@ export function evaluateDishForPreferences(
     }
   }
   if (result.matchedDislikes.length > 0) {
+    if (strict) {
+      result.blocked = true;
+      result.blockReasons.push({
+        code: "ingredient_block",
+        ingredients: [...new Set(result.matchedDislikes)],
+      });
+    }
     result.warnings.push(
       `Contains ${result.matchedDislikes.join(", ")} (on your dislikes)`,
     );
@@ -168,7 +210,14 @@ export function evaluateDishForPreferences(
       break;
     }
     case "keto":
-      if (dish.macros.carbs > 30) {
+      if (dish.macros.carbs > KETO_CARB_CAP_G) {
+        if (strict) {
+          result.blocked = true;
+          result.blockReasons.push({
+            code: "keto_block",
+            carbs: dish.macros.carbs,
+          });
+        }
         result.warnings.push(`High carbs (${dish.macros.carbs}g) for keto`);
       }
       break;

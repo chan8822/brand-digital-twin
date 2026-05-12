@@ -28,6 +28,29 @@ import {
 } from "@workspace/db";
 import { DISHES, type DishData } from "@workspace/menu-catalog";
 
+const PENDING_DISH: DishData = {
+  id: 999_001,
+  slug: "test-pending-review-bowl",
+  name: "Pending Review Bowl",
+  description: "Test fixture for unreviewed_dish gate",
+  longDescription: "",
+  image: "",
+  price: 25000,
+  kitchen: "continental",
+  category: "bowls",
+  isVeg: true,
+  rdVerified: false,
+  prepTime: "10 min",
+  macros: { calories: 400, protein: 20, carbs: 40, fat: 10, fiber: 5 },
+  ingredients: ["quinoa", "vegetables"],
+  allergens: [],
+  glycaemicIndex: "low",
+  sugarPerServing: "—",
+  customizations: [],
+  isAvailable: true,
+  rdReviewState: "pending_review",
+};
+
 import { finalizeOrder } from "./loyaltyEngine";
 
 const CREATED_USER_IDS: string[] = [];
@@ -111,6 +134,13 @@ async function lastAuditFor(orderId: string) {
     const p = r.params as { orderId?: string } | null;
     return p?.orderId === orderId;
   });
+}
+
+// Inject one explicitly pending_review dish so the unreviewed_dish gate
+// has something to refuse. The production catalog is otherwise all
+// legacy (rdReviewState absent → treated as reviewed).
+if (!DISHES.find((d) => d.id === PENDING_DISH.id)) {
+  DISHES.push(PENDING_DISH);
 }
 
 after(async () => {
@@ -250,6 +280,78 @@ test("mixed-reason block: same order trips both allergen_block and diet_block", 
     .from(ordersTable)
     .where(eq(ordersTable.externalOrderId, orderId));
   assert.equal(orders.length, 0);
+});
+
+test("ingredient_block: refuses dish containing a disliked ingredient (strict server-only)", async () => {
+  const userId = await makeUser();
+  // Pick a dish with a recognizable ingredient, then dislike it.
+  const dish = pickDish((d) => d.ingredients.length > 0 && d.allergens.length === 0 && d.isVeg && d.macros.carbs <= 30 && d.price > 0);
+  const target = dish.ingredients[0]!;
+  await setPrefs(userId, {});
+  // setPrefs default leaves dislikes empty — overwrite to set them.
+  await db
+    .update(userPreferencesTable)
+    .set({ dislikedIngredients: [target] })
+    .where(eq(userPreferencesTable.userId, userId));
+  const pickupId = await makePickup();
+  const orderId = `gate-ing-${randomUUID()}`;
+  await assert.rejects(
+    finalizeOrder({
+      userId,
+      orderId,
+      items: [asLineItem(dish)],
+      fulfillmentType: "pickup",
+      pickupLocationId: pickupId,
+    }),
+    (err: unknown) => {
+      const e = err as Error & { safetyBlock?: { codes: string[] } };
+      assert.ok(e.safetyBlock!.codes.includes("ingredient_block"));
+      return true;
+    },
+  );
+});
+
+test("keto_block: refuses high-carb dish for keto user (strict server-only)", async () => {
+  const userId = await makeUser();
+  await setPrefs(userId, { dietaryStyle: "keto" });
+  const pickupId = await makePickup();
+  const dish = pickDish((d) => d.macros.carbs > 30 && d.allergens.length === 0 && d.isVeg && d.price > 0);
+  const orderId = `gate-keto-${randomUUID()}`;
+  await assert.rejects(
+    finalizeOrder({
+      userId,
+      orderId,
+      items: [asLineItem(dish)],
+      fulfillmentType: "pickup",
+      pickupLocationId: pickupId,
+    }),
+    (err: unknown) => {
+      const e = err as Error & { safetyBlock?: { codes: string[] } };
+      assert.ok(e.safetyBlock!.codes.includes("keto_block"));
+      return true;
+    },
+  );
+});
+
+test("unreviewed_dish: refuses a dish whose rdReviewState is pending_review", async () => {
+  const userId = await makeUser();
+  await setPrefs(userId, {});
+  const pickupId = await makePickup();
+  const orderId = `gate-pending-${randomUUID()}`;
+  await assert.rejects(
+    finalizeOrder({
+      userId,
+      orderId,
+      items: [asLineItem(PENDING_DISH)],
+      fulfillmentType: "pickup",
+      pickupLocationId: pickupId,
+    }),
+    (err: unknown) => {
+      const e = err as Error & { safetyBlock?: { codes: string[] } };
+      assert.ok(e.safetyBlock!.codes.includes("unreviewed_dish"));
+      return true;
+    },
+  );
 });
 
 test("diet_block (pescatarian): refuses chicken/meat dish", async () => {

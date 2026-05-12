@@ -439,6 +439,31 @@ export async function finalizeOrder(args: {
   if (args.items.length === 0) {
     throw new Error("order has no items");
   }
+  // Helper: evaluate every cart dish against the user's saved prefs in
+  // strict mode (allergens + diet + dislikes + keto carb-cap + RD
+  // review state). Returns the per-dish block list for both the
+  // outer pre-tx check and the in-tx re-check.
+  const runSafetyEvaluation = (
+    dishes: DishData[],
+    p: PreferencesForMatch | null,
+  ): Array<{
+    dishId: number;
+    dishName: string;
+    reasons: ReturnType<typeof evaluateDishForPreferences>["blockReasons"];
+  }> => {
+    const out: Array<{
+      dishId: number;
+      dishName: string;
+      reasons: ReturnType<typeof evaluateDishForPreferences>["blockReasons"];
+    }> = [];
+    for (const d of dishes) {
+      const m = evaluateDishForPreferences(d, p, { strict: true });
+      if (m.blocked) {
+        out.push({ dishId: d.id, dishName: d.name, reasons: m.blockReasons });
+      }
+    }
+    return out;
+  };
   const validatedItems: FinalizeOrderItem[] = [];
   let grossPaise = 0;
   // Resolve the merged catalog once; subsequent lookups are in-memory.
@@ -485,19 +510,7 @@ export async function finalizeOrder(args: {
         calorieTarget: prefRow.calorieTarget,
       }
     : null;
-  const blocked: Array<{
-    dishId: number;
-    dishName: string;
-    reasons: ReturnType<typeof evaluateDishForPreferences>["blockReasons"];
-  }> = [];
-  if (prefs) {
-    for (const d of resolvedDishes) {
-      const m = evaluateDishForPreferences(d, prefs);
-      if (m.blocked) {
-        blocked.push({ dishId: d.id, dishName: d.name, reasons: m.blockReasons });
-      }
-    }
-  }
+  const blocked = runSafetyEvaluation(resolvedDishes, prefs);
   if (blocked.length > 0) {
     const codes = Array.from(
       new Set(blocked.flatMap((b) => b.reasons.map((r) => r.code))),
@@ -680,6 +693,32 @@ export async function finalizeOrder(args: {
   const requested = Math.max(0, Math.floor(args.applyCreditsPaise ?? 0));
   const pendingDispatches: Notification[] = [];
   const result = await db.transaction(async (tx) => {
+    // 0. Re-validate safety inside the transaction against a fresh
+    //    catalog snapshot. Closes a TOCTOU window where a dish (or its
+    //    review state) was edited after the initial gate above but
+    //    before the order row is written. If anything trips here we
+    //    abort the tx so no order is persisted; the audit row is best-
+    //    effort outside the tx since this re-check is the redundant arm.
+    const txCatalog = await makeBatchDishResolver();
+    const reResolved = validatedItems.map((it) => {
+      const d = txCatalog.byId(it.id);
+      if (!d) throw new Error(`unknown dish id: ${it.id}`);
+      return d;
+    });
+    const txBlocked = runSafetyEvaluation(reResolved, prefs);
+    if (txBlocked.length > 0) {
+      const codes2 = Array.from(
+        new Set(txBlocked.flatMap((b) => b.reasons.map((r) => r.code))),
+      );
+      const summary2 = txBlocked
+        .map((b) => `${b.dishName} (${b.reasons.map((r) => r.code).join(",")})`)
+        .join("; ");
+      const err = new Error(`safety_block: ${summary2}`) as Error & {
+        safetyBlock: { codes: string[]; blocked: typeof txBlocked };
+      };
+      err.safetyBlock = { codes: codes2, blocked: txBlocked };
+      throw err;
+    }
     // 1. Persist a real server-side order row, idempotent on
     //    (userId, externalOrderId). This is the source of truth
     //    that referral awards are tied to — no order row, no award.

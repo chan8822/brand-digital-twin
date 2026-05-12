@@ -35,8 +35,16 @@ function requireCatalog(req: Request, res: Response): boolean {
 // in the 100000+ range so they don't collide with static dish ids used by
 // existing carts/orders.
 router.get("/menu/public", async (_req: Request, res: Response) => {
+  // Patient-safety: a dish whose RD review state is anything other than
+  // "reviewed" is hidden from the public catalog. Legacy curated dishes
+  // have no `rdReviewState` field set and remain visible. Staff/RD
+  // admin routes (e.g. /menu/items) intentionally bypass this filter so
+  // pending items can still be inspected and approved.
   const dishes = await getMergedCatalog();
-  res.json({ dishes });
+  const safe = dishes.filter(
+    (d) => !d.rdReviewState || d.rdReviewState === "reviewed",
+  );
+  res.json({ dishes: safe });
 });
 
 router.get("/menu/items", async (req: Request, res: Response) => {
