@@ -252,22 +252,42 @@ async function runIdempotency(
     return res;
   };
 
-  // If the handler crashes without sending a response, drop the
-  // placeholder so a retry doesn't get stuck polling forever.
-  res.on("close", () => {
-    if (!captured && !res.writableEnded) {
-      void db
-        .delete(idempotencyKeysTable)
-        .where(
-          and(
-            eq(idempotencyKeysTable.userId, userId),
-            eq(idempotencyKeysTable.key, key),
-          ),
-        )
-        .catch((err) => {
-          req.log?.error?.({ err, key }, "idempotency cleanup failed");
-        });
-    }
+  // CRITICAL: do NOT clear the placeholder on `close`. `close` also
+  // fires when the client disconnects/aborts mid-flight while the
+  // handler is still executing server-side (and may still go on to
+  // create the order, charge the card, etc.). Removing the row here
+  // would let a same-key retry insert a fresh row and execute the
+  // handler a second time → duplicate order. Instead:
+  //
+  //   * If the handler completes via res.json, our shim captures,
+  //     persists and sends. Aborted clients still get the row
+  //     persisted, so a retry replays correctly.
+  //   * If the handler completes via res.end / res.send WITHOUT
+  //     going through res.json (e.g. a 204 or an error handler),
+  //     we stamp the row on `finish` with the actual status and an
+  //     empty body so a retry replays a deterministic answer
+  //     instead of polling for 5s and getting `idempotency_in_flight`.
+  //   * If the handler crashes WITHOUT ever flushing a response,
+  //     the row stays in-flight. Retries within 5s poll → 409
+  //     `idempotency_in_flight`; later retries (within 24 h TTL)
+  //     hit the same in-flight row and likewise get 409. The hourly
+  //     sweeper + TTL prevent permanent leakage. This is the safer
+  //     failure mode than risking a duplicate charge.
+  res.on("finish", () => {
+    if (captured) return;
+    const status = res.statusCode || 200;
+    void db
+      .update(idempotencyKeysTable)
+      .set({ statusCode: status, responseBody: "" })
+      .where(
+        and(
+          eq(idempotencyKeysTable.userId, userId),
+          eq(idempotencyKeysTable.key, key),
+        ),
+      )
+      .catch((err) => {
+        req.log?.error?.({ err, key }, "idempotency finish-stamp failed");
+      });
   });
 
   next();

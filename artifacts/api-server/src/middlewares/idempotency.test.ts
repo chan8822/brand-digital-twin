@@ -313,6 +313,51 @@ test("different keys with the same body create separate orders (intent matters)"
   );
 });
 
+test("client abort mid-flight does NOT clear the row; same-key retry replays without re-running the handler", async () => {
+  const u = await makeUser();
+  const key = `idem-${randomUUID()}`;
+  const body = { item: "saffron", qty: 1 };
+
+  // First call: client aborts after 50ms while the handler is still
+  // working (handler has a 400ms artificial delay). The TCP `close`
+  // event fires on the server side, but the handler should continue
+  // to completion and the row should still get stamped.
+  const ctrl = new AbortController();
+  const aborted = fetch(`${baseUrl}/orders/finalize?delay=400`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-test-user-id": u.id,
+      "Idempotency-Key": key,
+    },
+    body: JSON.stringify(body),
+    signal: ctrl.signal,
+  }).catch(() => null);
+  await new Promise((r) => setTimeout(r, 50));
+  ctrl.abort();
+  await aborted;
+
+  // Wait long enough for the original handler to have completed and
+  // its res.json shim to have persisted the cached response.
+  await new Promise((r) => setTimeout(r, 600));
+
+  // Retry with the SAME key + body. Must replay; handler must NOT
+  // run a second time (otherwise we'd have duplicate orders).
+  const retry = await api<{ ok: boolean; serverOrderId: string }>(
+    "/orders/finalize",
+    body,
+    u,
+    key,
+  );
+  assert.equal(retry.status, 201);
+  assert.equal(retry.headers["idempotent-replay"], "true");
+  assert.equal(
+    handlerCalls.get(`${u.id}:${key}`),
+    1,
+    "handler must run exactly once even though the original client aborted",
+  );
+});
+
 test("invalid Idempotency-Key format is rejected with 400", async () => {
   const u = await makeUser();
   const r = await api("/orders/finalize", { qty: 1 }, u, "bad key!!!");
