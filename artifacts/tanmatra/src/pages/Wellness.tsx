@@ -800,7 +800,7 @@ function ProtocolActions() {
                 </p>
               </div>
               <h3 className="text-white text-lg font-semibold">
-                {rds.length} RDs for wellness coaching
+                {rds.length} {rds.length === 1 ? "RD" : "RDs"} for wellness coaching
               </h3>
               {rds.length > 0 && (
                 <p className="text-xs text-clinical-zinc leading-relaxed flex-1">

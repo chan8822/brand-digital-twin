@@ -93,7 +93,7 @@ export default function RdPartnersLanding() {
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-3 text-[11px] text-clinical-zinc">
               <span className="inline-flex items-center gap-1.5">
                 <ShieldCheck className="w-3.5 h-3.5 text-clinical-sage" />
-                FSSAI &amp; ISO 22000 kitchens
+                FSSAI Lic. 22725926001018 &amp; ISO 22000 kitchens
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <Stethoscope className="w-3.5 h-3.5 text-clinical-sage" />

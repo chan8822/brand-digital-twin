@@ -9,6 +9,7 @@ import SegmentToggle from "@/components/layout/SegmentToggle";
 import { useOrders } from "@/lib/ordersContext";
 import { useCart } from "@/lib/cartContext";
 import { useMenuCatalog, type DishData } from "@/lib/menuData";
+import { TEAM } from "@/lib/teamData";
 import { useChallenges } from "@/lib/contentApi";
 import { usePreferences } from "@/lib/preferencesContext";
 import {
@@ -342,7 +343,7 @@ export default function Home() {
               <div className="hidden sm:block w-px self-stretch bg-clinical-slate/30" />
               <div className="min-w-0"><p className="tabular-nums text-2xl font-bold text-white">12K+</p><p className="text-clinical-label mt-0.5">Meals Delivered</p></div>
               <div className="hidden sm:block w-px self-stretch bg-clinical-slate/30" />
-              <div className="min-w-0"><p className="tabular-nums text-2xl font-bold text-white">24</p><p className="text-clinical-label mt-0.5">RD Advisors</p></div>
+              <div className="min-w-0"><p className="tabular-nums text-2xl font-bold text-white">{TEAM.filter((m) => m.role === "rd").length}</p><p className="text-clinical-label mt-0.5">RD Advisors</p></div>
             </div>
           </div>
         </div>

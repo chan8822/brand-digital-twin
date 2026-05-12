@@ -269,7 +269,7 @@ function MoreSheet({
             </div>
             <div className="flex items-center gap-2 pt-1">
               <ShieldCheck className="w-3 h-3 text-clinical-sage" />
-              ISO 22000 · FSSAI Licensed
+              ISO 22000 · FSSAI Lic. 22725926001018
             </div>
             <p className="pt-2 text-[10px] text-clinical-zinc/70">
               © {new Date().getFullYear()} Tanmatra Health Technologies

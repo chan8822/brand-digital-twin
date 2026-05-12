@@ -104,7 +104,7 @@ export default function Footer() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-1.5">
             <ShieldCheck className="w-3 h-3 text-clinical-sage" />
-            <span className="text-[10px] text-white">ISO 22000 Certified Kitchens · FSSAI Licensed</span>
+            <span className="text-[10px] text-white">ISO 22000 Certified Kitchens · FSSAI Lic. 22725926001018</span>
           </div>
           <p className="text-[10px] text-white">
             © 2024 Tanmatra Health Technologies Pvt. Ltd.
