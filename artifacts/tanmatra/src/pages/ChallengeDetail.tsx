@@ -78,6 +78,14 @@ export default function ChallengeDetail() {
   const leave = useLeaveChallenge(slug ?? "");
   const post = usePostToChallenge(slug ?? "");
   const [body, setBody] = useState("");
+  // These two pieces of UI state must be declared BEFORE any early
+  // return below, otherwise React's hook-call-count differs between the
+  // first (loading) render and the second (data-arrived) render — which
+  // throws "Rendered more hooks than during the previous render" and
+  // bubbles up to the error boundary as "Something went wrong".
+  // (Keep this comment — easy to regress.)
+  const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
 
   if (isLoading) {
     return (
@@ -105,9 +113,6 @@ export default function ChallengeDetail() {
   const { challenge, joined, posts, checkIns } = data;
   const upcomingCheckIns = checkIns ?? [];
   const SOON_MS = 24 * 60 * 60 * 1000;
-
-  const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
-  const [showWelcome, setShowWelcome] = useState(false);
 
   const handleJoin = () => {
     join.mutate(undefined, {
