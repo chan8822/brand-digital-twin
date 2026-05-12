@@ -303,10 +303,15 @@ function newBatchKey(): string {
 // candidate set by:
 //
 //   - bounding box around the new drop (BATCH_MAX_DETOUR_KM converted
-//     to lat/lng degrees), so the planner uses idx_orders_drop_geo
-//     instead of a seq scan;
+//     to lat/lng degrees) — there is no dedicated spatial index on
+//     (drop_lat, drop_lng) yet; the bbox columns are dense doubles
+//     and the time prefilter (next bullet) keeps the candidate set
+//     small enough that a seq scan over the windowed slice is cheap.
+//     If row count grows past ~1M open orders, add a btree on
+//     (status, drop_lat, drop_lng) or a GiST/PostGIS index;
 //   - createdAt within BATCH_WINDOW_MIN of the new order, so a stale
-//     partner from yesterday cannot be picked;
+//     partner from yesterday cannot be picked (existing
+//     idx_orders_status_created supports this prefilter);
 //   - status / rider / priority filters as before.
 //
 // Result: every geographically-eligible partner is evaluated, but the

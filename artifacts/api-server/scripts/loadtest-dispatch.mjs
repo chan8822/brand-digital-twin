@@ -103,6 +103,35 @@ async function runSlowEta() {
     console.error("FAIL: breaker never tripped — slow ETA was not injected?");
     failed = true;
   }
+  // Recovery phase: clear the injected slowness and verify the
+  // breaker walks open → half_open → closed under healthy traffic.
+  // Operators reading the harness output see explicit recovery proof,
+  // not just trip behavior.
+  delete process.env.ETA_INJECT_DELAY_MS;
+  const cooldownMs = Number(process.env.ETA_BREAKER_COOLDOWN_MS ?? 5_000);
+  console.log(`recovery: waiting ${cooldownMs + 100}ms past cooldown…`);
+  await new Promise((r) => setTimeout(r, cooldownMs + 100));
+  // First call after cooldown moves OPEN → HALF_OPEN and runs the
+  // probe; a second call (issued sequentially so the probe completes
+  // first) should observe a CLOSED breaker.
+  await estimateEtaForCart({
+    address: { city: "Bengaluru", pincode: "560001", line: "recover-1" },
+    items: [{ id: 1, qty: 1 }],
+  });
+  await estimateEtaForCart({
+    address: { city: "Bengaluru", pincode: "560001", line: "recover-2" },
+    items: [{ id: 1, qty: 1 }],
+  });
+  const recovered = etaBreaker.metrics();
+  console.log(
+    JSON.stringify({ recoveryBreaker: recovered }, null, 2),
+  );
+  if (recovered.state !== "closed") {
+    console.error(
+      `FAIL: breaker did not recover to CLOSED (state=${recovered.state})`,
+    );
+    failed = true;
+  }
   process.exit(failed ? 1 : 0);
 }
 
