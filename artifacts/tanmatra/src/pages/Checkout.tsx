@@ -54,7 +54,11 @@ import {
 
 import { SAVED_ADDRESSES } from "@/lib/savedAddresses";
 
-const TIP_PRESETS = [0, 2000, 5000, 10000];
+// Order matters — the first preset is what users see "first" and most
+// successful tip UIs lead with a positive amount instead of zero, so
+// "No tip" is moved to the end and styled less prominently. Per UX
+// audit finding C6.
+const TIP_PRESETS = [2000, 5000, 10000, 0];
 
 export default function Checkout() {
   const navigate = useNavigate();
@@ -69,6 +73,11 @@ export default function Checkout() {
   const [showNewAddress, setShowNewAddress] = useState(false);
   const [tipAmount, setTipAmount] = useState(0);
   const [customTip, setCustomTip] = useState("");
+  // Replaces the old `tipAmount === -1` sentinel — that pattern was
+  // fragile because -1 silently meant "custom" everywhere it appeared.
+  // A boolean separates "is the user typing a custom amount" from
+  // "what's the selected preset" cleanly.
+  const [isCustomTip, setIsCustomTip] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [creditBalance, setCreditBalance] = useState(0);
@@ -78,6 +87,10 @@ export default function Checkout() {
   const [applySubsidy, setApplySubsidy] = useState(true);
   const [voucherCode, setVoucherCode] = useState("");
   const [redeemingVoucher, setRedeemingVoucher] = useState(false);
+  // Inline voucher error so users who miss the toast still see why
+  // their redeem failed. Cleared on each new redeem attempt and on
+  // every keystroke. Per UX audit finding C4.
+  const [voucherError, setVoucherError] = useState<string | null>(null);
   const [fulfillmentType, setFulfillmentType] = useState<"delivery" | "pickup">("delivery");
   const [slots, setSlots] = useState<DeliverySlotOption[]>([]);
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
@@ -158,7 +171,9 @@ export default function Checkout() {
 
   const [newAddr, setNewAddr] = useState({ label: "", line1: "", line2: "", city: "", pincode: "", phone: "" });
 
-  const effectiveTip = tipAmount === -1 ? Math.round((parseFloat(customTip) || 0) * 100) : tipAmount;
+  const effectiveTip = isCustomTip
+    ? Math.round((parseFloat(customTip) || 0) * 100)
+    : tipAmount;
   const selectedPickup =
     fulfillmentType === "pickup"
       ? pickupLocations.find((p) => p.id === selectedPickupId) ?? null
@@ -196,8 +211,9 @@ export default function Checkout() {
   }, [discountedSubtotal]);
 
   const handleRedeemVoucher = async () => {
+    setVoucherError(null);
     if (!voucherCode.trim()) {
-      toast.error("Enter a voucher code");
+      setVoucherError("Enter a voucher code");
       return;
     }
     setRedeemingVoucher(true);
@@ -210,13 +226,15 @@ export default function Checkout() {
       setCreditBalance(ledger.balancePaise);
     } catch (e) {
       const msg = String((e as Error).message);
-      toast.error(
-        msg.includes("404")
-          ? "Voucher not found"
-          : msg.includes("409")
-            ? "Voucher already redeemed"
-            : "Could not redeem voucher",
-      );
+      const userMsg = msg.includes("404")
+        ? "Voucher not found"
+        : msg.includes("409")
+          ? "Voucher already redeemed"
+          : "Could not redeem voucher";
+      // Show inline (next to input) AND toast — toasts are easy to
+      // miss on mobile when the user is mid-form. Per UX audit C4.
+      setVoucherError(userMsg);
+      toast.error(userMsg);
     } finally {
       setRedeemingVoucher(false);
     }
@@ -244,7 +262,8 @@ export default function Checkout() {
       return;
     }
     setIsProcessing(true);
-    await new Promise((r) => setTimeout(r, 1500));
+    // (Removed an artificial 1.5s setTimeout that delayed every order
+    // for no functional reason. Server timing already drives the spinner.)
 
     const orderId = generateOrderId();
     const placedAt = new Date().toISOString();
@@ -782,39 +801,49 @@ export default function Checkout() {
             </div>
 
             <div className="flex gap-2">
-              {TIP_PRESETS.map((tip) => (
-                <Button
-                  key={tip}
-                  size="sm"
-                  variant={tipAmount === tip && tip !== -1 ? "default" : "outline"}
-                  className={`flex-1 h-9 text-xs tabular-nums ${
-                    tipAmount === tip && tip !== -1
-                      ? "bg-clinical-gold/15 text-clinical-gold border-clinical-gold/40"
-                      : "border-clinical-slate/30 text-clinical-zinc hover:border-clinical-slate/50"
-                  }`}
-                  onClick={() => {
-                    setTipAmount(tip);
-                    setCustomTip("");
-                  }}
-                >
-                  {tip === 0 ? "No Tip" : `+Rs.${(tip / 100).toFixed(0)}`}
-                </Button>
-              ))}
+              {TIP_PRESETS.map((tip) => {
+                const selected = !isCustomTip && tipAmount === tip;
+                return (
+                  <Button
+                    key={tip}
+                    size="sm"
+                    variant={selected ? "default" : "outline"}
+                    className={`flex-1 h-9 text-xs tabular-nums ${
+                      selected
+                        ? "bg-clinical-gold/15 text-clinical-gold border-clinical-gold/40"
+                        : "border-clinical-slate/30 text-clinical-zinc hover:border-clinical-slate/50"
+                    }`}
+                    onClick={() => {
+                      setTipAmount(tip);
+                      setCustomTip("");
+                      setIsCustomTip(false);
+                    }}
+                  >
+                    {tip === 0 ? "No Tip" : `+Rs.${(tip / 100).toFixed(0)}`}
+                  </Button>
+                );
+              })}
               <Button
                 size="sm"
-                variant={tipAmount === -1 ? "default" : "outline"}
+                variant={isCustomTip ? "default" : "outline"}
                 className={`h-9 text-xs px-3 ${
-                  tipAmount === -1
+                  isCustomTip
                     ? "bg-clinical-gold/15 text-clinical-gold border-clinical-gold/40"
                     : "border-clinical-slate/30 text-clinical-zinc"
                 }`}
-                onClick={() => setTipAmount(-1)}
+                onClick={() => {
+                  setIsCustomTip(true);
+                  // Clear the preset so toggling back to a preset
+                  // doesn't briefly show two buttons highlighted, and
+                  // so effectiveTip falls cleanly to the typed value.
+                  setTipAmount(0);
+                }}
               >
                 Custom
               </Button>
             </div>
 
-            {tipAmount === -1 && (
+            {isCustomTip && (
               <div className="flex gap-2">
                 <IndianRupee className="w-4 h-4 text-clinical-zinc mt-2" />
                 <Input
@@ -1090,10 +1119,23 @@ export default function Checkout() {
                   <input
                     type="text"
                     value={voucherCode}
-                    onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+                    onChange={(e) => {
+                      setVoucherCode(e.target.value.toUpperCase());
+                      // Clear stale error as soon as the user edits
+                      // — same pattern as a normal validated input.
+                      if (voucherError) setVoucherError(null);
+                    }}
                     placeholder="VOUCHER CODE"
-                    className="flex-1 min-w-0 h-8 rounded-md bg-clinical-dark border border-clinical-slate/30 px-2 text-[11px] text-white placeholder:text-clinical-zinc/60 tracking-wider uppercase focus:outline-none focus:border-clinical-gold/60"
+                    className={`flex-1 min-w-0 h-8 rounded-md bg-clinical-dark border px-2 text-[11px] text-white placeholder:text-clinical-zinc/60 tracking-wider uppercase focus:outline-none ${
+                      voucherError
+                        ? "border-red-500/60 focus:border-red-500/80"
+                        : "border-clinical-slate/30 focus:border-clinical-gold/60"
+                    }`}
                     disabled={redeemingVoucher}
+                    aria-invalid={voucherError ? true : undefined}
+                    aria-describedby={
+                      voucherError ? "voucher-error" : undefined
+                    }
                   />
                   <Button
                     type="button"
@@ -1105,6 +1147,16 @@ export default function Checkout() {
                     {redeemingVoucher ? "..." : "Redeem"}
                   </Button>
                 </div>
+                {voucherError && (
+                  <p
+                    id="voucher-error"
+                    role="alert"
+                    className="text-[10px] text-red-400 flex items-center gap-1"
+                  >
+                    <AlertTriangle className="w-2.5 h-2.5" />
+                    {voucherError}
+                  </p>
+                )}
               </div>
             </div>
 

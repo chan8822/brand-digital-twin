@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,28 @@ import { toast } from "sonner";
 import { API_BASE as API_BASE } from "@/lib/apiBase";
 
 type Step = "phone" | "code";
+
+// Country-aware minimum phone-number length. Per-country mapping so a
+// user with a valid IN number can't send their OTP after typing 6
+// digits (which used to pass the old `length < 6` check, then waste
+// one of their 5-per-hour OTP attempts on a server-side reject).
+// Anything not mapped falls through to a permissive default — the
+// server still normalises and rejects garbage.
+const MIN_PHONE_LEN_BY_CC: Record<string, number> = {
+  "+91": 10,
+  "+1": 10,
+  "+44": 10,
+  "+971": 9,
+};
+const DEFAULT_MIN_PHONE_LEN = 7;
+function minPhoneLen(cc: string): number {
+  return MIN_PHONE_LEN_BY_CC[cc] ?? DEFAULT_MIN_PHONE_LEN;
+}
+
+// Cooldown (seconds) before "Resend code" re-enables. Matches the
+// server's per-phone OTP throttle (5/hour) loosely — 30s is enough to
+// prevent accidental double-tap burns without making real users wait.
+const RESEND_COOLDOWN_SECS = 30;
 
 interface SendOtpResponse {
   ok: boolean;
@@ -52,6 +74,19 @@ export default function Login() {
   const [devCode, setDevCode] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  // Seconds until "Resend code" re-enables. Counts down via the
+  // useEffect below. Starts at RESEND_COOLDOWN_SECS after each successful
+  // send and on initial OTP-step entry.
+  const [resendIn, setResendIn] = useState(0);
+
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const t = setInterval(
+      () => setResendIn((s) => Math.max(0, s - 1)),
+      1000,
+    );
+    return () => clearInterval(t);
+  }, [resendIn]);
 
   const enterAdminMode = () => {
     try {
@@ -64,8 +99,9 @@ export default function Login() {
   };
 
   const sendOtp = async () => {
-    if (phone.replace(/\D/g, "").length < 6) {
-      toast.error("Enter a valid phone number");
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length < minPhoneLen(countryCode)) {
+      toast.error(`Enter a valid ${countryCode} phone number`);
       return;
     }
     setIsSending(true);
@@ -85,6 +121,7 @@ export default function Login() {
       }
       setDevCode(data.devCode ?? null);
       setStep("code");
+      setResendIn(RESEND_COOLDOWN_SECS);
       toast.success(`Code sent to ${countryCode} ${phone}`);
     } catch {
       toast.error("Network error — please try again");
@@ -186,22 +223,52 @@ export default function Login() {
                   id="code"
                   autoFocus
                   inputMode="numeric"
+                  // Triggers iOS / Android SMS-OTP auto-fill from
+                  // Twilio's verified-sender messages. Without this
+                  // attribute, mobile keyboards just show numbers and
+                  // the user has to copy-paste from the SMS app.
+                  autoComplete="one-time-code"
                   placeholder="123456"
                   value={code}
-                  onChange={(e) => setCode(e.target.value)}
+                  // Strip non-digits as the user types so paste-from-SMS
+                  // text like "Your code is 123456" still works.
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
                   className="bg-clinical-bg border-clinical-slate/30 text-white text-clinical-data tracking-[0.4em] text-center text-lg"
-                  maxLength={10}
+                  maxLength={6}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") void verifyOtp();
                   }}
                 />
-                {devCode && (
+                {/* Dev-only OTP echo. Gated by Vite's compile-time DEV
+                    flag so a misconfigured prod env that returns a
+                    devCode in the API response can't accidentally
+                    reveal the code on a shared screen. */}
+                {import.meta.env.DEV && devCode && (
                   <p className="text-[10px] text-clinical-sage flex items-center gap-1.5">
                     <ChatCircleText className="w-3 h-3" weight="bold" />
                     Dev mode — your code is{" "}
                     <span className="font-mono font-semibold">{devCode}</span>
                   </p>
                 )}
+              </div>
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-clinical-zinc/70">
+                  Didn't get the code?
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={resendIn > 0 || isSending}
+                  onClick={() => void sendOtp()}
+                  className="h-auto px-2 py-1 text-clinical-gold hover:text-clinical-gold/90 disabled:text-clinical-zinc/50 disabled:opacity-100"
+                >
+                  {resendIn > 0
+                    ? `Resend in ${resendIn}s`
+                    : isSending
+                      ? "Sending…"
+                      : "Resend code"}
+                </Button>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <Button
@@ -210,6 +277,10 @@ export default function Login() {
                     setStep("phone");
                     setCode("");
                     setDevCode(null);
+                    // Reset cooldown so the user isn't locked out of
+                    // requesting an OTP for the *new* number for the
+                    // remainder of the previous number's window.
+                    setResendIn(0);
                   }}
                   className="border-clinical-slate/30 text-clinical-zinc hover:text-white"
                 >
