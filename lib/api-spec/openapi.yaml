@@ -35,6 +35,42 @@ tags:
   - name: meal-plans
     description: Smart weekly meal planner — generate, edit, and accept 7-day plans
 paths:
+  /orders/finalize:
+    post:
+      operationId: finalizeOrder
+      tags: [orders]
+      summary: |
+        Atomically persist an order, redeem credits, and award referrals
+        in one transaction. Server-managed idempotency is REQUIRED — see
+        the `Idempotency-Key` header.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: |
+            Order persisted (or cached response replayed for a retry of
+            the same key + body). Replays carry `Idempotent-Replay: true`.
+        "400": { description: Invalid payload or missing/invalid Idempotency-Key }
+        "401": { description: Unauthorized }
+        "409": { description: Idempotency-Key reused with a different body }
+  /marketplace/checkout:
+    post:
+      operationId: marketplaceCheckout
+      tags: [marketplace]
+      summary: |
+        Place a marketplace order. Server-managed idempotency is
+        REQUIRED so that a retried POST does not double-charge the
+        customer or double-decrement stock.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: |
+            Order placed (or cached response replayed). Replays carry
+            `Idempotent-Replay: true`.
+        "400": { description: Invalid payload or missing/invalid Idempotency-Key }
+        "401": { description: Unauthorized }
+        "409": { description: Idempotency-Key reused with a different body }
   /recipes:
     get:
       operationId: listRecipes
@@ -905,6 +941,25 @@ paths:
         "404": { description: Not found }
         "409": { description: Plan is not draft }
 components:
+  parameters:
+    # Server-managed idempotency. The client picks ONE url-safe token
+    # per submit attempt and reuses it for every retry of THAT attempt
+    # (network failure, 5xx, soft refresh). The server stores the first
+    # response keyed by (user_id, key) for 24h and replays it byte-for-
+    # byte on retries. Reusing the same key with a different request
+    # body returns 409 idempotency_key_mismatch.
+    IdempotencyKey:
+      in: header
+      name: Idempotency-Key
+      required: true
+      schema:
+        type: string
+        pattern: "^[A-Za-z0-9._\\-:]{8,128}$"
+      description: |
+        Required server-managed idempotency token. 8–128 characters,
+        url-safe alphabet `[A-Za-z0-9._-:]`. Reuse the same value for
+        every retry of the SAME submit attempt; pick a fresh value
+        (e.g. crypto.randomUUID()) for each NEW user-initiated submit.
   securitySchemes:
     # Phone-OTP session — server reads the `sid` cookie set by
     # /auth/phone/verify-otp.

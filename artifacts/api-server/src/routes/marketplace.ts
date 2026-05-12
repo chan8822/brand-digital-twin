@@ -7,6 +7,7 @@ import {
   type MarketplaceItem,
   type MarketplaceOrderLine,
 } from "@workspace/db";
+import { idempotencyMiddleware } from "../middlewares/idempotency";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod/v4";
 
@@ -181,7 +182,7 @@ const checkoutSchema = z.object({
     .optional(),
 });
 
-router.post("/marketplace/checkout", async (req: Request, res: Response) => {
+router.post("/marketplace/checkout", idempotencyMiddleware, async (req: Request, res: Response) => {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "unauthorized" });
     return;

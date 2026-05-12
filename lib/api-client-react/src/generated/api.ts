@@ -79,6 +79,178 @@ type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 /**
+ * @summary Atomically persist an order, redeem credits, and award referrals
+in one transaction. Server-managed idempotency is REQUIRED — see
+the `Idempotency-Key` header.
+
+ */
+export const getFinalizeOrderUrl = () => {
+  return `/api/orders/finalize`;
+};
+
+export const finalizeOrder = async (options?: RequestInit): Promise<void> => {
+  return customFetch<void>(getFinalizeOrderUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getFinalizeOrderMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof finalizeOrder>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof finalizeOrder>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["finalizeOrder"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof finalizeOrder>>,
+    void
+  > = () => {
+    return finalizeOrder(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type FinalizeOrderMutationResult = NonNullable<
+  Awaited<ReturnType<typeof finalizeOrder>>
+>;
+
+export type FinalizeOrderMutationError = ErrorType<void>;
+
+/**
+ * @summary Atomically persist an order, redeem credits, and award referrals
+in one transaction. Server-managed idempotency is REQUIRED — see
+the `Idempotency-Key` header.
+
+ */
+export const useFinalizeOrder = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof finalizeOrder>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof finalizeOrder>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getFinalizeOrderMutationOptions(options));
+};
+
+/**
+ * @summary Place a marketplace order. Server-managed idempotency is
+REQUIRED so that a retried POST does not double-charge the
+customer or double-decrement stock.
+
+ */
+export const getMarketplaceCheckoutUrl = () => {
+  return `/api/marketplace/checkout`;
+};
+
+export const marketplaceCheckout = async (
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getMarketplaceCheckoutUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getMarketplaceCheckoutMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof marketplaceCheckout>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof marketplaceCheckout>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["marketplaceCheckout"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof marketplaceCheckout>>,
+    void
+  > = () => {
+    return marketplaceCheckout(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MarketplaceCheckoutMutationResult = NonNullable<
+  Awaited<ReturnType<typeof marketplaceCheckout>>
+>;
+
+export type MarketplaceCheckoutMutationError = ErrorType<void>;
+
+/**
+ * @summary Place a marketplace order. Server-managed idempotency is
+REQUIRED so that a retried POST does not double-charge the
+customer or double-decrement stock.
+
+ */
+export const useMarketplaceCheckout = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof marketplaceCheckout>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof marketplaceCheckout>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getMarketplaceCheckoutMutationOptions(options));
+};
+
+/**
  * @summary List published recipes with optional filters
  */
 export const getListRecipesUrl = (params?: ListRecipesParams) => {

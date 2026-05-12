@@ -17,6 +17,7 @@ import { ensureSafeViews } from "./lib/safeSql";
 import { resumeActiveSimulations } from "./lib/riderSim";
 import { purgeExpiredRateLimits } from "./lib/rateLimit";
 import { purgeExpiredSessions } from "./lib/auth";
+import { sweepExpiredIdempotencyKeys } from "./middlewares/idempotency";
 
 const rawPort = process.env["PORT"];
 
@@ -84,6 +85,13 @@ const purgeTimer = setInterval(() => {
  ),
  purgeExpiredSessions().catch((err) =>
  logger.error({ err }, "purgeExpiredSessions failed"),
+ ),
+ // Idempotency cache rows have a 24h TTL but nothing deletes them on
+ // their own — the middleware only cleans the specific row it tried
+ // to insert. Sweep here so the table doesn't grow unbounded under
+ // sustained order traffic.
+ sweepExpiredIdempotencyKeys().catch((err) =>
+ logger.error({ err }, "sweepExpiredIdempotencyKeys failed"),
  ),
  ]).catch(() => {
  /* swallowed above */

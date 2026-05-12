@@ -8,6 +8,44 @@
 import * as zod from "zod";
 
 /**
+ * @summary Atomically persist an order, redeem credits, and award referrals
+in one transaction. Server-managed idempotency is REQUIRED — see
+the `Idempotency-Key` header.
+
+ */
+export const finalizeOrderHeaderIdempotencyKeyRegExp = new RegExp(
+  "^[A-Za-z0-9._\\-:]{8,128}$",
+);
+
+export const FinalizeOrderHeader = zod.object({
+  "Idempotency-Key": zod
+    .string()
+    .regex(finalizeOrderHeaderIdempotencyKeyRegExp)
+    .describe(
+      "Required server-managed idempotency token. 8–128 characters,\nurl-safe alphabet `[A-Za-z0-9._-:]`. Reuse the same value for\nevery retry of the SAME submit attempt; pick a fresh value\n(e.g. crypto.randomUUID()) for each NEW user-initiated submit.\n",
+    ),
+});
+
+/**
+ * @summary Place a marketplace order. Server-managed idempotency is
+REQUIRED so that a retried POST does not double-charge the
+customer or double-decrement stock.
+
+ */
+export const marketplaceCheckoutHeaderIdempotencyKeyRegExp = new RegExp(
+  "^[A-Za-z0-9._\\-:]{8,128}$",
+);
+
+export const MarketplaceCheckoutHeader = zod.object({
+  "Idempotency-Key": zod
+    .string()
+    .regex(marketplaceCheckoutHeaderIdempotencyKeyRegExp)
+    .describe(
+      "Required server-managed idempotency token. 8–128 characters,\nurl-safe alphabet `[A-Za-z0-9._-:]`. Reuse the same value for\nevery retry of the SAME submit attempt; pick a fresh value\n(e.g. crypto.randomUUID()) for each NEW user-initiated submit.\n",
+    ),
+});
+
+/**
  * @summary List published recipes with optional filters
  */
 

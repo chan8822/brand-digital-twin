@@ -773,6 +773,15 @@ export interface AdminRdApplicationPatchResult {
   row?: AdminRdApplicationPatchResultRow;
 }
 
+/**
+ * Required server-managed idempotency token. 8–128 characters,
+url-safe alphabet `[A-Za-z0-9._-:]`. Reuse the same value for
+every retry of the SAME submit attempt; pick a fresh value
+(e.g. crypto.randomUUID()) for each NEW user-initiated submit.
+
+ */
+export type IdempotencyKeyParameter = string;
+
 export type ListRecipesParams = {
   goal?: string;
   diet?: string;
