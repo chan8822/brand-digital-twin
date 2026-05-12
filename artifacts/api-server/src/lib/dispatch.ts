@@ -585,14 +585,22 @@ export async function dispatchReadyOrders(opts: {
   const liveStatuses = ["placed", "preparing", "ready"];
   const results: DispatchResult[] = [];
   let statAttempted = 0;
-  // Drain STAT in pages until the queue is empty. We must not start any
-  // routine dispatch while a single eligible STAT order remains —
-  // a single .limit(50) fetch would silently violate that on a backlog.
-  // Hard cap on outer iterations to bound worst-case runtime; in
-  // practice the loop exits within 1–2 passes.
-  const STAT_PAGE = 50;
-  const MAX_STAT_PAGES = 20; // up to 1000 STAT orders per dispatch run
-  for (let page = 0; page < MAX_STAT_PAGES; page++) {
+  let otherAttempted = 0;
+  // The single dispatcher decision that means "the rider pool is empty
+  // for this order right now". Used as the no-progress sentinel below
+  // — see `dispatchOrder` where this string is returned. Hard-coded to
+  // catch drift if the message ever changes.
+  const NO_RIDERS = "no riders available";
+  const PAGE = 50;
+  // Drain STAT in pages until the queue is empty. Hard preemption: we
+  // must not start any routine dispatch while a single eligible STAT
+  // order remains, so there is no upper cap on iterations — only the
+  // empty-page break and a no-progress safety. Both are necessary:
+  //   - empty-page break: normal exit when all STATs were assigned;
+  //   - no-progress break: every STAT in the page failed with
+  //     `NO_RIDERS`, meaning the rider pool is exhausted and re-paging
+  //     would loop forever over the same rows.
+  while (true) {
     const statBatch = await db
       .select()
       .from(ordersTable)
@@ -604,32 +612,28 @@ export async function dispatchReadyOrders(opts: {
         ),
       )
       .orderBy(asc(ordersTable.createdAt))
-      .limit(STAT_PAGE);
+      .limit(PAGE);
     if (statBatch.length === 0) break;
     statAttempted += statBatch.length;
     let progressed = 0;
+    let noRiders = false;
     for (const o of statBatch) {
       try {
         const r = await dispatchOrder(o.id, { ...opts, allowBatch: false });
         results.push(r);
-        if (r.ok || r.reason !== "no online riders") progressed += 1;
+        if (r.ok) progressed += 1;
+        else if (r.reason === NO_RIDERS) noRiders = true;
+        else progressed += 1; // "order not found" / "already assigned" etc.
       } catch (err) {
         logger.error({ err, orderId: o.id }, "dispatchReadyOrders STAT failed");
         progressed += 1;
       }
     }
-    // Safety: if no STAT order in this page made forward progress (all
-    // failed with the same reason — typically "no online riders"), stop
-    // re-paging the same rows forever; routine pass also has nothing to
-    // do without riders.
-    if (progressed === 0) break;
+    if (progressed === 0 && noRiders) break;
   }
   // Routine pass only after STAT is fully drained. Same paging shape so
   // a saturated routine queue isn't truncated to 50 either.
-  const ROUTINE_PAGE = 50;
-  const MAX_ROUTINE_PAGES = 20;
-  let otherAttempted = 0;
-  for (let page = 0; page < MAX_ROUTINE_PAGES; page++) {
+  while (true) {
     const otherBatch = await db
       .select()
       .from(ordersTable)
@@ -641,21 +645,24 @@ export async function dispatchReadyOrders(opts: {
         ),
       )
       .orderBy(asc(ordersTable.createdAt))
-      .limit(ROUTINE_PAGE);
+      .limit(PAGE);
     if (otherBatch.length === 0) break;
     otherAttempted += otherBatch.length;
     let progressed = 0;
+    let noRiders = false;
     for (const o of otherBatch) {
       try {
         const r = await dispatchOrder(o.id, opts);
         results.push(r);
-        if (r.ok || r.reason !== "no online riders") progressed += 1;
+        if (r.ok) progressed += 1;
+        else if (r.reason === NO_RIDERS) noRiders = true;
+        else progressed += 1;
       } catch (err) {
         logger.error({ err, orderId: o.id }, "dispatchReadyOrders failed");
         progressed += 1;
       }
     }
-    if (progressed === 0) break;
+    if (progressed === 0 && noRiders) break;
   }
   return {
     attempted: statAttempted + otherAttempted,
