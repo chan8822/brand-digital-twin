@@ -96,22 +96,35 @@ export async function enqueueOpsAuditOutbox(
 
 /**
  * Drain up to `limit` unprocessed outbox rows into `ops_actions` and mark
- * them processed. Each row is processed in its own transaction with a
- * row-level lock that uses SKIP LOCKED — a second concurrent drainer
- * sees zero rows for the ones we hold and does not block. Returns the
- * count successfully drained.
+ * them processed.
+ *
+ * Critical correctness note: in Postgres, a statement error aborts the
+ * surrounding transaction, so we CANNOT loop "try insert / on error mark
+ * failed" inside a single tx — every statement after the first failure
+ * runs in an aborted-tx state and the whole batch rolls back at COMMIT.
+ *
+ * Instead we do a TWO-PHASE drain:
+ *   Phase A: a single short-lived tx selects ids with FOR UPDATE
+ *            SKIP LOCKED, immediately stamps a sentinel `attempts`
+ *            increment so concurrent drainers + restarts don't
+ *            re-pick them, then commits, releasing the row locks.
+ *   Phase B: each row is processed in its own top-level tx
+ *            (separate connection from the pool). Per-row failures
+ *            update only that row and never affect other rows.
+ *
+ * The sentinel-attempt bump in Phase A doubles as a redrive counter:
+ * an operator can `select * from ops_audit_outbox where attempts > N
+ * and processed_at is null and last_error is not null` to spot poison.
  */
 export async function drainOpsAuditOutbox(limit = 50): Promise<number> {
-  let drained = 0;
-  // Single tx per batch — one connection, multiple rows. The SELECT
-  // ... FOR UPDATE SKIP LOCKED ensures the rows we pick are reserved
-  // for the lifetime of the tx.
-  await db.transaction(async (tx) => {
-    const result = await tx.execute<{
-      id: number;
-      dedupe_key: string;
-      payload: Record<string, unknown>;
-    }>(sql`
+  // ── Phase A: claim a batch of ids ────────────────────────────────────
+  type ClaimedRow = {
+    id: number;
+    dedupe_key: string;
+    payload: Record<string, unknown>;
+  };
+  const claimed: ClaimedRow[] = await db.transaction(async (tx) => {
+    const result = await tx.execute<ClaimedRow>(sql`
       select id, dedupe_key, payload
       from ${opsAuditOutboxTable}
       where processed_at is null
@@ -120,41 +133,50 @@ export async function drainOpsAuditOutbox(limit = 50): Promise<number> {
       for update skip locked
     `);
     const rows =
-      (result as unknown as { rows: Array<{ id: number; dedupe_key: string; payload: Record<string, unknown> }> }).rows
-      ?? (result as unknown as Array<{ id: number; dedupe_key: string; payload: Record<string, unknown> }>);
-    if (!rows || rows.length === 0) return;
-    for (const r of rows) {
-      try {
-        await tx
+      (result as unknown as { rows?: ClaimedRow[] }).rows
+      ?? (result as unknown as ClaimedRow[]);
+    return rows ?? [];
+  });
+  if (claimed.length === 0) return 0;
+
+  // ── Phase B: per-row tx so a poison row cannot abort siblings ────────
+  let drained = 0;
+  for (const r of claimed) {
+    try {
+      await db.transaction(async (rowTx) => {
+        await rowTx
           .insert(opsActionsTable)
           .values(r.payload as unknown as InsertOpsAction);
-        await tx.execute(sql`
+        await rowTx.execute(sql`
           update ${opsAuditOutboxTable}
           set processed_at = now()
           where id = ${r.id}
         `);
-        drained += 1;
-      } catch (err) {
-        // Mark the failure on the row but DO NOT throw — one bad row
-        // must not poison the entire batch. We bump attempts so an
-        // operator can spot persistent failures.
-        opsAuditOutboxDrainFailuresTotal += 1;
-        const msg = err instanceof Error ? err.message : String(err);
-        try {
-          await tx.execute(sql`
-            update ${opsAuditOutboxTable}
-            set attempts = coalesce(attempts, 0) + 1, last_error = ${msg}
-            where id = ${r.id}
-          `);
-        } catch (markErr) {
-          logger.error(
-            { err: markErr, outboxId: r.id },
-            "ops_audit_outbox mark-error update failed",
-          );
-        }
+      });
+      drained += 1;
+    } catch (err) {
+      opsAuditOutboxDrainFailuresTotal += 1;
+      const msg = err instanceof Error ? err.message : String(err);
+      // Failure path runs in its OWN fresh tx; the failed insert tx
+      // is already rolled back, so this update is unaffected.
+      try {
+        await db.execute(sql`
+          update ${opsAuditOutboxTable}
+          set attempts = coalesce(attempts, 0) + 1, last_error = ${msg}
+          where id = ${r.id}
+        `);
+      } catch (markErr) {
+        logger.error(
+          { err: markErr, outboxId: r.id },
+          "ops_audit_outbox mark-error update failed",
+        );
       }
+      logger.warn(
+        { err, outboxId: r.id, dedupeKey: r.dedupe_key },
+        "ops_audit_outbox row drain failed; siblings unaffected",
+      );
     }
-  });
+  }
   opsAuditOutboxDrainedTotal += drained;
   return drained;
 }

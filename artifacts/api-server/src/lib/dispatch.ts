@@ -9,7 +9,6 @@ import {
   type Rider,
 } from "@workspace/db";
 import { and, asc, desc, eq, gte, inArray, isNull, lte, sql } from "drizzle-orm";
-import { randomUUID } from "node:crypto";
 import { logger } from "./logger";
 import { recordOpsAction, enqueueOpsAuditOutbox } from "./opsAudit";
 import { emitDeliveryEvent } from "./realtime";
@@ -1009,10 +1008,16 @@ async function runOverrideTx(
     // Task #7 bulkhead: enqueue audit to the outbox in the SAME tx
     // so the override commits atomically with its audit intent, but
     // the actual `ops_actions` insert happens off the critical path
-    // by the background drain worker. The dedupe key is stable per
-    // (action, operator, order) so a route-level retry collapses to
-    // one outbox row.
-    const dedupeKey = `override_dispatch:${args.operatorId}:${args.orderId}:${randomUUID()}`;
+    // by the background drain worker.
+    //
+    // Stable dedupe key: a logical override of `(operator, order, rider,
+    // priorAssignment)` is the same EVENT regardless of how many times
+    // the client retries the HTTP request. The unique constraint on
+    // `dedupeKey` plus ON CONFLICT DO NOTHING collapses retries to one
+    // audit row. We deliberately exclude wall-clock / random nonces.
+    const dedupeKey =
+      `override_dispatch:${args.operatorId}:${args.orderId}:${rider.id}` +
+      `:${before.riderId ?? "none"}:${before.status}`;
     await enqueueOpsAuditOutbox(
       {
         operatorId: args.operatorId,

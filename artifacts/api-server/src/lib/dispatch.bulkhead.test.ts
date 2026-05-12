@@ -378,6 +378,66 @@ test("SLO: override p95 < 2s under simulated auto-dispatcher contention", async 
   );
 });
 
+test("poison-row resilience: a malformed outbox row does not block siblings", async () => {
+  __resetOpsAuditOutboxMetricsForTests();
+  // Row 1: malformed payload — `action` is required NOT NULL on
+  // ops_actions, so the per-row insert tx will abort. The drainer
+  // MUST roll that single tx back, mark the row, and continue.
+  const badKey = `poison_bad_${randomUUID()}`;
+  const goodKey = `poison_good_${randomUUID()}`;
+  CREATED_OUTBOX_KEYS.push(badKey, goodKey);
+  await db.insert(opsAuditOutboxTable).values({
+    dedupeKey: badKey,
+    payload: {
+      operatorId: "poison_op",
+      agent: "ops_console",
+      // action: MISSING on purpose — violates NOT NULL on ops_actions
+      params: {},
+      status: "success",
+    } as unknown as Record<string, unknown>,
+  });
+  // Row 2: valid payload, enqueued AFTER the poison row so it's
+  // selected in the same batch but processed second. Under the old
+  // single-batch-tx implementation this row would be rolled back
+  // when the poison row aborted the tx; under per-row tx it commits.
+  await db.insert(opsAuditOutboxTable).values({
+    dedupeKey: goodKey,
+    payload: {
+      operatorId: `poison_${randomUUID().slice(0, 8)}`,
+      agent: "ops_console",
+      action: "test_outbox_action",
+      params: { ok: true },
+      status: "success",
+    } as unknown as Record<string, unknown>,
+  });
+
+  const drained = await drainOpsAuditOutbox(50);
+  assert.ok(drained >= 1, `expected >=1 drained sibling, got ${drained}`);
+
+  // Bad row: still unprocessed, attempts incremented, last_error set.
+  const [badAfter] = await db
+    .select()
+    .from(opsAuditOutboxTable)
+    .where(eq(opsAuditOutboxTable.dedupeKey, badKey));
+  assert.equal(badAfter!.processedAt, null, "poison row must NOT be marked processed");
+  assert.ok((badAfter!.attempts ?? 0) >= 1, "poison row attempts must increment");
+  assert.ok(badAfter!.lastError, "poison row must record lastError");
+
+  // Good row: processed.
+  const [goodAfter] = await db
+    .select()
+    .from(opsAuditOutboxTable)
+    .where(eq(opsAuditOutboxTable.dedupeKey, goodKey));
+  assert.notEqual(
+    goodAfter!.processedAt,
+    null,
+    "sibling row must drain even though a peer poisoned",
+  );
+
+  const m = getOpsAuditOutboxMetrics();
+  assert.ok(m.drainFailuresTotal >= 1, "drainFailuresTotal must increment");
+});
+
 test("metrics: outbox enqueued/drained counters increment", async () => {
   __resetOpsAuditOutboxMetricsForTests();
   const dedupeKey = `metrics_test_${randomUUID()}`;

@@ -4,6 +4,7 @@ import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import router from "./routes";
+import overrideRouter from "./routes/manualOverride";
 import { logger } from "./lib/logger";
 import { authMiddleware } from "./middlewares/authMiddleware";
 import { adminSessionShim } from "./lib/adminSessionShim";
@@ -126,6 +127,12 @@ app.use(authMiddleware);
 // honor admins who logged in through POST /admin/login. See
 // lib/adminSessionShim.ts for the full rationale.
 app.use(adminSessionShim);
+
+// Task #7 bulkhead: mount the clinical override router BEFORE the
+// monolithic /api router so the override request never traverses
+// sibling middleware on the aggregate router. Auth + adminSessionShim
+// already ran above; the handler still enforces the ops scope.
+app.use(overrideRouter);
 
 app.use("/api", router);
 

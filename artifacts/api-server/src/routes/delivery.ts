@@ -14,7 +14,6 @@ import {
 import {
   dispatchOrder,
   dispatchReadyOrders,
-  overrideAssignment,
   dispatchComparison,
   recentDispatchDecisions,
   setOrderPriority,
@@ -334,43 +333,13 @@ router.post("/delivery/dispatch/run", async (req: Request, res: Response) => {
   res.json(out);
 });
 
-const overrideBody = z.object({
-  orderId: z.number().int().positive(),
-  riderId: z.number().int().positive(),
-  notes: z.string().max(256).optional(),
-});
-
-router.post(
-  "/delivery/dispatch/override",
-  async (req: Request, res: Response) => {
-    if (!resolveOps(req)) {
-      res.status(403).json({ error: "ops scope required" });
-      return;
-    }
-    const parsed = overrideBody.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: "invalid payload" });
-      return;
-    }
-    const operatorId = req.user?.id ?? "ops_token";
-    const out = await overrideAssignment({
-      orderId: parsed.data.orderId,
-      riderId: parsed.data.riderId,
-      operatorId,
-      notes: parsed.data.notes,
-    });
-    if (!out.ok) {
-      // Task #7: lock_busy means the auto-dispatcher held the row long
-      // enough to exhaust the NOWAIT retry budget. Surface as 503 so
-      // clients (UI / monitor) can retry distinctly from a 409
-      // "rider unavailable" type business conflict.
-      const status = out.code === "lock_busy" ? 503 : 409;
-      res.status(status).json(out);
-      return;
-    }
-    res.json(out);
-  },
-);
+// NOTE: POST /delivery/dispatch/override is now served by the dedicated
+// `manualOverride` router mounted at the app level (see app.ts) so the
+// clinical override path doesn't share sibling middleware with the rest
+// of /delivery. The handler kept here would shadow that mount, so it
+// has been removed. The schema/import are kept for the route below if
+// needed in future, but currently this aggregate router does not own
+// the override endpoint.
 
 router.get(
   "/delivery/dispatch/decisions",
