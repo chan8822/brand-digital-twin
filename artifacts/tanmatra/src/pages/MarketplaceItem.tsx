@@ -20,7 +20,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
-import { marketplaceApi } from "@/lib/marketplaceApi";
+import { marketplaceApi, marketplaceCheckoutIdempotencyKey } from "@/lib/marketplaceApi";
 import { formatPrice } from "@/lib/api/adapter";
 import { useOrders } from "@/lib/ordersContext";
 
@@ -68,6 +68,13 @@ export default function MarketplaceItemPage() {
     setSubmitting(true);
     try {
       const r = await marketplaceApi.checkout({
+        idempotencyKey: marketplaceCheckoutIdempotencyKey({
+          itemId: item.id,
+          qty,
+          deliveryMode,
+          bundleWithOrderId:
+            deliveryMode === "bundle_with_meal" ? bundleOrderId : null,
+        }),
         items: [{ itemId: item.id, qty }],
         deliveryMode,
         bundleWithOrderId:

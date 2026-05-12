@@ -153,6 +153,12 @@ export const marketplaceApi = {
       `/marketplace/items/${encodeURIComponent(slug)}`,
     ),
   checkout: (args: {
+    /** Server-managed idempotency key. Reuse the SAME value for every
+     * retry of one submit attempt so the server replays its cached
+     * response instead of double-charging / double-decrementing stock.
+     * Use `marketplaceCheckoutIdempotencyKey()` to get a stable key
+     * that survives soft refreshes via sessionStorage. */
+    idempotencyKey: string;
     items: Array<{ itemId: number; qty: number }>;
     deliveryMode: "ship" | "bundle_with_meal";
     bundleWithOrderId?: number | null;
@@ -163,11 +169,44 @@ export const marketplaceApi = {
       pincode?: string;
       phone?: string;
     };
-  }) =>
-    request<{ order: MarketplaceOrder }>(`/marketplace/checkout`, {
+  }) => {
+    const { idempotencyKey, ...body } = args;
+    return request<{ order: MarketplaceOrder }>(`/marketplace/checkout`, {
       method: "POST",
-      body: JSON.stringify(args),
-    }),
+      headers: { "Idempotency-Key": idempotencyKey },
+      body: JSON.stringify(body),
+    });
+  },
   myOrders: () =>
     request<{ orders: MarketplaceOrder[] }>(`/marketplace/orders`),
 };
+
+/**
+ * Returns a stable `Idempotency-Key` for a marketplace checkout,
+ * keyed off (itemId, qty, deliveryMode, bundleOrderId). Two clicks
+ * of the same Buy button with the same options reuse the same key
+ * (so the server collapses them to one order); changing the qty or
+ * delivery mode produces a new key (a genuinely different intent).
+ */
+export function marketplaceCheckoutIdempotencyKey(args: {
+  itemId: number;
+  qty: number;
+  deliveryMode: "ship" | "bundle_with_meal";
+  bundleWithOrderId?: number | null;
+}): string {
+  const fingerprint = `${args.itemId}:${args.qty}:${args.deliveryMode}:${args.bundleWithOrderId ?? "none"}`;
+  const storageKey = `idem:mkt:${fingerprint}`;
+  const mint = () =>
+    typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `idem-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  try {
+    const existing = sessionStorage.getItem(storageKey);
+    if (existing) return existing;
+    const fresh = mint();
+    sessionStorage.setItem(storageKey, fresh);
+    return fresh;
+  } catch {
+    return mint();
+  }
+}
