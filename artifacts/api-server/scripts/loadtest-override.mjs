@@ -37,28 +37,41 @@ import crypto from "node:crypto";
  */
 const CPU_BURN_WORKERS = Number(process.env.LOADTEST_CPU_BURN_WORKERS ?? 0);
 const cpuBurnHandles = [];
+// Shared stop flag — Atomics gives the worker a deterministic way
+// to observe shutdown without depending on its event loop being
+// serviced between hash iterations (a tight sync loop never yields,
+// so postMessage('stop') would otherwise be ignored).
+const cpuBurnStopFlag = new Int32Array(new SharedArrayBuffer(4));
 function startCpuBurn() {
   if (!CPU_BURN_WORKERS) return;
   const src = `
     const crypto = require('node:crypto');
+    const { workerData } = require('node:worker_threads');
+    const stopFlag = new Int32Array(workerData.sab);
     const buf = crypto.randomBytes(256 * 1024);
-    let stop = false;
-    require('node:worker_threads').parentPort.once('message', (m) => {
-      if (m === 'stop') stop = true;
-    });
-    while (!stop) {
-      crypto.createHash('sha256').update(buf).digest();
+    // Check Atomics every N hashes — N tuned so the check overhead
+    // is < 1% but shutdown latency stays under ~50 ms.
+    const CHECK_EVERY = 64;
+    while (Atomics.load(stopFlag, 0) === 0) {
+      for (let i = 0; i < CHECK_EVERY; i++) {
+        crypto.createHash('sha256').update(buf).digest();
+      }
     }
   `;
   for (let i = 0; i < CPU_BURN_WORKERS; i++) {
-    const w = new Worker(src, { eval: true });
+    const w = new Worker(src, {
+      eval: true,
+      workerData: { sab: cpuBurnStopFlag.buffer },
+    });
     w.unref();
     cpuBurnHandles.push(w);
   }
   console.log(`[loadtest] CPU burn enabled with ${CPU_BURN_WORKERS} workers`);
 }
-function stopCpuBurn() {
-  for (const w of cpuBurnHandles) w.postMessage("stop");
+async function stopCpuBurn() {
+  if (!cpuBurnHandles.length) return;
+  Atomics.store(cpuBurnStopFlag, 0, 1);
+  await Promise.all(cpuBurnHandles.map((w) => w.terminate()));
 }
 
 const args = new Map();
@@ -156,7 +169,7 @@ async function main() {
   await new Promise((r) => setTimeout(r, DURATION_MS));
   stop = true;
   await Promise.all([dispatcherLoop, overrideLoop]);
-  stopCpuBurn();
+  await stopCpuBurn();
 
   const lats = samples.map((s) => s.latencyMs).sort((a, b) => a - b);
   const pct = (p) => lats[Math.min(lats.length - 1, Math.floor(lats.length * p))];

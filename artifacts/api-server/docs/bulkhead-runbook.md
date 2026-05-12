@@ -49,6 +49,28 @@ If a future deployment topology requires strict order across many
 consumers, partition the outbox by aggregate id (e.g. `order_id`)
 and run one drainer per partition.
 
+### Multi-replica strategy (future work, not in this release)
+
+The current release ships strict global ordering only when the
+api-server runs as a single replica. The release decision is:
+**single-replica ordering is sufficient for the clinical override
+audit trail today.** When we scale horizontally, pick one of:
+
+1. **Leader-only drainer (simplest).** Use a Postgres advisory
+   lock (`pg_try_advisory_lock(<task_id>)`) at the top of each
+   drain tick. The lock-holder becomes the sole drainer; followers
+   no-op until takeover. Adds ~1 ms/tick and survives pod loss
+   within one tick interval (500 ms). Matches the `singleton`
+   pattern already used elsewhere in the codebase.
+2. **Partitioned drainers.** Hash `order_id` mod N to assign
+   outbox rows to drainer N. Strict ordering per aggregate, full
+   horizontal scale. More complex; only needed if leader-only
+   becomes a throughput bottleneck (we are nowhere near that
+   today — outbox volume is ~10 rows/sec at peak).
+
+Either approach is purely additive and does not change the on-disk
+contract; pick when it becomes operationally relevant.
+
 ## Pool-sizing guidance
 
 The two pools share the underlying Postgres `max_connections`
