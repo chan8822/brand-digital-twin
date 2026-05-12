@@ -583,51 +583,82 @@ export async function dispatchReadyOrders(opts: {
 }> {
   const slaBreaches = await scanAndEmitStatSlaBreaches();
   const liveStatuses = ["placed", "preparing", "ready"];
-  const statOrders = await db
-    .select()
-    .from(ordersTable)
-    .where(
-      and(
-        inArray(ordersTable.status, liveStatuses),
-        isNull(ordersTable.riderId),
-        eq(ordersTable.priority, "stat"),
-      ),
-    )
-    .orderBy(asc(ordersTable.createdAt))
-    .limit(50);
-  const otherOrders = await db
-    .select()
-    .from(ordersTable)
-    .where(
-      and(
-        inArray(ordersTable.status, liveStatuses),
-        isNull(ordersTable.riderId),
-        sql`${ordersTable.priority} <> 'stat'`,
-      ),
-    )
-    .orderBy(asc(ordersTable.createdAt))
-    .limit(50);
   const results: DispatchResult[] = [];
-  // STAT first, batching forced off so we never silently piggy-back a
-  // STAT order onto a routine partner's route.
-  for (const o of statOrders) {
-    try {
-      const r = await dispatchOrder(o.id, { ...opts, allowBatch: false });
-      results.push(r);
-    } catch (err) {
-      logger.error({ err, orderId: o.id }, "dispatchReadyOrders STAT failed");
+  let statAttempted = 0;
+  // Drain STAT in pages until the queue is empty. We must not start any
+  // routine dispatch while a single eligible STAT order remains —
+  // a single .limit(50) fetch would silently violate that on a backlog.
+  // Hard cap on outer iterations to bound worst-case runtime; in
+  // practice the loop exits within 1–2 passes.
+  const STAT_PAGE = 50;
+  const MAX_STAT_PAGES = 20; // up to 1000 STAT orders per dispatch run
+  for (let page = 0; page < MAX_STAT_PAGES; page++) {
+    const statBatch = await db
+      .select()
+      .from(ordersTable)
+      .where(
+        and(
+          inArray(ordersTable.status, liveStatuses),
+          isNull(ordersTable.riderId),
+          eq(ordersTable.priority, "stat"),
+        ),
+      )
+      .orderBy(asc(ordersTable.createdAt))
+      .limit(STAT_PAGE);
+    if (statBatch.length === 0) break;
+    statAttempted += statBatch.length;
+    let progressed = 0;
+    for (const o of statBatch) {
+      try {
+        const r = await dispatchOrder(o.id, { ...opts, allowBatch: false });
+        results.push(r);
+        if (r.ok || r.reason !== "no online riders") progressed += 1;
+      } catch (err) {
+        logger.error({ err, orderId: o.id }, "dispatchReadyOrders STAT failed");
+        progressed += 1;
+      }
     }
+    // Safety: if no STAT order in this page made forward progress (all
+    // failed with the same reason — typically "no online riders"), stop
+    // re-paging the same rows forever; routine pass also has nothing to
+    // do without riders.
+    if (progressed === 0) break;
   }
-  for (const o of otherOrders) {
-    try {
-      const r = await dispatchOrder(o.id, opts);
-      results.push(r);
-    } catch (err) {
-      logger.error({ err, orderId: o.id }, "dispatchReadyOrders failed");
+  // Routine pass only after STAT is fully drained. Same paging shape so
+  // a saturated routine queue isn't truncated to 50 either.
+  const ROUTINE_PAGE = 50;
+  const MAX_ROUTINE_PAGES = 20;
+  let otherAttempted = 0;
+  for (let page = 0; page < MAX_ROUTINE_PAGES; page++) {
+    const otherBatch = await db
+      .select()
+      .from(ordersTable)
+      .where(
+        and(
+          inArray(ordersTable.status, liveStatuses),
+          isNull(ordersTable.riderId),
+          sql`${ordersTable.priority} <> 'stat'`,
+        ),
+      )
+      .orderBy(asc(ordersTable.createdAt))
+      .limit(ROUTINE_PAGE);
+    if (otherBatch.length === 0) break;
+    otherAttempted += otherBatch.length;
+    let progressed = 0;
+    for (const o of otherBatch) {
+      try {
+        const r = await dispatchOrder(o.id, opts);
+        results.push(r);
+        if (r.ok || r.reason !== "no online riders") progressed += 1;
+      } catch (err) {
+        logger.error({ err, orderId: o.id }, "dispatchReadyOrders failed");
+        progressed += 1;
+      }
     }
+    if (progressed === 0) break;
   }
   return {
-    attempted: statOrders.length + otherOrders.length,
+    attempted: statAttempted + otherAttempted,
     assigned: results.filter((r) => r.ok).length,
     slaBreaches,
     results,

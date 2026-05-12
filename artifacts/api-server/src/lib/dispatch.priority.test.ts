@@ -238,6 +238,62 @@ test("SLA breach emit: stale STAT order produces exactly one sla_breach event, i
   assert.ok(out2.slaBreaches >= 0);
 });
 
+test("STAT backlog >50: routine orders are never dispatched while any STAT remains", async () => {
+  const userId = await makeUser();
+  const STAT_COUNT = 60; // > the 50-row page size
+  const ROUTINE_COUNT = 5;
+  // Online rider supply: enough so STAT keeps making progress and the
+  // outer page loop fully drains the STAT queue. Each rider takes one
+  // order before becoming busy, so we need at least STAT_COUNT riders.
+  const riderIds: number[] = [];
+  for (let i = 0; i < STAT_COUNT + ROUTINE_COUNT; i++) {
+    riderIds.push(await makeRider());
+  }
+  const statIds: number[] = [];
+  for (let i = 0; i < STAT_COUNT; i++) {
+    // Older STAT orders first so FIFO is meaningful.
+    statIds.push(
+      await makeOrder({ userId, priority: "stat", ageMin: STAT_COUNT - i }),
+    );
+  }
+  const routineIds: number[] = [];
+  for (let i = 0; i < ROUTINE_COUNT; i++) {
+    // Routine orders are *older* than every STAT — pure FIFO would
+    // pick them first. Strict preemption must override that.
+    routineIds.push(
+      await makeOrder({ userId, priority: "routine", ageMin: 1000 + i }),
+    );
+  }
+
+  const out = await dispatchReadyOrders({ operatorId: null });
+  // Every STAT must appear in results before any routine appears.
+  const ourIds = new Set([...statIds, ...routineIds]);
+  const ordered = out.results
+    .map((r) => r.orderId)
+    .filter((id) => ourIds.has(id));
+  const firstRoutineIdx = ordered.findIndex((id) => routineIds.includes(id));
+  if (firstRoutineIdx !== -1) {
+    const statsBefore = ordered.slice(0, firstRoutineIdx);
+    assert.equal(
+      statsBefore.length,
+      STAT_COUNT,
+      `expected all ${STAT_COUNT} STAT orders to dispatch before any routine, ` +
+        `but only ${statsBefore.length} STATs preceded the first routine`,
+    );
+  }
+  // Every STAT order ended up assigned (we provisioned enough riders).
+  const statRows = await db
+    .select({ id: ordersTable.id, riderId: ordersTable.riderId })
+    .from(ordersTable)
+    .where(inArray(ordersTable.id, statIds));
+  const unassignedStat = statRows.filter((r) => r.riderId == null);
+  assert.equal(
+    unassignedStat.length,
+    0,
+    `expected all STAT orders dispatched, ${unassignedStat.length} still unassigned`,
+  );
+});
+
 test("symmetric batching refusal: a routine order does not batch onto a STAT partner", async () => {
   const userId = await makeUser();
   // STAT order already assigned to riderA (acting as the would-be
