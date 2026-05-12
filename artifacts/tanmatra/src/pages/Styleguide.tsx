@@ -60,6 +60,129 @@ function Section({ title, kicker, children }: { title: string; kicker?: string; 
   );
 }
 
+// ---------------------------------------------------------------------------
+// Contrast helpers — sRGB → relative luminance → WCAG ratio.
+// Used by AlertPaletteGrid to print a live ratio for every text token
+// over the clinical-dark background, so reviewers can verify AAA at a
+// glance instead of trusting a comment.
+// ---------------------------------------------------------------------------
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace("#", "");
+  const v = parseInt(
+    h.length === 3
+      ? h
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : h,
+    16,
+  );
+  return [(v >> 16) & 255, (v >> 8) & 255, v & 255];
+}
+function relLum([r, g, b]: [number, number, number]): number {
+  const f = (c: number) => {
+    const s = c / 255;
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+}
+function contrast(fg: string, bg: string): number {
+  const a = relLum(hexToRgb(fg));
+  const b = relLum(hexToRgb(bg));
+  const [hi, lo] = a > b ? [a, b] : [b, a];
+  return (hi + 0.05) / (lo + 0.05);
+}
+const ALERTS = [
+  { name: "Allergen Red", accent: "#FF6B6B", text: "#FF9999", token: "alert-allergen" },
+  { name: "STAT Amber", accent: "#F59E0B", text: "#FCD34D", token: "alert-stat" },
+  { name: "Safe Green", accent: "#4ADE80", text: "#86EFAC", token: "alert-safe" },
+  { name: "Info Blue", accent: "#60A5FA", text: "#93C5FD", token: "alert-info" },
+];
+
+function AlertPaletteGrid() {
+  const bg = "#050505";
+  return (
+    <div className="space-y-4">
+      <p className="text-body-sm text-clinical-zinc">
+        Each alert has an accent (chip background, border) and a text variant
+        tuned for ≥7:1 contrast on the clinical-dark background. The ratios
+        below are computed live in the browser.
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {ALERTS.map((a) => {
+          const ratioText = contrast(a.text, bg);
+          const ratioAccent = contrast(a.accent, bg);
+          const aaaText = ratioText >= 7;
+          return (
+            <div
+              key={a.token}
+              className="rounded-lg border border-clinical-slate/30 bg-clinical-surface overflow-hidden"
+            >
+              <div className="flex">
+                <div className="h-20 w-20 shrink-0" style={{ background: a.accent }} />
+                <div className="h-20 w-20 shrink-0" style={{ background: a.text }} />
+                <div className="p-3 min-w-0 flex-1">
+                  <p className="text-caption text-white font-medium">{a.name}</p>
+                  <p className="text-[10px] text-clinical-zinc font-mono mt-0.5">
+                    --color-{a.token} · {a.accent}
+                  </p>
+                  <p className="text-[10px] text-clinical-zinc font-mono">
+                    --color-{a.token}-text · {a.text}
+                  </p>
+                </div>
+              </div>
+              <div className="px-3 py-2 border-t border-clinical-slate/30 bg-clinical-dark">
+                <div className="grid grid-cols-2 gap-2 text-[11px]">
+                  <div>
+                    <p className="text-clinical-zinc">Text on dark</p>
+                    <p
+                      className="font-mono tabular-nums"
+                      style={{ color: a.text }}
+                    >
+                      {ratioText.toFixed(2)}:1{" "}
+                      <span
+                        className={
+                          aaaText
+                            ? "text-clinical-sage"
+                            : "alert-allergen-text"
+                        }
+                      >
+                        {aaaText ? "AAA" : "below AAA"}
+                      </span>
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-clinical-zinc">Accent on dark</p>
+                    <p
+                      className="font-mono tabular-nums"
+                      style={{ color: a.accent }}
+                    >
+                      {ratioAccent.toFixed(2)}:1
+                    </p>
+                  </div>
+                </div>
+              </div>
+              {/* Sample chip + body using the canonical utility classes */}
+              <div
+                className={`m-3 rounded-md border px-2.5 py-1.5 flex items-center gap-2 ${a.token}-bg ${a.token}-border`}
+              >
+                <span
+                  className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${a.token}-bg-strong ${a.token}-text ${a.token}-border`}
+                >
+                  {a.name.split(" ")[0]}
+                </span>
+                <span className={`text-[12px] ${a.token}-text`}>
+                  Sample alert body using <code className="font-mono">.{a.token}-text</code>
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function Styleguide() {
   return (
     <div className="min-h-screen bg-clinical-dark">
@@ -272,6 +395,11 @@ export default function Styleguide() {
               <p className="text-body text-white mt-2">Popovers, dialogs</p>
             </div>
           </div>
+        </Section>
+
+        {/* Canonical alert palette + AAA contrast readouts */}
+        <Section title="Alert palette" kicker="Canonical · WCAG AAA on #050505">
+          <AlertPaletteGrid />
         </Section>
 
         <div className="pt-8 pb-16 text-center text-caption text-clinical-zinc">

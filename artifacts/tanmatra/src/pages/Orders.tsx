@@ -32,11 +32,11 @@ import { isCancellable } from "@/lib/clinicalLifecycle";
 
 const STATUS_BADGE: Record<PastOrder["status"], { label: string; className: string }> = {
   placed: { label: "Submitted", className: "bg-clinical-gold/15 text-clinical-gold border-clinical-gold/40" },
-  preparing: { label: "In Preparation", className: "bg-orange-500/15 text-orange-300 border-orange-500/40" },
-  ready: { label: "In Preparation", className: "bg-orange-500/15 text-orange-300 border-orange-500/40" },
-  out_for_delivery: { label: "Out for Delivery", className: "bg-clinical-blue/15 text-clinical-blue border-clinical-blue/40" },
-  delivered: { label: "Patient Received", className: "bg-green-500/15 text-green-400 border-green-500/40" },
-  cancelled: { label: "STAT Cancelled", className: "bg-red-500/15 text-red-400 border-red-500/40" },
+  preparing: { label: "In Preparation", className: "alert-stat-bg alert-stat-text alert-stat-border" },
+  ready: { label: "In Preparation", className: "alert-stat-bg alert-stat-text alert-stat-border" },
+  out_for_delivery: { label: "Out for Delivery", className: "alert-info-bg alert-info-text alert-info-border" },
+  delivered: { label: "Patient Received", className: "alert-safe-bg alert-safe-text alert-safe-border" },
+  cancelled: { label: "STAT Cancelled", className: "alert-allergen-bg alert-allergen-text alert-allergen-border" },
 };
 
 export default function Orders() {
@@ -110,7 +110,7 @@ export default function Orders() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto p-4 space-y-5 animate-in fade-in duration-500">
+    <div className="max-w-3xl mx-auto p-4 space-y-5 animate-in fade-in duration-150">
       <div className="space-y-1">
         <h1 className="text-2xl font-bold text-white">Your Orders</h1>
         <p className="text-xs text-clinical-zinc">
@@ -246,7 +246,7 @@ export default function Orders() {
                     variant="ghost"
                     size="sm"
                     onClick={() => setDisputeFor(order)}
-                    className="text-clinical-zinc hover:text-red-400 gap-1.5 text-xs"
+                    className="text-clinical-zinc hover:alert-allergen-text gap-1.5 text-xs"
                   >
                     <AlertTriangle className="w-3.5 h-3.5" />
                     Report a problem
@@ -266,7 +266,7 @@ export default function Orders() {
         >
           <DialogHeader>
             <DialogTitle className="text-white flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-orange-400" />
+              <AlertTriangle className="w-5 h-5 alert-stat-text" />
               Report a problem
             </DialogTitle>
             <DialogDescription id="dispute-desc" className="text-clinical-zinc">

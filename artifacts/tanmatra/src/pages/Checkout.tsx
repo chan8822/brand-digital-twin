@@ -757,7 +757,7 @@ export default function Checkout() {
       : selectedPickupId !== null);
 
   return (
-    <div className="max-w-4xl mx-auto p-4 pb-40 lg:pb-4 grid grid-cols-1 lg:grid-cols-5 gap-6 animate-in fade-in duration-500">
+    <div className="max-w-4xl mx-auto p-4 pb-40 lg:pb-4 grid grid-cols-1 lg:grid-cols-5 gap-6 animate-in fade-in duration-150">
       <div className="lg:col-span-5 space-y-3">
         <PatientContextStrip />
         <ConflictsPanel
@@ -888,7 +888,7 @@ export default function Checkout() {
                 <Input placeholder="Address line 1 (street, building)" value={newAddr.line1} onChange={(e) => setNewAddr({ ...newAddr, line1: e.target.value })} className="h-9 text-xs bg-clinical-surface border-clinical-slate/30" />
                 <Input placeholder="Address line 2 (apt, floor — optional)" value={newAddr.line2} onChange={(e) => setNewAddr({ ...newAddr, line2: e.target.value })} className="h-9 text-xs bg-clinical-surface border-clinical-slate/30" />
                 {addressFormError && (
-                  <p className="text-[11px] text-red-400" role="alert">
+                  <p className="text-[11px] alert-allergen-text" role="alert">
                     {addressFormError}
                   </p>
                 )}
@@ -963,7 +963,7 @@ export default function Checkout() {
                 ) : (
                   <div
                     className={`grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-56 overflow-y-auto pr-1 ${
-                      slotErrorMsg ? "ring-1 ring-red-400/40 rounded-md p-1" : ""
+                      slotErrorMsg ? "ring-1 alert-allergen-border rounded-md p-1" : ""
                     }`}
                     aria-invalid={slotErrorMsg ? true : undefined}
                     aria-describedby={slotErrorMsg ? "slot-error" : undefined}
@@ -1016,7 +1016,7 @@ export default function Checkout() {
                   <p
                     id="slot-error"
                     role="alert"
-                    className="text-[10px] text-red-400 flex items-center gap-1"
+                    className="text-[10px] alert-allergen-text flex items-center gap-1"
                   >
                     <AlertTriangle className="w-2.5 h-2.5" />
                     {slotErrorMsg}
@@ -1429,7 +1429,7 @@ export default function Checkout() {
                     placeholder="VOUCHER CODE"
                     className={`flex-1 min-w-0 h-8 rounded-md bg-clinical-dark border px-2 text-[11px] text-white placeholder:text-clinical-zinc/60 tracking-wider uppercase focus:outline-none ${
                       voucherError
-                        ? "border-red-500/60 focus:border-red-500/80"
+                        ? "alert-allergen-border focus:alert-allergen-border"
                         : "border-clinical-slate/30 focus:border-clinical-gold/60"
                     }`}
                     disabled={redeemingVoucher}
@@ -1452,7 +1452,7 @@ export default function Checkout() {
                   <p
                     id="voucher-error"
                     role="alert"
-                    className="text-[10px] text-red-400 flex items-center gap-1"
+                    className="text-[10px] alert-allergen-text flex items-center gap-1"
                   >
                     <AlertTriangle className="w-2.5 h-2.5" />
                     {voucherError}

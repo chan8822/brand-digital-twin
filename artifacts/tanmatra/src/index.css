@@ -37,6 +37,20 @@
   --color-clinical-surface: #0A0A0C;
   --color-clinical-surface-elevated: #111114;
 
+  /* ─── Canonical alert palette (WCAG AAA on #050505 — see Styleguide) ─── */
+  /* Each alert has a `*-text` variant tuned for ≥7:1 contrast on the
+     clinical-dark background, and an unsuffixed accent for chip
+     backgrounds / borders. Replace ad-hoc red-500 / orange-500 /
+     green-500 / blue-500 across the clinical surfaces with these. */
+  --color-alert-allergen: #FF6B6B;
+  --color-alert-allergen-text: #FF9999;
+  --color-alert-stat: #F59E0B;
+  --color-alert-stat-text: #FCD34D;
+  --color-alert-safe: #4ADE80;
+  --color-alert-safe-text: #86EFAC;
+  --color-alert-info: #60A5FA;
+  --color-alert-info-text: #93C5FD;
+
   /* ─── Radii (refined scale) ─── */
   --radius-xs: 0.25rem;
   --radius-sm: 0.375rem;
@@ -140,6 +154,59 @@
   ::-webkit-scrollbar-thumb:hover { background: var(--color-clinical-zinc); }
 
   ::selection { background: var(--color-clinical-gold-light); color: var(--color-clinical-gold); }
+
+  /* ─── Canonical alert utilities (clinical surfaces) ─── */
+  /* Use these in place of bg-red-500/* / text-red-300 / bg-orange-500/*
+     on Cart, Checkout, Orders, Track, Clinical, RdConsole, and the
+     ConflictsPanel / PatientContextStrip. */
+  .alert-allergen-bg { background-color: color-mix(in oklab, var(--color-alert-allergen) 12%, transparent); }
+  .alert-allergen-bg-strong { background-color: color-mix(in oklab, var(--color-alert-allergen) 22%, transparent); }
+  .alert-allergen-border { border-color: color-mix(in oklab, var(--color-alert-allergen) 50%, transparent); }
+  .alert-allergen-text { color: var(--color-alert-allergen-text); }
+
+  .alert-stat-bg { background-color: color-mix(in oklab, var(--color-alert-stat) 12%, transparent); }
+  .alert-stat-bg-strong { background-color: color-mix(in oklab, var(--color-alert-stat) 22%, transparent); }
+  .alert-stat-border { border-color: color-mix(in oklab, var(--color-alert-stat) 50%, transparent); }
+  .alert-stat-text { color: var(--color-alert-stat-text); }
+
+  .alert-safe-bg { background-color: color-mix(in oklab, var(--color-alert-safe) 12%, transparent); }
+  .alert-safe-bg-strong { background-color: color-mix(in oklab, var(--color-alert-safe) 22%, transparent); }
+  .alert-safe-border { border-color: color-mix(in oklab, var(--color-alert-safe) 50%, transparent); }
+  .alert-safe-text { color: var(--color-alert-safe-text); }
+
+  .alert-info-bg { background-color: color-mix(in oklab, var(--color-alert-info) 12%, transparent); }
+  .alert-info-bg-strong { background-color: color-mix(in oklab, var(--color-alert-info) 22%, transparent); }
+  .alert-info-border { border-color: color-mix(in oklab, var(--color-alert-info) 50%, transparent); }
+  .alert-info-text { color: var(--color-alert-info-text); }
+
+  /* Hover variants — Tailwind v4 cannot synthesize `hover:alert-*` for
+     these custom utility classes, so define the hover states explicitly
+     to avoid silent dead-class regressions in Cart / Orders / Track. */
+  .hover\:alert-allergen-text:hover { color: var(--color-alert-allergen-text); }
+  .hover\:alert-stat-text:hover { color: var(--color-alert-stat-text); }
+  .hover\:alert-stat-bg:hover {
+    background-color: color-mix(in oklab, var(--color-alert-stat) 12%, transparent);
+  }
+  .hover\:alert-allergen-bg:hover {
+    background-color: color-mix(in oklab, var(--color-alert-allergen) 12%, transparent);
+  }
+
+  /* ─── Clinical theme variant ──────────────────────────────────────────
+     Auto-applied by the ThemeManager when clinical mode is on (and the
+     user has not overridden the theme on Account). Caps motion to ≤150ms
+     and removes decorative gradient overlays so clinical surfaces read
+     like an EHR, not a marketing page. */
+  .theme-clinical *,
+  .theme-clinical *::before,
+  .theme-clinical *::after {
+    animation-duration: 150ms !important;
+    transition-duration: 150ms !important;
+  }
+  .theme-clinical .theme-clinical-no-gradient,
+  .theme-clinical [class*="bg-gradient-"],
+  .theme-clinical [class*="from-clinical-gold/"][class*="bg-gradient-"] {
+    background-image: none !important;
+  }
 
   /* Reduced motion respect */
   @media (prefers-reduced-motion: reduce) {

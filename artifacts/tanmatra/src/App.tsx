@@ -5,6 +5,7 @@ import { apiPath } from "@/lib/apiBase";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CartProvider } from "@/lib/cartContext";
+import { ThemeManager } from "@/lib/clinicalTheme";
 import { OrdersProvider } from "@/lib/ordersContext";
 import { PreferencesProvider } from "@/lib/preferencesContext";
 import OnboardingQuizGate from "@/components/preferences/OnboardingQuizGate";
@@ -201,6 +202,7 @@ export default function App() {
             <OrdersProvider>
               <PreferencesProvider>
             <BrowserRouter basename={basename}>
+              <ThemeManager />
               <ScrollToTop />
               <div className="min-h-screen flex flex-col bg-clinical-dark">
                 <Header />

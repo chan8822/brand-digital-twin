@@ -101,8 +101,8 @@ export default function PatientContextStrip() {
           id="patient-context-body"
           className="px-4 pb-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs"
         >
-          <div className="rounded-md border border-red-500/20 bg-red-500/5 px-2.5 py-1.5">
-            <p className="text-[9px] uppercase tracking-[0.14em] font-semibold text-red-300 flex items-center gap-1">
+          <div className="rounded-md border alert-allergen-border alert-allergen-bg px-2.5 py-1.5">
+            <p className="text-[9px] uppercase tracking-[0.14em] font-semibold alert-allergen-text flex items-center gap-1">
               <AlertCircle className="w-3 h-3" aria-hidden />
               Active medical alerts
             </p>
@@ -121,7 +121,7 @@ export default function PatientContextStrip() {
                     title={a.detail}
                     className={`text-[10px] px-1.5 py-0.5 rounded border tabular-nums font-semibold ${
                       a.severity === "high"
-                        ? "bg-red-500/15 text-red-200 border-red-500/40"
+                        ? "alert-allergen-bg alert-allergen-text alert-allergen-border"
                         : "bg-clinical-gold/10 text-clinical-gold border-clinical-gold/40"
                     }`}
                   >

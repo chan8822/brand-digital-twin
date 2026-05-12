@@ -507,14 +507,14 @@ function ActivePatientOrdersPanel() {
       <CardContent className="p-4 space-y-3">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2">
-            <ShieldAlert className="w-4 h-4 text-red-400" />
+            <ShieldAlert className="w-4 h-4 alert-allergen-text" />
             <p className="text-xs text-white font-medium">
               Active patient orders ({active.length})
             </p>
           </div>
           <div className="flex items-center gap-3">
             {!connected && (
-              <span className="text-[10px] text-amber-300">
+              <span className="text-[10px] alert-stat-text">
                 Live updates paused — reconnecting…
               </span>
             )}
@@ -524,7 +524,7 @@ function ActivePatientOrdersPanel() {
           </div>
         </div>
         {error && (
-          <p className="text-[11px] text-red-300">{error}</p>
+          <p className="text-[11px] alert-allergen-text">{error}</p>
         )}
         {active.length === 0 ? (
           <p className="text-[11px] text-clinical-zinc">

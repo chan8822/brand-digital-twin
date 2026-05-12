@@ -242,7 +242,7 @@ export default function Clinical() {
                 <Link to={`/dish/${meal.slug}`} key={meal.id}>
                   <Card className="bg-clinical-surface border-clinical-slate/20 hover:border-clinical-gold/40 transition-all overflow-hidden group h-full">
                     <div className="relative aspect-[4/3] overflow-hidden">
-                      <img src={meal.image} alt={meal.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+                      <img src={meal.image} alt={meal.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-150" loading="lazy" />
                       <div className="absolute inset-0 bg-gradient-to-t from-[#050505]/80 via-transparent to-transparent" />
                       <div className="absolute top-3 left-3 flex gap-1.5">
                         {meal.rdVerified && <Badge className="bg-clinical-sage/80 text-white border-0 text-[9px]"><ShieldCheck className="w-2.5 h-2.5 mr-0.5" />RD</Badge>}

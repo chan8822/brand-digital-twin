@@ -160,7 +160,7 @@ export default function Cart() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto p-4 pb-40 lg:pb-4 grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-500">
+    <div className="max-w-5xl mx-auto p-4 pb-40 lg:pb-4 grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-150">
       <div className="lg:col-span-3 space-y-3">
         <PatientContextStrip />
         <ConflictsPanel />
@@ -181,11 +181,11 @@ export default function Cart() {
         {conflictCount > 0 && (
           <Card className={
             allergenCount > 0
-              ? "bg-red-500/10 border-red-500/40"
-              : "bg-orange-500/5 border-orange-500/30"
+              ? "alert-allergen-bg alert-allergen-border"
+              : "alert-stat-bg alert-stat-border"
           }>
             <CardContent className={`p-3 text-xs flex items-start gap-2 ${
-              allergenCount > 0 ? "text-red-300" : "text-orange-400"
+              allergenCount > 0 ? "alert-allergen-text" : "alert-stat-text"
             }`}>
               {allergenCount > 0 ? (
                 <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />
@@ -194,7 +194,7 @@ export default function Cart() {
               )}
               <span>
                 {allergenCount > 0 && (
-                  <strong className="block uppercase tracking-wider text-[10px] text-red-300 mb-0.5">
+                  <strong className="block uppercase tracking-wider text-[10px] alert-allergen-text mb-0.5">
                     Allergen warning
                   </strong>
                 )}
@@ -258,14 +258,19 @@ export default function Cart() {
                           <h3 className="text-sm font-semibold text-white hover:text-clinical-gold transition-colors truncate flex items-center gap-2">
                             <span
                               className={`inline-flex items-center justify-center w-3 h-3 rounded-sm border ${
-                                item.isVeg ? "border-green-500" : "border-red-500"
+                                item.isVeg ? "alert-safe-border" : "alert-allergen-border"
                               }`}
                               aria-label={item.isVeg ? "Vegetarian" : "Non-vegetarian"}
                             >
                               <span
                                 className={`w-1 h-1 rounded-full ${
-                                  item.isVeg ? "bg-green-500" : "bg-red-500"
+                                  item.isVeg ? "alert-safe-bg" : "alert-allergen-bg"
                                 }`}
+                                style={{
+                                  backgroundColor: item.isVeg
+                                    ? "var(--color-alert-safe)"
+                                    : "var(--color-alert-allergen)",
+                                }}
                               />
                             </span>
                             {item.name}
@@ -291,7 +296,7 @@ export default function Cart() {
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="h-9 w-9 sm:h-7 sm:w-7 text-clinical-zinc hover:text-red-400 shrink-0"
+                        className="h-9 w-9 sm:h-7 sm:w-7 text-clinical-zinc hover:alert-allergen-text shrink-0"
                         onClick={() => {
                           removeItem(item.lineId);
                           toast.success("Item removed from your order");
@@ -362,27 +367,27 @@ export default function Cart() {
                       return (
                       <div className={`mt-2 rounded-lg border p-2.5 space-y-2 ${
                         isHard
-                          ? "border-red-500/50 bg-red-500/10"
-                          : "border-orange-500/30 bg-orange-500/5"
+                          ? "alert-allergen-border alert-allergen-bg"
+                          : "alert-stat-border alert-stat-bg"
                       }`}>
                         {hasAllergen && (
                           <div className="flex items-center gap-1.5">
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-red-500/20 text-red-300 border border-red-500/40">
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider alert-allergen-bg-strong alert-allergen-text alert-allergen-border border">
                               <AlertCircle className="w-2.5 h-2.5" aria-hidden="true" />
                               Allergen
                             </span>
-                            <span className="text-[11px] text-red-300 font-semibold">
+                            <span className="text-[11px] alert-allergen-text font-semibold">
                               Contains {c.matchedAllergens.join(", ")}
                             </span>
                           </div>
                         )}
                         {hasDietConflict && (
                           <div className="flex items-center gap-1.5">
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-red-500/20 text-red-300 border border-red-500/40">
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider alert-allergen-bg-strong alert-allergen-text alert-allergen-border border">
                               <AlertCircle className="w-2.5 h-2.5" aria-hidden="true" />
                               Diet order
                             </span>
-                            <span className="text-[11px] text-red-300 font-semibold">
+                            <span className="text-[11px] alert-allergen-text font-semibold">
                               {c.dietConflictReason}
                             </span>
                           </div>
@@ -393,7 +398,7 @@ export default function Cart() {
                             <div
                               key={i}
                               className={`flex items-start gap-1.5 text-[11px] ${
-                                isHard ? "text-red-200" : "text-orange-400"
+                                isHard ? "alert-allergen-text" : "alert-stat-text"
                               }`}
                             >
                               <ShieldAlert className="w-3.5 h-3.5 mt-0.5 shrink-0" />
@@ -492,7 +497,7 @@ export default function Cart() {
             {checkoutBlocked && blockReason && (
               <p
                 role="alert"
-                className="text-[11px] text-red-300 text-center leading-snug"
+                className="text-[11px] alert-allergen-text text-center leading-snug"
               >
                 {blockReason}
               </p>

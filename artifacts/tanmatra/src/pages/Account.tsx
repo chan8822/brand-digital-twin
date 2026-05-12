@@ -23,6 +23,12 @@ import { loyaltyApi } from "@/lib/loyaltyApi";
 import { subscriptionsApi } from "@/lib/subscriptionsApi";
 import { corporateApi } from "@/lib/corporateApi";
 import { usePremiumStatus } from "@/lib/usePremium";
+import {
+  themeOverrideStore,
+  useThemeOverride,
+  type ThemeChoice,
+} from "@/lib/clinicalTheme";
+import { useClinicalMode } from "@/lib/clinicalDiet";
 
 interface AuthUser {
   id: string;
@@ -343,6 +349,8 @@ export default function Account() {
         </CardContent>
       </Card>
 
+      <ThemeToggleCard />
+
       {/* Sign-out / sign-in row */}
       <Card className="bg-clinical-surface border-clinical-slate/30">
         <CardContent className="p-5 space-y-4">
@@ -386,6 +394,78 @@ export default function Account() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function ThemeToggleCard() {
+  const override = useThemeOverride();
+  const { enabled: clinicalEnabled } = useClinicalMode();
+  const options: { value: ThemeChoice; label: string; sub: string }[] = [
+    {
+      value: "auto",
+      label: "Auto",
+      sub: clinicalEnabled
+        ? "Clinical theme on (clinical mode active)"
+        : "Default theme on",
+    },
+    { value: "clinical", label: "Clinical", sub: "High-contrast WCAG AAA" },
+    { value: "default", label: "Default", sub: "Marketing-friendly visuals" },
+  ];
+  return (
+    <Card className="bg-clinical-surface border-clinical-slate/30">
+      <CardContent className="p-5 space-y-3">
+        <div className="flex items-start gap-3">
+          <div className="h-9 w-9 rounded-md bg-clinical-gold/10 border border-clinical-gold/20 flex items-center justify-center shrink-0">
+            <ShieldCheck
+              className="w-4 h-4 text-clinical-gold"
+              weight="regular"
+              aria-hidden
+            />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm text-white">Display theme</p>
+            <p className="text-[11px] text-clinical-zinc">
+              Clinical mode auto-applies the high-contrast theme. Pin it on or
+              off here.
+            </p>
+          </div>
+        </div>
+        <div
+          role="radiogroup"
+          aria-label="Display theme"
+          className="grid grid-cols-3 gap-2"
+        >
+          {options.map((o) => {
+            const active = override === o.value;
+            return (
+              <button
+                key={o.value}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                onClick={() => themeOverrideStore.set(o.value)}
+                className={`text-left rounded-md border px-3 py-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-clinical-gold/40 ${
+                  active
+                    ? "border-clinical-gold/50 bg-clinical-gold/10"
+                    : "border-clinical-slate/30 hover:border-clinical-gold/30"
+                }`}
+              >
+                <p
+                  className={`text-xs font-medium ${
+                    active ? "text-clinical-gold" : "text-white"
+                  }`}
+                >
+                  {o.label}
+                </p>
+                <p className="text-[10px] text-clinical-zinc mt-0.5 leading-tight">
+                  {o.sub}
+                </p>
+              </button>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

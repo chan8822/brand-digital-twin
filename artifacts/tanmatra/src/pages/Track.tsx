@@ -307,7 +307,7 @@ export default function Track() {
     order.status === "ready" || order.status === "out_for_delivery" || order.status === "delivered";
 
   return (
-    <div className="max-w-2xl mx-auto p-4 space-y-5 animate-in fade-in duration-500">
+    <div className="max-w-2xl mx-auto p-4 space-y-5 animate-in fade-in duration-150">
       {/* Order header — IDs and times */}
       <div className="space-y-2">
         <Link
@@ -524,9 +524,13 @@ export default function Track() {
                 <div key={idx} className="flex gap-3">
                   <div className="flex flex-col items-center">
                     <div
-                      className={`w-2.5 h-2.5 rounded-full ${
-                        event.event === "delivered" ? "bg-green-500" : "bg-[#D4AF37]"
-                      }`}
+                      className="w-2.5 h-2.5 rounded-full"
+                      style={{
+                        backgroundColor:
+                          event.event === "delivered"
+                            ? "var(--color-alert-safe)"
+                            : "var(--color-clinical-gold)",
+                      }}
                     />
                     {idx < timeline.length - 1 && <div className="w-0.5 flex-1 bg-muted mt-1" />}
                   </div>
@@ -575,12 +579,12 @@ export default function Track() {
 
       {/* Dev panel — gated behind ?dev=1 */}
       {showDevPanel && (
-        <Card className="border-dashed border-orange-400/40 bg-orange-500/5">
+        <Card className="border-dashed alert-stat-border alert-stat-bg">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs flex items-center gap-2 text-orange-300">
+            <CardTitle className="text-xs flex items-center gap-2 alert-stat-text">
               <AlertTriangle className="w-3.5 h-3.5" />
               Developer Controls
-              <Badge variant="outline" className="ml-auto text-[9px] border-orange-400/40 text-orange-300">?dev=1</Badge>
+              <Badge variant="outline" className="ml-auto text-[9px] alert-stat-border alert-stat-text">?dev=1</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -598,7 +602,7 @@ export default function Track() {
                   variant="outline"
                   onClick={() => handleEvent(evt)}
                   disabled={recordEvent.isPending}
-                  className="text-xs border-orange-400/30 text-orange-200 hover:bg-orange-500/10"
+                  className="text-xs alert-stat-border alert-stat-text hover:alert-stat-bg"
                 >
                   {EVENT_LABELS[evt]}
                 </Button>
