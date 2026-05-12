@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
+import tanmatraLogo from "@assets/image_1778612904223.png";
 
 export default function Home() {
   const [filter, setFilter] = useState("");
@@ -34,8 +35,13 @@ export default function Home() {
             Explore a curated collection of specialized AI agent personas. Browse by division, discover workflows, and read detailed mission specifications.
           </p>
         </div>
-        <div className="w-full md:w-80 shrink-0">
-          <div className="relative">
+        <div className="w-full md:w-80 shrink-0 flex flex-col items-start md:items-end gap-4">
+          <img
+            src={tanmatraLogo}
+            alt="Tanmatra"
+            className="h-12 md:h-16 w-auto object-contain"
+          />
+          <div className="relative w-full">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Filter divisions or agents..."
