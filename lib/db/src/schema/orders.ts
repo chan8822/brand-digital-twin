@@ -37,6 +37,16 @@ export const ordersTable = pgTable(
     fulfillmentType: varchar("fulfillment_type", { length: 16 }).notNull().default("delivery"),
     ecoPackagingOptIn: integer("eco_packaging_opt_in").notNull().default(0),
     deliveryInstructions: varchar("delivery_instructions", { length: 512 }),
+    // Clinical priority. `stat` is dispatched ahead of every routine
+    // order regardless of `created_at`, refuses to be batched with any
+    // other order, and emits an `sla_breach` event the moment it sits
+    // unassigned past the dispatch threshold (see dispatch.ts). Promotion
+    // / demotion writes an `ops_actions` audit row.
+    priority: varchar("priority", { length: 16 }).notNull().default("routine"),
+    // First time the STAT SLA-breach scanner stamped this row. Used as
+    // an idempotency guard so the breach event fires exactly once even
+    // when the dispatch loop runs many times per minute.
+    slaBreachAt: timestamp("sla_breach_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   },
@@ -52,6 +62,12 @@ export const ordersTable = pgTable(
     index("idx_orders_user_created").on(table.userId, table.createdAt.desc()),
     index("idx_orders_status_created").on(table.status, table.createdAt.desc()),
     index("idx_orders_rider").on(table.riderId),
+    // Partial index that backs the STAT-first dispatch query. Tiny
+    // because `stat` is the rare exception (~<1% of order volume), so
+    // the dispatcher reads only a handful of rows even at peak.
+    index("idx_orders_stat_unassigned")
+      .on(table.createdAt)
+      .where(sql`priority = 'stat' and rider_id is null`),
   ],
 );
 

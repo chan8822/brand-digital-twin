@@ -7,12 +7,22 @@ import {
   type Order,
   type Rider,
 } from "@workspace/db";
-import { and, asc, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, lte, sql } from "drizzle-orm";
 import { logger } from "./logger";
 import { recordOpsAction } from "./opsAudit";
 import { emitDeliveryEvent } from "./realtime";
 
 export const DISPATCH_MODEL_VERSION = "v1-heuristic";
+
+// Maximum minutes a STAT order may sit unassigned (status in
+// placed/preparing/ready, no rider) before the dispatcher emits an
+// `sla_breach` event. Kept small because STAT is reserved for
+// clinically-urgent meals (e.g. post-procedure, hypoglycaemia
+// recovery). The threshold is intentionally low (5 min) — the gain
+// is in latency, not throughput.
+export const STAT_DISPATCH_SLA_MIN = 5;
+
+export type OrderPriority = "routine" | "urgent" | "stat";
 
 // ─── Geo helpers ───────────────────────────────────────────────────────────
 
@@ -288,6 +298,10 @@ async function findBatchPartner(
   order: Order,
   drop: { lat: number; lng: number },
 ): Promise<{ rider: Rider; batchKey: string; partnerOrderId: number } | null> {
+  // Patient-safety: a STAT order is single-drop-only. Pairing it with
+  // a routine partner would silently extend its delivery time by the
+  // detour, defeating the entire point of marking it STAT.
+  if (order.priority === "stat") return null;
   // Look for an order in the same zone-ish (same pincode prefix) that has
   // already been assigned to a rider but not yet picked up.
   const partnerStatuses = ["rider_assigned", "ready"];
@@ -301,6 +315,10 @@ async function findBatchPartner(
         inArray(ordersTable.status, partnerStatuses),
         sql`${ordersTable.pincode} like ${sameZonePrefix + "%"}`,
         sql`${ordersTable.riderId} is not null`,
+        // Symmetric guard: a routine order also refuses to share a bag
+        // with a STAT order — the STAT order's rider is committed to it
+        // exclusively.
+        sql`${ordersTable.priority} <> 'stat'`,
       ),
     )
     .limit(20);
@@ -542,22 +560,65 @@ export async function dispatchOrder(
 }
 
 // Loop dispatch — every order in `placed`/`preparing`/`ready` without a rider.
+//
+// Ordering rules (priority is a hard pre-emption, not a soft weight):
+//   1. Drain every STAT order, FIFO by createdAt, with batching disabled.
+//   2. Then drain the urgent/routine queue, FIFO by createdAt, batching on.
+// A STAT order placed at T+0 therefore dispatches before a routine order
+// placed at T-10min, regardless of the routine order's age.
+//
+// Side-effect: at loop entry we scan STAT orders that have sat past
+// `STAT_DISPATCH_SLA_MIN` without an assigned rider and emit a single
+// `sla_breach` delivery event per breach. Idempotency is enforced by
+// stamping `orders.sla_breach_at` in the same UPDATE that selected the
+// row, so a second pass over the same row is a no-op even if the
+// dispatcher loop runs many times per second.
 export async function dispatchReadyOrders(opts: {
   operatorId?: string | null;
-} = {}): Promise<{ attempted: number; assigned: number; results: DispatchResult[] }> {
-  const orders = await db
+} = {}): Promise<{
+  attempted: number;
+  assigned: number;
+  slaBreaches: number;
+  results: DispatchResult[];
+}> {
+  const slaBreaches = await scanAndEmitStatSlaBreaches();
+  const liveStatuses = ["placed", "preparing", "ready"];
+  const statOrders = await db
     .select()
     .from(ordersTable)
     .where(
       and(
-        inArray(ordersTable.status, ["placed", "preparing", "ready"]),
+        inArray(ordersTable.status, liveStatuses),
         isNull(ordersTable.riderId),
+        eq(ordersTable.priority, "stat"),
+      ),
+    )
+    .orderBy(asc(ordersTable.createdAt))
+    .limit(50);
+  const otherOrders = await db
+    .select()
+    .from(ordersTable)
+    .where(
+      and(
+        inArray(ordersTable.status, liveStatuses),
+        isNull(ordersTable.riderId),
+        sql`${ordersTable.priority} <> 'stat'`,
       ),
     )
     .orderBy(asc(ordersTable.createdAt))
     .limit(50);
   const results: DispatchResult[] = [];
-  for (const o of orders) {
+  // STAT first, batching forced off so we never silently piggy-back a
+  // STAT order onto a routine partner's route.
+  for (const o of statOrders) {
+    try {
+      const r = await dispatchOrder(o.id, { ...opts, allowBatch: false });
+      results.push(r);
+    } catch (err) {
+      logger.error({ err, orderId: o.id }, "dispatchReadyOrders STAT failed");
+    }
+  }
+  for (const o of otherOrders) {
     try {
       const r = await dispatchOrder(o.id, opts);
       results.push(r);
@@ -566,10 +627,134 @@ export async function dispatchReadyOrders(opts: {
     }
   }
   return {
-    attempted: orders.length,
+    attempted: statOrders.length + otherOrders.length,
     assigned: results.filter((r) => r.ok).length,
+    slaBreaches,
     results,
   };
+}
+
+/**
+ * Find every STAT order that is past the dispatch SLA, still without a
+ * rider, and has not already been flagged. Stamp `sla_breach_at` and
+ * emit one `sla_breach` delivery event per row. Returns the breach count.
+ *
+ * The UPDATE ... RETURNING runs as a single statement so two competing
+ * dispatch loops can't both observe the row as un-flagged — Postgres
+ * row locks serialise them and the loser sees zero rows in its RETURNING.
+ */
+async function scanAndEmitStatSlaBreaches(now: Date = new Date()): Promise<number> {
+  const cutoff = new Date(now.getTime() - STAT_DISPATCH_SLA_MIN * 60_000);
+  // Stamp + event-insert MUST commit atomically: if we marked the row
+  // and then crashed before inserting the event, the next loop would
+  // skip the row (slaBreachAt is set) and the breach would be silently
+  // lost. The transaction rolls back the stamp on any insert failure
+  // so the next loop will re-detect and re-emit.
+  const breached = await db.transaction(async (tx) => {
+    const rows = await tx
+      .update(ordersTable)
+      .set({ slaBreachAt: now })
+      .where(
+        and(
+          eq(ordersTable.priority, "stat"),
+          isNull(ordersTable.riderId),
+          isNull(ordersTable.slaBreachAt),
+          inArray(ordersTable.status, ["placed", "preparing", "ready"]),
+          lte(ordersTable.createdAt, cutoff),
+        ),
+      )
+      .returning({
+        id: ordersTable.id,
+        createdAt: ordersTable.createdAt,
+        status: ordersTable.status,
+      });
+    if (rows.length === 0) return [];
+    const eventRows = rows.map((r) => ({
+      orderId: r.id,
+      event: "sla_breach",
+      meta: {
+        priority: "stat",
+        thresholdMin: STAT_DISPATCH_SLA_MIN,
+        ageMin:
+          Math.round(
+            ((now.getTime() - new Date(r.createdAt).getTime()) / 60_000) * 10,
+          ) / 10,
+        status: r.status,
+      } as Record<string, unknown>,
+    }));
+    await tx.insert(deliveryEventsTable).values(eventRows);
+    return rows.map((r) => ({
+      orderId: r.id,
+      ageMin:
+        Math.round(
+          ((now.getTime() - new Date(r.createdAt).getTime()) / 60_000) * 10,
+        ) / 10,
+    }));
+  });
+  // Real-time fan-out happens after commit so subscribers never see a
+  // breach that has been rolled back.
+  for (const b of breached) {
+    emitDeliveryEvent(b.orderId, {
+      event: "sla_breach",
+      priority: "stat",
+      thresholdMin: STAT_DISPATCH_SLA_MIN,
+      ageMin: b.ageMin,
+    });
+  }
+  return breached.length;
+}
+
+/**
+ * Promote / demote an order between routine|urgent|stat. Writes an
+ * audit row (the only callers should be staff endpoints). Returns the
+ * row before and after so the route layer can surface the transition.
+ */
+export async function setOrderPriority(args: {
+  orderId: number;
+  priority: OrderPriority;
+  operatorId: string;
+  reason?: string;
+}): Promise<
+  | { ok: true; before: OrderPriority; after: OrderPriority }
+  | { ok: false; reason: string }
+> {
+  const validated: OrderPriority = args.priority;
+  return db.transaction(async (tx) => {
+    const [before] = await tx
+      .select({ priority: ordersTable.priority, status: ordersTable.status })
+      .from(ordersTable)
+      .where(eq(ordersTable.id, args.orderId))
+      .limit(1);
+    if (!before) return { ok: false as const, reason: "order not found" };
+    const set: Record<string, unknown> = { priority: validated };
+    // Demoting away from STAT also clears any prior breach flag so a
+    // future STAT promotion gets a fresh SLA window.
+    if (validated !== "stat" && before.priority === "stat") {
+      set["slaBreachAt"] = null;
+    }
+    await tx
+      .update(ordersTable)
+      .set(set)
+      .where(eq(ordersTable.id, args.orderId));
+    await recordOpsAction(
+      {
+        operatorId: args.operatorId,
+        agent: "ops_console",
+        action: "set_order_priority",
+        params: { orderId: args.orderId, priority: validated },
+        beforeState: { priority: before.priority },
+        afterState: { priority: validated },
+        status: "success",
+        reasoning: args.reason ?? `priority -> ${validated}`,
+      },
+      tx,
+    );
+    return {
+      ok: true as const,
+      before: before.priority as OrderPriority,
+      after: validated,
+    };
+  });
 }
 
 export async function overrideAssignment(args: {

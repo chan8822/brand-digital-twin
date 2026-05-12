@@ -17,6 +17,7 @@ import {
   overrideAssignment,
   dispatchComparison,
   recentDispatchDecisions,
+  setOrderPriority,
 } from "../lib/dispatch";
 import { isOpsRequest } from "../lib/adminGate";
 import { recordRiderPosition, startSimulation, stopSimulation } from "../lib/riderSim";
@@ -389,6 +390,45 @@ router.get(
     const sinceDays = parseInt(String(req.query.sinceDays ?? "14"), 10) || 14;
     const rows = await dispatchComparison({ sinceDays });
     res.json({ rows, sinceDays });
+  },
+);
+
+// Staff-only priority promotion / demotion. Body: `{ priority: 'stat' |
+// 'urgent' | 'routine', reason?: string }`. The audit row + dispatcher
+// preemption are handled in `setOrderPriority`.
+const priorityBody = z.object({
+  priority: z.enum(["routine", "urgent", "stat"]),
+  reason: z.string().max(256).optional(),
+});
+
+router.post(
+  "/delivery/orders/:orderId/priority",
+  async (req: Request, res: Response) => {
+    if (!resolveOps(req)) {
+      res.status(403).json({ error: "ops scope required" });
+      return;
+    }
+    const orderId = Number(req.params.orderId);
+    if (!Number.isFinite(orderId)) {
+      res.status(400).json({ error: "invalid orderId" });
+      return;
+    }
+    const parsed = priorityBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "invalid payload" });
+      return;
+    }
+    const out = await setOrderPriority({
+      orderId,
+      priority: parsed.data.priority,
+      operatorId: req.user?.id ?? "ops_token",
+      reason: parsed.data.reason,
+    });
+    if (!out.ok) {
+      res.status(404).json(out);
+      return;
+    }
+    res.json(out);
   },
 );
 
