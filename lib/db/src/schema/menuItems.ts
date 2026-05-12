@@ -50,6 +50,13 @@ export const menuItemsTable = pgTable(
     macrosAreEstimate: boolean("macros_are_estimate").notNull().default(true),
     rdVerified: boolean("rd_verified").notNull().default(false),
     rdNote: text("rd_note"),
+    // Patient-safety review gate. Every CMS-managed dish starts as
+    // `pending_review`; an RD must explicitly flip it to `reviewed`
+    // before the public menu surfaces it or checkout will accept it.
+    // `blocked` is a kill-switch state for dishes pulled by RD.
+    allergenReviewState: varchar("allergen_review_state", { length: 32 })
+      .notNull()
+      .default("pending_review"),
     prepTime: varchar("prep_time", { length: 64 }),
     glycaemicIndex: varchar("glycaemic_index", { length: 16 }),
     sugarPerServing: varchar("sugar_per_serving", { length: 64 }),

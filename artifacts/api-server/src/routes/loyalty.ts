@@ -321,10 +321,24 @@ router.post("/orders/finalize", async (req: Request, res: Response) => {
       const safety = (err as Error & {
         safetyBlock?: { codes: string[]; blocked: unknown };
       }).safetyBlock;
+      const codes = safety?.codes ?? [];
+      // Surface the most specific structured code at the top level so
+      // clients can switch on `code` without parsing arrays. The
+      // ordering reflects severity / specificity (allergen first since
+      // it is the strictest patient-safety risk; unreviewed/blocked
+      // dishes are operational gates rather than declared allergies).
+      const ORDER = [
+        "allergen_block",
+        "diet_block",
+        "ingredient_block",
+        "keto_block",
+        "unreviewed_dish",
+      ] as const;
+      const primary = ORDER.find((c) => codes.includes(c)) ?? codes[0] ?? "safety_block";
       res.status(422).json({
         error: msg,
-        code: "safety_block",
-        codes: safety?.codes ?? [],
+        code: primary,
+        codes,
         blocked: safety?.blocked ?? [],
       });
       return;

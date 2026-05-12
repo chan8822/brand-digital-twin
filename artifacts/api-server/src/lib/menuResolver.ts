@@ -104,6 +104,9 @@ export async function getMergedCatalog(): Promise<DishData[]> {
       customizations:
         (row.customizations as DishCustomGroup[] | null) ?? [],
       ...(row.pairingSlug ? { pairingSlug: row.pairingSlug } : {}),
+      ...(coerceReviewState(row.allergenReviewState)
+        ? { rdReviewState: coerceReviewState(row.allergenReviewState)! }
+        : {}),
     });
   }
 
@@ -149,9 +152,21 @@ export async function getMergedCatalog(): Promise<DishData[]> {
         (row.customizations as DishCustomGroup[] | null) ?? [],
       ...(row.pairingSlug ? { pairingSlug: row.pairingSlug } : {}),
       isAvailable: row.isAvailable,
+      ...(coerceReviewState(row.allergenReviewState)
+        ? { rdReviewState: coerceReviewState(row.allergenReviewState)! }
+        : { rdReviewState: "pending_review" as const }),
     });
   }
   return merged.map(enrich);
+}
+
+const REVIEW_STATES = new Set(["pending_review", "reviewed", "blocked"]);
+function coerceReviewState(
+  v: string | null | undefined,
+): DishData["rdReviewState"] {
+  return v && REVIEW_STATES.has(v)
+    ? (v as DishData["rdReviewState"])
+    : undefined;
 }
 
 /** Lookup a dish by its catalog id (static id 1..N or synthetic id 100000+).

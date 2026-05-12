@@ -705,7 +705,25 @@ export async function finalizeOrder(args: {
       if (!d) throw new Error(`unknown dish id: ${it.id}`);
       return d;
     });
-    const txBlocked = runSafetyEvaluation(reResolved, prefs);
+    // Re-read user preferences inside the tx — closes the second TOCTOU
+    // window where the patient updated their allergens or dietary style
+    // between the pre-tx gate and the order insert.
+    const [txPrefRow] = await tx
+      .select()
+      .from(userPreferencesTable)
+      .where(eq(userPreferencesTable.userId, args.userId))
+      .limit(1);
+    const txPrefs: PreferencesForMatch | null = txPrefRow
+      ? {
+          allergens: txPrefRow.allergens ?? [],
+          dislikedIngredients: txPrefRow.dislikedIngredients ?? [],
+          cuisines: txPrefRow.cuisines ?? [],
+          dietaryStyle: txPrefRow.dietaryStyle,
+          goal: txPrefRow.goal,
+          calorieTarget: txPrefRow.calorieTarget,
+        }
+      : null;
+    const txBlocked = runSafetyEvaluation(reResolved, txPrefs);
     if (txBlocked.length > 0) {
       const codes2 = Array.from(
         new Set(txBlocked.flatMap((b) => b.reasons.map((r) => r.code))),

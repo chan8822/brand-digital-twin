@@ -19,6 +19,7 @@ import { randomUUID } from "node:crypto";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import {
   db,
+  menuItemsTable,
   opsActionsTable,
   ordersTable,
   pickupLocationsTable,
@@ -26,6 +27,7 @@ import {
   usersTable,
   type DietaryStyle,
 } from "@workspace/db";
+import { resolveDishBySlug } from "./menuResolver";
 import { DISHES, type DishData } from "@workspace/menu-catalog";
 
 const PENDING_DISH: DishData = {
@@ -352,6 +354,52 @@ test("unreviewed_dish: refuses a dish whose rdReviewState is pending_review", as
       return true;
     },
   );
+});
+
+test("DB-backed pending-review menu_items row: surfaces as rdReviewState='pending_review' and is refused by checkout", async () => {
+  const userId = await makeUser();
+  await setPrefs(userId, {});
+  const pickupId = await makePickup();
+  const slug = `gate-db-pending-${randomUUID().slice(0, 8)}`;
+  const [row] = await db
+    .insert(menuItemsTable)
+    .values({
+      slug,
+      name: "DB Pending Bowl",
+      description: "test fixture for DB pending-review gate",
+      pricePaise: 30000,
+      category: "bowls",
+      kitchenLocation: "continental",
+      isVeg: true,
+      isAvailable: true,
+      // allergenReviewState defaults to "pending_review" via column
+      // default — no explicit value needed.
+    })
+    .returning();
+  try {
+    const merged = await resolveDishBySlug(slug);
+    assert.ok(merged, "expected DB row to surface in merged catalog");
+    assert.equal(merged!.rdReviewState, "pending_review");
+    const orderId = `gate-db-pending-${randomUUID()}`;
+    await assert.rejects(
+      finalizeOrder({
+        userId,
+        orderId,
+        items: [
+          { id: merged!.id, name: merged!.name, qty: 1, price: merged!.price },
+        ],
+        fulfillmentType: "pickup",
+        pickupLocationId: pickupId,
+      }),
+      (err: unknown) => {
+        const e = err as Error & { safetyBlock?: { codes: string[] } };
+        assert.ok(e.safetyBlock!.codes.includes("unreviewed_dish"));
+        return true;
+      },
+    );
+  } finally {
+    await db.delete(menuItemsTable).where(eq(menuItemsTable.id, row!.id));
+  }
 });
 
 test("diet_block (pescatarian): refuses chicken/meat dish", async () => {
