@@ -21,7 +21,8 @@ jobs:
           --health-interval 5s --health-timeout 3s --health-retries 10
     env:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/tanmatra
-      ADMIN_TOKEN: ci-admin-token
+      RD_ADMIN_TOKEN: ci-admin-token
+      OPS_TOKEN: ci-admin-token
       LOADTEST_CPU_BURN_WORKERS: "4"
       PG_POOL_MAX: "16"
       PG_OVERRIDE_POOL_MAX: "4"
@@ -32,7 +33,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 20, cache: pnpm }
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @workspace/db run push:force
+      - run: pnpm --filter @workspace/db run push-force
       - run: node artifacts/api-server/scripts/seed-loadtest-fixtures.mjs
       - name: Boot api-server
         run: pnpm --filter @workspace/api-server run start &
