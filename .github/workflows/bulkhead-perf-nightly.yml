@@ -34,7 +34,12 @@ jobs:
         with: { node-version: 20, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @workspace/db run push-force
-      - run: node artifacts/api-server/scripts/seed-loadtest-fixtures.mjs
+      - name: Seed fixtures and capture order ids
+        id: seed
+        run: |
+          ids=$(node artifacts/api-server/scripts/seed-loadtest-fixtures.mjs)
+          echo "order_ids=$ids" >> "$GITHUB_OUTPUT"
+          echo "Seeded orders: $ids"
       - name: Boot api-server
         run: pnpm --filter @workspace/api-server run start &
       - name: Wait for /healthz
@@ -44,4 +49,7 @@ jobs:
           done
           exit 1
       - name: Loadtest with 90% CPU burn
+        env:
+          ORDER_IDS: ${{ steps.seed.outputs.order_ids }}
+          RIDER_ID: "1"
         run: pnpm --filter @workspace/api-server run loadtest:override -- --duration-ms 30000
