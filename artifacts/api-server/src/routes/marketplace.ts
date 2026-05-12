@@ -8,7 +8,7 @@ import {
   type MarketplaceOrderLine,
 } from "@workspace/db";
 import { idempotencyMiddleware } from "../middlewares/idempotency";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod/v4";
 
 const router: IRouter = Router();
@@ -193,91 +193,124 @@ router.post("/marketplace/checkout", idempotencyMiddleware, async (req: Request,
     return;
   }
   const data = parsed.data;
-  const ids = data.items.map((i) => i.itemId);
-  const items = await db
-    .select()
-    .from(marketplaceItemsTable)
-    .where(inArray(marketplaceItemsTable.id, ids));
-  const itemMap = new Map(items.map((i) => [i.id, i]));
+  const userId = req.user.id;
 
-  const lines: MarketplaceOrderLine[] = [];
-  let totalPaise = 0;
-  for (const it of data.items) {
-    const item = itemMap.get(it.itemId);
-    if (!item || !item.isActive) {
-      res.status(400).json({ error: `item ${it.itemId} unavailable` });
-      return;
-    }
-    if (item.stockQty < it.qty) {
-      res.status(409).json({ error: `${item.name} out of stock` });
-      return;
-    }
-    lines.push({
-      itemId: item.id,
-      slug: item.slug,
-      name: item.name,
-      qty: it.qty,
-      unitPricePaise: item.pricePaise,
+  // Reserve-and-create saga (Task #6). All stock decrements and the
+  // order row insert happen inside a single Postgres transaction so a
+  // mid-flow connection drop can never leave stock consumed without a
+  // matching order. Each per-item decrement uses an atomic predicate
+  // (`set stock_qty = stock_qty - qty where stock_qty >= qty`) so two
+  // concurrent buyers cannot oversell. If any item runs out mid-tx
+  // the whole transaction rolls back — no partial reservation.
+  try {
+    const result = await db.transaction(async (tx) => {
+      // Read prices/names/active flag inside the tx so the catalog
+      // snapshot we use to compute totals matches what we actually
+      // decrement against. We deliberately do NOT trust stockQty from
+      // this read for the capacity check — that's enforced atomically
+      // in the UPDATE below.
+      const items = await tx
+        .select()
+        .from(marketplaceItemsTable)
+        .where(inArray(marketplaceItemsTable.id, data.items.map((i) => i.itemId)));
+      const itemMap = new Map(items.map((i) => [i.id, i]));
+
+      const lines: MarketplaceOrderLine[] = [];
+      let totalPaise = 0;
+      for (const it of data.items) {
+        const item = itemMap.get(it.itemId);
+        if (!item || !item.isActive) {
+          throw new MarketplaceCheckoutError(400, `item ${it.itemId} unavailable`);
+        }
+        lines.push({
+          itemId: item.id,
+          slug: item.slug,
+          name: item.name,
+          qty: it.qty,
+          unitPricePaise: item.pricePaise,
+        });
+        totalPaise += item.pricePaise * it.qty;
+      }
+
+      let bundleWithOrderId: number | null = null;
+      if (data.deliveryMode === "bundle_with_meal") {
+        if (!data.bundleWithOrderId) {
+          throw new MarketplaceCheckoutError(
+            400,
+            "bundleWithOrderId required for bundle_with_meal",
+          );
+        }
+        const [order] = await tx
+          .select({ id: ordersTable.id })
+          .from(ordersTable)
+          .where(
+            and(
+              eq(ordersTable.id, data.bundleWithOrderId),
+              eq(ordersTable.userId, userId),
+            ),
+          )
+          .limit(1);
+        if (!order) {
+          throw new MarketplaceCheckoutError(404, "bundle target order not found");
+        }
+        bundleWithOrderId = order.id;
+      }
+
+      // Atomic decrement per line. The `stock_qty >= qty` predicate is
+      // what makes this race-free: two concurrent transactions that both
+      // see (e.g.) stock=1 will serialize at the row lock, and the loser
+      // will see zero rows updated and throw — rolling back any prior
+      // decrements made inside the same tx.
+      for (const line of lines) {
+        const dec = await tx
+          .update(marketplaceItemsTable)
+          .set({ stockQty: sql`${marketplaceItemsTable.stockQty} - ${line.qty}` })
+          .where(
+            and(
+              eq(marketplaceItemsTable.id, line.itemId),
+              sql`${marketplaceItemsTable.stockQty} >= ${line.qty}`,
+            ),
+          )
+          .returning({ id: marketplaceItemsTable.id });
+        if (dec.length === 0) {
+          throw new MarketplaceCheckoutError(409, `${line.name} out of stock`);
+        }
+      }
+
+      const [created] = await tx
+        .insert(marketplaceOrdersTable)
+        .values({
+          userId,
+          status: "placed",
+          deliveryMode: data.deliveryMode,
+          items: lines,
+          totalPaise,
+          addressLabel: data.address?.label,
+          addressLine: data.address?.line,
+          city: data.address?.city,
+          pincode: data.address?.pincode,
+          phone: data.address?.phone,
+          bundleWithOrderId,
+        })
+        .returning();
+
+      return created;
     });
-    totalPaise += item.pricePaise * it.qty;
-  }
-
-  // If bundling with an existing meal order, the order id is required and
-  // must belong to the current user.
-  let bundleWithOrderId: number | null = null;
-  if (data.deliveryMode === "bundle_with_meal") {
-    if (!data.bundleWithOrderId) {
-      res
-        .status(400)
-        .json({ error: "bundleWithOrderId required for bundle_with_meal" });
+    res.status(201).json({ order: result });
+  } catch (err) {
+    if (err instanceof MarketplaceCheckoutError) {
+      res.status(err.status).json({ error: err.message });
       return;
     }
-    const [order] = await db
-      .select()
-      .from(ordersTable)
-      .where(
-        and(
-          eq(ordersTable.id, data.bundleWithOrderId),
-          eq(ordersTable.userId, req.user.id),
-        ),
-      )
-      .limit(1);
-    if (!order) {
-      res.status(404).json({ error: "bundle target order not found" });
-      return;
-    }
-    bundleWithOrderId = order.id;
+    throw err;
   }
-
-  const [created] = await db
-    .insert(marketplaceOrdersTable)
-    .values({
-      userId: req.user.id,
-      status: "placed",
-      deliveryMode: data.deliveryMode,
-      items: lines,
-      totalPaise,
-      addressLabel: data.address?.label,
-      addressLine: data.address?.line,
-      city: data.address?.city,
-      pincode: data.address?.pincode,
-      phone: data.address?.phone,
-      bundleWithOrderId,
-    })
-    .returning();
-
-  // Decrement stock for each item.
-  for (const line of lines) {
-    const item = itemMap.get(line.itemId);
-    if (!item) continue;
-    await db
-      .update(marketplaceItemsTable)
-      .set({ stockQty: Math.max(0, item.stockQty - line.qty) })
-      .where(eq(marketplaceItemsTable.id, item.id));
-  }
-
-  res.status(201).json({ order: created });
 });
+
+class MarketplaceCheckoutError extends Error {
+  constructor(public status: number, msg: string) {
+    super(msg);
+  }
+}
 
 router.get("/marketplace/orders", async (req: Request, res: Response) => {
   if (!req.isAuthenticated()) {

@@ -18,6 +18,7 @@ import { resumeActiveSimulations } from "./lib/riderSim";
 import { purgeExpiredRateLimits } from "./lib/rateLimit";
 import { purgeExpiredSessions } from "./lib/auth";
 import { sweepExpiredIdempotencyKeys } from "./middlewares/idempotency";
+import { sweepOrphanSlotReservations } from "./routes/fulfillment";
 
 const rawPort = process.env["PORT"];
 
@@ -92,6 +93,16 @@ const purgeTimer = setInterval(() => {
  // sustained order traffic.
  sweepExpiredIdempotencyKeys().catch((err) =>
  logger.error({ err }, "sweepExpiredIdempotencyKeys failed"),
+ ),
+ // Reserve-and-create saga (Task #6) compensator. Reclaims slot
+ // reservations whose owning order vanished mid-flight so capacity
+ // can't be permanently exhausted by orphan rows.
+ sweepOrphanSlotReservations()
+ .then((n) => {
+ if (n > 0) logger.info({ reclaimed: n }, "sweepOrphanSlotReservations reclaimed");
+ })
+ .catch((err) =>
+ logger.error({ err }, "sweepOrphanSlotReservations failed"),
  ),
  ]).catch(() => {
  /* swallowed above */

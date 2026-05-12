@@ -489,30 +489,104 @@ router.put(
 );
 
 // Atomic slot reservation. Returns false if the slot is full so the caller
-// can prompt the user to pick another window.
+// can prompt the user to pick another window. The reservation row insert
+// runs in the SAME transaction as the increment so a connection drop
+// between the two cannot leave a phantom seat consumed.
 export async function reserveSlot(args: {
   slotId: number;
   userId?: string | null;
-  orderId?: number | null;
+  orderId: number;
 }): Promise<boolean> {
-  const result = await db
-    .update(deliverySlotsTable)
-    .set({ reservedCount: sql`${deliverySlotsTable.reservedCount} + 1` })
-    .where(
-      and(
-        eq(deliverySlotsTable.id, args.slotId),
-        sql`${deliverySlotsTable.reservedCount} < ${deliverySlotsTable.capacity}`,
-      ),
-    )
-    .returning({ id: deliverySlotsTable.id });
-  if (result.length === 0) return false;
-  await db.insert(slotReservationsTable).values({
-    slotId: args.slotId,
-    userId: args.userId ?? null,
-    orderId: args.orderId ?? null,
-    kind: "order",
+  // Invariant: a kind='order' reservation MUST point at a real order
+  // (criterion: "reservation cannot exist without a matching order").
+  // Enforce at the write site so we never depend on the compensating
+  // sweeper to clean up an avoidable orphan.
+  if (!Number.isInteger(args.orderId) || args.orderId <= 0) {
+    throw new Error("reserveSlot: orderId is required");
+  }
+  return db.transaction(async (tx) => {
+    const result = await tx
+      .update(deliverySlotsTable)
+      .set({ reservedCount: sql`${deliverySlotsTable.reservedCount} + 1` })
+      .where(
+        and(
+          eq(deliverySlotsTable.id, args.slotId),
+          sql`${deliverySlotsTable.reservedCount} < ${deliverySlotsTable.capacity}`,
+        ),
+      )
+      .returning({ id: deliverySlotsTable.id });
+    if (result.length === 0) return false;
+    await tx.insert(slotReservationsTable).values({
+      slotId: args.slotId,
+      userId: args.userId ?? null,
+      orderId: args.orderId,
+      kind: "order",
+    });
+    return true;
   });
-  return true;
+}
+
+// ─── Orphan reservation sweeper (Task #6) ──────────────────────────────────
+//
+// Defence-in-depth for the reserve-and-create saga. The order-create paths
+// (loyaltyEngine.finalizeOrder, marketplace checkout) wrap slot reservation
+// + order insert in a single Postgres transaction, so a normal connection
+// drop rolls back both sides cleanly. This sweeper catches the residual
+// failure modes that a single tx cannot:
+//
+//   - rows with kind='order' and orderId IS NULL older than the grace
+//     window (hand-rolled callers that forgot to pass orderId)
+//   - rows whose orderId no longer points at any orders.id (the order was
+//     hard-deleted from underneath)
+//
+// For each orphan we decrement the parent slot's reservedCount (clamped
+// at 0) and delete the reservation row inside one tx so capacity is
+// genuinely freed. Returns the number of reservations reclaimed.
+export async function sweepOrphanSlotReservations(opts: {
+  graceMs?: number;
+} = {}): Promise<number> {
+  const graceMs = opts.graceMs ?? 5 * 60 * 1000;
+  const cutoff = new Date(Date.now() - graceMs);
+  // Identify orphans: kind='order' AND created before cutoff AND
+  // (orderId IS NULL OR no matching orders row).
+  const orphans = await db.execute<{ id: number; slot_id: number }>(sql`
+    select sr.id, sr.slot_id
+    from ${slotReservationsTable} sr
+    where sr.kind = 'order'
+      and sr.created_at < ${cutoff}
+      and (
+        sr.order_id is null
+        or not exists (
+          select 1 from ${ordersTable} o where o.id = sr.order_id
+        )
+      )
+    limit 500
+  `);
+  const rows = (orphans as unknown as { rows: Array<{ id: number; slot_id: number }> }).rows
+    ?? (orphans as unknown as Array<{ id: number; slot_id: number }>);
+  if (!rows || rows.length === 0) return 0;
+  let reclaimed = 0;
+  for (const r of rows) {
+    try {
+      await db.transaction(async (tx) => {
+        const deleted = await tx
+          .delete(slotReservationsTable)
+          .where(eq(slotReservationsTable.id, r.id))
+          .returning({ id: slotReservationsTable.id });
+        if (deleted.length === 0) return;
+        await tx
+          .update(deliverySlotsTable)
+          .set({
+            reservedCount: sql`greatest(${deliverySlotsTable.reservedCount} - 1, 0)`,
+          })
+          .where(eq(deliverySlotsTable.id, r.slot_id));
+        reclaimed += 1;
+      });
+    } catch {
+      // Best-effort; the next sweep tick retries.
+    }
+  }
+  return reclaimed;
 }
 
 export default router;
