@@ -26,7 +26,6 @@ import {
   Microscope,
   Dna,
   ArrowRight,
-  Star,
   HeartPulse,
   Zap,
   ChevronRight,
@@ -87,11 +86,15 @@ const FEATURED_MEALS = [
   },
 ];
 
+// Trust tiles: anchor on verifiable third-party signals first (FSSAI
+// licence number, ISO 22000) and concrete behavioural promises rather
+// than internal jargon. Vendor names (e.g. "Gemini AI Logistics") are
+// removed — they expose tooling without building customer trust.
 const TRUST_SIGNALS = [
-  { icon: ShieldCheck, label: "RD Advisory Board Verified", sub: "Every recipe reviewed by registered dietitians" },
-  { icon: BrainCircuit, label: "Mifflin-St Jeor BMR Engine", sub: "Clinically precise metabolic calculations" },
-  { icon: FlaskConical, label: "Gemini AI Logistics", sub: "Smart inventory & auto-rider dispatch" },
-  { icon: Microscope, label: "Macro-Nutrient Precision", sub: "Lab-grade nutritional analysis per serving" },
+  { icon: ShieldCheck, label: "FSSAI Lic. 22725926001018", sub: "ISO 22000 certified kitchen · audit-trailed sourcing" },
+  { icon: ShieldCheck, label: "RD Advisory Board Verified", sub: "Every recipe reviewed by a registered dietitian" },
+  { icon: Microscope, label: "Macro-Nutrient Transparency", sub: "Calories, protein, carbs, fat, GI on every dish" },
+  { icon: BrainCircuit, label: "Personalised to your goals", sub: "Plans tuned to your activity, allergens & preferences" },
 ];
 
 const PROTOCOLS = [
@@ -116,7 +119,7 @@ const PROTOCOLS = [
     description: "Medical nutrition therapy for diabetes management, cardiovascular health, ketogenic protocols, and post-surgical recovery. Integrates with patient EHR.",
     image: "/collections/clinical-collection.jpg",
     icon: Dna, color: "text-clinical-gold", bg: "bg-clinical-gold/10", border: "border-clinical-gold/25", gradient: "from-clinical-gold/20 to-transparent",
-    features: ["100% RD verified", "<15g net carbs (keto)", "ADA compliant", "EHR integrated"],
+    features: ["100% RD verified", "<15g net carbs (keto)", "ADA-guideline informed", "Designed with your RD"],
     featureIcon: Syringe,
   },
 ];
@@ -161,10 +164,10 @@ function DaypartGrid({
               </div>
               <button
                 onClick={(e) => onQuickAdd(e, d)}
-                className="absolute bottom-1.5 right-1.5 w-7 h-7 rounded-full bg-clinical-gold text-[#050505] flex items-center justify-center hover:scale-110 transition-transform shadow-clinical"
+                className="absolute bottom-1.5 right-1.5 w-11 h-11 rounded-full bg-clinical-gold text-[#050505] flex items-center justify-center hover:scale-105 active:scale-95 transition-transform shadow-clinical"
                 aria-label={`Quick add ${d.name}`}
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-5 h-5" />
               </button>
             </div>
             <div className="p-2.5 space-y-1">
@@ -206,7 +209,7 @@ function DaypartWhyRow({ rationale }: { rationale: DishRationale | undefined }) 
 }
 
 function formatPrice(paise: number) {
-  return `Rs.${(paise / 100).toFixed(0)}`;
+  return `₹${(paise / 100).toFixed(0)}`;
 }
 
 type Daypart = "breakfast" | "lunch" | "dinner";
@@ -321,6 +324,18 @@ export default function Home() {
               your metabolic profile, and prepared in ISO-certified kitchens.
             </p>
 
+            {/* Concrete price + delivery promise visible above the fold —
+                Indian first-time visitors decide on price/delivery before
+                committing to an assessment. Don't let the metabolic
+                assessment CTA be the only signal in the hero. */}
+            <p className="text-sm text-clinical-zinc/90 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span className="text-white font-semibold">Meals from ₹140</span>
+              <span className="opacity-50">·</span>
+              <span>Free delivery over ₹500</span>
+              <span className="opacity-50">·</span>
+              <span>Bengaluru-wide</span>
+            </p>
+
             <div className="flex flex-col sm:flex-row gap-3 pt-2">
               <Link to="/preferences" className="flex-1 sm:flex-none">
                 <Button className="w-full sm:w-auto bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold gap-2 h-12 sm:h-11 px-6 shadow-clinical-lg">
@@ -338,12 +353,18 @@ export default function Home() {
               </Link>
             </div>
 
+            {/* Concrete trust strip — only signals we can substantiate.
+                Removed legacy hard-coded "4.9 Patient Rating" and
+                "12K+ Meals Delivered" stats that had no live data
+                source backing them (ASCI exposure under unsubstantiated
+                claims). RD count is computed from teamData.ts so it
+                stays honest as the team grows. */}
             <div className="flex flex-wrap items-start gap-x-5 gap-y-3 pt-4">
-              <div className="min-w-0"><p className="tabular-nums text-2xl font-bold text-white">4.9</p><p className="text-clinical-label mt-0.5 flex items-center gap-1"><Star className="w-3 h-3 text-clinical-gold" />Patient Rating</p></div>
+              <div className="min-w-0"><p className="tabular-nums text-2xl font-bold text-white">{TEAM.filter((m) => m.role === "rd").length}</p><p className="text-clinical-label mt-0.5">Registered Dietitians on staff</p></div>
               <div className="hidden sm:block w-px self-stretch bg-clinical-slate/30" />
-              <div className="min-w-0"><p className="tabular-nums text-2xl font-bold text-white">12K+</p><p className="text-clinical-label mt-0.5">Meals Delivered</p></div>
+              <div className="min-w-0"><p className="tabular-nums text-2xl font-bold text-white">100%</p><p className="text-clinical-label mt-0.5">Macros &amp; allergens disclosed</p></div>
               <div className="hidden sm:block w-px self-stretch bg-clinical-slate/30" />
-              <div className="min-w-0"><p className="tabular-nums text-2xl font-bold text-white">{TEAM.filter((m) => m.role === "rd").length}</p><p className="text-clinical-label mt-0.5">RD Advisors</p></div>
+              <div className="min-w-0"><p className="tabular-nums text-2xl font-bold text-white">FSSAI</p><p className="text-clinical-label mt-0.5">Licensed · ISO 22000 kitchen</p></div>
             </div>
           </div>
         </div>

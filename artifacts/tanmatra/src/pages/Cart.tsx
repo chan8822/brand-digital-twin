@@ -454,7 +454,7 @@ export default function Cart() {
                 </span>
               </div>
               {deliveryFee === 0 && (
-                <p className="text-[10px] text-clinical-sage">Free delivery on orders above Rs.500</p>
+                <p className="text-[10px] text-clinical-sage">Free delivery on orders above ₹500</p>
               )}
             </div>
 
@@ -519,11 +519,22 @@ export default function Cart() {
         </Card>
       </div>
 
-      {/* Mobile sticky bottom action bar (sits above the bottom nav) */}
+      {/* Mobile sticky bottom action bar (sits above the bottom nav).
+          Offset matches BottomNav's `min-h-[56px]` = 3.5rem (was 4rem,
+          which left an 8px gap on Android Chrome). The reason copy is
+          rendered as a visible line — `title` tooltips don't surface on
+          touch devices, so a "Blocked" CTA with no inline reason was a
+          dead-end. */}
       <div
         className="lg:hidden fixed left-0 right-0 z-30 px-3 pb-2 pointer-events-none"
-        style={{ bottom: "calc(4rem + env(safe-area-inset-bottom))" }}
+        style={{ bottom: "calc(3.5rem + env(safe-area-inset-bottom))" }}
       >
+        {checkoutBlocked && blockReason && (
+          <div className="pointer-events-auto mb-1 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-[11px] text-red-200 flex items-start gap-1.5">
+            <ShieldAlert className="w-3 h-3 mt-0.5 shrink-0" />
+            <span className="leading-snug">{blockReason}</span>
+          </div>
+        )}
         <div className="pointer-events-auto rounded-xl border border-clinical-slate/40 bg-clinical-surface/95 backdrop-blur-xl shadow-2xl p-3 flex items-center gap-3">
           <div className="min-w-0 flex-1">
             <p className="text-[10px] text-clinical-zinc leading-none">
@@ -537,7 +548,7 @@ export default function Cart() {
             onClick={() => navigate("/checkout")}
             disabled={checkoutBlocked}
             className="h-12 px-5 bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold gap-2 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-clinical-slate/40 disabled:text-clinical-zinc"
-            title={checkoutBlocked ? blockReason ?? undefined : undefined}
+            aria-label={checkoutBlocked && blockReason ? `Cannot checkout: ${blockReason}` : "Proceed to checkout"}
           >
             {checkoutBlocked ? "Blocked" : "Checkout"}
             <ArrowRight className="w-4 h-4" />

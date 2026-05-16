@@ -61,6 +61,33 @@ export default function Privacy() {
             page.
           </p>
           <h2 className="text-base font-semibold text-white pt-2">
+            Health &amp; wearable data
+          </h2>
+          <p>
+            If you choose to connect Apple Health, Health Connect, or another
+            wearable, we receive only the metrics you explicitly authorise —
+            currently <strong className="text-white">daily steps</strong> and{" "}
+            <strong className="text-white">active calories burned</strong>. We
+            never read heart rate, sleep, weight, blood glucose, ECG, location
+            history, or any other category from these sources.
+          </p>
+          <p>
+            Wearable readings are treated as <strong className="text-white">sensitive personal data</strong>{" "}
+            under the DPDP Act 2023. They are stored encrypted, accessible only
+            to you and the registered dietitian you explicitly book a consult
+            with, and are never used for advertising or shared with third
+            parties. You can disconnect the integration at any time from{" "}
+            <Link to="/wellness" className="text-clinical-gold hover:underline underline-offset-2">Wellness</Link>{" "}
+            — disconnecting stops new data inflows; the Erasure Right below
+            covers existing readings.
+          </p>
+          <p>
+            We do not write data back to your wearable platform and hold the
+            HealthKit / Health Connect entitlements required by Apple and
+            Google. We follow each platform&apos;s data-handling guidelines.
+          </p>
+
+          <h2 className="text-base font-semibold text-white pt-2">
             Your rights
           </h2>
           <p>

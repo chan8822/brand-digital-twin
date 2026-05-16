@@ -321,7 +321,7 @@ export default function CorporateAdmin() {
                 </div>
                 <div className="space-y-1">
                   <Label className="text-[10px] text-clinical-zinc">
-                    Per-employee budget (Rs.)
+                    Per-employee budget (₹)
                   </Label>
                   <Input
                     type="number"
@@ -373,7 +373,7 @@ export default function CorporateAdmin() {
                   <div>
                     <p className="text-xs font-medium text-white">{o.title}</p>
                     <p className="text-[10px] text-clinical-zinc">
-                      {new Date(o.scheduledFor).toLocaleString([], {
+                      {new Date(o.scheduledFor).toLocaleString("en-IN", {
                         weekday: "short",
                         hour: "numeric",
                         minute: "2-digit",

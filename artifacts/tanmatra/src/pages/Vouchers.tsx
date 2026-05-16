@@ -42,7 +42,7 @@ export default function VouchersPage() {
 
   const handlePurchase = async () => {
     if (amountPaise < 10_000) {
-      toast.error("Minimum Rs. 100");
+      toast.error("Minimum ₹ 100");
       return;
     }
     setBusy(true);

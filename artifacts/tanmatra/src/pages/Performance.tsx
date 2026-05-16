@@ -84,22 +84,27 @@ export default function Performance() {
                 replenishment, and rapid recovery. Optimized macro ratios validated by exercise
                 physiology research at performance institutes.
               </p>
-              <div className="flex gap-3">
-                <div className="text-center">
-                  <p className="tabular-nums text-2xl font-bold text-clinical-blue">{qualifying.length}</p>
-                  <p className="text-clinical-label mt-0.5">Qualifying Dishes</p>
+              {/* Only render the stat strip when all counts are positive.
+                  A "0 Qualifying Dishes" stat next to a "Start Plan" CTA
+                  reads as broken — better to omit until data exists. */}
+              {qualifying.length > 0 && plans.length > 0 && rds.length > 0 && (
+                <div className="flex gap-3">
+                  <div className="text-center">
+                    <p className="tabular-nums text-2xl font-bold text-clinical-blue">{qualifying.length}</p>
+                    <p className="text-clinical-label mt-0.5">Qualifying Dishes</p>
+                  </div>
+                  <div className="w-px bg-clinical-slate/30" />
+                  <div className="text-center">
+                    <p className="tabular-nums text-2xl font-bold text-clinical-blue">{plans.length}</p>
+                    <p className="text-clinical-label mt-0.5">RD Plans</p>
+                  </div>
+                  <div className="w-px bg-clinical-slate/30" />
+                  <div className="text-center">
+                    <p className="tabular-nums text-2xl font-bold text-clinical-blue">{rds.length}</p>
+                    <p className="text-clinical-label mt-0.5">Performance RDs</p>
+                  </div>
                 </div>
-                <div className="w-px bg-clinical-slate/30" />
-                <div className="text-center">
-                  <p className="tabular-nums text-2xl font-bold text-clinical-blue">{plans.length}</p>
-                  <p className="text-clinical-label mt-0.5">RD Plans</p>
-                </div>
-                <div className="w-px bg-clinical-slate/30" />
-                <div className="text-center">
-                  <p className="tabular-nums text-2xl font-bold text-clinical-blue">{rds.length}</p>
-                  <p className="text-clinical-label mt-0.5">Performance RDs</p>
-                </div>
-              </div>
+              )}
               <div className="flex flex-wrap gap-3 pt-2">
                 <Link to="/menu?protocol=performance">
                   <Button className="bg-clinical-blue text-[#050505] hover:bg-clinical-blue/90 gap-2 h-11 px-6">
@@ -119,8 +124,8 @@ export default function Performance() {
             <div className="relative">
               <img src="/dishes/buddha-bowl.jpg" alt="Performance nutrition" className="rounded-2xl border border-clinical-blue/20 aspect-[4/3] object-cover" />
               <div className="absolute -bottom-4 -left-4 bg-clinical-surface border border-clinical-blue/20 rounded-xl p-4 shadow-clinical max-w-[240px]">
-                <p className="text-[10px] text-clinical-blue font-medium uppercase tracking-wider mb-1">Protocol Outcome</p>
-                <p className="text-xs text-clinical-zinc">Demonstrated 23% improvement in time-to-exhaustion after 6-week adherence.</p>
+                <p className="text-[10px] text-clinical-blue font-medium uppercase tracking-wider mb-1">Protocol Focus</p>
+                <p className="text-xs text-clinical-zinc">Macro-tuned for muscle protein synthesis and recovery between training sessions. Individual results vary; not a medical claim.</p>
               </div>
             </div>
           </div>

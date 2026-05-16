@@ -694,11 +694,11 @@ export default function Checkout() {
 
     const selectedSlot = slots.find((s) => s.id === selectedSlotId);
     const slotLabel = selectedSlot
-      ? `${new Date(selectedSlot.startsAt).toLocaleString([], {
+      ? `${new Date(selectedSlot.startsAt).toLocaleString("en-IN", {
           weekday: "short",
           hour: "numeric",
           minute: "2-digit",
-        })} – ${new Date(selectedSlot.endsAt).toLocaleTimeString([], {
+        })} – ${new Date(selectedSlot.endsAt).toLocaleTimeString("en-IN", {
           hour: "numeric",
           minute: "2-digit",
         })}`
@@ -948,7 +948,7 @@ export default function Checkout() {
                   <span className="text-xs font-medium text-white">Partner pickup</span>
                 </div>
                 <p className="text-[10px] text-clinical-sage mt-1">
-                  Save up to Rs.{Math.max(0, ...pickupLocations.map((p) => p.discountPaise)) / 100 || 30}
+                  Save up to ₹{Math.max(0, ...pickupLocations.map((p) => p.discountPaise)) / 100 || 30}
                 </p>
               </button>
             </div>
@@ -974,10 +974,10 @@ export default function Checkout() {
                       const day = start.toLocaleDateString([], {
                         weekday: "short",
                       });
-                      const window = `${start.toLocaleTimeString([], {
+                      const window = `${start.toLocaleTimeString("en-IN", {
                         hour: "numeric",
                         minute: "2-digit",
-                      })} – ${end.toLocaleTimeString([], {
+                      })} – ${end.toLocaleTimeString("en-IN", {
                         hour: "numeric",
                         minute: "2-digit",
                       })}`;
@@ -1053,7 +1053,7 @@ export default function Checkout() {
                             variant="outline"
                             className="ml-auto text-[9px] h-4 px-1 border-clinical-sage/40 text-clinical-sage"
                           >
-                            -Rs.{(loc.discountPaise / 100).toFixed(0)}
+                            -₹{(loc.discountPaise / 100).toFixed(0)}
                           </Badge>
                         </div>
                         <p className="text-[10px] text-clinical-zinc mt-1">
@@ -1080,7 +1080,7 @@ export default function Checkout() {
                       Reusable eco packaging
                     </p>
                     <p className="text-[10px] text-clinical-zinc">
-                      Return clean containers on your next order to earn Rs.20 credit
+                      Return clean containers on your next order to earn ₹20 credit
                     </p>
                   </div>
                 </div>
@@ -1120,7 +1120,7 @@ export default function Checkout() {
                       setIsCustomTip(false);
                     }}
                   >
-                    {tip === 0 ? "No Tip" : `+Rs.${(tip / 100).toFixed(0)}`}
+                    {tip === 0 ? "No Tip" : `+₹${(tip / 100).toFixed(0)}`}
                   </Button>
                 );
               })}
@@ -1162,7 +1162,7 @@ export default function Checkout() {
             {effectiveTip > 0 && (
               <p className="text-[10px] text-clinical-sage flex items-center gap-1">
                 <ShieldCheck className="w-3 h-3" />
-                Your rider will receive Rs.{(effectiveTip / 100).toFixed(0)} extra
+                Your rider will receive ₹{(effectiveTip / 100).toFixed(0)} extra
               </p>
             )}
           </CardContent>
@@ -1181,7 +1181,7 @@ export default function Checkout() {
                 </p>
                 <p className="text-[10px] text-clinical-zinc">
                   {preorderTomorrow
-                    ? `Scheduled for ${tomorrowSlot.toLocaleString([], {
+                    ? `Scheduled for ${tomorrowSlot.toLocaleString("en-IN", {
                         weekday: "short",
                         hour: "numeric",
                         minute: "2-digit",

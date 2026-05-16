@@ -131,7 +131,7 @@ export default function OfficeLunchPage() {
         <div className="flex flex-wrap items-center gap-3 text-xs text-clinical-zinc mt-1">
           <span className="flex items-center gap-1">
             <CalendarClock className="w-3.5 h-3.5" />
-            {new Date(o.scheduledFor).toLocaleString([], {
+            {new Date(o.scheduledFor).toLocaleString("en-IN", {
               weekday: "long",
               hour: "numeric",
               minute: "2-digit",

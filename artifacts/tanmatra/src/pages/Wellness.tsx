@@ -7,6 +7,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { API_BASE } from "@/lib/apiBase";
 import {
   Dialog,
@@ -325,10 +335,17 @@ function WearableCard({
   refresh: () => void;
 }) {
   const [busy, setBusy] = useState(false);
+  // Consent confirmation: DPDP §6/§7 + HealthKit/Health Connect platform
+  // policies require explicit, scoped, opt-in consent before reading
+  // health/biometric data. The pendingProvider gates the actual API call
+  // behind a clear disclosure of what's being read and how it's stored.
+  const [pendingProvider, setPendingProvider] = useState<
+    "apple_health" | "google_fit" | null
+  >(null);
   const apple = data.wearables.find((w) => w.provider === "apple_health");
   const gfit = data.wearables.find((w) => w.provider === "google_fit");
 
-  async function connect(provider: "apple_health" | "google_fit") {
+  async function performConnect(provider: "apple_health" | "google_fit") {
     setBusy(true);
     try {
       await wellnessApi.connectWearable(provider);
@@ -340,6 +357,7 @@ function WearableCard({
       toast.error(`Connect failed: ${(e as Error).message}`);
     } finally {
       setBusy(false);
+      setPendingProvider(null);
     }
   }
 
@@ -396,7 +414,7 @@ function WearableCard({
             <Button
               size="sm"
               disabled={busy}
-              onClick={() => connect(provider)}
+              onClick={() => setPendingProvider(provider)}
               className="bg-clinical-sage text-clinical-dark hover:bg-clinical-sage/90"
             >
               Connect
@@ -406,6 +424,84 @@ function WearableCard({
       </div>
     );
   }
+
+  // Consent dialog rendered at WearableCard level so both rows share it.
+  const consentLabel =
+    pendingProvider === "apple_health" ? "Apple Health" : "Google Fit / Health Connect";
+
+  const consentDialog = (
+    <AlertDialog
+      open={pendingProvider !== null}
+      onOpenChange={(open) => !open && setPendingProvider(null)}
+    >
+      <AlertDialogContent className="bg-clinical-surface border-clinical-slate/30">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="text-white">
+            Connect {consentLabel}
+          </AlertDialogTitle>
+          <AlertDialogDescription className="text-clinical-zinc text-xs">
+            Before we connect, here&apos;s exactly what we&apos;ll read and how
+            it&apos;s used.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <ul className="text-xs text-clinical-zinc space-y-2 leading-relaxed">
+          <li className="flex items-start gap-2">
+            <span className="text-clinical-sage font-bold mt-0.5">·</span>
+            <span>
+              <strong className="text-white">Read only</strong>: daily step
+              count and active calories burned. Nothing else — not heart rate,
+              not sleep, not weight, not glucose, not location.
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-clinical-sage font-bold mt-0.5">·</span>
+            <span>
+              <strong className="text-white">Stored encrypted</strong> on
+              Tanmatra servers, accessible only to you and the registered
+              dietitian you book a consult with.
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-clinical-sage font-bold mt-0.5">·</span>
+            <span>
+              <strong className="text-white">Never shared</strong> with
+              advertisers or third parties. Treated as sensitive personal
+              data under the DPDP Act 2023.
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-clinical-sage font-bold mt-0.5">·</span>
+            <span>
+              <strong className="text-white">Disconnect any time</strong> from
+              this page. Erasure of historical readings is covered by the
+              Privacy Policy.
+            </span>
+          </li>
+        </ul>
+        <p className="text-[10px] text-clinical-zinc/70 leading-snug">
+          Full details:{" "}
+          <Link to="/privacy" className="text-clinical-gold hover:underline">
+            Privacy Policy → Health &amp; wearable data
+          </Link>
+          .
+        </p>
+        <AlertDialogFooter>
+          <AlertDialogCancel className="min-h-11">
+            Don&apos;t connect
+          </AlertDialogCancel>
+          <AlertDialogAction
+            className="min-h-11 bg-clinical-sage text-clinical-dark hover:bg-clinical-sage/90"
+            disabled={busy}
+            onClick={() => {
+              if (pendingProvider) void performConnect(pendingProvider);
+            }}
+          >
+            I agree, connect
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 
   return (
     <Card className="bg-clinical-slate/5 border border-clinical-slate/20">
@@ -425,7 +521,15 @@ function WearableCard({
         </div>
         {row("Apple Health", "apple_health", apple)}
         {row("Google Fit", "google_fit", gfit)}
+        <p className="text-[10px] text-clinical-zinc/70 mt-3 leading-snug">
+          We only read steps + active calories. See{" "}
+          <Link to="/privacy" className="text-clinical-gold hover:underline">
+            how wearable data is handled
+          </Link>
+          .
+        </p>
       </CardContent>
+      {consentDialog}
     </Card>
   );
 }

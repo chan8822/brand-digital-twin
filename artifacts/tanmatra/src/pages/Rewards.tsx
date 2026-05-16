@@ -54,7 +54,7 @@ const NOTIF_ICON: Record<NotificationKind, typeof Bell> = {
 
 function formatPaise(p: number): string {
   const sign = p < 0 ? "-" : "";
-  return `${sign}Rs.${Math.abs(p / 100).toFixed(0)}`;
+  return `${sign}₹${Math.abs(p / 100).toFixed(0)}`;
 }
 
 function formatRelative(iso: string): string {

@@ -153,14 +153,14 @@ export default function Dish() {
         if (opt && !opt.default) {
           const sign = opt.priceModifier > 0 ? "+" : opt.priceModifier < 0 ? "−" : "";
           const amt =
-            opt.priceModifier !== 0 ? ` (${sign}Rs.${Math.abs(opt.priceModifier) / 100})` : "";
+            opt.priceModifier !== 0 ? ` (${sign}₹${Math.abs(opt.priceModifier) / 100})` : "";
           labels.push(`${opt.name}${amt}`);
         }
       } else if (group.type === "multiple" && Array.isArray(sel)) {
         sel.forEach((name) => {
           const opt = group.options.find((o) => o.name === name);
           if (opt) {
-            labels.push(`${opt.name} (+Rs.${opt.priceModifier / 100})`);
+            labels.push(`${opt.name} (+₹${opt.priceModifier / 100})`);
           }
         });
       }

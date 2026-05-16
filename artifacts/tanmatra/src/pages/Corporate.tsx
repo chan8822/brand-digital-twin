@@ -149,7 +149,7 @@ export default function Corporate() {
             </div>
             <div className="space-y-1">
               <Label className="text-[10px] text-clinical-zinc">
-                Monthly budget per employee (Rs.)
+                Monthly budget per employee (₹)
               </Label>
               <Input
                 type="number"

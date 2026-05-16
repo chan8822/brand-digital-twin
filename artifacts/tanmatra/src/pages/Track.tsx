@@ -51,7 +51,7 @@ const EVENT_LABELS: Record<string, string> = {
 };
 
 function formatAbsoluteTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return new Date(iso).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
 }
 
 function PackagingReturnCard({
@@ -92,7 +92,7 @@ function PackagingReturnCard({
       toast.success(
         r.alreadyCredited
           ? "Container return already credited"
-          : `Rs.${(credit / 100).toFixed(0)} credit added — thanks for returning!`,
+          : `₹${(credit / 100).toFixed(0)} credit added — thanks for returning!`,
       );
     } catch {
       toast.error("Could not confirm return — please try again");
@@ -112,7 +112,7 @@ function PackagingReturnCard({
       <CardContent className="space-y-2 text-xs">
         {status === "credited" ? (
           <p className="text-clinical-sage">
-            Rs.{(credit / 100).toFixed(0)} credit applied to your account. Thanks for closing the loop.
+            ₹{(credit / 100).toFixed(0)} credit applied to your account. Thanks for closing the loop.
           </p>
         ) : status === "returned" ? (
           <p className="text-clinical-sage">
@@ -121,7 +121,7 @@ function PackagingReturnCard({
         ) : (
           <>
             <p className="text-clinical-zinc">
-              Hand the clean container back to the rider on your next order, or drop it at a partner pickup point. We'll add Rs.{(credit / 100).toFixed(0)} to your wallet.
+              Hand the clean container back to the rider on your next order, or drop it at a partner pickup point. We'll add ₹{(credit / 100).toFixed(0)} to your wallet.
             </p>
             <Button
               size="sm"
@@ -538,7 +538,7 @@ export default function Track() {
                     <p className="text-sm font-medium">{EVENT_LABELS[event.event] ?? event.event}</p>
                     <p className="text-xs text-muted-foreground">
                       {event.createdAt
-                        ? new Date(event.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                        ? new Date(event.createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
                         : "Just now"}
                     </p>
                   </div>

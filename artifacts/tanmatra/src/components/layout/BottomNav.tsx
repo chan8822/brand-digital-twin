@@ -259,14 +259,18 @@ function MoreSheet({
           ))}
 
           <div className="pt-4 mt-2 border-t border-clinical-slate/20 space-y-2 text-[11px] text-clinical-zinc">
-            <div className="flex items-center gap-2">
+            <a href="mailto:care@tanmatra.food" className="flex items-center gap-2 min-h-9 hover:text-white">
               <EnvelopeSimple className="w-3 h-3 text-clinical-gold" />
-              care@tanmatra.health
-            </div>
-            <div className="flex items-center gap-2">
+              care@tanmatra.food
+            </a>
+            <a href="tel:+918047019200" className="flex items-center gap-2 min-h-9 hover:text-white">
               <Phone className="w-3 h-3 text-clinical-gold" />
               +91 80 4701 9200
-            </div>
+            </a>
+            <a href="https://wa.me/918047019200" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 min-h-9 hover:text-white">
+              <Phone className="w-3 h-3 text-clinical-sage" />
+              WhatsApp us
+            </a>
             <div className="flex items-center gap-2 pt-1">
               <ShieldCheck className="w-3 h-3 text-clinical-sage" />
               ISO 22000 · FSSAI Lic. 22725926001018

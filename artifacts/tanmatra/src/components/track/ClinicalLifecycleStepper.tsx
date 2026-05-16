@@ -17,7 +17,7 @@ const STAGE_ICONS: Record<ClinicalStage, React.ComponentType<{ className?: strin
 
 function fmtTime(iso?: string): string {
   if (!iso) return "";
-  return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return new Date(iso).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
 }
 
 function stageTimestamp(order: PastOrder, stage: ClinicalStage): string | undefined {

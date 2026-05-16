@@ -35,7 +35,7 @@ import { TEAM } from "@/lib/teamData";
 const PILLARS = [
   { icon: Syringe, title: "Condition-Specific", desc: "Formulated for diabetes, cardiovascular, renal, and post-surgical recovery protocols with precise nutrient restrictions." },
   { icon: HeartPulse, title: "EHR Integration", desc: "Nutrition plans sync with patient electronic health records for real-time dietary adherence monitoring." },
-  { icon: Dna, title: "Evidence-Based", desc: "Every formulation is grounded in peer-reviewed clinical trials and ADA/ESC guidelines." },
+  { icon: Dna, title: "Evidence-Informed", desc: "Macros and ingredient choices reference public guidelines (ADA Standards of Care, ESC, ICMR-NIN). Each plan is reviewed by a registered dietitian before delivery." },
 ];
 
 function lowestSugar(dishes: DishData[], limit: number): DishData[] {
@@ -103,22 +103,25 @@ export default function Clinical() {
                 and post-surgical recovery. Each plan integrates with patient electronic health records
                 and is overseen by board-certified clinical dietitians.
               </p>
-              <div className="flex gap-3">
-                <div className="text-center">
-                  <p className="tabular-nums text-2xl font-bold text-clinical-gold">{qualifying.length}</p>
-                  <p className="text-clinical-label mt-0.5">Clinical Dishes</p>
+              {/* Hide stats when any count is 0 — see Performance.tsx note. */}
+              {qualifying.length > 0 && plans.length > 0 && rds.length > 0 && (
+                <div className="flex gap-3">
+                  <div className="text-center">
+                    <p className="tabular-nums text-2xl font-bold text-clinical-gold">{qualifying.length}</p>
+                    <p className="text-clinical-label mt-0.5">Clinical Dishes</p>
+                  </div>
+                  <div className="w-px bg-clinical-slate/30" />
+                  <div className="text-center">
+                    <p className="tabular-nums text-2xl font-bold text-clinical-gold">{plans.length}</p>
+                    <p className="text-clinical-label mt-0.5">Therapeutic Plans</p>
+                  </div>
+                  <div className="w-px bg-clinical-slate/30" />
+                  <div className="text-center">
+                    <p className="tabular-nums text-2xl font-bold text-clinical-gold">{rds.length}</p>
+                    <p className="text-clinical-label mt-0.5">Clinical RDs</p>
+                  </div>
                 </div>
-                <div className="w-px bg-clinical-slate/30" />
-                <div className="text-center">
-                  <p className="tabular-nums text-2xl font-bold text-clinical-gold">{plans.length}</p>
-                  <p className="text-clinical-label mt-0.5">Therapeutic Plans</p>
-                </div>
-                <div className="w-px bg-clinical-slate/30" />
-                <div className="text-center">
-                  <p className="tabular-nums text-2xl font-bold text-clinical-gold">{rds.length}</p>
-                  <p className="text-clinical-label mt-0.5">Clinical RDs</p>
-                </div>
-              </div>
+              )}
               <div className="flex flex-wrap gap-3 pt-2">
                 <Link to="/menu?protocol=clinical">
                   <Button className="bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 gap-2 h-11 px-6">
@@ -138,8 +141,8 @@ export default function Clinical() {
             <div className="relative">
               <img src="/dishes/steak-keto.jpg" alt="Clinical nutrition" className="rounded-2xl border border-clinical-gold/20 aspect-[4/3] object-cover" />
               <div className="absolute -bottom-4 -left-4 bg-clinical-surface border border-clinical-gold/20 rounded-xl p-4 shadow-clinical max-w-[240px]">
-                <p className="text-[10px] text-clinical-gold font-medium uppercase tracking-wider mb-1">Clinical Outcome</p>
-                <p className="text-xs text-clinical-zinc">HbA1c reduction of 1.2% observed in diabetic patients after 12-week MNT adherence.</p>
+                <p className="text-[10px] text-clinical-gold font-medium uppercase tracking-wider mb-1">Designed With</p>
+                <p className="text-xs text-clinical-zinc">Carbohydrate, sodium and fat ranges informed by ADA, ESC and ICMR dietary guidelines. Not a substitute for medical care.</p>
               </div>
             </div>
           </div>
@@ -346,7 +349,7 @@ export default function Clinical() {
           </h2>
           <p className="text-sm text-clinical-zinc">
             {samplePlan
-              ? `Begin ${samplePlan.name} — ${samplePlan.calorieTargetPerDay} kcal/day, RD-signed and aligned with ADA/ESC guidance. Pair with an RD consult to share your physician's nutrition prescription.`
+              ? `Begin ${samplePlan.name} — ${samplePlan.calorieTargetPerDay} kcal/day, RD-signed using ADA, ESC and ICMR dietary guidelines. Pair with an RD consult to share your physician's nutrition prescription.`
               : "Therapeutic meal plans are reviewed by a registered dietitian before delivery. Pair with an RD consult to share your physician's nutrition prescription."}
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
