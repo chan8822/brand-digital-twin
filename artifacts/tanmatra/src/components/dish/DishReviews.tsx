@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { Star, MessageSquare, Sparkles, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Star, MessageSquare, Sparkles, TrendingUp, TrendingDown, Minus, ShieldCheck } from "lucide-react";
 
 import { API_BASE as API_BASE } from "@/lib/apiBase";
 
@@ -24,6 +24,12 @@ interface PublicReview {
   photoUrl?: string | null;
   createdAt: string;
   reviewer: PublicReviewer;
+  // Optional — populated by the API only when the reviewer's
+  // user-id has a delivered order containing this dish. Drives the
+  // "Verified Purchase" badge per ASCI 2022 endorsement guidelines.
+  // If the backend doesn't return this field yet, the badge is
+  // simply hidden (no breakage).
+  verifiedPurchase?: boolean;
 }
 
 function reviewerInitials(label: string): string {
@@ -297,9 +303,20 @@ export default function DishReviews({ slug }: DishReviewsProps) {
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium text-white truncate">
-                    {r.reviewer.label}
-                  </p>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <p className="text-xs font-medium text-white truncate">
+                      {r.reviewer.label}
+                    </p>
+                    {r.verifiedPurchase && (
+                      <span
+                        className="shrink-0 inline-flex items-center gap-0.5 text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-clinical-sage/15 text-clinical-sage border border-clinical-sage/30 font-semibold leading-none"
+                        title="This reviewer bought and received this dish"
+                      >
+                        <ShieldCheck className="w-2.5 h-2.5" aria-hidden />
+                        Verified
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2">
                     <StarRow value={r.rating} size={12} />
                     <span className="text-[10px] text-clinical-zinc tabular-nums">

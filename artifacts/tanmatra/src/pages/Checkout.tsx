@@ -164,6 +164,19 @@ export default function Checkout() {
   );
   const [creditBalance, setCreditBalance] = useState(0);
   const [applyCredits, setApplyCredits] = useState(true);
+  // COD is a Cloud Run env flag (`VITE_ENABLE_COD=1` baked into the
+  // Firebase build). Until backend accepts `paymentMethod: "cod"`
+  // on /orders/finalize the toggle stays hidden, so we never offer
+  // a payment option we can't honour. Backend follow-up:
+  //   * add `paymentMethod` column to ordersTable (default "razorpay")
+  //   * accept `paymentMethod` in finalize body, gate by pincode
+  //     serviceability + first-order cap (e.g. ₹1500 first 3 orders)
+  //   * fulfilment hook: skip Razorpay charge, mark order
+  //     `awaiting_cod`, capture cash on delivery
+  const codAvailable = import.meta.env.VITE_ENABLE_COD === "1";
+  const [paymentMethod, setPaymentMethod] = useState<"razorpay" | "cod">(
+    "razorpay",
+  );
   const [preorderTomorrow, setPreorderTomorrow] = useState(false);
   const [subsidy, setSubsidy] = useState<CompanySubsidy | null>(null);
   const [applySubsidy, setApplySubsidy] = useState(true);
@@ -542,6 +555,7 @@ export default function Checkout() {
         pickupLocationId: fulfillmentType === "pickup" ? selectedPickupId : null,
         ecoPackagingOptIn: fulfillmentType === "delivery" && ecoPackagingOptIn,
         deliveryInstructions: deliveryInstructions.trim() || null,
+        paymentMethod,
       });
       // Persist the per-address instructions so the next order on this
       // saved address pre-fills with the same note. We always upsert,
@@ -1338,19 +1352,52 @@ export default function Checkout() {
               <CreditCard className="w-4 h-4 text-clinical-gold" />
               <h2 className="text-sm font-semibold text-white">Payment</h2>
             </div>
-            <div
-              className="p-3 rounded-lg border border-clinical-gold/30 bg-clinical-gold/5 flex items-center gap-3"
+            <button
+              type="button"
+              onClick={() => setPaymentMethod("razorpay")}
+              aria-pressed={paymentMethod === "razorpay"}
+              className={`w-full p-3 rounded-lg border flex items-center gap-3 text-left transition-colors ${
+                paymentMethod === "razorpay"
+                  ? "border-clinical-gold/60 bg-clinical-gold/10"
+                  : "border-clinical-slate/30 bg-clinical-surface-elevated/40 hover:border-clinical-gold/30"
+              }`}
               title="Razorpay handles your payment securely. Tanmatra never sees your card or UPI details."
             >
-              <div className="w-8 h-8 rounded-md bg-clinical-gold/20 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-md bg-clinical-gold/20 flex items-center justify-center shrink-0">
                 <CreditCard className="w-4 h-4 text-clinical-gold" />
               </div>
-              <div>
-                <p className="text-xs font-medium text-white">Razorpay Secure Checkout</p>
-                <p className="text-[10px] text-clinical-zinc">UPI · Cards · Net Banking · Wallets · PCI-DSS Level 1</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-white">Pay now — UPI / Card / Wallet</p>
+                <p className="text-[10px] text-clinical-zinc">Razorpay · UPI · Cards · Net Banking · PCI-DSS Level 1</p>
               </div>
-              <ShieldCheck className="w-4 h-4 text-clinical-sage ml-auto" aria-label="Encrypted payment" />
-            </div>
+              <ShieldCheck className="w-4 h-4 text-clinical-sage shrink-0" aria-label="Encrypted payment" />
+            </button>
+
+            {/* Cash on Delivery — gated behind VITE_ENABLE_COD until
+                backend accepts paymentMethod=cod on /orders/finalize.
+                When enabled, COD is the trust-bridge that closes the
+                first-order conversion gap for unfamiliar premium
+                brands in India. */}
+            {codAvailable && (
+              <button
+                type="button"
+                onClick={() => setPaymentMethod("cod")}
+                aria-pressed={paymentMethod === "cod"}
+                className={`w-full p-3 rounded-lg border flex items-center gap-3 text-left transition-colors ${
+                  paymentMethod === "cod"
+                    ? "border-clinical-sage/60 bg-clinical-sage/10"
+                    : "border-clinical-slate/30 bg-clinical-surface-elevated/40 hover:border-clinical-sage/30"
+                }`}
+              >
+                <div className="w-8 h-8 rounded-md bg-clinical-sage/20 flex items-center justify-center shrink-0">
+                  <IndianRupee className="w-4 h-4 text-clinical-sage" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-white">Cash on Delivery</p>
+                  <p className="text-[10px] text-clinical-zinc">Pay the rider in cash · exact change appreciated</p>
+                </div>
+              </button>
+            )}
 
             {/* Recurring upsell — closes the missing one-off → subscription
                 bridge. Per UX audit Journey-B finding 4. We don't toggle
@@ -1815,6 +1862,11 @@ export default function Checkout() {
             >
               {isProcessing ? "Processing…" : checkoutBlocked ? (
                 "Blocked by patient safety"
+              ) : paymentMethod === "cod" ? (
+                <>
+                  <IndianRupee className="w-4 h-4" />
+                  Place order · pay {formatPrice(razorpayTotal)} on delivery
+                </>
               ) : (
                 <>
                   <CreditCard className="w-4 h-4" />

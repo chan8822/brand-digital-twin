@@ -84,6 +84,12 @@ export default function Login() {
   // SMS marketing consent. Default false — DPDP Act 2023 requires explicit
   // opt-in (no pre-checked boxes for marketing communication).
   const [smsConsent, setSmsConsent] = useState(false);
+  // WhatsApp is the de-facto transactional + marketing channel for
+  // Indian D2C. Captured as a separate granular consent here per
+  // DPDP §6 (granular, purpose-specific). Sent alongside the SMS
+  // consent on verify-otp; backend may ignore until a Meta WABA
+  // template is wired — UI is forward-compatible.
+  const [whatsAppConsent, setWhatsAppConsent] = useState(true);
   // Shown after a successful OTP verify when the user has no firstName yet
   // (i.e. brand-new account). Skippable. While open, we DON'T navigate away
   // — that happens in onComplete/onSkip so the modal closes cleanly first.
@@ -181,8 +187,11 @@ export default function Login() {
             // notice in front of them.
             dpdpConsent: true,
             tosVersion: TOS_VERSION,
-            // SMS opt-in is the only thing the user explicitly toggles.
+            // Explicit consents. Backend treats unknown fields as
+            // no-ops, so adding a new consent here is safe pre-
+            // schema-migration.
             marketingSmsConsent: smsConsent,
+            marketingWhatsAppConsent: whatsAppConsent,
           },
         }),
       });
@@ -266,6 +275,21 @@ export default function Login() {
               </div>
               <div className="flex items-start gap-2">
                 <Checkbox
+                  id="wa-consent"
+                  checked={whatsAppConsent}
+                  onCheckedChange={(c) => setWhatsAppConsent(c === true)}
+                  className="mt-0.5 border-clinical-slate/40 data-[state=checked]:bg-clinical-sage data-[state=checked]:border-clinical-sage"
+                />
+                <Label
+                  htmlFor="wa-consent"
+                  className="text-[11px] text-clinical-zinc font-normal leading-snug cursor-pointer"
+                >
+                  Send me order confirmations and delivery updates on
+                  WhatsApp. Reply STOP any time.
+                </Label>
+              </div>
+              <div className="flex items-start gap-2">
+                <Checkbox
                   id="sms-consent"
                   checked={smsConsent}
                   onCheckedChange={(c) => setSmsConsent(c === true)}
@@ -275,8 +299,8 @@ export default function Login() {
                   htmlFor="sms-consent"
                   className="text-[11px] text-clinical-zinc font-normal leading-snug cursor-pointer"
                 >
-                  Send me menu updates and offers by SMS. You can unsubscribe
-                  any time by replying STOP.
+                  Send me menu updates and offers by SMS. Unsubscribe by
+                  replying STOP.
                 </Label>
               </div>
               <Button

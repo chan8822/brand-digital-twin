@@ -137,6 +137,10 @@ export const loyaltyApi = {
     fulfillmentType?: "delivery" | "pickup";
     ecoPackagingOptIn?: boolean;
     deliveryInstructions?: string | null;
+    // Optional payment method — backend accepts "razorpay" (default,
+    // existing behaviour) or "cod" (gated by backend feature flag +
+    // pincode eligibility). Backwards-compatible: omitted = razorpay.
+    paymentMethod?: "razorpay" | "cod";
   }) =>
     request<{
       orderId: string;
