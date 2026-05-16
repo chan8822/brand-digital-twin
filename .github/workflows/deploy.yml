@@ -24,19 +24,22 @@ jobs:
         id: filter
         with:
           filters: |
+            # Mirror the Cloud Build trigger's path filter. Workflow
+            # files are intentionally NOT here — changing this YAML
+            # doesn't cause the trigger to deploy a new revision, so
+            # the cloud-run verifier would time out waiting for a
+            # rollout that never comes.
             api:
               - 'artifacts/api-server/**'
               - 'lib/**'
               - 'Dockerfile'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
-              - '.github/workflows/deploy.yml'
             web:
               - 'artifacts/tanmatra/**'
               - 'lib/**'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
-              - '.github/workflows/deploy.yml'
 
   # Build the api-server Docker image with Cloud Build, then roll the
   # `wellness-foods` Cloud Run service. Runs only when backend-relevant
