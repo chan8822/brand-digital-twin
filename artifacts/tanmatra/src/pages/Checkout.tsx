@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { API_BASE } from "@/lib/apiBase";
+import { checkPincode } from "@/lib/serviceablePincodes";
 import {
   Dialog,
   DialogContent,
@@ -289,7 +290,16 @@ export default function Checkout() {
     };
   }, []);
 
-  const [newAddr, setNewAddr] = useState({ label: "", line1: "", line2: "", city: "", pincode: "", phone: "" });
+  const [newAddr, setNewAddr] = useState({
+    label: "Home",
+    line1: "",
+    line2: "",
+    landmark: "",
+    city: "",
+    pincode: "",
+    phone: "",
+  });
+  const [pincodeCheck, setPincodeCheck] = useState<ReturnType<typeof checkPincode>>({ state: "empty" });
 
   const effectiveTip = isCustomTip
     ? Math.round((parseFloat(customTip) || 0) * 100)
@@ -364,37 +374,59 @@ export default function Checkout() {
 
   const handleSaveNewAddress = async () => {
     setAddressFormError(null);
+    // Pincode is checked first so the user can't waste effort filling
+    // a 6-field form for a non-serviceable area.
+    if (pincodeCheck.state !== "serviceable") {
+      setAddressFormError(
+        pincodeCheck.state === "unserviceable"
+          ? `We don't deliver to ${pincodeCheck.pincode} yet. We'll let you know when we expand.`
+          : "Enter a valid 6-digit pincode to continue.",
+      );
+      return;
+    }
     if (
-      !newAddr.label.trim() ||
       !newAddr.line1.trim() ||
-      !newAddr.city.trim() ||
-      !newAddr.pincode.trim() ||
-      !newAddr.phone.trim()
+      !newAddr.phone.trim() ||
+      newAddr.phone.trim().replace(/\D/g, "").length < 10
     ) {
-      setAddressFormError("Please fill label, line 1, city, pincode and phone");
+      setAddressFormError("Please add the building/street and a 10-digit phone number.");
       return;
     }
     setSavingAddress(true);
     try {
+      // Compose line2 with the landmark so it's printed on the rider's
+      // delivery sheet — the server schema doesn't have a dedicated
+      // landmark column yet, so we prefix it here. Backend follow-up:
+      // add address.landmark column and remove this concatenation.
+      const composedLine2 = [
+        newAddr.line2.trim() || undefined,
+        newAddr.landmark.trim()
+          ? `Landmark: ${newAddr.landmark.trim()}`
+          : undefined,
+      ]
+        .filter(Boolean)
+        .join(" · ");
       const r = await addressesApi.create({
-        label: newAddr.label.trim(),
+        label: newAddr.label.trim() || "Home",
         line1: newAddr.line1.trim(),
-        line2: newAddr.line2.trim() || undefined,
-        city: newAddr.city.trim(),
-        pincode: newAddr.pincode.trim(),
+        line2: composedLine2 || undefined,
+        city: pincodeCheck.info.city,
+        pincode: pincodeCheck.pincode,
         phone: newAddr.phone.trim(),
       });
       setSavedAddresses((prev) => [r.address, ...prev]);
       setSelectedAddress(r.address.id);
       setShowNewAddress(false);
       setNewAddr({
-        label: "",
+        label: "Home",
         line1: "",
         line2: "",
+        landmark: "",
         city: "",
         pincode: "",
         phone: "",
       });
+      setPincodeCheck({ state: "empty" });
       toast.success("Address saved");
     } catch (e) {
       const msg = String((e as Error).message);
@@ -877,16 +909,113 @@ export default function Checkout() {
             {showNewAddress && (
               <div className="space-y-3 p-3 rounded-lg bg-clinical-dark border border-clinical-slate/20">
                 <p className="text-xs font-medium text-white">New Address</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <Input placeholder="Label (e.g., Home)" value={newAddr.label} onChange={(e) => setNewAddr({ ...newAddr, label: e.target.value })} className="h-9 text-xs bg-clinical-surface border-clinical-slate/30" />
-                  <Input placeholder="Phone (rider will call this)" value={newAddr.phone} onChange={(e) => setNewAddr({ ...newAddr, phone: e.target.value })} className="h-9 text-xs bg-clinical-surface border-clinical-slate/30" />
+
+                {/* Pincode-first flow: a single field decides whether
+                    the area is serviceable and auto-fills the city.
+                    The rest of the form only unlocks after a green
+                    serviceable check, so users in unserviceable areas
+                    don't waste effort filling six fields. */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] uppercase tracking-wider text-clinical-zinc">Pincode</label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="postal-code"
+                    pattern="\d{6}"
+                    maxLength={6}
+                    placeholder="6-digit pincode"
+                    value={newAddr.pincode}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, "").slice(0, 6);
+                      setNewAddr({ ...newAddr, pincode: v });
+                      setPincodeCheck(checkPincode(v));
+                    }}
+                    className="h-10 text-sm bg-clinical-surface border-clinical-slate/30"
+                  />
+                  {pincodeCheck.state === "serviceable" && (
+                    <p className="text-[11px] text-clinical-sage flex items-center gap-1">
+                      <ShieldCheck className="w-3 h-3" />
+                      Delivering to {pincodeCheck.info.area}, {pincodeCheck.info.city}
+                    </p>
+                  )}
+                  {pincodeCheck.state === "unserviceable" && (
+                    <p className="text-[11px] text-orange-400" role="alert">
+                      We don&apos;t deliver to {pincodeCheck.pincode} yet — we&apos;ll let you know when we expand. (Currently serving Bengaluru.)
+                    </p>
+                  )}
+                  {pincodeCheck.state === "invalid" && newAddr.pincode.length === 6 && (
+                    <p className="text-[11px] text-orange-400">Enter a valid 6-digit Indian pincode.</p>
+                  )}
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <Input placeholder="City" value={newAddr.city} onChange={(e) => setNewAddr({ ...newAddr, city: e.target.value })} className="h-9 text-xs bg-clinical-surface border-clinical-slate/30" />
-                  <Input placeholder="Pincode" value={newAddr.pincode} onChange={(e) => setNewAddr({ ...newAddr, pincode: e.target.value })} className="h-9 text-xs bg-clinical-surface border-clinical-slate/30" />
-                </div>
-                <Input placeholder="Address line 1 (street, building)" value={newAddr.line1} onChange={(e) => setNewAddr({ ...newAddr, line1: e.target.value })} className="h-9 text-xs bg-clinical-surface border-clinical-slate/30" />
-                <Input placeholder="Address line 2 (apt, floor — optional)" value={newAddr.line2} onChange={(e) => setNewAddr({ ...newAddr, line2: e.target.value })} className="h-9 text-xs bg-clinical-surface border-clinical-slate/30" />
+
+                {/* Rest of form is gated behind a serviceable pincode. */}
+                {pincodeCheck.state === "serviceable" && (
+                  <>
+                    {/* Save-as: Home / Work / Other chips replace the
+                        freeform label text input. */}
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] uppercase tracking-wider text-clinical-zinc">Save as</label>
+                      <div className="flex gap-2">
+                        {(["Home", "Work", "Other"] as const).map((opt) => {
+                          const active = newAddr.label === opt;
+                          return (
+                            <button
+                              key={opt}
+                              type="button"
+                              onClick={() => setNewAddr({ ...newAddr, label: opt })}
+                              className={`min-h-9 px-3 rounded-full border text-xs font-medium transition-colors ${
+                                active
+                                  ? "border-clinical-gold/60 bg-clinical-gold/10 text-clinical-gold"
+                                  : "border-clinical-slate/30 text-clinical-zinc hover:text-white"
+                              }`}
+                            >
+                              {opt}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="tel-national"
+                      pattern="\d{10,12}"
+                      maxLength={12}
+                      placeholder="Phone (10-digit, rider will call this)"
+                      value={newAddr.phone}
+                      onChange={(e) =>
+                        setNewAddr({
+                          ...newAddr,
+                          phone: e.target.value.replace(/\D/g, "").slice(0, 12),
+                        })
+                      }
+                      className="h-10 text-sm bg-clinical-surface border-clinical-slate/30"
+                    />
+
+                    <Input
+                      autoComplete="address-line1"
+                      placeholder="Flat / building / street"
+                      value={newAddr.line1}
+                      onChange={(e) => setNewAddr({ ...newAddr, line1: e.target.value })}
+                      className="h-10 text-sm bg-clinical-surface border-clinical-slate/30"
+                    />
+                    <Input
+                      autoComplete="address-line2"
+                      placeholder="Apartment / floor (optional)"
+                      value={newAddr.line2}
+                      onChange={(e) => setNewAddr({ ...newAddr, line2: e.target.value })}
+                      className="h-10 text-sm bg-clinical-surface border-clinical-slate/30"
+                    />
+                    <Input
+                      placeholder="Landmark (e.g. opposite Reliance Fresh)"
+                      value={newAddr.landmark}
+                      onChange={(e) => setNewAddr({ ...newAddr, landmark: e.target.value })}
+                      className="h-10 text-sm bg-clinical-surface border-clinical-slate/30"
+                    />
+                  </>
+                )}
+
                 {addressFormError && (
                   <p className="text-[11px] alert-allergen-text" role="alert">
                     {addressFormError}
@@ -896,8 +1025,8 @@ export default function Checkout() {
                   type="button"
                   size="sm"
                   onClick={handleSaveNewAddress}
-                  disabled={savingAddress}
-                  className="bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold w-full h-9 text-xs"
+                  disabled={savingAddress || pincodeCheck.state !== "serviceable"}
+                  className="bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold w-full min-h-11 text-xs disabled:opacity-50"
                 >
                   {savingAddress ? "Saving…" : "Save address"}
                 </Button>

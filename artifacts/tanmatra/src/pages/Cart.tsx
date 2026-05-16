@@ -138,15 +138,7 @@ export default function Cart() {
         <div className="space-y-2">
           <h1 className="text-clinical-h2 text-white">Your cart is empty</h1>
           <p className="text-sm text-clinical-zinc">
-            Browse the menu to start an instant order. Looking for a recurring
-            7-day meal plan instead? Try the{" "}
-            <Link
-              to="/meal-planner"
-              className="text-clinical-gold underline underline-offset-2"
-            >
-              Weekly Planner
-            </Link>
-            .
+            Browse today&apos;s RD-curated menu to start an instant order.
           </p>
         </div>
         <Link to="/menu">

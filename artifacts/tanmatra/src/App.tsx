@@ -10,6 +10,7 @@ import { OrdersProvider } from "@/lib/ordersContext";
 import { PreferencesProvider } from "@/lib/preferencesContext";
 import OnboardingQuizGate from "@/components/preferences/OnboardingQuizGate";
 import Header from "@/components/layout/Header";
+import WelcomeOfferBanner from "@/components/marketing/WelcomeOfferBanner";
 import Footer from "@/components/layout/Footer";
 import BottomNav from "@/components/layout/BottomNav";
 import ScrollToTop from "@/components/layout/ScrollToTop";
@@ -206,6 +207,11 @@ export default function App() {
               <ThemeManager />
               <ScrollToTop />
               <div className="min-h-screen flex flex-col bg-clinical-dark">
+                {/* First-order offer banner sits above the header so a
+                    cold visitor sees price+offer before any chrome.
+                    Auto-hides once OrdersContext shows ≥1 past order
+                    or after dismiss (7-day TTL). */}
+                <WelcomeOfferBanner />
                 <Header />
                 <OnboardingQuizGate />
                 <main className="flex-1 pb-20 md:pb-0">
