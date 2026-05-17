@@ -731,7 +731,7 @@ export default function Dish() {
                       });
                       openCart();
                     }}
-                    className="shrink-0 w-7 h-7 rounded-md bg-clinical-gold text-[#050505] flex items-center justify-center hover:bg-clinical-gold/90 transition-colors"
+                    className="shrink-0 w-10 h-10 rounded-md bg-clinical-gold text-[#050505] flex items-center justify-center hover:bg-clinical-gold/90 transition-colors"
                   >
                     <span className="text-sm font-bold leading-none">+</span>
                   </button>

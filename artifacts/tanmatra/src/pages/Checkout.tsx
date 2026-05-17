@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -39,7 +40,6 @@ import {
 } from "@/components/ui/collapsible";
 import AddOnRail from "@/components/checkout/AddOnRail";
 import CheckoutStepper, { type CheckoutStep } from "@/components/checkout/CheckoutStepper";
-import { addonsApi } from "@/lib/marketplaceApi";
 import {
   MapPin,
   CreditCard,
@@ -81,6 +81,10 @@ const TIP_PRESETS = [2000, 5000, 10000, 0];
 export default function Checkout() {
   const navigate = useNavigate();
   const { items, bundleSlugs, subtotal, clear } = useCart();
+  // Guard: redirect to menu if cart is empty (e.g. deep link, back-button after clear).
+  useEffect(() => {
+    if (items.length === 0) navigate("/menu", { replace: true });
+  }, [items.length, navigate]);
   const { addOrder } = useOrders();
   const { preferences } = usePreferences();
   const { enabled: clinicalMode, dietOrderId } = useClinicalMode();
@@ -135,7 +139,7 @@ export default function Checkout() {
   const [savedAddresses, setSavedAddresses] = useState<UserAddress[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<string>("");
   const [savingAddress, setSavingAddress] = useState(false);
-  const [addressFormError, setAddressFormError] = useState<string | null>(null);
+  const [addressErrors, setAddressErrors] = useState<Record<string, string>>({});
   // Distinguishes "logged in but has no saved addresses yet" from
   // "not signed in at all" — the inline new-address form would otherwise
   // tease an unauth user into filling fields that fail on submit.
@@ -333,7 +337,8 @@ export default function Checkout() {
   const deliveryFee =
     fulfillmentType === "pickup" ? 0 : subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
   const discountedSubtotal = Math.max(0, subtotal - preorderDiscount - pickupDiscount);
-  const grossTotal = discountedSubtotal + deliveryFee + effectiveTip + addonTotal;
+  const gst = Math.round((discountedSubtotal * 500) / 10000); // 5% GST
+  const grossTotal = discountedSubtotal + gst + deliveryFee + effectiveTip + addonTotal;
   // Server only redeems against the (discounted) meal subtotal; cap here too
   // so the UI total matches the server final total exactly.
   const creditApplied =
@@ -393,17 +398,20 @@ export default function Checkout() {
   const activeAddr = savedAddresses.find((a) => a.id === selectedAddress);
 
   const handleSaveNewAddress = async () => {
-    setAddressFormError(null);
-    if (
-      !newAddr.label.trim() ||
-      !newAddr.line1.trim() ||
-      !newAddr.city.trim() ||
-      !newAddr.pincode.trim() ||
-      !newAddr.phone.trim()
-    ) {
-      setAddressFormError("Please fill label, line 1, city, pincode and phone");
+    setAddressErrors({});
+    const errs: Record<string, string> = {};
+    if (!newAddr.label.trim()) errs.label = "Label is required";
+    if (!newAddr.line1.trim()) errs.line1 = "Street address is required";
+    if (!newAddr.city.trim()) errs.city = "City is required";
+    if (!/^\d{6}$/.test(newAddr.pincode.trim()))
+      errs.pincode = "Enter a valid 6-digit pincode";
+    if (!/^[+\d][\d\s\-]{8,14}$/.test(newAddr.phone.trim()))
+      errs.phone = "Enter a valid phone number";
+    if (Object.keys(errs).length > 0) {
+      setAddressErrors(errs);
       return;
     }
+    setAddressErrors({});
     setSavingAddress(true);
     try {
       const r = await addressesApi.create({
@@ -433,7 +441,7 @@ export default function Checkout() {
       // of a generic "could not save". Strip the "400: " prefix our request
       // wrapper attaches.
       const cleaned = msg.replace(/^\d{3}:\s*/, "");
-      setAddressFormError(cleaned || "Could not save address");
+      setAddressErrors({ _form: cleaned || "Could not save address" });
     } finally {
       setSavingAddress(false);
     }
@@ -560,17 +568,115 @@ export default function Checkout() {
         }
       }
       // ───────────────────────────────────────────────────────────────
-      // C3 (UX audit P0) — DEFERRED: real Razorpay handoff not yet wired.
-      // Today the order is "completed" the moment finalizeOrder() returns,
-      // i.e. payment is implicitly trusted (the UI shows "Razorpay secure"
-      // but no /payments/razorpay/order or signature verification runs).
-      // To enable: provision RAZORPAY_KEY_ID + RAZORPAY_KEY_SECRET, add
-      // POST /payments/razorpay/order (server creates Razorpay order from
-      // razorpayTotal), open checkout.js modal here, then POST
-      // /payments/razorpay/verify (HMAC-SHA256(orderId|paymentId, secret)
-      // === signature) BEFORE accepting the order. Until then, branding-
-      // only copy is intentionally retained per product decision.
+      // C3 — Razorpay checkout handoff.
+      // Requires: RAZORPAY_KEY_ID env var on the client, and the backend
+      // to expose POST /payments/razorpay/order returning
+      // { razorpayOrderId, amount, currency, keyId }.
+      // Until those are provisioned, falls through to the deferred path.
       // ───────────────────────────────────────────────────────────────
+      const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID as
+        | string
+        | undefined;
+      if (RAZORPAY_KEY_ID) {
+        try {
+          // 1. Ask the server to create a Razorpay order.
+          const rpOrderRes = await fetch(
+            `${API_BASE}/payments/razorpay/order`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({
+                orderId,
+                amount: razorpayTotal,
+                currency: "INR",
+              }),
+            },
+          );
+          if (!rpOrderRes.ok)
+            throw new Error(`razorpay/order ${rpOrderRes.status}`);
+          const { razorpayOrderId } = (await rpOrderRes.json()) as {
+            razorpayOrderId: string;
+          };
+
+          // 2. Open Razorpay checkout modal — script loaded lazily below.
+          await new Promise<void>((resolve, reject) => {
+            // Load Razorpay checkout.js if not already present.
+            if (!document.getElementById("__rzp_script")) {
+              const s = document.createElement("script");
+              s.id = "__rzp_script";
+              s.src = "https://checkout.razorpay.com/v1/checkout.js";
+              s.onload = () => openModal();
+              s.onerror = () =>
+                reject(new Error("Razorpay script failed to load"));
+              document.head.appendChild(s);
+            } else {
+              openModal();
+            }
+
+            function openModal() {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const Razorpay = (window as any).Razorpay;
+              if (!Razorpay) {
+                reject(new Error("Razorpay not available"));
+                return;
+              }
+              const rzp = new Razorpay({
+                key: RAZORPAY_KEY_ID,
+                amount: razorpayTotal,
+                currency: "INR",
+                order_id: razorpayOrderId,
+                name: "Tanmatra",
+                description: `Order ${orderId}`,
+                theme: { color: "#D4AF37" },
+                prefill: {
+                  contact: activeAddr?.phone ?? "",
+                },
+                handler: async (response: {
+                  razorpay_payment_id: string;
+                  razorpay_order_id: string;
+                  razorpay_signature: string;
+                }) => {
+                  // 3. Verify payment server-side before accepting the order.
+                  try {
+                    await fetch(`${API_BASE}/payments/razorpay/verify`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      credentials: "include",
+                      body: JSON.stringify({
+                        orderId,
+                        razorpayPaymentId: response.razorpay_payment_id,
+                        razorpayOrderId: response.razorpay_order_id,
+                        razorpaySignature: response.razorpay_signature,
+                      }),
+                    });
+                    resolve();
+                  } catch (verifyErr) {
+                    reject(verifyErr);
+                  }
+                },
+                modal: {
+                  ondismiss: () => reject(new Error("payment_cancelled")),
+                },
+              });
+              rzp.open();
+            }
+          });
+        } catch (rpErr) {
+          const rpMsg = String((rpErr as Error).message);
+          if (rpMsg === "payment_cancelled") {
+            toast.info("Payment cancelled — your cart is safe");
+            setIsProcessing(false);
+            setConfirmOpen(false);
+            return;
+          }
+          // Non-cancellation Razorpay error: fall through to order creation
+          // but surface a warning so the user knows payment isn't confirmed.
+          toast.warning(
+            "Payment gateway error — order placed but not charged. Our team will contact you.",
+          );
+        }
+      }
 
       // Add delivery + tip on top of the server-validated meal total. The
       // server's finalPaise already nets out bundle, pickup, preorder, and
@@ -908,18 +1014,102 @@ export default function Checkout() {
               <div className="space-y-3 p-3 rounded-lg bg-clinical-dark border border-clinical-border">
                 <p className="text-xs font-medium text-white">New Address</p>
                 <div className="grid grid-cols-2 gap-2">
-                  <Input placeholder="Label (e.g., Home)" value={newAddr.label} onChange={(e) => setNewAddr({ ...newAddr, label: e.target.value })} className="h-9 text-xs bg-clinical-surface border-clinical-border" />
-                  <Input placeholder="Phone (rider will call this)" value={newAddr.phone} onChange={(e) => setNewAddr({ ...newAddr, phone: e.target.value })} className="h-9 text-xs bg-clinical-surface border-clinical-border" />
+                  <div className="space-y-1">
+                    <Input
+                      placeholder="Label (e.g., Home)"
+                      value={newAddr.label}
+                      onChange={(e) =>
+                        setNewAddr({ ...newAddr, label: e.target.value })
+                      }
+                      className="h-9 text-xs bg-clinical-surface border-clinical-border"
+                    />
+                    {addressErrors.label && (
+                      <p className="text-[10px] text-alert-allergen-text -mt-1">
+                        {addressErrors.label}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <Input
+                      placeholder="Phone (rider will call this)"
+                      value={newAddr.phone}
+                      onChange={(e) =>
+                        setNewAddr({ ...newAddr, phone: e.target.value })
+                      }
+                      inputMode="tel"
+                      autoComplete="tel"
+                      className="h-9 text-xs bg-clinical-surface border-clinical-border"
+                    />
+                    {addressErrors.phone && (
+                      <p className="text-[10px] text-alert-allergen-text -mt-1">
+                        {addressErrors.phone}
+                      </p>
+                    )}
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <Input placeholder="City" value={newAddr.city} onChange={(e) => setNewAddr({ ...newAddr, city: e.target.value })} className="h-9 text-xs bg-clinical-surface border-clinical-border" />
-                  <Input placeholder="Pincode" value={newAddr.pincode} onChange={(e) => setNewAddr({ ...newAddr, pincode: e.target.value })} className="h-9 text-xs bg-clinical-surface border-clinical-border" />
+                  <div className="space-y-1">
+                    <Input
+                      placeholder="City"
+                      value={newAddr.city}
+                      onChange={(e) =>
+                        setNewAddr({ ...newAddr, city: e.target.value })
+                      }
+                      className="h-9 text-xs bg-clinical-surface border-clinical-border"
+                    />
+                    {addressErrors.city && (
+                      <p className="text-[10px] text-alert-allergen-text -mt-1">
+                        {addressErrors.city}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <Input
+                      placeholder="Pincode"
+                      value={newAddr.pincode}
+                      onChange={(e) =>
+                        setNewAddr({ ...newAddr, pincode: e.target.value })
+                      }
+                      inputMode="numeric"
+                      autoComplete="postal-code"
+                      maxLength={6}
+                      className="h-9 text-xs bg-clinical-surface border-clinical-border"
+                    />
+                    {addressErrors.pincode && (
+                      <p className="text-[10px] text-alert-allergen-text -mt-1">
+                        {addressErrors.pincode}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <Input placeholder="Address line 1 (street, building)" value={newAddr.line1} onChange={(e) => setNewAddr({ ...newAddr, line1: e.target.value })} className="h-9 text-xs bg-clinical-surface border-clinical-border" />
-                <Input placeholder="Address line 2 (apt, floor — optional)" value={newAddr.line2} onChange={(e) => setNewAddr({ ...newAddr, line2: e.target.value })} className="h-9 text-xs bg-clinical-surface border-clinical-border" />
-                {addressFormError && (
-                  <p className="text-[11px] alert-allergen-text" role="alert">
-                    {addressFormError}
+                <div className="space-y-1">
+                  <Input
+                    placeholder="Address line 1 (street, building)"
+                    value={newAddr.line1}
+                    onChange={(e) =>
+                      setNewAddr({ ...newAddr, line1: e.target.value })
+                    }
+                    className="h-9 text-xs bg-clinical-surface border-clinical-border"
+                  />
+                  {addressErrors.line1 && (
+                    <p className="text-[10px] text-alert-allergen-text -mt-1">
+                      {addressErrors.line1}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <Input
+                    placeholder="Address line 2 (apt, floor — optional)"
+                    value={newAddr.line2}
+                    onChange={(e) =>
+                      setNewAddr({ ...newAddr, line2: e.target.value })
+                    }
+                    className="h-9 text-xs bg-clinical-surface border-clinical-border"
+                  />
+                </div>
+                {addressErrors._form && (
+                  <p className="text-[11px] text-alert-allergen-text" role="alert">
+                    {addressErrors._form}
                   </p>
                 )}
                 <Button
@@ -989,7 +1179,10 @@ export default function Checkout() {
                   Pick a delivery slot
                 </p>
                 {slots.length === 0 ? (
-                  <p className="text-xs text-clinical-zinc">Loading available windows…</p>
+                  <div className="space-y-2">
+                    <Skeleton className="h-12 w-full rounded-lg bg-clinical-surface-elevated" />
+                    <Skeleton className="h-12 w-full rounded-lg bg-clinical-surface-elevated" />
+                  </div>
                 ) : (
                   <div
                     className={`grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-56 overflow-y-auto pr-1 ${
@@ -1179,9 +1372,19 @@ export default function Checkout() {
                 <IndianRupee className="w-4 h-4 text-clinical-zinc mt-2" />
                 <Input
                   placeholder="Enter custom tip amount"
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   value={customTip}
-                  onChange={(e) => setCustomTip(e.target.value)}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/[^0-9.]/g, "");
+                    const parts = raw.split(".");
+                    const cleaned =
+                      parts.length > 1
+                        ? `${parts[0]}.${parts[1].slice(0, 2)}`
+                        : raw;
+                    setCustomTip(cleaned);
+                  }}
+                  min="0"
                   className="h-9 text-xs bg-clinical-surface border-clinical-border tabular-nums"
                   autoFocus
                   aria-label="Custom tip amount in rupees"
@@ -1343,6 +1546,12 @@ export default function Checkout() {
                 <span className="text-clinical-zinc">Subtotal</span>
                 <span className="tabular-nums text-white">{formatPrice(subtotal)}</span>
               </div>
+              {gst > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-clinical-zinc">GST (5%)</span>
+                  <span className="tabular-nums text-white">{formatPrice(gst)}</span>
+                </div>
+              )}
               {preorderDiscount > 0 && (
                 <div className="flex justify-between text-xs">
                   <span className="text-clinical-sage flex items-center gap-1">
@@ -1553,10 +1762,15 @@ export default function Checkout() {
               <span className="text-sm font-semibold text-white">Total</span>
               <div className="text-right">
                 <span className="tabular-nums text-xl font-bold text-clinical-gold">{formatPrice(razorpayTotal)}</span>
-                <p className="text-[9px] text-clinical-zinc">Inclusive of all taxes</p>
+                <p className="text-[11px] text-clinical-zinc">Inclusive of all taxes</p>
               </div>
             </div>
 
+            {checkoutBlocked && checkoutBlockedReason && (
+              <p className="text-[11px] text-alert-allergen-text bg-alert-allergen/10 border border-alert-allergen/30 rounded-md px-3 py-2 text-center mb-2">
+                {checkoutBlockedReason}
+              </p>
+            )}
             <Button
               onClick={() => setConfirmOpen(true)}
               disabled={checkoutBlocked}
@@ -1595,6 +1809,18 @@ export default function Checkout() {
               <span>Subtotal</span>
               <span className="tabular-nums text-white">{formatPrice(subtotal)}</span>
             </div>
+            {gst > 0 && (
+              <div className="flex justify-between text-clinical-zinc">
+                <span>GST (5%)</span>
+                <span className="tabular-nums text-white">{formatPrice(gst)}</span>
+              </div>
+            )}
+            {addonTotal > 0 && (
+              <div className="flex justify-between text-clinical-zinc">
+                <span>Add-ons</span>
+                <span className="tabular-nums text-white">{formatPrice(addonTotal)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-clinical-zinc">
               <span>{fulfillmentType === "pickup" ? "Pickup" : "Delivery"}</span>
               <span className="tabular-nums">
@@ -1645,15 +1871,22 @@ export default function Checkout() {
                 </p>
               </button>
             </CollapsibleTrigger>
-            <Button
-              onClick={() => setConfirmOpen(true)}
-              disabled={checkoutBlocked}
-              className="h-12 px-4 bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold gap-2 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-clinical-surface-elevated disabled:text-clinical-zinc"
-              title={checkoutBlocked ? checkoutBlockedReason ?? undefined : undefined}
-            >
-              <CreditCard className="w-4 h-4" />
-              {checkoutBlocked ? "Blocked" : "Review & Pay"}
-            </Button>
+            <div className="flex flex-col items-stretch shrink-0 gap-1">
+              {checkoutBlocked && checkoutBlockedReason && (
+                <p className="text-[11px] text-alert-allergen-text bg-alert-allergen/10 border border-alert-allergen/30 rounded-md px-3 py-2 text-center mb-2">
+                  {checkoutBlockedReason}
+                </p>
+              )}
+              <Button
+                onClick={() => setConfirmOpen(true)}
+                disabled={checkoutBlocked}
+                className="h-12 px-4 bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-clinical-surface-elevated disabled:text-clinical-zinc"
+                title={checkoutBlocked ? checkoutBlockedReason ?? undefined : undefined}
+              >
+                <CreditCard className="w-4 h-4" />
+                {checkoutBlocked ? "Blocked" : "Review & Pay"}
+              </Button>
+            </div>
           </div>
         </div>
       </Collapsible>

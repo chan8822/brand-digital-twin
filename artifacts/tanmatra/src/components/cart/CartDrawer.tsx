@@ -8,13 +8,15 @@ import {
 } from "react";
 import { Link } from "react-router";
 import { AnimatePresence, motion } from "framer-motion";
-import { Minus, Plus, ShoppingBag, Trash2, X, Leaf, ShieldCheck } from "lucide-react";
+import { Minus, Plus, ShoppingBag, Trash2, X, Leaf, ShieldCheck, Loader2, Check } from "lucide-react";
+import { toast } from "sonner";
 import {
   useCart,
   useCartDrawer,
   useCartTotals,
   FREE_DELIVERY_THRESHOLD,
   DELIVERY_FEE,
+  useAddToCartStatus,
   type CartItem,
 } from "@/lib/cartContext";
 import { useMenuCatalog, type DishData } from "@/lib/menuData";
@@ -215,6 +217,7 @@ export default function CartDrawer() {
                     items={items}
                     updateQty={updateQty}
                     removeItem={removeItem}
+                    addItem={addItem}
                   />
 
                   {upsells.length > 0 && (
@@ -415,10 +418,12 @@ function CartLineList({
   items,
   updateQty,
   removeItem,
+  addItem,
 }: {
   items: CartItem[];
   updateQty: (lineId: string, delta: number) => void;
   removeItem: (lineId: string) => void;
+  addItem: (item: Omit<CartItem, "lineId">) => void;
 }) {
   return (
     <div className="space-y-3">
@@ -429,6 +434,7 @@ function CartLineList({
           onInc={() => updateQty(item.lineId, +1)}
           onDec={() => updateQty(item.lineId, -1)}
           onRemove={() => removeItem(item.lineId)}
+          addItem={addItem}
         />
       ))}
     </div>
@@ -440,13 +446,40 @@ function CartLine({
   onInc,
   onDec,
   onRemove,
+  addItem,
 }: {
   item: CartItem;
   onInc: () => void;
   onDec: () => void;
   onRemove: () => void;
+  addItem: (item: Omit<CartItem, "lineId">) => void;
 }) {
   const lineTotal = item.unitPrice * item.quantity;
+
+  const handleRemove = () => {
+    onRemove();
+    toast(`Removed ${item.name}`, {
+      action: {
+        label: "Undo",
+        onClick: () => addItem({
+          dishId: item.dishId,
+          slug: item.slug,
+          name: item.name,
+          image: item.image,
+          basePrice: item.basePrice,
+          unitPrice: item.unitPrice,
+          quantity: item.quantity,
+          kitchen: item.kitchen,
+          isVeg: item.isVeg,
+          rdVerified: item.rdVerified,
+          macros: item.macros,
+          customizations: item.customizations,
+        }),
+      },
+      duration: 4000,
+    });
+  };
+
   return (
     <div className="flex gap-3 rounded-lg border border-clinical-zinc/15 bg-clinical-zinc/[0.04] p-3">
       <img
@@ -483,7 +516,7 @@ function CartLine({
           </div>
           <button
             type="button"
-            onClick={onRemove}
+            onClick={handleRemove}
             aria-label={`Remove ${item.name}`}
             className="text-clinical-zinc hover:text-red-400 transition-colors shrink-0"
           >
@@ -495,7 +528,7 @@ function CartLine({
           <QtyStepper
             quantity={item.quantity}
             onInc={onInc}
-            onDec={onDec}
+            onDec={item.quantity === 1 ? handleRemove : onDec}
             name={item.name}
           />
           <span className="text-sm font-semibold tabular-nums text-white">
@@ -606,6 +639,23 @@ function UpsellCard({
   onGhost: (dish: DishData | null) => void;
   onAdd: (dish: DishData) => void;
 }) {
+  const { status, setStatus } = useAddToCartStatus(dish.id);
+  const timerRef = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (timerRef.current) window.clearTimeout(timerRef.current);
+  }, []);
+
+  const handleAdd = () => {
+    if (status !== "idle") return;
+    setStatus("loading");
+    timerRef.current = window.setTimeout(() => {
+      onAdd(dish);
+      setStatus("success");
+      timerRef.current = window.setTimeout(() => setStatus("idle"), 1200);
+    }, 180);
+  };
+
   return (
     <article
       role="group"
@@ -639,11 +689,17 @@ function UpsellCard({
           </span>
           <button
             type="button"
-            onClick={() => onAdd(dish)}
+            onClick={handleAdd}
+            disabled={status === "loading"}
             aria-label={`Add ${dish.name} to cart`}
-            className="h-7 px-2 text-[10px] font-semibold bg-clinical-gold text-[#050505] rounded-md hover:bg-clinical-gold/90 transition-colors uppercase tracking-[0.08em] shrink-0"
+            className={cn(
+              "h-7 px-2 text-[10px] font-semibold text-[#050505] rounded-md transition-colors uppercase tracking-[0.08em] shrink-0 inline-flex items-center gap-1",
+              status === "success" ? "bg-clinical-sage" : "bg-clinical-gold hover:bg-clinical-gold/90",
+            )}
           >
-            Add
+            {status === "idle" && <><Plus className="w-3 h-3" /> Add</>}
+            {status === "loading" && <Loader2 className="w-3 h-3 animate-spin" />}
+            {status === "success" && <Check className="w-3 h-3" />}
           </button>
         </div>
       </div>
@@ -679,6 +735,9 @@ function FooterTotals({
           large
         />
       </dl>
+      <p className="text-[10px] text-clinical-zinc/70 text-center -mt-1">
+        Discounts &amp; credits applied at checkout
+      </p>
       <Link
         to="/checkout"
         onClick={onClose}
