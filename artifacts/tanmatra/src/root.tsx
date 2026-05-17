@@ -29,12 +29,12 @@ export const meta: MetaFunction = () => [
   { property: "og:site_name", content: "Tanmatra" },
   { property: "og:title", content: "Tanmatra — Therapeutic Meal Delivery" },
   { property: "og:description", content: "Clinical-grade therapeutic meals designed by registered dietitians. Curated menu, personalised plans, wellness tracking." },
-  { property: "og:image", content: "https://tanmatra.food/og-image.jpg" },
+  { property: "og:image", content: "https://tanmatra.food/opengraph.jpg" },
   { property: "og:url", content: "https://tanmatra.food/" },
   { name: "twitter:card", content: "summary_large_image" },
   { name: "twitter:title", content: "Tanmatra — Therapeutic Meal Delivery" },
   { name: "twitter:description", content: "Clinical-grade therapeutic meals designed by registered dietitians." },
-  { name: "twitter:image", content: "https://tanmatra.food/og-image.jpg" },
+  { name: "twitter:image", content: "https://tanmatra.food/opengraph.jpg" },
 ];
 
 const queryClient = new QueryClient();
@@ -98,7 +98,7 @@ export default function Root() {
               "name": "Tanmatra",
               "description": "Clinical-grade therapeutic meal delivery designed by registered dietitians.",
               "url": "https://tanmatra.food",
-              "logo": "https://tanmatra.food/og-image.jpg",
+              "logo": "https://tanmatra.food/tanmatra-logo.png",
               "servesCuisine": ["Indian", "Mediterranean", "Therapeutic"],
               "priceRange": "₹₹",
               "address": {

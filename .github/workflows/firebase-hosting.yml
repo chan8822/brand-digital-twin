@@ -30,9 +30,7 @@ jobs:
         run: pnpm --filter @workspace/tanmatra run build
         env:
           NODE_ENV: production
-          # Vite config requires these at build time even though Firebase
-          # Hosting serves the SPA at root and never reads PORT.
-          BASE_PATH: /
+          VITE_API_BASE: https://wellness-foods-1076775857511.asia-south2.run.app/api
           PORT: "5173"
 
       - name: Deploy to Firebase Hosting

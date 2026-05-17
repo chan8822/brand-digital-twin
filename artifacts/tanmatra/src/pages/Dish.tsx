@@ -6,7 +6,7 @@ export const meta: MetaFunction = ({ params }) => {
   const dish = getDishBySlug(params.slug ?? "");
   if (!dish) return [{ title: "Dish | Tanmatra" }];
   const price = (dish.price / 100).toFixed(0);
-  const image = dish.image ?? "https://tanmatra.food/og-image.jpg";
+  const image = dish.image ?? "https://tanmatra.food/opengraph.jpg";
   const url = `https://tanmatra.food/dish/${dish.slug}`;
   return [
     { title: `${dish.name} | Tanmatra` },
