@@ -9,7 +9,7 @@ import {
   ShoppingCart,
   MagnifyingGlass,
 } from "@phosphor-icons/react";
-import { useCart } from "@/lib/cartContext";
+import { useCart, useCartDrawer } from "@/lib/cartContext";
 import Logo from "./Logo";
 import CommandPalette, { useCommandPaletteHotkey } from "@/components/CommandPalette";
 import { MoreSheetTrigger } from "@/components/layout/BottomNav";
@@ -17,6 +17,7 @@ import { MoreSheetTrigger } from "@/components/layout/BottomNav";
 export default function Header() {
   const location = useLocation();
   const { totalQuantity } = useCart();
+  const { open: openCart } = useCartDrawer();
   const palette = useCommandPaletteHotkey();
 
   const isActive = (path: string) =>
@@ -94,9 +95,10 @@ export default function Header() {
               <MagnifyingGlass className="w-5 h-5" aria-hidden />
             </button>
 
-            <Link
-              to="/cart"
-              aria-label={`Cart${totalQuantity > 0 ? ` (${totalQuantity} items)` : ""}`}
+            <button
+              type="button"
+              onClick={openCart}
+              aria-label={`Open cart${totalQuantity > 0 ? ` (${totalQuantity} items)` : ""}`}
               className="relative inline-flex items-center justify-center h-10 w-10 sm:h-8 sm:w-auto sm:px-3 rounded-md text-clinical-zinc hover:text-clinical-gold hover:bg-clinical-gold/10 transition-colors"
             >
               <ShoppingCart className="w-5 h-5 sm:w-4 sm:h-4" aria-hidden />
@@ -106,7 +108,7 @@ export default function Header() {
                   {totalQuantity}
                 </Badge>
               )}
-            </Link>
+            </button>
 
             {/* Mobile-only "more" hamburger to open the full Explore sheet.
                 Account is reachable from the bottom nav, so we drop the
