@@ -39,6 +39,13 @@
   --color-clinical-surface: #0A0A0C;
   --color-clinical-surface-elevated: #111114;
 
+  /* ─── Cart & checkout interaction tokens ─── */
+  --color-matcha: #4E7A5C;
+  --color-matcha-light: rgba(78, 122, 92, 0.12);
+  --color-lotus-pink: #C4708A;
+  --color-lotus-pink-light: rgba(196, 112, 138, 0.12);
+  --color-upsell-accent: #1E1A2E;
+
   /* ─── Canonical alert palette (WCAG AAA on #050505 — see Styleguide) ─── */
   /* Each alert has a `*-text` variant tuned for ≥7:1 contrast on the
      clinical-dark background, and an unsuffixed accent for chip
@@ -93,6 +100,8 @@
 
   --animate-fade-in-up: fade-in-up 0.5s ease-out;
   --animate-pulse-glow: pulse-glow 2s ease-in-out infinite;
+  --animate-breathe: breathe 4s ease-in-out infinite;
+  --animate-pulse-opacity: pulse-opacity 2s ease-in-out infinite;
 
   @keyframes fade-in-up {
     from { opacity: 0; transform: translateY(12px); }
@@ -101,6 +110,14 @@
   @keyframes pulse-glow {
     0%, 100% { box-shadow: 0 0 20px rgba(212, 175, 55, 0.15); }
     50% { box-shadow: 0 0 30px rgba(212, 175, 55, 0.25); }
+  }
+  @keyframes breathe {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.06); }
+  }
+  @keyframes pulse-opacity {
+    0%, 100% { opacity: 0.35; }
+    50% { opacity: 0.65; }
   }
 }
 

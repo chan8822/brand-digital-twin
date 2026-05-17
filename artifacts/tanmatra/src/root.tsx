@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "react-router";
+import { Links, Meta, Outlet, Scripts, ScrollRestoration, useMatches } from "react-router";
 import type { LinksFunction, MetaFunction } from "react-router";
 import { Toaster } from "sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -81,6 +81,9 @@ export default function Root() {
     window.__clearTanmatraLoader?.();
   }, []);
 
+  const matches = useMatches();
+  const hideChrome = matches.some((m) => (m.handle as { chrome?: boolean } | null)?.chrome === false);
+
   return (
     <html lang="en">
       <head>
@@ -147,14 +150,14 @@ export default function Root() {
                     <ThemeManager />
                     <ScrollToTop />
                     <div className="min-h-screen flex flex-col bg-clinical-dark">
-                      <Header />
-                      <OnboardingQuizGate />
+                      {!hideChrome && <Header />}
+                      {!hideChrome && <OnboardingQuizGate />}
                       <main className="flex-1 pb-20 md:pb-0">
                         <Outlet />
                       </main>
-                      <Footer />
-                      <BottomNav />
-                      <StickyCheckoutBar />
+                      {!hideChrome && <Footer />}
+                      {!hideChrome && <BottomNav />}
+                      {!hideChrome && <StickyCheckoutBar />}
                       <CartDrawer />
                     </div>
                     <Toaster theme="dark" position="top-center" richColors offset={72} />

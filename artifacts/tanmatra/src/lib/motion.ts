@@ -39,3 +39,70 @@ export const FADE = {
   exit: { opacity: 0 },
   transition: { duration: DURATION.base, ease: EASE.standard },
 };
+
+import type { Variants } from "framer-motion";
+
+/**
+ * BreathingScale — gentle scale 1 → 1.06 → 1 over 4 s.
+ * Use on the UPI waiting state or any "mindful" pulse.
+ * Callers should apply `@media (prefers-reduced-motion)` via the
+ * `reducedMotion` prop on <motion.div> or check it themselves.
+ */
+export const BREATHING_SCALE: Variants = {
+  idle: { scale: 1 },
+  breathe: {
+    scale: [1, 1.06, 1],
+    transition: { duration: 4, ease: "easeInOut", repeat: Infinity },
+  },
+};
+
+/**
+ * PulseOpacity — for ghost-fill layers and translucent progress previews.
+ */
+export const PULSE_OPACITY: Variants = {
+  idle: { opacity: 0 },
+  pulse: {
+    opacity: [0.35, 0.65, 0.35],
+    transition: { duration: 2, ease: "easeInOut", repeat: Infinity },
+  },
+  static: { opacity: 0.45 },
+};
+
+/**
+ * AccordionHeight — collapse to 0 / expand to auto.
+ * Use with layout="position" on the parent and overflow-hidden on the container.
+ */
+export const ACCORDION_HEIGHT: Variants = {
+  open: {
+    height: "auto",
+    opacity: 1,
+    transition: { duration: DURATION.slow, ease: EASE.standard },
+  },
+  closed: {
+    height: 0,
+    opacity: 0,
+    transition: { duration: DURATION.base, ease: EASE.accelerate },
+  },
+};
+
+/** Panel slides in from the right edge. */
+export const PANEL_SLIDE: Variants = {
+  hidden: { x: "100%", opacity: 0 },
+  visible: {
+    x: 0,
+    opacity: 1,
+    transition: SPRING.soft,
+  },
+  exit: {
+    x: "100%",
+    opacity: 0,
+    transition: { duration: DURATION.slow, ease: EASE.accelerate },
+  },
+};
+
+/** Backdrop fade. */
+export const BACKDROP: Variants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { duration: DURATION.base } },
+  exit: { opacity: 0, transition: { duration: DURATION.base } },
+};

@@ -1,100 +1,283 @@
-import { useMemo } from "react";
-import { Link } from "react-router";
-import { Minus, Plus, ShoppingBag, Trash2, X, Leaf, ShieldCheck } from "lucide-react";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
+  useState,
+  useRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  type KeyboardEvent,
+} from "react";
+import { Link } from "react-router";
+import { AnimatePresence, motion } from "framer-motion";
+import { Minus, Plus, ShoppingBag, Trash2, X, Leaf, ShieldCheck } from "lucide-react";
 import {
   useCart,
   useCartDrawer,
   useCartTotals,
+  FREE_DELIVERY_THRESHOLD,
+  DELIVERY_FEE,
   type CartItem,
 } from "@/lib/cartContext";
 import { useMenuCatalog, type DishData } from "@/lib/menuData";
 import { formatPrice } from "@/lib/api/adapter";
+import { track } from "@/lib/analytics";
+import { PANEL_SLIDE, BACKDROP, PULSE_OPACITY } from "@/lib/motion";
 import { cn } from "@/lib/utils";
-import AddToCartButton from "./AddToCartButton";
+
+// Suppress unused-import warning — DELIVERY_FEE is used in the comment context only,
+// the actual constant is pulled from cartContext which re-exports it.
+void DELIVERY_FEE;
+
+const UPSELL_CATEGORIES = new Set<string>(["beverages", "soups", "snacks", "breakfast"]);
 
 /**
- * Slide-out cart drawer (Sweetgreen-style) with an Uber Eats-style horizontal
- * upsell carousel. Single global instance mounted in root.tsx; opened by
- * Header cart icon, AddToCartButton, or any caller of useCartDrawer().open().
+ * Slide-out cart drawer built with Framer Motion.
+ * Ghost-Math: hovering an upsell card shows a projected fill on the
+ * free-delivery progress bar before the user commits to adding it.
  */
 export default function CartDrawer() {
   const { isOpen, close } = useCartDrawer();
-  const { items, updateQty, removeItem } = useCart();
+  const { items, addItem, updateQty, removeItem } = useCart();
   const totals = useCartTotals();
   const { dishes } = useMenuCatalog();
+
+  // Ghost-math state
+  const [ghostItem, setGhostItemState] = useState<DishData | null>(null);
+  const ghostTimerRef = useRef<number | null>(null);
+
+  const setGhost = useCallback((dish: DishData | null) => {
+    if (ghostTimerRef.current) window.clearTimeout(ghostTimerRef.current);
+    if (dish === null) {
+      ghostTimerRef.current = window.setTimeout(() => setGhostItemState(null), 80);
+    } else {
+      setGhostItemState(dish);
+      track("upsell_focus", { dishId: dish.id, dishName: dish.name });
+    }
+  }, []);
+
+  // Projected fill for ghost-math
+  const subtotal = totals.subtotal;
+  const currentFill = Math.min(1, subtotal / FREE_DELIVERY_THRESHOLD);
+  const projectedFill =
+    ghostItem && !totals.hasFreeDelivery
+      ? Math.min(1, (subtotal + ghostItem.price) / FREE_DELIVERY_THRESHOLD)
+      : null;
+  const ghostUnlocksDelivery =
+    projectedFill !== null && projectedFill >= 1 && !totals.hasFreeDelivery;
+
+  // Upsell handler with analytics
+  const addUpsell = useCallback(
+    (dish: DishData) => {
+      addItem({
+        dishId: dish.id,
+        slug: dish.slug,
+        name: dish.name,
+        image: dish.image,
+        basePrice: dish.price,
+        unitPrice: dish.price,
+        quantity: 1,
+        kitchen: dish.kitchen,
+        isVeg: dish.isVeg,
+        rdVerified: dish.rdVerified,
+        macros: dish.macros,
+        customizations: [],
+      });
+      track("upsell_add", { dishId: dish.id, dishName: dish.name, price: dish.price });
+      const wouldUnlock =
+        projectedFill !== null && projectedFill >= 1 && !totals.hasFreeDelivery;
+      if (wouldUnlock) {
+        track("free_delivery_unlocked", { via: "upsell" });
+      }
+      setGhost(null);
+    },
+    [addItem, projectedFill, totals.hasFreeDelivery, setGhost],
+  );
 
   const upsells = useMemo(() => pickUpsells(dishes, items), [dishes, items]);
   const isEmpty = items.length === 0;
 
-  return (
-    <Sheet open={isOpen} onOpenChange={(o) => (o ? null : close())}>
-      <SheetContent
-        side="right"
-        className="w-full sm:max-w-md p-0 bg-clinical-dark border-l border-clinical-zinc/20 text-white flex flex-col"
-      >
-        <SheetHeader className="px-5 py-4 border-b border-clinical-zinc/15 flex flex-row items-center justify-between space-y-0">
-          <div className="flex items-center gap-2">
-            <ShoppingBag className="w-4 h-4 text-clinical-gold" aria-hidden />
-            <SheetTitle className="text-sm font-semibold uppercase tracking-[0.14em] text-white">
-              Your Cart
-            </SheetTitle>
-            {totals.totalQuantity > 0 && (
-              <Badge className="bg-clinical-gold text-[#050505] border-0 h-5 px-1.5 text-[10px] font-bold">
-                {totals.totalQuantity}
-              </Badge>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={close}
-            aria-label="Close cart"
-            className="text-clinical-zinc hover:text-white transition-colors"
-          >
-            <X className="w-4 h-4" aria-hidden />
-          </button>
-        </SheetHeader>
+  // Body scroll lock
+  useEffect(() => {
+    if (isOpen) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = prev;
+      };
+    }
+    return undefined;
+  }, [isOpen]);
 
-        {isEmpty ? (
-          <EmptyState onClose={close} />
-        ) : (
-          <>
-            <FreeDeliveryBar
-              amountToFreeDelivery={totals.amountToFreeDelivery}
-              progress={totals.freeDeliveryProgress}
-              unlocked={totals.hasFreeDelivery}
+  // Analytics: cart_open
+  useEffect(() => {
+    if (isOpen) {
+      track("cart_open");
+    }
+  }, [isOpen]);
+
+  // Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape") close();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [isOpen, close]);
+
+  // Focus trap refs
+  const panelRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Focus the close button when drawer opens
+  useEffect(() => {
+    if (isOpen) {
+      requestAnimationFrame(() => {
+        closeButtonRef.current?.focus();
+      });
+    }
+  }, [isOpen]);
+
+  // Manual focus trap
+  const handlePanelKeyDown = useCallback((e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== "Tab" || !panelRef.current) return;
+    const focusable = panelRef.current.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])',
+    );
+    const els = Array.from(focusable);
+    if (els.length === 0) return;
+    const first = els[0];
+    const last = els[els.length - 1];
+    if (e.shiftKey) {
+      if (document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      }
+    } else {
+      if (document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+  }, []);
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            key="cart-backdrop"
+            variants={BACKDROP}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            onClick={close}
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+            aria-hidden="true"
+          />
+
+          {/* Panel */}
+          <motion.div
+            key="cart-panel"
+            ref={panelRef}
+            variants={PANEL_SLIDE}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Shopping cart"
+            onKeyDown={handlePanelKeyDown}
+            className="fixed right-0 top-0 z-50 h-full w-full sm:max-w-md bg-clinical-dark border-l border-clinical-zinc/20 text-white flex flex-col shadow-2xl"
+          >
+            <DrawerHeader
+              totalQuantity={totals.totalQuantity}
+              onClose={close}
+              closeButtonRef={closeButtonRef}
             />
 
-            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
-              {items.map((item) => (
-                <CartLine
-                  key={item.lineId}
-                  item={item}
-                  onInc={() => updateQty(item.lineId, +1)}
-                  onDec={() => updateQty(item.lineId, -1)}
-                  onRemove={() => removeItem(item.lineId)}
+            {isEmpty ? (
+              <EmptyState onClose={close} />
+            ) : (
+              <>
+                <FreeDeliveryBar
+                  subtotal={subtotal}
+                  currentFill={currentFill}
+                  projectedFill={projectedFill}
+                  ghostUnlocksDelivery={ghostUnlocksDelivery}
+                  ghostItem={ghostItem}
+                  hasFreeDelivery={totals.hasFreeDelivery}
+                  amountToFreeDelivery={totals.amountToFreeDelivery}
                 />
-              ))}
 
-              {upsells.length > 0 && <UpsellCarousel dishes={upsells} />}
-            </div>
+                <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+                  <CartLineList
+                    items={items}
+                    updateQty={updateQty}
+                    removeItem={removeItem}
+                  />
 
-            <FooterTotals totals={totals} onClose={close} />
-          </>
-        )}
-      </SheetContent>
-    </Sheet>
+                  {upsells.length > 0 && (
+                    <UpsellCarousel
+                      dishes={upsells}
+                      onGhost={setGhost}
+                      onAdd={addUpsell}
+                    />
+                  )}
+                </div>
+
+                <FooterTotals totals={totals} onClose={close} />
+              </>
+            )}
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
   );
 }
 
-/* ---------------------------- pieces ---------------------------- */
+/* ------------------------------------------------------------------ */
+/* DrawerHeader                                                          */
+/* ------------------------------------------------------------------ */
+
+function DrawerHeader({
+  totalQuantity,
+  onClose,
+  closeButtonRef,
+}: {
+  totalQuantity: number;
+  onClose: () => void;
+  closeButtonRef: React.RefObject<HTMLButtonElement | null>;
+}) {
+  return (
+    <div className="px-5 py-4 border-b border-clinical-zinc/15 flex items-center justify-between shrink-0">
+      <div className="flex items-center gap-2">
+        <ShoppingBag className="w-4 h-4 text-clinical-gold" aria-hidden />
+        <span className="text-sm font-semibold uppercase tracking-[0.14em] text-white">
+          Your Cart
+        </span>
+        {totalQuantity > 0 && (
+          <span className="inline-flex items-center justify-center bg-clinical-gold text-[#050505] rounded-full h-5 min-w-[20px] px-1.5 text-[10px] font-bold">
+            {totalQuantity}
+          </span>
+        )}
+      </div>
+      <button
+        ref={closeButtonRef}
+        type="button"
+        onClick={onClose}
+        aria-label="Close cart"
+        className="text-clinical-zinc hover:text-white transition-colors"
+      >
+        <X className="w-4 h-4" aria-hidden />
+      </button>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* EmptyState                                                            */
+/* ------------------------------------------------------------------ */
 
 function EmptyState({ onClose }: { onClose: () => void }) {
   return (
@@ -119,36 +302,135 @@ function EmptyState({ onClose }: { onClose: () => void }) {
   );
 }
 
+/* ------------------------------------------------------------------ */
+/* FreeDeliveryBar                                                       */
+/* ------------------------------------------------------------------ */
+
 function FreeDeliveryBar({
+  currentFill,
+  projectedFill,
+  ghostUnlocksDelivery,
+  ghostItem,
+  hasFreeDelivery,
   amountToFreeDelivery,
-  progress,
-  unlocked,
 }: {
+  subtotal: number;
+  currentFill: number;
+  projectedFill: number | null;
+  ghostUnlocksDelivery: boolean;
+  ghostItem: DishData | null;
+  hasFreeDelivery: boolean;
   amountToFreeDelivery: number;
-  progress: number;
-  unlocked: boolean;
 }) {
+  const prefersReducedMotion = useMemo(
+    () =>
+      typeof window !== "undefined"
+        ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        : false,
+    [],
+  );
+
+  const showGhostLayer = projectedFill !== null && !hasFreeDelivery;
+  const ghostWidth =
+    showGhostLayer && projectedFill !== null
+      ? Math.max(0, projectedFill - currentFill) * 100
+      : 0;
+
+  // Copy logic
+  let label: string;
+  if (hasFreeDelivery) {
+    label = "Free delivery unlocked ✓";
+  } else if (ghostUnlocksDelivery) {
+    label = "→ Unlocks free delivery";
+  } else if (ghostItem !== null) {
+    label = `Would add ${ghostItem.name} · ${formatPrice(ghostItem.price)}`;
+  } else {
+    label = `Add ${formatPrice(amountToFreeDelivery)} more for free delivery`;
+  }
+
   return (
-    <div className="px-5 pt-3 pb-2 border-b border-clinical-zinc/10 bg-clinical-dark/60">
+    <div className="px-5 pt-3 pb-2 border-b border-clinical-zinc/10 bg-clinical-dark/60 shrink-0">
       <div className="flex items-center justify-between mb-1.5">
         <span className="text-[10px] uppercase tracking-[0.14em] text-clinical-zinc">
           Free Delivery
         </span>
         <span
           className={cn(
-            "text-[11px] tabular-nums",
-            unlocked ? "text-clinical-sage" : "text-white",
+            "text-[11px] tabular-nums transition-colors duration-200",
+            hasFreeDelivery
+              ? "text-clinical-sage"
+              : ghostUnlocksDelivery
+              ? "text-matcha"
+              : "text-white",
           )}
         >
-          {unlocked
-            ? "Unlocked"
-            : `Add ${formatPrice(amountToFreeDelivery)} more`}
+          {label}
         </span>
       </div>
-      <Progress
-        value={progress}
-        className="h-1 bg-clinical-zinc/15 [&>div]:bg-clinical-gold"
-      />
+
+      {/* Progress track */}
+      <div className="relative h-1.5 rounded-full bg-clinical-zinc/15 overflow-hidden">
+        {/* Filled (real) track */}
+        <div
+          className="absolute inset-y-0 left-0 bg-clinical-gold rounded-full transition-all duration-300"
+          style={{ width: `${currentFill * 100}%` }}
+        />
+
+        {/* Ghost layer */}
+        {showGhostLayer && ghostWidth > 0 && (
+          <motion.div
+            className={cn(
+              "absolute inset-y-0 rounded-full",
+              prefersReducedMotion ? "bg-matcha/25" : "bg-matcha/40",
+            )}
+            style={{
+              left: `${currentFill * 100}%`,
+              width: `${ghostWidth}%`,
+            }}
+            variants={prefersReducedMotion ? undefined : PULSE_OPACITY}
+            initial={prefersReducedMotion ? undefined : "idle"}
+            animate={prefersReducedMotion ? undefined : "pulse"}
+          />
+        )}
+
+        {/* Micro-label above bar when ghost unlocks delivery */}
+        {ghostUnlocksDelivery && (
+          <span
+            className="absolute -top-5 left-1/2 -translate-x-1/2 text-[9px] font-semibold text-matcha whitespace-nowrap pointer-events-none"
+            aria-hidden="true"
+          >
+            Unlocks free delivery
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* CartLineList                                                          */
+/* ------------------------------------------------------------------ */
+
+function CartLineList({
+  items,
+  updateQty,
+  removeItem,
+}: {
+  items: CartItem[];
+  updateQty: (lineId: string, delta: number) => void;
+  removeItem: (lineId: string) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      {items.map((item) => (
+        <CartLine
+          key={item.lineId}
+          item={item}
+          onInc={() => updateQty(item.lineId, +1)}
+          onDec={() => updateQty(item.lineId, -1)}
+          onRemove={() => removeItem(item.lineId)}
+        />
+      ))}
     </div>
   );
 }
@@ -180,9 +462,14 @@ function CartLine({
               {item.name}
             </p>
             <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-clinical-zinc">
-              {item.isVeg && <Leaf className="w-3 h-3 text-clinical-sage" aria-label="Vegetarian" />}
+              {item.isVeg && (
+                <Leaf className="w-3 h-3 text-clinical-sage" aria-label="Vegetarian" />
+              )}
               {item.rdVerified && (
-                <ShieldCheck className="w-3 h-3 text-clinical-gold" aria-label="RD-verified" />
+                <ShieldCheck
+                  className="w-3 h-3 text-clinical-gold"
+                  aria-label="RD-verified"
+                />
               )}
               <span className="tabular-nums">
                 {item.macros.calories} kcal · P{item.macros.protein}g
@@ -259,7 +546,33 @@ function QtyStepper({
   );
 }
 
-function UpsellCarousel({ dishes }: { dishes: DishData[] }) {
+/* ------------------------------------------------------------------ */
+/* UpsellCarousel                                                        */
+/* ------------------------------------------------------------------ */
+
+function UpsellCarousel({
+  dishes,
+  onGhost,
+  onAdd,
+}: {
+  dishes: DishData[];
+  onGhost: (dish: DishData | null) => void;
+  onAdd: (dish: DishData) => void;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const handleKeyDown = useCallback((e: KeyboardEvent<HTMLDivElement>) => {
+    if (!scrollRef.current) return;
+    const SCROLL_AMOUNT = 160;
+    if (e.key === "ArrowRight") {
+      e.preventDefault();
+      scrollRef.current.scrollBy({ left: SCROLL_AMOUNT, behavior: "smooth" });
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      scrollRef.current.scrollBy({ left: -SCROLL_AMOUNT, behavior: "smooth" });
+    }
+  }, []);
+
   return (
     <section aria-label="Frequently added together" className="pt-2">
       <div className="flex items-baseline justify-between mb-2">
@@ -269,22 +582,39 @@ function UpsellCarousel({ dishes }: { dishes: DishData[] }) {
         <span className="text-[10px] text-clinical-zinc">RD picks</span>
       </div>
       <div
-        className="-mx-1 flex gap-2 overflow-x-auto pb-1 snap-x snap-mandatory scrollbar-thin"
+        ref={scrollRef}
         role="list"
+        tabIndex={0}
+        onKeyDown={handleKeyDown}
+        className="-mx-1 flex gap-2 overflow-x-auto pb-1 snap-x snap-mandatory scrollbar-thin focus:outline-none"
+        aria-label="Upsell items, use arrow keys to scroll"
       >
         {dishes.map((d) => (
-          <UpsellCard key={d.id} dish={d} />
+          <UpsellCard key={d.id} dish={d} onGhost={onGhost} onAdd={onAdd} />
         ))}
       </div>
     </section>
   );
 }
 
-function UpsellCard({ dish }: { dish: DishData }) {
+function UpsellCard({
+  dish,
+  onGhost,
+  onAdd,
+}: {
+  dish: DishData;
+  onGhost: (dish: DishData | null) => void;
+  onAdd: (dish: DishData) => void;
+}) {
   return (
     <article
-      role="listitem"
-      className="snap-start shrink-0 w-[156px] rounded-lg border border-clinical-zinc/15 bg-clinical-zinc/[0.04] overflow-hidden"
+      role="group"
+      aria-label={dish.name}
+      className="snap-start shrink-0 w-[156px] rounded-lg border border-clinical-zinc/15 bg-upsell-accent overflow-hidden"
+      onPointerEnter={() => onGhost(dish)}
+      onPointerLeave={() => onGhost(null)}
+      onFocus={() => onGhost(dish)}
+      onBlur={() => onGhost(null)}
     >
       <div className="relative aspect-[4/3] bg-clinical-zinc/10">
         <img
@@ -307,30 +637,23 @@ function UpsellCard({ dish }: { dish: DishData }) {
           <span className="text-[11px] font-semibold tabular-nums text-clinical-gold">
             {formatPrice(dish.price)}
           </span>
-          <AddToCartButton
-            className="!h-7 !px-2 !text-[10px]"
-            label="Add"
-            openDrawerOnAdd={false}
-            item={{
-              dishId: dish.id,
-              slug: dish.slug,
-              name: dish.name,
-              image: dish.image,
-              basePrice: dish.price,
-              unitPrice: dish.price,
-              quantity: 1,
-              kitchen: dish.kitchen,
-              isVeg: dish.isVeg,
-              rdVerified: dish.rdVerified,
-              macros: dish.macros,
-              customizations: [],
-            }}
-          />
+          <button
+            type="button"
+            onClick={() => onAdd(dish)}
+            aria-label={`Add ${dish.name} to cart`}
+            className="h-7 px-2 text-[10px] font-semibold bg-clinical-gold text-[#050505] rounded-md hover:bg-clinical-gold/90 transition-colors uppercase tracking-[0.08em] shrink-0"
+          >
+            Add
+          </button>
         </div>
       </div>
     </article>
   );
 }
+
+/* ------------------------------------------------------------------ */
+/* FooterTotals                                                          */
+/* ------------------------------------------------------------------ */
 
 function FooterTotals({
   totals,
@@ -340,17 +663,17 @@ function FooterTotals({
   onClose: () => void;
 }) {
   return (
-    <div className="border-t border-clinical-zinc/15 bg-clinical-dark/95 px-5 py-4 space-y-3">
+    <div className="border-t border-clinical-zinc/15 bg-clinical-dark/95 px-5 py-4 space-y-3 shrink-0">
       <dl className="space-y-1.5 text-xs">
-        <Row label="Subtotal" value={formatPrice(totals.subtotal)} />
-        <Row label="GST (5%)" value={formatPrice(totals.tax)} muted />
-        <Row
+        <TotalsRow label="Subtotal" value={formatPrice(totals.subtotal)} />
+        <TotalsRow label="GST 5%" value={formatPrice(totals.tax)} muted />
+        <TotalsRow
           label="Delivery"
           value={totals.hasFreeDelivery ? "FREE" : formatPrice(totals.deliveryFee)}
-          valueClass={totals.hasFreeDelivery ? "text-clinical-sage" : undefined}
+          valueClass={totals.hasFreeDelivery ? "text-clinical-sage font-semibold" : undefined}
         />
         <div className="h-px bg-clinical-zinc/15 my-2" />
-        <Row
+        <TotalsRow
           label="Total"
           value={formatPrice(totals.total)}
           large
@@ -367,7 +690,7 @@ function FooterTotals({
   );
 }
 
-function Row({
+function TotalsRow({
   label,
   value,
   muted,
@@ -403,20 +726,23 @@ function Row({
   );
 }
 
-/* --------------------------- helpers --------------------------- */
+/* ------------------------------------------------------------------ */
+/* Helpers                                                               */
+/* ------------------------------------------------------------------ */
 
 /**
- * Pick up to 6 upsell candidates: dishes not already in cart, biased toward
- * the same kitchen as items already added. Falls back to RD-verified picks.
+ * Pick up to 8 upsell candidates from beverages/soups/snacks/breakfast
+ * that are not already in cart. RD-verified dishes surface first.
  */
 function pickUpsells(all: DishData[], items: CartItem[]): DishData[] {
   if (all.length === 0) return [];
   const inCart = new Set(items.map((i) => i.dishId));
-  const kitchens = new Set(items.map((i) => i.kitchen));
-  const candidates = all.filter((d) => !inCart.has(d.id));
-  const sameKitchen = candidates.filter((d) => kitchens.has(d.kitchen));
-  const pool = sameKitchen.length >= 4 ? sameKitchen : candidates;
-  // RD-verified first, then everything else.
-  const sorted = [...pool].sort((a, b) => Number(b.rdVerified) - Number(a.rdVerified));
-  return sorted.slice(0, 6);
+  const candidates = all.filter(
+    (d) => UPSELL_CATEGORIES.has(d.category) && !inCart.has(d.id),
+  );
+  // RD-verified first
+  const sorted = [...candidates].sort(
+    (a, b) => Number(b.rdVerified) - Number(a.rdVerified),
+  );
+  return sorted.slice(0, 8);
 }

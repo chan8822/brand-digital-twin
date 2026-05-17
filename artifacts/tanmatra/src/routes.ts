@@ -5,7 +5,10 @@ export default [
     route("menu", "pages/Menu.tsx"),
     route("dish/:slug", "pages/Dish.tsx"),
     route("cart", "pages/Cart.tsx"),
-    route("checkout", "pages/Checkout.tsx"),
+    layout("routes/CheckoutLayout.tsx", [
+      route("checkout", "pages/Checkout.tsx"),
+      route("track/:orderId", "pages/ZenTracker.tsx"),
+    ]),
     route("track", "pages/Track.tsx"),
     route("orders", "pages/Orders.tsx"),
     route("subscribe", "pages/Subscribe.tsx"),
