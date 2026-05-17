@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "react-router";
 import type { LinksFunction, MetaFunction } from "react-router";
 import { Toaster } from "sonner";
@@ -61,8 +62,13 @@ const LOADER_SCRIPT = `
       var r = document.getElementById('__tl-retry');
       if(r) r.style.display='block';
     }, 7000);
+    var autoDismiss = setTimeout(function(){
+      var el = document.getElementById('__tanmatra-loader');
+      if(el){ el.classList.add('hidden'); setTimeout(function(){ el.remove(); }, 300); }
+    }, 15000);
     window.__clearTanmatraLoader = function(){
       clearTimeout(t);
+      clearTimeout(autoDismiss);
       var el = document.getElementById('__tanmatra-loader');
       if(el){ el.classList.add('hidden'); setTimeout(function(){ el.remove(); }, 300); }
     };
@@ -70,6 +76,10 @@ const LOADER_SCRIPT = `
 `.trim();
 
 export default function Root() {
+  useEffect(() => {
+    window.__clearTanmatraLoader?.();
+  }, []);
+
   return (
     <html lang="en">
       <head>

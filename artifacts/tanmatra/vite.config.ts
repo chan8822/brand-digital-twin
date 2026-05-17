@@ -25,10 +25,8 @@ export default defineConfig({
     dedupe: ["react", "react-dom"],
   },
   root: path.resolve(import.meta.dirname),
-  build: {
-    outDir: path.resolve(import.meta.dirname, "dist/public"),
-    emptyOutDir: true,
-  },
+  // react-router build manages outDir internally (build/client, build/server).
+  // Do not set build.outDir here — it conflicts with the reactRouter() plugin.
   server: {
     port,
     strictPort: true,

@@ -9,10 +9,8 @@ startTransition(() => {
       <HydratedRouter />
     </StrictMode>
   );
-  // A1c: clear the branded splash once React has hydrated
-  if (typeof window !== "undefined" && typeof window.__clearTanmatraLoader === "function") {
-    window.__clearTanmatraLoader();
-  }
+  // Belt-and-suspenders: also cleared by useEffect in Root after mount
+  window.__clearTanmatraLoader?.();
 });
 
 declare global {
