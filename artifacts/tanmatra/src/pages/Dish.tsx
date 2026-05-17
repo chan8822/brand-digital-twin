@@ -57,7 +57,7 @@ import CoachAgentWidget from "@/components/ai/CoachAgent";
 import DishReviews from "@/components/dish/DishReviews";
 import { getChefForDish, getRdForDish, ACCENT_CLASSES } from "@/lib/teamData";
 import { toast } from "sonner";
-import { getDishBySlug, useMenuCatalog } from "@/lib/menuData";
+import { useMenuCatalog } from "@/lib/menuData";
 import {
   getCustomizationsForDish,
   getKitchenNoteForDish,
