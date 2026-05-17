@@ -32,7 +32,7 @@ import {
 } from "@/lib/fulfillmentApi";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Sparkles, Leaf, Store, Truck, NotebookPen, ArrowRight, ChevronDown } from "lucide-react";
+import { Sparkles, Leaf, Store, Truck, NotebookPen, ArrowRight, ChevronDown, Check } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -140,6 +140,9 @@ export default function Checkout() {
   const [selectedAddress, setSelectedAddress] = useState<string>("");
   const [savingAddress, setSavingAddress] = useState(false);
   const [addressErrors, setAddressErrors] = useState<Record<string, string>>({});
+  const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set());
+  const touchField = (name: string) =>
+    setTouchedFields((prev) => new Set([...prev, name]));
   // Distinguishes "logged in but has no saved addresses yet" from
   // "not signed in at all" — the inline new-address form would otherwise
   // tease an unauth user into filling fields that fail on submit.
@@ -293,6 +296,9 @@ export default function Checkout() {
         // baiting them into the new-address form (architect P1).
         if (String(err.message).startsWith("401")) {
           setAddressAuthRequired(true);
+          // Guest path: open the inline form so they can still checkout
+          setShowNewAddress(true);
+          setSelectedAddress("new");
         }
       });
     return () => {
@@ -414,6 +420,28 @@ export default function Checkout() {
     setAddressErrors({});
     setSavingAddress(true);
     try {
+      if (addressAuthRequired) {
+        // Guest path: build a local-only address (no API call) so the
+        // rest of the checkout flow has a valid activeAddr to work with.
+        const guestAddr: UserAddress = {
+          id: "guest-addr",
+          label: newAddr.label.trim() || "Delivery address",
+          type: "home",
+          line1: newAddr.line1.trim(),
+          line2: newAddr.line2.trim(),
+          city: newAddr.city.trim(),
+          pincode: newAddr.pincode.trim(),
+          phone: newAddr.phone.trim(),
+          isDefault: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        setSavedAddresses([guestAddr]);
+        setSelectedAddress("guest-addr");
+        setShowNewAddress(false);
+        setTouchedFields(new Set());
+        return;
+      }
       const r = await addressesApi.create({
         label: newAddr.label.trim(),
         line1: newAddr.line1.trim(),
@@ -433,6 +461,7 @@ export default function Checkout() {
         pincode: "",
         phone: "",
       });
+      setTouchedFields(new Set());
       toast.success("Address saved");
     } catch (e) {
       const msg = String((e as Error).message);
@@ -955,17 +984,7 @@ export default function Checkout() {
                   </Label>
                 ))}
 
-                {addressAuthRequired ? (
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start gap-2 text-xs text-clinical-gold hover:bg-clinical-gold/10 h-10"
-                    onClick={() =>
-                      navigate(`/login?next=${encodeURIComponent("/checkout")}`)
-                    }
-                  >
-                    Sign in to save an address
-                  </Button>
-                ) : (
+                {!showNewAddress && (
                   <Button
                     variant="ghost"
                     className="w-full justify-start gap-2 text-xs text-clinical-gold hover:bg-clinical-gold/10 h-10"
@@ -975,7 +994,7 @@ export default function Checkout() {
                     }}
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    Add New Address
+                    {addressAuthRequired ? "Enter delivery address" : "Add New Address"}
                   </Button>
                 )}
               </div>
@@ -1012,17 +1031,36 @@ export default function Checkout() {
 
             {showNewAddress && (
               <div className="space-y-3 p-3 rounded-lg bg-clinical-dark border border-clinical-border">
-                <p className="text-xs font-medium text-white">New Address</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium text-white">
+                    {addressAuthRequired ? "Delivery address" : "New Address"}
+                  </p>
+                  {addressAuthRequired && (
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/login?next=${encodeURIComponent("/checkout")}`)}
+                      className="text-[10px] text-clinical-gold hover:underline"
+                    >
+                      Sign in to save for next time →
+                    </button>
+                  )}
+                </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
-                    <Input
-                      placeholder="Label (e.g., Home)"
-                      value={newAddr.label}
-                      onChange={(e) =>
-                        setNewAddr({ ...newAddr, label: e.target.value })
-                      }
-                      className="h-9 text-xs bg-clinical-surface border-clinical-border"
-                    />
+                    <div className="relative">
+                      <Input
+                        placeholder="Label (e.g., Home)"
+                        value={newAddr.label}
+                        onChange={(e) =>
+                          setNewAddr({ ...newAddr, label: e.target.value })
+                        }
+                        onBlur={() => touchField("label")}
+                        className="h-9 text-xs bg-clinical-surface border-clinical-border pr-7"
+                      />
+                      {touchedFields.has("label") && newAddr.label.trim() && !addressErrors.label && (
+                        <Check className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-matcha pointer-events-none" />
+                      )}
+                    </div>
                     {addressErrors.label && (
                       <p className="text-[10px] text-alert-allergen-text -mt-1">
                         {addressErrors.label}
@@ -1030,16 +1068,26 @@ export default function Checkout() {
                     )}
                   </div>
                   <div className="space-y-1">
-                    <Input
-                      placeholder="Phone (rider will call this)"
-                      value={newAddr.phone}
-                      onChange={(e) =>
-                        setNewAddr({ ...newAddr, phone: e.target.value })
-                      }
-                      inputMode="tel"
-                      autoComplete="tel"
-                      className="h-9 text-xs bg-clinical-surface border-clinical-border"
-                    />
+                    <div className="relative">
+                      <Input
+                        placeholder="Phone (rider will call this)"
+                        value={newAddr.phone}
+                        onChange={(e) => {
+                          const digits = e.target.value.replace(/\D/g, "").slice(0, 10);
+                          const formatted = digits.length > 5
+                            ? `${digits.slice(0, 5)} ${digits.slice(5)}`
+                            : digits;
+                          setNewAddr({ ...newAddr, phone: formatted });
+                        }}
+                        onBlur={() => touchField("phone")}
+                        inputMode="tel"
+                        autoComplete="tel"
+                        className="h-9 text-xs bg-clinical-surface border-clinical-border pr-7"
+                      />
+                      {touchedFields.has("phone") && /^[+\d][\d\s\-]{8,14}$/.test(newAddr.phone.trim()) && !addressErrors.phone && (
+                        <Check className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-matcha pointer-events-none" />
+                      )}
+                    </div>
                     {addressErrors.phone && (
                       <p className="text-[10px] text-alert-allergen-text -mt-1">
                         {addressErrors.phone}
@@ -1049,14 +1097,20 @@ export default function Checkout() {
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
-                    <Input
-                      placeholder="City"
-                      value={newAddr.city}
-                      onChange={(e) =>
-                        setNewAddr({ ...newAddr, city: e.target.value })
-                      }
-                      className="h-9 text-xs bg-clinical-surface border-clinical-border"
-                    />
+                    <div className="relative">
+                      <Input
+                        placeholder="City"
+                        value={newAddr.city}
+                        onChange={(e) =>
+                          setNewAddr({ ...newAddr, city: e.target.value })
+                        }
+                        onBlur={() => touchField("city")}
+                        className="h-9 text-xs bg-clinical-surface border-clinical-border pr-7"
+                      />
+                      {touchedFields.has("city") && newAddr.city.trim() && !addressErrors.city && (
+                        <Check className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-matcha pointer-events-none" />
+                      )}
+                    </div>
                     {addressErrors.city && (
                       <p className="text-[10px] text-alert-allergen-text -mt-1">
                         {addressErrors.city}
@@ -1064,17 +1118,23 @@ export default function Checkout() {
                     )}
                   </div>
                   <div className="space-y-1">
-                    <Input
-                      placeholder="Pincode"
-                      value={newAddr.pincode}
-                      onChange={(e) =>
-                        setNewAddr({ ...newAddr, pincode: e.target.value })
-                      }
-                      inputMode="numeric"
-                      autoComplete="postal-code"
-                      maxLength={6}
-                      className="h-9 text-xs bg-clinical-surface border-clinical-border"
-                    />
+                    <div className="relative">
+                      <Input
+                        placeholder="Pincode"
+                        value={newAddr.pincode}
+                        onChange={(e) =>
+                          setNewAddr({ ...newAddr, pincode: e.target.value })
+                        }
+                        onBlur={() => touchField("pincode")}
+                        inputMode="numeric"
+                        autoComplete="postal-code"
+                        maxLength={6}
+                        className="h-9 text-xs bg-clinical-surface border-clinical-border pr-7"
+                      />
+                      {touchedFields.has("pincode") && /^\d{6}$/.test(newAddr.pincode.trim()) && !addressErrors.pincode && (
+                        <Check className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-matcha pointer-events-none" />
+                      )}
+                    </div>
                     {addressErrors.pincode && (
                       <p className="text-[10px] text-alert-allergen-text -mt-1">
                         {addressErrors.pincode}
@@ -1083,14 +1143,20 @@ export default function Checkout() {
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <Input
-                    placeholder="Address line 1 (street, building)"
-                    value={newAddr.line1}
-                    onChange={(e) =>
-                      setNewAddr({ ...newAddr, line1: e.target.value })
-                    }
-                    className="h-9 text-xs bg-clinical-surface border-clinical-border"
-                  />
+                  <div className="relative">
+                    <Input
+                      placeholder="Address line 1 (street, building)"
+                      value={newAddr.line1}
+                      onChange={(e) =>
+                        setNewAddr({ ...newAddr, line1: e.target.value })
+                      }
+                      onBlur={() => touchField("line1")}
+                      className="h-9 text-xs bg-clinical-surface border-clinical-border pr-7"
+                    />
+                    {touchedFields.has("line1") && newAddr.line1.trim() && !addressErrors.line1 && (
+                      <Check className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-matcha pointer-events-none" />
+                    )}
+                  </div>
                   {addressErrors.line1 && (
                     <p className="text-[10px] text-alert-allergen-text -mt-1">
                       {addressErrors.line1}
@@ -1119,7 +1185,7 @@ export default function Checkout() {
                   disabled={savingAddress}
                   className="bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold w-full h-9 text-xs"
                 >
-                  {savingAddress ? "Saving…" : "Save address"}
+                  {savingAddress ? "Saving…" : addressAuthRequired ? "Use this address" : "Save address"}
                 </Button>
               </div>
             )}

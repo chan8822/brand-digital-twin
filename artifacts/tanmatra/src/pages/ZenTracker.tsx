@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Link, useParams, useNavigate } from "react-router";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, Package } from "lucide-react";
+import { ArrowLeft, Package, Plus, Check, X } from "lucide-react";
 import { ordersApi, type OrderStatus } from "@/lib/ordersApi";
+import { useCart, useAddToCartStatus } from "@/lib/cartContext";
+import { DISHES } from "@/lib/menuData";
+import { formatCurrency } from "@/lib/utils";
 import { FADE, DURATION, EASE } from "@/lib/motion";
 
 // ── SVG Ring ─────────────────────────────────────────────────────────────────
@@ -90,6 +93,108 @@ function statusCopy(status: OrderStatus, isLate: boolean): { headline: string; s
         sub: "",
       };
   }
+}
+
+// ── Post-purchase snack upsell ────────────────────────────────────────────────
+
+const UPSELL_DISHES = DISHES.filter(
+  (d) => (d.category === "snacks" || d.category === "beverages") && d.isAvailable,
+).slice(0, 4);
+
+function SnackCard({ dish, onAdd }: { dish: (typeof DISHES)[number]; onAdd: () => void }) {
+  const { status } = useAddToCartStatus(dish.id);
+  return (
+    <div className="flex-shrink-0 w-32 rounded-xl overflow-hidden border border-clinical-border bg-clinical-surface flex flex-col">
+      <img
+        src={dish.image}
+        alt={dish.name}
+        className="w-full h-20 object-cover"
+        loading="lazy"
+      />
+      <div className="p-2 flex flex-col gap-1.5 flex-1">
+        <p className="text-[11px] font-medium text-white leading-tight line-clamp-2">
+          {dish.name}
+        </p>
+        <p className="text-[10px] text-clinical-zinc">{formatCurrency(dish.price)}</p>
+        <button
+          type="button"
+          onClick={onAdd}
+          disabled={status === "loading"}
+          className={`mt-auto w-full h-7 rounded-lg text-[10px] font-semibold flex items-center justify-center gap-1 transition-colors ${
+            status === "success"
+              ? "bg-matcha/20 text-matcha"
+              : "bg-clinical-gold/15 text-clinical-gold hover:bg-clinical-gold/25"
+          }`}
+        >
+          {status === "success" ? (
+            <Check className="w-3.5 h-3.5" />
+          ) : status === "loading" ? (
+            <span className="w-3.5 h-3.5 rounded-full border-2 border-clinical-gold/30 border-t-clinical-gold animate-spin" />
+          ) : (
+            <>
+              <Plus className="w-3 h-3" />
+              Add
+            </>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function PostPurchaseUpsell() {
+  const [dismissed, setDismissed] = useState(false);
+  const { addItem } = useCart();
+
+  if (dismissed || UPSELL_DISHES.length === 0) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 12 }}
+      transition={{ duration: DURATION.slow, ease: EASE.standard }}
+      className="w-full max-w-sm"
+    >
+      <div className="relative rounded-2xl border border-clinical-border bg-clinical-surface p-4 space-y-3">
+        <button
+          type="button"
+          onClick={() => setDismissed(true)}
+          className="absolute top-3 right-3 text-clinical-zinc hover:text-white transition-colors"
+          aria-label="Dismiss"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
+        <p className="text-xs font-semibold text-white pr-5">
+          Add a little extra to your delivery
+        </p>
+        <div className="flex gap-2 overflow-x-auto snap-x snap-mandatory pb-1 -mx-1 px-1 scrollbar-none">
+          {UPSELL_DISHES.map((dish) => (
+            <SnackCard
+              key={dish.id}
+              dish={dish}
+              onAdd={() =>
+                addItem({
+                  dishId: dish.id,
+                  slug: dish.slug,
+                  name: dish.name,
+                  image: dish.image,
+                  basePrice: dish.price,
+                  unitPrice: dish.price,
+                  quantity: 1,
+                  kitchen: dish.kitchen,
+                  isVeg: dish.isVeg,
+                  rdVerified: dish.rdVerified ?? true,
+                  macros: dish.macros,
+                  customizations: [],
+                })
+              }
+            />
+          ))}
+        </div>
+      </div>
+    </motion.div>
+  );
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -239,6 +344,13 @@ export default function ZenTracker() {
               </p>
             )}
           </motion.div>
+        </AnimatePresence>
+
+        {/* Post-purchase upsell — only while kitchen is still preparing */}
+        <AnimatePresence>
+          {(status === "prep" || status === "confirmed") && (
+            <PostPurchaseUpsell />
+          )}
         </AnimatePresence>
 
         {/* API unavailable fallback note */}
