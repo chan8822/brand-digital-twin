@@ -14,6 +14,7 @@ import Footer from "@/components/layout/Footer";
 import BottomNav from "@/components/layout/BottomNav";
 import ScrollToTop from "@/components/layout/ScrollToTop";
 import StickyCheckoutBar from "@/components/cart/StickyCheckoutBar";
+import CartDrawer from "@/components/cart/CartDrawer";
 import ErrorBoundary from "@/components/layout/ErrorBoundary";
 import "./index.css";
 
@@ -154,6 +155,7 @@ export default function Root() {
                       <Footer />
                       <BottomNav />
                       <StickyCheckoutBar />
+                      <CartDrawer />
                     </div>
                     <Toaster theme="dark" position="top-center" richColors offset={72} />
                   </PreferencesProvider>
