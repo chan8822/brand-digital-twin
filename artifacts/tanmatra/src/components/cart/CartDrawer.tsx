@@ -6,9 +6,9 @@ import {
   useMemo,
   type KeyboardEvent,
 } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { AnimatePresence, motion } from "framer-motion";
-import { Minus, Plus, ShoppingBag, Trash2, X, Leaf, ShieldCheck, Loader2, Check } from "lucide-react";
+import { Minus, Plus, ShoppingBag, Trash2, X, Leaf, ShieldCheck, Loader2, Check, Zap } from "lucide-react";
 import { toast } from "sonner";
 import {
   useCart,
@@ -20,6 +20,8 @@ import {
   type CartItem,
 } from "@/lib/cartContext";
 import { useMenuCatalog, type DishData } from "@/lib/menuData";
+import { addressesApi } from "@/lib/userAddressesApi";
+import { API_BASE } from "@/lib/apiBase";
 import { formatPrice } from "@/lib/api/adapter";
 import { track } from "@/lib/analytics";
 import { PANEL_SLIDE, BACKDROP, PULSE_OPACITY } from "@/lib/motion";
@@ -38,9 +40,11 @@ const UPSELL_CATEGORIES = new Set<string>(["beverages", "soups", "snacks", "brea
  */
 export default function CartDrawer() {
   const { isOpen, close } = useCartDrawer();
-  const { items, addItem, updateQty, removeItem } = useCart();
+  const { items, addItem, updateQty, removeItem, clear } = useCart();
   const totals = useCartTotals();
   const { dishes } = useMenuCatalog();
+  const navigate = useNavigate();
+  const [expressLoading, setExpressLoading] = useState(false);
 
   // Ghost-math state
   const [ghostItem, setGhostItemState] = useState<DishData | null>(null);
@@ -94,7 +98,96 @@ export default function CartDrawer() {
     [addItem, projectedFill, totals.hasFreeDelivery, setGhost],
   );
 
-  const upsells = useMemo(() => pickUpsells(dishes, items), [dishes, items]);
+  const upsells = useMemo(
+    () => pickUpsells(dishes, items, totals.amountToFreeDelivery),
+    [dishes, items, totals.amountToFreeDelivery],
+  );
+
+  // Express UPI checkout: resolve default address, create Razorpay order,
+  // open modal inline — bypasses the full checkout page for impulse orders.
+  // Falls back silently to /checkout if any step fails (no error toast).
+  const handleExpressUPI = useCallback(async () => {
+    const rpKey = import.meta.env.VITE_RAZORPAY_KEY_ID as string | undefined;
+    if (!rpKey) { navigate("/checkout"); return; }
+    setExpressLoading(true);
+    try {
+      // 1. Resolve default address
+      const { addresses } = await addressesApi.list();
+      const addr = addresses.find((a) => a.isDefault) ?? addresses[0];
+      if (!addr) { navigate("/checkout"); return; }
+
+      // 2. Create server-side Razorpay order
+      const rpRes = await fetch(`${API_BASE}/payments/razorpay/order`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amountPaise: totals.total }),
+      });
+      if (!rpRes.ok) { navigate("/checkout"); return; }
+      const { razorpayOrderId } = (await rpRes.json()) as { razorpayOrderId: string };
+
+      // 3. Load Razorpay script lazily
+      await new Promise<void>((resolve, reject) => {
+        if ((window as { Razorpay?: unknown }).Razorpay) { resolve(); return; }
+        if (!document.getElementById("__rzp_script")) {
+          const s = document.createElement("script");
+          s.id = "__rzp_script";
+          s.src = "https://checkout.razorpay.com/v1/checkout.js";
+          s.onload = () => resolve();
+          s.onerror = () => reject(new Error("load-failed"));
+          document.head.appendChild(s);
+        } else {
+          resolve();
+        }
+      });
+
+      // 4. Open modal
+      const localOrderId = `TAN-${Date.now()}`;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const RazorpayClass = (window as any).Razorpay;
+      if (!RazorpayClass) { navigate("/checkout"); return; }
+      const rzp = new RazorpayClass({
+        key: rpKey,
+        amount: totals.total,
+        currency: "INR",
+        order_id: razorpayOrderId,
+        name: "Tanmatra",
+        description: `${totals.totalQuantity} item${totals.totalQuantity === 1 ? "" : "s"}`,
+        theme: { color: "#D4AF37" },
+        prefill: { contact: addr.phone },
+        handler: async (response: {
+          razorpay_payment_id: string;
+          razorpay_order_id: string;
+          razorpay_signature: string;
+        }) => {
+          try {
+            await fetch(`${API_BASE}/payments/razorpay/verify`, {
+              method: "POST",
+              credentials: "include",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                orderId: localOrderId,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpayOrderId: response.razorpay_order_id,
+                razorpaySignature: response.razorpay_signature,
+              }),
+            });
+          } catch { /* non-fatal; order recorded server-side */ }
+          clear();
+          close();
+          navigate(`/track/${localOrderId}`);
+        },
+        modal: {
+          ondismiss: () => setExpressLoading(false),
+        },
+      });
+      rzp.open();
+    } catch {
+      navigate("/checkout");
+    } finally {
+      setExpressLoading(false);
+    }
+  }, [totals, navigate, close, clear]);
   const isEmpty = items.length === 0;
 
   // Body scroll lock
@@ -229,7 +322,13 @@ export default function CartDrawer() {
                   )}
                 </div>
 
-                <FooterTotals totals={totals} onClose={close} />
+                <FooterTotals
+                  totals={totals}
+                  items={items}
+                  onClose={close}
+                  onExpressUPI={handleExpressUPI}
+                  expressLoading={expressLoading}
+                />
               </>
             )}
           </motion.div>
@@ -713,11 +812,33 @@ function UpsellCard({
 
 function FooterTotals({
   totals,
+  items,
   onClose,
+  onExpressUPI,
+  expressLoading,
 }: {
   totals: ReturnType<typeof useCartTotals>;
+  items: CartItem[];
   onClose: () => void;
+  onExpressUPI: () => void;
+  expressLoading: boolean;
 }) {
+  const cartMacros = useMemo(
+    () =>
+      items.reduce(
+        (acc, it) => ({
+          calories: acc.calories + Math.round(it.macros.calories * it.quantity),
+          protein: acc.protein + Math.round(it.macros.protein * it.quantity),
+          carbs: acc.carbs + Math.round(it.macros.carbs * it.quantity),
+          fat: acc.fat + Math.round(it.macros.fat * it.quantity),
+        }),
+        { calories: 0, protein: 0, carbs: 0, fat: 0 },
+      ),
+    [items],
+  );
+
+  const hasExpressUPI = Boolean(import.meta.env.VITE_RAZORPAY_KEY_ID);
+
   return (
     <div className="border-t border-clinical-zinc/15 bg-clinical-dark/95 px-5 py-4 space-y-3 shrink-0">
       <dl className="space-y-1.5 text-xs">
@@ -729,21 +850,49 @@ function FooterTotals({
           valueClass={totals.hasFreeDelivery ? "text-clinical-sage font-semibold" : undefined}
         />
         <div className="h-px bg-clinical-zinc/15 my-2" />
-        <TotalsRow
-          label="Total"
-          value={formatPrice(totals.total)}
-          large
-        />
+        <TotalsRow label="Total" value={formatPrice(totals.total)} large />
       </dl>
-      <p className="text-[10px] text-clinical-zinc/70 text-center -mt-1">
+
+      {/* Aggregated cart macros — clinical differentiator */}
+      <div className="flex items-center justify-between text-[10px] text-clinical-zinc/70 py-1.5 px-2 rounded-lg bg-clinical-surface/50">
+        <span className="tabular-nums">{cartMacros.calories} kcal</span>
+        <span className="tabular-nums text-clinical-zinc/50">·</span>
+        <span className="tabular-nums"><span className="text-clinical-zinc/90">{cartMacros.protein}g</span> protein</span>
+        <span className="tabular-nums text-clinical-zinc/50">·</span>
+        <span className="tabular-nums"><span className="text-clinical-zinc/90">{cartMacros.carbs}g</span> carbs</span>
+        <span className="tabular-nums text-clinical-zinc/50">·</span>
+        <span className="tabular-nums"><span className="text-clinical-zinc/90">{cartMacros.fat}g</span> fat</span>
+      </div>
+
+      <p className="text-[10px] text-clinical-zinc/70 text-center">
         Discounts &amp; credits applied at checkout
       </p>
+
+      {/* Express UPI — bypasses checkout entirely when Razorpay key is set */}
+      {hasExpressUPI && (
+        <button
+          type="button"
+          onClick={onExpressUPI}
+          disabled={expressLoading}
+          className="flex items-center justify-center gap-2 h-11 w-full rounded-md bg-clinical-surface border border-clinical-gold/30 text-clinical-gold text-xs font-semibold hover:bg-clinical-gold/10 transition-colors disabled:opacity-60"
+        >
+          {expressLoading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <>
+              <Zap className="w-3.5 h-3.5" />
+              Pay now · UPI / Cards
+            </>
+          )}
+        </button>
+      )}
+
       <Link
         to="/checkout"
         onClick={onClose}
         className="flex items-center justify-center h-11 rounded-md bg-clinical-gold text-[#050505] text-xs font-semibold uppercase tracking-[0.14em] hover:bg-clinical-gold/90 transition-colors"
       >
-        Checkout · {formatPrice(totals.total)}
+        {hasExpressUPI ? "Checkout →" : `Checkout · ${formatPrice(totals.total)}`}
       </Link>
     </div>
   );
@@ -790,18 +939,63 @@ function TotalsRow({
 /* ------------------------------------------------------------------ */
 
 /**
- * Pick up to 8 upsell candidates from beverages/soups/snacks/breakfast
- * that are not already in cart. RD-verified dishes surface first.
+ * Pick up to 8 upsell candidates with three layers of intelligence:
+ * 1. Dietary coherence — if cart is keto/protein-dominant, bias toward
+ *    matching add-ons so suggestions stay within the user's protocol.
+ * 2. Threshold bridging — when the user is within ₹200 of free delivery,
+ *    surface the item whose price most precisely bridges the gap first.
+ * 3. RD-verified default sort when neither condition fires.
  */
-function pickUpsells(all: DishData[], items: CartItem[]): DishData[] {
+function pickUpsells(
+  all: DishData[],
+  items: CartItem[],
+  amountToFreeDelivery: number,
+): DishData[] {
   if (all.length === 0) return [];
   const inCart = new Set(items.map((i) => i.dishId));
-  const candidates = all.filter(
-    (d) => UPSELL_CATEGORIES.has(d.category) && !inCart.has(d.id),
+  let candidates = all.filter(
+    (d) =>
+      UPSELL_CATEGORIES.has(d.category) && !inCart.has(d.id) && d.isAvailable,
   );
-  // RD-verified first
-  const sorted = [...candidates].sort(
-    (a, b) => Number(b.rdVerified) - Number(a.rdVerified),
-  );
-  return sorted.slice(0, 8);
+
+  // Layer 1: dietary coherence
+  if (items.length > 0) {
+    const totalCals = items.reduce((s, it) => s + it.macros.calories * it.quantity, 0);
+    const totalFat  = items.reduce((s, it) => s + it.macros.fat * it.quantity, 0);
+    const totalCarbs = items.reduce((s, it) => s + it.macros.carbs * it.quantity, 0);
+    const totalProtein = items.reduce((s, it) => s + it.macros.protein * it.quantity, 0);
+
+    const fatCalFraction = totalCals > 0 ? (totalFat * 9) / totalCals : 0;
+    const proteinCalFraction = totalCals > 0 ? (totalProtein * 4) / totalCals : 0;
+
+    const isKeto = fatCalFraction > 0.4 && totalCarbs < 30;
+    const isProteinFirst = !isKeto && proteinCalFraction > 0.35;
+
+    if (isKeto) {
+      const ketoOpts = candidates.filter((d) => d.macros.carbs < 10);
+      if (ketoOpts.length >= 3) candidates = ketoOpts;
+    } else if (isProteinFirst) {
+      candidates = [...candidates].sort(
+        (a, b) =>
+          b.macros.protein / (b.macros.calories || 1) -
+          a.macros.protein / (a.macros.calories || 1),
+      );
+    }
+  }
+
+  // Layer 2: bridge the free-delivery gap when within ₹200
+  if (amountToFreeDelivery > 0 && amountToFreeDelivery <= 20000) {
+    return [...candidates]
+      .sort(
+        (a, b) =>
+          Math.abs(a.price - amountToFreeDelivery) -
+          Math.abs(b.price - amountToFreeDelivery),
+      )
+      .slice(0, 8);
+  }
+
+  // Layer 3: RD-verified default
+  return [...candidates]
+    .sort((a, b) => Number(b.rdVerified) - Number(a.rdVerified))
+    .slice(0, 8);
 }
