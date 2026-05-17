@@ -14,15 +14,19 @@ export const meta: MetaFunction = () => [
   {
     "script:ld+json": {
       "@context": "https://schema.org",
-      "@type": "ItemList",
+      "@type": "Menu",
       "name": "Tanmatra Clinical Menu",
-      "description": "Therapeutic meal delivery menu designed by registered dietitians.",
       "url": "https://tanmatra.food/menu",
-      "itemListElement": STATIC_DISHES.slice(0, 20).map((dish, i) => ({
-        "@type": "ListItem",
-        "position": i + 1,
-        "url": `https://tanmatra.food/dish/${dish.slug}`,
+      "hasMenuItem": STATIC_DISHES.map(dish => ({
+        "@type": "MenuItem",
         "name": dish.name,
+        "description": dish.description,
+        "offers": {
+          "@type": "Offer",
+          "price": (dish.price / 100).toFixed(2),
+          "priceCurrency": "INR",
+        },
+        ...(dish.allergens?.length ? { "allergenDeclaration": dish.allergens.join(", ") } : {}),
       })),
     },
   },
@@ -916,31 +920,3 @@ export default function Menu() {
 
 // Legacy inline card markup removed — moved to <MenuCard /> component.
 // Original implementation below intentionally stripped to avoid duplicate JSX.
-
-import { DISHES } from "@/lib/menuData";
-
-export function meta() {
-  const hasMenuItem = DISHES.filter(d => Boolean(d)).map(dish => ({
-    "@type": "MenuItem",
-    "name": dish.name,
-    "description": dish.description,
-    "offers": {
-      "@type": "Offer",
-      "price": (dish.price / 100).toFixed(2),
-      "priceCurrency": "INR"
-    },
-    ...(dish.allergens && dish.allergens.length > 0 ? { "allergenDeclaration": dish.allergens.join(", ") } : {})
-  }));
-
-  return [
-    { title: "Clinical Menu | Tanmatra" },
-    {
-      "script:ld+json": {
-        "@context": "https://schema.org",
-        "@type": "Menu",
-        "name": "Tanmatra Clinical Menu",
-        "hasMenuItem": hasMenuItem
-      }
-    }
-  ];
-}
