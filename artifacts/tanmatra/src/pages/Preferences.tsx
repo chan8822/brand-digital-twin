@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import {
   ALLERGEN_OPTIONS,
@@ -113,26 +114,20 @@ export default function Preferences() {
     void refresh();
   };
 
-  if (unauthorized) {
-    return (
-      <div className="max-w-xl mx-auto px-4 py-12 text-center space-y-4">
-        <h1 className="font-serif text-2xl text-white">Sign in to set preferences</h1>
-        <p className="text-sm text-clinical-zinc">
-          We use your taste profile to personalize the menu.
-        </p>
-        <Link to="/login">
-          <Button className="bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90">
-            Sign in
-          </Button>
-        </Link>
-      </div>
-    );
-  }
-
   if (loading) {
     return (
-      <div className="max-w-xl mx-auto px-4 py-12 text-center text-sm text-clinical-zinc">
-        Loading your preferences…
+      <div className="max-w-3xl mx-auto px-4 py-8 space-y-6 animate-in fade-in duration-300">
+        <Skeleton className="h-10 w-64 bg-clinical-surface-elevated" />
+        <Skeleton className="h-4 w-48 bg-clinical-surface-elevated" />
+        <div className="space-y-4 pt-6">
+          <Skeleton className="h-8 w-1/4 bg-clinical-surface-elevated" />
+          <Skeleton className="h-14 w-full bg-clinical-surface-elevated" />
+          <Skeleton className="h-14 w-full bg-clinical-surface-elevated" />
+        </div>
+        <div className="space-y-4 pt-6">
+          <Skeleton className="h-8 w-1/4 bg-clinical-surface-elevated" />
+          <Skeleton className="h-24 w-full bg-clinical-surface-elevated" />
+        </div>
       </div>
     );
   }
@@ -147,6 +142,22 @@ export default function Preferences() {
           Used by menu, dish detail, and recommendations
         </p>
       </div>
+
+      {unauthorized && preferences?.quizCompletedAt && (
+        <Card className="bg-clinical-surface border-clinical-gold/30">
+          <CardContent className="p-4 space-y-2 flex justify-between items-center bg-clinical-gold/5 flex-wrap gap-4">
+            <div>
+              <p className="text-sm text-white font-medium">Save your preferences for later</p>
+              <p className="text-xs text-clinical-zinc">Create an account to keep your dietary profile and receive personalized RD recommendations.</p>
+            </div>
+            <Link to="/login?next=/preferences">
+              <Button className="bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold gap-2 border shadow-clinical border-clinical-gold/50 h-9 px-4 shrink-0 text-xs text-black">
+                Sign in
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      )}
 
       {preferences && recommendations.length > 0 && (
         <Card className="bg-gradient-to-br from-clinical-gold/10 to-transparent border-clinical-gold/30">

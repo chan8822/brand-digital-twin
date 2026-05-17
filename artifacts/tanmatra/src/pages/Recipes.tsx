@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useRecipes } from "@/lib/contentApi";
@@ -90,8 +91,23 @@ export default function Recipes() {
       </div>
 
       <div className="text-xs text-clinical-zinc-muted tabular-nums">
-        {isLoading ? "Loading…" : `${recipes?.length ?? 0} recipe${(recipes?.length ?? 0) === 1 ? "" : "s"}`}
+        {!isLoading && `${recipes?.length ?? 0} recipe${(recipes?.length ?? 0) === 1 ? "" : "s"}`}
       </div>
+
+      {isLoading && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {Array.from({ length: 6 }).map((_, idx) => (
+            <Card key={idx} className="bg-clinical-surface border-clinical-border h-72">
+              <Skeleton className="h-40 w-full bg-clinical-surface-elevated rounded-t-md" />
+              <CardContent className="p-4 space-y-3">
+                <Skeleton className="h-5 w-3/4 bg-clinical-surface-elevated" />
+                <Skeleton className="h-4 w-full bg-clinical-surface-elevated" />
+                <Skeleton className="h-4 w-1/2 bg-clinical-surface-elevated" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {recipes?.map((r) => (

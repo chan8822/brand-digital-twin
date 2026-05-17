@@ -20,6 +20,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { marketplaceApi, marketplaceCheckoutIdempotencyKey } from "@/lib/marketplaceApi";
 import { formatPrice } from "@/lib/api/adapter";
 import { useOrders } from "@/lib/ordersContext";
@@ -50,9 +51,22 @@ export default function MarketplaceItemPage() {
 
   if (q.isLoading)
     return (
-      <p className="max-w-3xl mx-auto p-6 text-sm text-clinical-zinc">
-        Loading…
-      </p>
+      <div className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8 animate-in fade-in duration-300">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+          <Skeleton className="w-full aspect-square rounded-2xl bg-clinical-surface-elevated" />
+          <div className="space-y-6">
+            <Skeleton className="h-4 w-24 bg-clinical-surface-elevated" />
+            <Skeleton className="h-10 w-3/4 bg-clinical-surface-elevated" />
+            <Skeleton className="h-6 w-1/4 bg-clinical-surface-elevated" />
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-full bg-clinical-surface-elevated" />
+              <Skeleton className="h-4 w-full bg-clinical-surface-elevated" />
+              <Skeleton className="h-4 w-2/3 bg-clinical-surface-elevated" />
+            </div>
+            <Skeleton className="h-12 w-full bg-clinical-surface-elevated mt-8" />
+          </div>
+        </div>
+      </div>
     );
   const item = q.data?.item;
   if (!item) {
@@ -139,9 +153,10 @@ export default function MarketplaceItemPage() {
           <div className="aspect-square bg-clinical-surface-elevated">
             {item.image && (
               <img
-                src={item.image}
+                src={item.image.includes("unsplash.com") ? `${item.image}&fm=webp&auto=format` : item.image}
                 alt={item.name}
                 className="w-full h-full object-cover"
+                loading="lazy"
               />
             )}
           </div>
