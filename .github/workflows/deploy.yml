@@ -135,10 +135,6 @@ jobs:
         run: pnpm --filter @workspace/tanmatra run build
         env:
           NODE_ENV: production
-          # Vite config requires these at build time even though Firebase
-          # Hosting serves the SPA at root and never reads PORT.
-          BASE_PATH: /
-          PORT: "5173"
 
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
