@@ -160,7 +160,7 @@ export default function RdProfile() {
         <ArrowLeft className="w-3.5 h-3.5" /> All RDs
       </Link>
 
-      <Card className="bg-clinical-surface border-clinical-slate/30">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-6 grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-6">
           <div className="space-y-4">
             <div className="flex items-start gap-3">
@@ -198,7 +198,7 @@ export default function RdProfile() {
                 <span>{profile.languages.join(", ")}</span>
               </div>
             </div>
-            <div className="rounded-lg border border-clinical-slate/30 p-3 space-y-1 text-[11px] text-clinical-zinc">
+            <div className="rounded-lg border border-clinical-border p-3 space-y-1 text-[11px] text-clinical-zinc">
               <p className="font-medium text-white text-xs">Credentials</p>
               {member.credentials.map((c) => (
                 <p key={c}>· {c}</p>
@@ -207,10 +207,10 @@ export default function RdProfile() {
                   has supplied public-display values in teamData.ts —
                   per ASCI 2022 endorsement guidelines. */}
               {(member.councilNumber || member.verifyUrl) && (
-                <div className="pt-2 mt-1 border-t border-clinical-slate/20 space-y-0.5">
+                <div className="pt-2 mt-1 border-t border-clinical-border space-y-0.5">
                   {member.councilNumber && (
                     <p className="text-[10px]">
-                      <span className="text-clinical-zinc/70">
+                      <span className="text-clinical-zinc-muted">
                         {member.councilName ?? "Council reg."}:
                       </span>{" "}
                       <span className="text-white tabular-nums">
@@ -254,7 +254,7 @@ export default function RdProfile() {
                       className={`rounded-lg border p-3 text-left transition-colors ${
                         active
                           ? "border-clinical-gold/60 bg-clinical-gold/10"
-                          : "border-clinical-slate/30 hover:border-clinical-gold/30"
+                          : "border-clinical-border hover:border-clinical-gold/30"
                       }`}
                     >
                       <p className="text-xs font-semibold text-white">
@@ -313,7 +313,7 @@ export default function RdProfile() {
                               className={`text-[11px] tabular-nums px-2.5 py-1.5 rounded-md border transition-colors ${
                                 active
                                   ? "bg-clinical-gold text-[#050505] border-clinical-gold"
-                                  : "border-clinical-slate/30 text-clinical-zinc hover:border-clinical-gold/40 hover:text-white"
+                                  : "border-clinical-border text-clinical-zinc hover:border-clinical-gold/40 hover:text-white"
                               }`}
                             >
                               {formatTime(s.startAt)}
@@ -335,13 +335,13 @@ export default function RdProfile() {
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
                 placeholder="Goals, recent labs, conditions, current medications…"
-                className="bg-[#050505] border-clinical-slate/30 text-xs"
+                className="bg-[#050505] border-clinical-border text-xs"
                 rows={3}
                 maxLength={2000}
               />
             </div>
 
-            <div className="flex items-center justify-between rounded-lg border border-clinical-slate/30 p-3">
+            <div className="flex items-center justify-between rounded-lg border border-clinical-border p-3">
               <div className="text-xs text-clinical-zinc">
                 {selected ? (
                   <span>

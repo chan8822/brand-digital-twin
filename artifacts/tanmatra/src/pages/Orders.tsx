@@ -64,7 +64,7 @@ export default function Orders() {
           <Link to="/preferences">
             <Button
               variant="outline"
-              className="border-clinical-slate/40 text-clinical-zinc hover:text-white"
+              className="border-clinical-border text-clinical-zinc hover:text-white"
             >
               Set preferences first
             </Button>
@@ -122,7 +122,7 @@ export default function Orders() {
         {orders.map((order) => {
           const badge = STATUS_BADGE[order.status];
           return (
-            <Card key={order.orderId} className="bg-clinical-surface border-clinical-slate/20">
+            <Card key={order.orderId} className="bg-clinical-surface border-clinical-border">
               <CardContent className="p-4 space-y-3">
                 {/* Header row */}
                 <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -161,7 +161,7 @@ export default function Orders() {
                       <img
                         src={item.image}
                         alt={item.name}
-                        className="w-14 h-14 rounded-md object-cover border border-clinical-slate/20"
+                        className="w-14 h-14 rounded-md object-cover border border-clinical-border"
                       />
                       <p className="text-[9px] text-clinical-zinc truncate" title={item.name}>
                         ×{item.quantity}
@@ -176,7 +176,7 @@ export default function Orders() {
                     <ChevronRight className="w-3 h-3 transition-transform group-open:rotate-90" />
                     View items & customizations
                   </summary>
-                  <div className="mt-2 space-y-2 pl-4 border-l border-clinical-slate/20">
+                  <div className="mt-2 space-y-2 pl-4 border-l border-clinical-border">
                     {order.items.map((item) => (
                       <div key={item.lineId} className="text-xs space-y-1">
                         <div className="flex items-baseline justify-between gap-2">
@@ -190,7 +190,7 @@ export default function Orders() {
                         {item.customizations.length > 0 && (
                           <div className="flex flex-wrap gap-1">
                             {item.customizations.map((c) => (
-                              <span key={c} className="text-[9px] px-1 py-0.5 rounded bg-clinical-slate/20 text-clinical-zinc">
+                              <span key={c} className="text-[9px] px-1 py-0.5 rounded bg-clinical-surface-elevated text-clinical-zinc">
                                 {c}
                               </span>
                             ))}
@@ -212,7 +212,7 @@ export default function Orders() {
                 </div>
 
                 {/* Total */}
-                <div className="flex items-center justify-between pt-1 border-t border-clinical-slate/15">
+                <div className="flex items-center justify-between pt-1 border-t border-clinical-border">
                   <span className="text-xs text-clinical-zinc">Total paid</span>
                   <span className="tabular-nums text-sm font-bold text-clinical-gold">
                     {formatPrice(order.total)}
@@ -237,7 +237,7 @@ export default function Orders() {
                     variant="outline"
                     size="sm"
                     onClick={() => handleReorder(order)}
-                    className="flex-1 min-w-[120px] border-clinical-slate/30 text-clinical-zinc hover:text-clinical-gold gap-1.5 text-xs"
+                    className="flex-1 min-w-[120px] border-clinical-border text-clinical-zinc hover:text-clinical-gold gap-1.5 text-xs"
                   >
                     <RefreshCw className="w-3.5 h-3.5" />
                     Reorder
@@ -261,7 +261,7 @@ export default function Orders() {
       {/* Dispute dialog */}
       <Dialog open={disputeFor !== null} onOpenChange={(open) => !open && setDisputeFor(null)}>
         <DialogContent
-          className="bg-clinical-surface border-clinical-slate/30"
+          className="bg-clinical-surface border-clinical-border"
           aria-describedby="dispute-desc"
         >
           <DialogHeader>
@@ -280,13 +280,13 @@ export default function Orders() {
             placeholder="e.g., Wrong dish delivered, food was cold, missing item, allergen concern…"
             value={disputeText}
             onChange={(e) => setDisputeText(e.target.value)}
-            className="min-h-[120px] bg-clinical-dark border-clinical-slate/30 text-sm"
+            className="min-h-[120px] bg-clinical-dark border-clinical-border text-sm"
           />
           <DialogFooter className="gap-2 sm:gap-2">
             <Button
               variant="outline"
               onClick={() => setDisputeFor(null)}
-              className="border-clinical-slate/30 text-clinical-zinc"
+              className="border-clinical-border text-clinical-zinc"
             >
               Cancel
             </Button>

@@ -64,7 +64,7 @@ export default function Performance() {
         </Link>
       </div>
 
-      <section className="relative py-16 border-b border-clinical-slate/20">
+      <section className="relative py-16 border-b border-clinical-border">
         <div className="max-w-7xl mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
             <div className="space-y-5">
@@ -93,12 +93,12 @@ export default function Performance() {
                     <p className="tabular-nums text-2xl font-bold text-clinical-blue">{qualifying.length}</p>
                     <p className="text-clinical-label mt-0.5">Qualifying Dishes</p>
                   </div>
-                  <div className="w-px bg-clinical-slate/30" />
+                  <div className="w-px bg-clinical-surface-elevated" />
                   <div className="text-center">
                     <p className="tabular-nums text-2xl font-bold text-clinical-blue">{plans.length}</p>
                     <p className="text-clinical-label mt-0.5">RD Plans</p>
                   </div>
-                  <div className="w-px bg-clinical-slate/30" />
+                  <div className="w-px bg-clinical-surface-elevated" />
                   <div className="text-center">
                     <p className="tabular-nums text-2xl font-bold text-clinical-blue">{rds.length}</p>
                     <p className="text-clinical-label mt-0.5">Performance RDs</p>
@@ -132,7 +132,7 @@ export default function Performance() {
         </div>
       </section>
 
-      <section className="py-12 border-b border-clinical-slate/20">
+      <section className="py-12 border-b border-clinical-border">
         <div className="max-w-7xl mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {PILLARS.map((p) => (
@@ -162,7 +162,7 @@ export default function Performance() {
               </p>
             </div>
             <Link to="/menu?protocol=performance" className="text-xs text-clinical-blue hover:underline">
-              See all {qualifying.length} →
+              See all {qualifying.length} ��
             </Link>
           </div>
           {featured.length === 0 ? (
@@ -171,7 +171,7 @@ export default function Performance() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {featured.map((meal) => (
                 <Link to={`/dish/${meal.slug}`} key={meal.id}>
-                  <Card className="bg-clinical-surface border-clinical-slate/20 hover:border-clinical-blue/40 transition-all overflow-hidden group h-full">
+                  <Card className="bg-clinical-surface border-clinical-border hover:border-clinical-blue/40 transition-all overflow-hidden group h-full">
                     <div className="relative aspect-[4/3] overflow-hidden">
                       <img src={meal.image} alt={meal.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
                       <div className="absolute inset-0 bg-gradient-to-t from-[#050505]/80 via-transparent to-transparent" />
@@ -194,7 +194,7 @@ export default function Performance() {
         </div>
       </section>
 
-      <section className="py-12 border-t border-b border-clinical-slate/20 bg-clinical-blue/5">
+      <section className="py-12 border-t border-b border-clinical-border bg-clinical-blue/5">
         <div className="max-w-7xl mx-auto px-4 space-y-6">
           <div>
             <p className="text-clinical-label mb-2 text-clinical-blue">Plan tiers</p>
@@ -213,11 +213,11 @@ export default function Performance() {
                       </Badge>
                       <h3 className="text-white font-semibold text-base">{plan.name}</h3>
                       <p className="text-xs text-clinical-zinc line-clamp-2">{plan.tagline}</p>
-                      <div className="flex items-center justify-between pt-2 border-t border-clinical-slate/20">
+                      <div className="flex items-center justify-between pt-2 border-t border-clinical-border">
                         <span className="text-clinical-blue font-bold tabular-nums">
                           {formatPrice(plan.pricePerWeekPaise)}
                         </span>
-                        <span className="text-[10px] text-clinical-zinc/60 uppercase tracking-widest">/ week</span>
+                        <span className="text-[10px] text-clinical-zinc-muted uppercase tracking-widest">/ week</span>
                       </div>
                     </CardContent>
                   </Card>
@@ -228,7 +228,7 @@ export default function Performance() {
         </div>
       </section>
 
-      <section className="py-12 border-b border-clinical-slate/20">
+      <section className="py-12 border-b border-clinical-border">
         <div className="max-w-7xl mx-auto px-4 space-y-6">
           <div>
             <p className="text-clinical-label mb-2 text-clinical-blue">RD specialists</p>
@@ -241,7 +241,7 @@ export default function Performance() {
               {rds.map((rd) => {
                 const member = teamBySlug.get(rd.slug);
                 return (
-                  <Card key={rd.slug} className="bg-clinical-surface border-clinical-slate/20">
+                  <Card key={rd.slug} className="bg-clinical-surface border-clinical-border">
                     <CardContent className="p-5 space-y-3">
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-xl bg-clinical-blue/15 text-clinical-blue border border-clinical-blue/30 flex items-center justify-center font-semibold">

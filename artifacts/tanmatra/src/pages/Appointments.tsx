@@ -109,7 +109,7 @@ export default function Appointments() {
       </header>
 
       <Tabs defaultValue="schedule">
-        <TabsList className="bg-clinical-surface border border-clinical-slate/30">
+        <TabsList className="bg-clinical-surface border border-clinical-border">
           <TabsTrigger value="schedule" className="text-xs">
             Schedule
           </TabsTrigger>
@@ -184,7 +184,7 @@ function ScheduleTab({
           Upcoming
         </h2>
         {upcoming.length === 0 ? (
-          <Card className="bg-clinical-surface border-clinical-slate/30">
+          <Card className="bg-clinical-surface border-clinical-border">
             <CardContent className="p-5 text-xs text-clinical-zinc">
               You have no upcoming sessions. Browse our{" "}
               <Link
@@ -231,7 +231,7 @@ function ApptCard({
   const member = getRdMember(appt.rdSlug);
   const meta = APPOINTMENT_KIND_META[appt.kind];
   return (
-    <Card className="bg-clinical-surface border-clinical-slate/30">
+    <Card className="bg-clinical-surface border-clinical-border">
       <CardContent className="p-4 space-y-3">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -284,7 +284,7 @@ function ApptCard({
           )}
           {onCancel && appt.status === "scheduled" && (
             <div className="ml-auto flex items-center gap-2">
-              <span className="text-[10px] text-clinical-zinc/70 hidden sm:inline">
+              <span className="text-[10px] text-clinical-zinc-muted hidden sm:inline">
                 Free cancellation up to 12h before
               </span>
               <Button
@@ -345,7 +345,7 @@ function ChatTab({ rdSlug }: { rdSlug: string }) {
   }
 
   return (
-    <Card className="bg-clinical-surface border-clinical-slate/30">
+    <Card className="bg-clinical-surface border-clinical-border">
       <CardContent className="p-4 space-y-3">
         <div className="flex items-center gap-2">
           <MessageCircle className="w-4 h-4 text-clinical-sage" />
@@ -353,7 +353,7 @@ function ChatTab({ rdSlug }: { rdSlug: string }) {
             Chat with {member?.name ?? rdSlug}
           </p>
         </div>
-        <div className="h-[360px] overflow-y-auto space-y-2 rounded-md border border-clinical-slate/30 bg-[#050505] p-3">
+        <div className="h-[360px] overflow-y-auto space-y-2 rounded-md border border-clinical-border bg-[#050505] p-3">
           {messages.length === 0 ? (
             <p className="text-[11px] text-clinical-zinc text-center pt-12">
               No messages yet. Say hi!
@@ -393,7 +393,7 @@ function ChatTab({ rdSlug }: { rdSlug: string }) {
             placeholder="Ask a question between sessions…"
             rows={2}
             maxLength={4000}
-            className="bg-[#050505] border-clinical-slate/30 text-xs"
+            className="bg-[#050505] border-clinical-border text-xs"
           />
           <Button
             onClick={send}
@@ -460,7 +460,7 @@ function ProgressTab() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <Card className="bg-clinical-surface border-clinical-slate/30">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-4 space-y-3">
           <div className="flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-clinical-sage" />
@@ -476,7 +476,7 @@ function ProgressTab() {
               type="number"
               step="0.1"
               placeholder="e.g. 68.4"
-              className="bg-[#050505] border-clinical-slate/30 text-xs h-9"
+              className="bg-[#050505] border-clinical-border text-xs h-9"
             />
           </div>
           <Score
@@ -497,7 +497,7 @@ function ProgressTab() {
               rows={2}
               maxLength={1000}
               placeholder="How are you feeling? Any cravings, sleep changes…"
-              className="bg-[#050505] border-clinical-slate/30 text-xs"
+              className="bg-[#050505] border-clinical-border text-xs"
             />
           </div>
           <Button
@@ -510,7 +510,7 @@ function ProgressTab() {
         </CardContent>
       </Card>
 
-      <Card className="bg-clinical-surface border-clinical-slate/30">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-4 space-y-3">
           <p className="text-xs text-white font-medium">Recent logs</p>
           {logs.length === 0 ? (
@@ -522,7 +522,7 @@ function ProgressTab() {
               {logs.map((l) => (
                 <div
                   key={l.id}
-                  className="rounded-md border border-clinical-slate/30 p-3 text-[11px] text-clinical-zinc space-y-1"
+                  className="rounded-md border border-clinical-border p-3 text-[11px] text-clinical-zinc space-y-1"
                 >
                   <p className="text-white text-xs tabular-nums">
                     {new Date(l.loggedAt).toLocaleDateString("en-IN", {
@@ -589,7 +589,7 @@ function Score({
             className={`w-8 h-8 rounded-md border text-xs font-semibold ${
               value === n
                 ? "bg-clinical-gold text-[#050505] border-clinical-gold"
-                : "border-clinical-slate/30 text-clinical-zinc hover:border-clinical-gold/40"
+                : "border-clinical-border text-clinical-zinc hover:border-clinical-gold/40"
             }`}
           >
             {n}
@@ -665,7 +665,7 @@ function LabsTab({ activeRdSlug }: { activeRdSlug: string }) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.4fr] gap-4">
-      <Card className="bg-clinical-surface border-clinical-slate/30">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-4 space-y-3">
           <div className="flex items-center gap-2">
             <Upload className="w-4 h-4 text-clinical-sage" />
@@ -679,19 +679,19 @@ function LabsTab({ activeRdSlug }: { activeRdSlug: string }) {
             value={fileName}
             onChange={(e) => setFileName(e.target.value)}
             placeholder="File name (e.g. CBC – Apr 2026.pdf)"
-            className="bg-[#050505] border-clinical-slate/30 text-xs h-9"
+            className="bg-[#050505] border-clinical-border text-xs h-9"
           />
           <Input
             value={fileUrl}
             onChange={(e) => setFileUrl(e.target.value)}
             placeholder="https://… (file URL)"
-            className="bg-[#050505] border-clinical-slate/30 text-xs h-9"
+            className="bg-[#050505] border-clinical-border text-xs h-9"
           />
           <div className="flex gap-2">
             <select
               value={mimeType}
               onChange={(e) => setMimeType(e.target.value)}
-              className="bg-[#050505] border border-clinical-slate/30 text-xs rounded-md px-2 h-9 text-clinical-zinc"
+              className="bg-[#050505] border border-clinical-border text-xs rounded-md px-2 h-9 text-clinical-zinc"
             >
               <option value="application/pdf">PDF</option>
               <option value="image/jpeg">JPEG</option>
@@ -701,7 +701,7 @@ function LabsTab({ activeRdSlug }: { activeRdSlug: string }) {
             <select
               value={shareWith}
               onChange={(e) => setShareWith(e.target.value)}
-              className="bg-[#050505] border border-clinical-slate/30 text-xs rounded-md px-2 h-9 text-clinical-zinc flex-1"
+              className="bg-[#050505] border border-clinical-border text-xs rounded-md px-2 h-9 text-clinical-zinc flex-1"
             >
               <option value="">Share with: nobody yet</option>
               {listRds().map((r) => (
@@ -717,7 +717,7 @@ function LabsTab({ activeRdSlug }: { activeRdSlug: string }) {
             rows={2}
             maxLength={500}
             placeholder="Note (optional)"
-            className="bg-[#050505] border-clinical-slate/30 text-xs"
+            className="bg-[#050505] border-clinical-border text-xs"
           />
           <Button
             onClick={save}
@@ -729,7 +729,7 @@ function LabsTab({ activeRdSlug }: { activeRdSlug: string }) {
         </CardContent>
       </Card>
 
-      <Card className="bg-clinical-surface border-clinical-slate/30">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-4 space-y-3">
           <p className="text-xs text-white font-medium">Your labs</p>
           {labs.length === 0 ? (
@@ -741,7 +741,7 @@ function LabsTab({ activeRdSlug }: { activeRdSlug: string }) {
               {labs.map((l) => (
                 <div
                   key={l.id}
-                  className="rounded-md border border-clinical-slate/30 p-3 space-y-1"
+                  className="rounded-md border border-clinical-border p-3 space-y-1"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-start gap-2 min-w-0">

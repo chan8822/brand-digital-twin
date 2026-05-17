@@ -226,7 +226,7 @@ export default function Dish() {
 
       <div className="max-w-6xl mx-auto px-4 pt-4 grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="space-y-4">
-          <div className="relative aspect-square rounded-2xl overflow-hidden border border-clinical-slate/20">
+          <div className="relative aspect-square rounded-2xl overflow-hidden border border-clinical-border">
             <img
               src={meal.image}
               alt={meal.name}
@@ -269,7 +269,7 @@ export default function Dish() {
             <div className="absolute top-4 right-4">
               <Badge
                 variant="outline"
-                className="border-clinical-slate/40 text-clinical-zinc bg-[#050505]/60 backdrop-blur-sm capitalize"
+                className="border-clinical-border text-clinical-zinc bg-[#050505]/60 backdrop-blur-sm capitalize"
               >
                 <ChefHat className="w-3 h-3 mr-1" />
                 {clinicalMode
@@ -278,7 +278,7 @@ export default function Dish() {
               </Badge>
             </div>
 
-            <div className="absolute bottom-3 left-3 right-3 bg-[#050505]/80 backdrop-blur-md rounded-lg px-3 py-2 border border-clinical-slate/20">
+            <div className="absolute bottom-3 left-3 right-3 bg-[#050505]/80 backdrop-blur-md rounded-lg px-3 py-2 border border-clinical-border">
               <MacroOverlay
                 macros={meal.macros}
                 rdVerified={meal.rdVerified}
@@ -289,7 +289,7 @@ export default function Dish() {
           </div>
 
           {pairingDish && (
-            <Card className="bg-clinical-surface border-clinical-slate/20">
+            <Card className="bg-clinical-surface border-clinical-border">
               <CardContent className="p-4">
                 <p className="text-clinical-label mb-2">Suggested Pairing</p>
                 <Link
@@ -300,7 +300,7 @@ export default function Dish() {
                   <img
                     src={pairingDish.image}
                     alt={`${pairingDish.name} — suggested pairing`}
-                    className="w-14 h-14 rounded-lg object-cover border border-clinical-slate/20 group-hover:border-clinical-gold/40 transition-colors"
+                    className="w-14 h-14 rounded-lg object-cover border border-clinical-border group-hover:border-clinical-gold/40 transition-colors"
                   />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-white group-hover:text-clinical-gold transition-colors truncate">
@@ -325,15 +325,15 @@ export default function Dish() {
             <p className="text-sm text-clinical-zinc leading-relaxed">{meal.description}</p>
 
             <div className="flex flex-wrap items-center gap-2 pt-1">
-              <Badge variant="outline" className="border-clinical-slate/30 text-clinical-zinc text-[10px] gap-1">
+              <Badge variant="outline" className="border-clinical-border text-clinical-zinc text-[10px] gap-1">
                 <ChefHat className="w-3 h-3" />
                 {meal.prepTime} prep
               </Badge>
-              <Badge variant="outline" className="border-clinical-slate/30 text-clinical-zinc text-[10px] gap-1">
+              <Badge variant="outline" className="border-clinical-border text-clinical-zinc text-[10px] gap-1">
                 <Activity className="w-3 h-3" />
                 GI: {meal.glycaemicIndex}
               </Badge>
-              <Badge variant="outline" className="border-clinical-slate/30 text-clinical-zinc text-[10px]">
+              <Badge variant="outline" className="border-clinical-border text-clinical-zinc text-[10px]">
                 Sugar: {meal.sugarPerServing}
               </Badge>
               {meal.allergens.length > 0 ? (
@@ -359,8 +359,8 @@ export default function Dish() {
           {preferences &&
             meal &&
             (preferences.calorieTarget || preferences.proteinTargetGrams) && (
-              <div className="rounded-xl border border-clinical-slate/20 bg-clinical-surface-elevated p-4 space-y-2">
-                <p className="text-[10px] uppercase tracking-[0.12em] text-clinical-zinc/70 font-semibold">
+              <div className="rounded-xl border border-clinical-border bg-clinical-surface-elevated p-4 space-y-2">
+                <p className="text-[10px] uppercase tracking-[0.12em] text-clinical-zinc-muted font-semibold">
                   Vs. your daily targets
                 </p>
                 <div className="grid grid-cols-2 gap-3 text-xs">
@@ -461,7 +461,7 @@ export default function Dish() {
             </div>
           )}
 
-          <Separator className="bg-clinical-slate/20" />
+          <Separator className="bg-clinical-surface-elevated" />
 
           <div className="flex flex-wrap gap-2">
             <NutritionLabelModal dish={meal} />
@@ -529,7 +529,7 @@ export default function Dish() {
             </div>
           </div>
 
-          <Separator className="bg-clinical-slate/20" />
+          <Separator className="bg-clinical-surface-elevated" />
 
           <div className="space-y-2">
             <p className="text-clinical-label flex items-center gap-1.5">
@@ -540,7 +540,7 @@ export default function Dish() {
               {meal.ingredients.map((ing, i) => (
                 <span
                   key={i}
-                  className="text-[11px] px-2 py-1 rounded-md bg-clinical-surface border border-clinical-slate/20 text-clinical-zinc capitalize"
+                  className="text-[11px] px-2 py-1 rounded-md bg-clinical-surface border border-clinical-border text-clinical-zinc capitalize"
                 >
                   {stripIngredientAmount(ing)}
                 </span>
@@ -548,7 +548,7 @@ export default function Dish() {
             </div>
           </div>
 
-          {customizations.length > 0 && <Separator className="bg-clinical-slate/20" />}
+          {customizations.length > 0 && <Separator className="bg-clinical-surface-elevated" />}
 
           {customizations.length > 0 && (
             <div className="space-y-6">
@@ -574,14 +574,14 @@ export default function Dish() {
                           className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${
                             (selections[groupIdx] as string) === opt.name
                               ? "border-clinical-gold/50 bg-clinical-gold/5"
-                              : "border-clinical-slate/20 bg-clinical-surface hover:border-clinical-slate/40"
+                              : "border-clinical-border bg-clinical-surface hover:border-clinical-border"
                           }`}
                         >
                           <div className="flex items-center gap-2.5">
                             <RadioGroupItem
                               value={opt.name}
                               id={`${groupIdx}-${opt.name}`}
-                              className="border-clinical-slate/40"
+                              className="border-clinical-border"
                             />
                             <span className="text-xs text-white">{opt.name}</span>
                             {opt.default && (
@@ -616,7 +616,7 @@ export default function Dish() {
                             className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${
                               selected
                                 ? "border-clinical-gold/50 bg-clinical-gold/5"
-                                : "border-clinical-slate/20 bg-clinical-surface hover:border-clinical-slate/40"
+                                : "border-clinical-border bg-clinical-surface hover:border-clinical-border"
                             }`}
                           >
                             <div className="flex items-center gap-2.5">
@@ -624,7 +624,7 @@ export default function Dish() {
                                 id={`${groupIdx}-${opt.name}`}
                                 checked={selected}
                                 onCheckedChange={() => handleMultipleToggle(groupIdx, opt.name)}
-                                className="border-clinical-slate/40"
+                                className="border-clinical-border"
                               />
                               <span className="text-xs text-white">{opt.name}</span>
                               {opt.default && (
@@ -646,11 +646,11 @@ export default function Dish() {
             </div>
           )}
 
-          <Separator className="bg-clinical-slate/20" />
+          <Separator className="bg-clinical-surface-elevated" />
 
           <DishReviews slug={meal.slug} />
 
-          <Separator className="bg-clinical-slate/20" />
+          <Separator className="bg-clinical-surface-elevated" />
 
           <div className="space-y-3">
             <div className="flex items-center gap-2">
@@ -662,7 +662,7 @@ export default function Dish() {
                 <Link
                   to={`/dish/${u.slug}`}
                   key={u.id}
-                  className="group flex items-center gap-2.5 p-2 rounded-lg bg-clinical-surface border border-clinical-slate/20 hover:border-clinical-gold/40 transition-colors"
+                  className="group flex items-center gap-2.5 p-2 rounded-lg bg-clinical-surface border border-clinical-border hover:border-clinical-gold/40 transition-colors"
                 >
                   <img
                     src={u.image}
@@ -685,10 +685,10 @@ export default function Dish() {
         </div>
       </div>
 
-      <div className="fixed left-0 right-0 z-50 bg-[#050505]/95 backdrop-blur-xl border-t border-clinical-slate/30 bottom-[calc(56px+env(safe-area-inset-bottom))] md:bottom-0">
+      <div className="fixed left-0 right-0 z-50 bg-[#050505]/95 backdrop-blur-xl border-t border-clinical-border bottom-[calc(56px+env(safe-area-inset-bottom))] md:bottom-0">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 bg-clinical-surface rounded-lg border border-clinical-slate/20 p-1">
+            <div className="flex items-center gap-2 bg-clinical-surface rounded-lg border border-clinical-border p-1">
               <Button
                 size="icon"
                 variant="ghost"
@@ -744,7 +744,7 @@ export default function Dish() {
   );
 }
 
-import { getDishBySlug } from "@/lib/menuData";
+
 
 export function meta({ params }: { params: { slug: string } }) {
   const dish = getDishBySlug(params.slug);

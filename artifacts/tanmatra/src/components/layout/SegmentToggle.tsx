@@ -11,7 +11,7 @@ export default function SegmentToggle() {
   const location = useLocation();
 
   return (
-    <div className="sticky top-14 z-40 bg-[#050505]/90 backdrop-blur-xl border-b border-clinical-slate/30">
+    <div className="sticky top-14 z-40 bg-[#050505]/90 backdrop-blur-xl border-b border-clinical-border">
       <div className="max-w-7xl mx-auto px-4 py-2.5">
         <div className="flex items-center gap-2 justify-center">
           <span className="text-clinical-label mr-2 hidden sm:inline">Protocol</span>

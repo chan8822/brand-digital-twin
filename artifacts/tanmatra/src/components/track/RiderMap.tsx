@@ -155,7 +155,7 @@ export default function RiderMap({ orderId, initial, destination }: Props) {
           <span className="text-clinical-zinc tabular-nums">{distanceLabel} away</span>
         </div>
       )}
-      <div className="h-64 w-full rounded-md overflow-hidden border border-clinical-slate/20">
+      <div className="h-64 w-full rounded-md overflow-hidden border border-clinical-border">
       <MapContainer
         center={center}
         zoom={14}

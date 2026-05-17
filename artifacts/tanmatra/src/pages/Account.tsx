@@ -200,7 +200,7 @@ export default function Account() {
       </header>
 
       {/* Profile / sign-in card */}
-      <Card className="bg-clinical-surface border-clinical-slate/30">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-5">
           {auth.isLoading ? (
             <div className="flex items-center gap-4">
@@ -242,7 +242,7 @@ export default function Account() {
                       Premium member
                     </Badge>
                   ) : (
-                    <Badge className="bg-white/5 text-clinical-zinc border border-clinical-slate/30 text-[10px] font-medium">
+                    <Badge className="bg-white/5 text-clinical-zinc border border-clinical-border text-[10px] font-medium">
                       Free tier
                     </Badge>
                   )}
@@ -253,7 +253,7 @@ export default function Account() {
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               <div
                 aria-hidden
-                className="h-14 w-14 rounded-full bg-white/5 border border-clinical-slate/30 flex items-center justify-center"
+                className="h-14 w-14 rounded-full bg-white/5 border border-clinical-border flex items-center justify-center"
               >
                 <UserCircle className="w-7 h-7 text-clinical-zinc" />
               </div>
@@ -316,8 +316,8 @@ export default function Account() {
       )}
 
       {/* Section list */}
-      <Card className="bg-clinical-surface border-clinical-slate/30">
-        <CardContent className="p-0 divide-y divide-clinical-slate/20">
+      <Card className="bg-clinical-surface border-clinical-border">
+        <CardContent className="p-0 divide-y divide-clinical-border">
           {SECTIONS.map((s) => {
             const Icon = s.icon;
             return (
@@ -352,7 +352,7 @@ export default function Account() {
       <ThemeToggleCard />
 
       {/* Sign-out / sign-in row */}
-      <Card className="bg-clinical-surface border-clinical-slate/30">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-5 space-y-4">
           {isAuthenticated ? (
             <>
@@ -367,13 +367,13 @@ export default function Account() {
                   type="button"
                   variant="outline"
                   onClick={handleLogout}
-                  className="border-clinical-slate/40 text-clinical-zinc hover:text-white hover:border-clinical-gold/40 gap-2"
+                  className="border-clinical-border text-clinical-zinc hover:text-white hover:border-clinical-gold/40 gap-2"
                 >
                   <SignOut className="w-4 h-4" aria-hidden />
                   Sign out
                 </Button>
               </div>
-              <Separator className="bg-clinical-slate/20" />
+              <Separator className="bg-clinical-surface-elevated" />
               <p className="text-[10px] text-clinical-zinc flex items-center gap-1.5">
                 <ShieldCheck
                   className="w-3 h-3 text-clinical-sage"
@@ -412,7 +412,7 @@ function ThemeToggleCard() {
     { value: "default", label: "Default", sub: "Marketing-friendly visuals" },
   ];
   return (
-    <Card className="bg-clinical-surface border-clinical-slate/30">
+    <Card className="bg-clinical-surface border-clinical-border">
       <CardContent className="p-5 space-y-3">
         <div className="flex items-start gap-3">
           <div className="h-9 w-9 rounded-md bg-clinical-gold/10 border border-clinical-gold/20 flex items-center justify-center shrink-0">
@@ -447,7 +447,7 @@ function ThemeToggleCard() {
                 className={`text-left rounded-md border px-3 py-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-clinical-gold/40 ${
                   active
                     ? "border-clinical-gold/50 bg-clinical-gold/10"
-                    : "border-clinical-slate/30 hover:border-clinical-gold/30"
+                    : "border-clinical-border hover:border-clinical-gold/30"
                 }`}
               >
                 <p
@@ -485,7 +485,7 @@ function StatTile({
   return (
     <Link
       to={to}
-      className="rounded-lg border border-clinical-slate/30 bg-clinical-surface px-3 py-3 hover:border-clinical-gold/40 hover:bg-white/[0.03] focus:outline-none focus-visible:ring-2 focus-visible:ring-clinical-gold/40 transition-colors block"
+      className="rounded-lg border border-clinical-border bg-clinical-surface px-3 py-3 hover:border-clinical-gold/40 hover:bg-white/[0.03] focus:outline-none focus-visible:ring-2 focus-visible:ring-clinical-gold/40 transition-colors block"
     >
       <div className="flex items-center gap-1.5 text-clinical-zinc text-[10px] uppercase tracking-widest">
         <Icon className="w-3 h-3 text-clinical-gold" aria-hidden />

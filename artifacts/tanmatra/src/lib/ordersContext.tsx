@@ -31,11 +31,8 @@ export interface PastOrder {
   cancelledAt?: string;
   cancelReason?: string;
   cancelPriority?: "stat" | "routine";
-  // Optional rider info — backend populates these once a rider is
-  // assigned. UI degrades gracefully when absent.
   riderName?: string;
   riderPhone?: string;
-  riderPhotoUrl?: string;
   address: {
     label: string;
     line1: string;

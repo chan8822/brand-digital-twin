@@ -26,7 +26,7 @@ const FOOTER_LINKS = {
 
 export default function Footer() {
   return (
-    <footer className="hidden md:block border-t border-clinical-slate/20 bg-clinical-surface">
+    <footer className="hidden md:block border-t border-clinical-border bg-clinical-surface">
       {/* Main footer */}
       <div className="max-w-7xl mx-auto px-4 py-12">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8">
@@ -97,7 +97,7 @@ export default function Footer() {
         </div>
       </div>
 
-      <Separator className="bg-clinical-slate/20" />
+      <Separator className="bg-clinical-surface-elevated" />
 
       {/* Bottom bar */}
       <div className="max-w-7xl mx-auto px-4 py-4">
@@ -113,7 +113,7 @@ export default function Footer() {
       </div>
 
       {/* Medical Disclaimer */}
-      <div className="border-t border-clinical-slate/20 bg-clinical-dark">
+      <div className="border-t border-clinical-border bg-clinical-dark">
         <div className="max-w-7xl mx-auto px-4 py-3">
           <p className="text-[10px] text-white text-center leading-relaxed">
             <strong className="text-clinical-gold">Medical Disclaimer:</strong> Tanmatra meals are designed as adjuncts to medical treatment

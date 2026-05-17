@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { API_BASE } from "@/lib/apiBase";
-import { checkPincode } from "@/lib/serviceablePincodes";
 import {
   Dialog,
   DialogContent,
@@ -164,19 +163,6 @@ export default function Checkout() {
   );
   const [creditBalance, setCreditBalance] = useState(0);
   const [applyCredits, setApplyCredits] = useState(true);
-  // COD is a Cloud Run env flag (`VITE_ENABLE_COD=1` baked into the
-  // Firebase build). Until backend accepts `paymentMethod: "cod"`
-  // on /orders/finalize the toggle stays hidden, so we never offer
-  // a payment option we can't honour. Backend follow-up:
-  //   * add `paymentMethod` column to ordersTable (default "razorpay")
-  //   * accept `paymentMethod` in finalize body, gate by pincode
-  //     serviceability + first-order cap (e.g. ₹1500 first 3 orders)
-  //   * fulfilment hook: skip Razorpay charge, mark order
-  //     `awaiting_cod`, capture cash on delivery
-  const codAvailable = import.meta.env.VITE_ENABLE_COD === "1";
-  const [paymentMethod, setPaymentMethod] = useState<"razorpay" | "cod">(
-    "razorpay",
-  );
   const [preorderTomorrow, setPreorderTomorrow] = useState(false);
   const [subsidy, setSubsidy] = useState<CompanySubsidy | null>(null);
   const [applySubsidy, setApplySubsidy] = useState(true);
@@ -303,16 +289,7 @@ export default function Checkout() {
     };
   }, []);
 
-  const [newAddr, setNewAddr] = useState({
-    label: "Home",
-    line1: "",
-    line2: "",
-    landmark: "",
-    city: "",
-    pincode: "",
-    phone: "",
-  });
-  const [pincodeCheck, setPincodeCheck] = useState<ReturnType<typeof checkPincode>>({ state: "empty" });
+  const [newAddr, setNewAddr] = useState({ label: "", line1: "", line2: "", city: "", pincode: "", phone: "" });
 
   const effectiveTip = isCustomTip
     ? Math.round((parseFloat(customTip) || 0) * 100)
@@ -387,59 +364,37 @@ export default function Checkout() {
 
   const handleSaveNewAddress = async () => {
     setAddressFormError(null);
-    // Pincode is checked first so the user can't waste effort filling
-    // a 6-field form for a non-serviceable area.
-    if (pincodeCheck.state !== "serviceable") {
-      setAddressFormError(
-        pincodeCheck.state === "unserviceable"
-          ? `We don't deliver to ${pincodeCheck.pincode} yet. We'll let you know when we expand.`
-          : "Enter a valid 6-digit pincode to continue.",
-      );
-      return;
-    }
     if (
+      !newAddr.label.trim() ||
       !newAddr.line1.trim() ||
-      !newAddr.phone.trim() ||
-      newAddr.phone.trim().replace(/\D/g, "").length < 10
+      !newAddr.city.trim() ||
+      !newAddr.pincode.trim() ||
+      !newAddr.phone.trim()
     ) {
-      setAddressFormError("Please add the building/street and a 10-digit phone number.");
+      setAddressFormError("Please fill label, line 1, city, pincode and phone");
       return;
     }
     setSavingAddress(true);
     try {
-      // Compose line2 with the landmark so it's printed on the rider's
-      // delivery sheet — the server schema doesn't have a dedicated
-      // landmark column yet, so we prefix it here. Backend follow-up:
-      // add address.landmark column and remove this concatenation.
-      const composedLine2 = [
-        newAddr.line2.trim() || undefined,
-        newAddr.landmark.trim()
-          ? `Landmark: ${newAddr.landmark.trim()}`
-          : undefined,
-      ]
-        .filter(Boolean)
-        .join(" · ");
       const r = await addressesApi.create({
-        label: newAddr.label.trim() || "Home",
+        label: newAddr.label.trim(),
         line1: newAddr.line1.trim(),
-        line2: composedLine2 || undefined,
-        city: pincodeCheck.info.city,
-        pincode: pincodeCheck.pincode,
+        line2: newAddr.line2.trim() || undefined,
+        city: newAddr.city.trim(),
+        pincode: newAddr.pincode.trim(),
         phone: newAddr.phone.trim(),
       });
       setSavedAddresses((prev) => [r.address, ...prev]);
       setSelectedAddress(r.address.id);
       setShowNewAddress(false);
       setNewAddr({
-        label: "Home",
+        label: "",
         line1: "",
         line2: "",
-        landmark: "",
         city: "",
         pincode: "",
         phone: "",
       });
-      setPincodeCheck({ state: "empty" });
       toast.success("Address saved");
     } catch (e) {
       const msg = String((e as Error).message);
@@ -555,7 +510,6 @@ export default function Checkout() {
         pickupLocationId: fulfillmentType === "pickup" ? selectedPickupId : null,
         ecoPackagingOptIn: fulfillmentType === "delivery" && ecoPackagingOptIn,
         deliveryInstructions: deliveryInstructions.trim() || null,
-        paymentMethod,
       });
       // Persist the per-address instructions so the next order on this
       // saved address pre-fills with the same note. We always upsert,
@@ -740,11 +694,11 @@ export default function Checkout() {
 
     const selectedSlot = slots.find((s) => s.id === selectedSlotId);
     const slotLabel = selectedSlot
-      ? `${new Date(selectedSlot.startsAt).toLocaleString("en-IN", {
+      ? `${new Date(selectedSlot.startsAt).toLocaleString([], {
           weekday: "short",
           hour: "numeric",
           minute: "2-digit",
-        })} – ${new Date(selectedSlot.endsAt).toLocaleTimeString("en-IN", {
+        })} – ${new Date(selectedSlot.endsAt).toLocaleTimeString([], {
           hour: "numeric",
           minute: "2-digit",
         })}`
@@ -818,7 +772,7 @@ export default function Checkout() {
           reviewComplete={items.length > 0}
           addressComplete={stepperAddressComplete}
         />
-        <Card className="bg-clinical-surface border-clinical-slate/20">
+        <Card className="bg-clinical-surface border-clinical-border">
           <CardContent className="p-5 space-y-4">
             <div className="flex items-center gap-2">
               <MapPin className="w-4 h-4 text-clinical-gold" />
@@ -840,7 +794,7 @@ export default function Checkout() {
                     className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
                       selectedAddress === addr.id
                         ? "border-clinical-gold/50 bg-clinical-gold/5"
-                        : "border-clinical-slate/20 bg-transparent hover:border-clinical-slate/40"
+                        : "border-clinical-border bg-transparent hover:border-clinical-border"
                     }`}
                   >
                     <RadioGroupItem value={addr.id} id={addr.id} className="mt-0.5 shrink-0" />
@@ -849,7 +803,7 @@ export default function Checkout() {
                         {addr.type === "home" && <Home className="w-3 h-3 text-clinical-blue" />}
                         {addr.type === "work" && <Building2 className="w-3 h-3 text-clinical-gold" />}
                         <span className="text-xs font-medium text-white">{addr.label}</span>
-                        <Badge variant="outline" className="text-[9px] h-4 px-1 capitalize border-clinical-slate/30 text-clinical-zinc">
+                        <Badge variant="outline" className="text-[9px] h-4 px-1 capitalize border-clinical-border text-clinical-zinc">
                           {addr.type}
                         </Badge>
                       </div>
@@ -891,7 +845,7 @@ export default function Checkout() {
               </div>
             </RadioGroup>
 
-            <div className="pt-2 border-t border-clinical-slate/20 space-y-2">
+            <div className="pt-2 border-t border-clinical-border space-y-2">
               <div className="flex items-center gap-2">
                 <NotebookPen className="w-3.5 h-3.5 text-clinical-gold" />
                 <Label className="text-xs font-medium text-white">
@@ -911,7 +865,7 @@ export default function Checkout() {
                 onChange={(e) => setDeliveryInstructions(e.target.value)}
                 placeholder="e.g. Gate code 4421, leave at door, call on arrival"
                 maxLength={512}
-                className="text-xs bg-clinical-dark border-clinical-slate/30 min-h-[60px]"
+                className="text-xs bg-clinical-dark border-clinical-border min-h-[60px]"
               />
               <p className="text-[10px] text-clinical-zinc">
                 We'll remember these notes for{" "}
@@ -921,115 +875,18 @@ export default function Checkout() {
             </div>
 
             {showNewAddress && (
-              <div className="space-y-3 p-3 rounded-lg bg-clinical-dark border border-clinical-slate/20">
+              <div className="space-y-3 p-3 rounded-lg bg-clinical-dark border border-clinical-border">
                 <p className="text-xs font-medium text-white">New Address</p>
-
-                {/* Pincode-first flow: a single field decides whether
-                    the area is serviceable and auto-fills the city.
-                    The rest of the form only unlocks after a green
-                    serviceable check, so users in unserviceable areas
-                    don't waste effort filling six fields. */}
-                <div className="space-y-1.5">
-                  <label className="text-[10px] uppercase tracking-wider text-clinical-zinc">Pincode</label>
-                  <Input
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="postal-code"
-                    pattern="\d{6}"
-                    maxLength={6}
-                    placeholder="6-digit pincode"
-                    value={newAddr.pincode}
-                    onChange={(e) => {
-                      const v = e.target.value.replace(/\D/g, "").slice(0, 6);
-                      setNewAddr({ ...newAddr, pincode: v });
-                      setPincodeCheck(checkPincode(v));
-                    }}
-                    className="h-10 text-sm bg-clinical-surface border-clinical-slate/30"
-                  />
-                  {pincodeCheck.state === "serviceable" && (
-                    <p className="text-[11px] text-clinical-sage flex items-center gap-1">
-                      <ShieldCheck className="w-3 h-3" />
-                      Delivering to {pincodeCheck.info.area}, {pincodeCheck.info.city}
-                    </p>
-                  )}
-                  {pincodeCheck.state === "unserviceable" && (
-                    <p className="text-[11px] text-orange-400" role="alert">
-                      We don&apos;t deliver to {pincodeCheck.pincode} yet — we&apos;ll let you know when we expand. (Currently serving Bengaluru.)
-                    </p>
-                  )}
-                  {pincodeCheck.state === "invalid" && newAddr.pincode.length === 6 && (
-                    <p className="text-[11px] text-orange-400">Enter a valid 6-digit Indian pincode.</p>
-                  )}
+                <div className="grid grid-cols-2 gap-2">
+                  <Input placeholder="Label (e.g., Home)" value={newAddr.label} onChange={(e) => setNewAddr({ ...newAddr, label: e.target.value })} className="h-9 text-xs bg-clinical-surface border-clinical-border" />
+                  <Input placeholder="Phone (rider will call this)" value={newAddr.phone} onChange={(e) => setNewAddr({ ...newAddr, phone: e.target.value })} className="h-9 text-xs bg-clinical-surface border-clinical-border" />
                 </div>
-
-                {/* Rest of form is gated behind a serviceable pincode. */}
-                {pincodeCheck.state === "serviceable" && (
-                  <>
-                    {/* Save-as: Home / Work / Other chips replace the
-                        freeform label text input. */}
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] uppercase tracking-wider text-clinical-zinc">Save as</label>
-                      <div className="flex gap-2">
-                        {(["Home", "Work", "Other"] as const).map((opt) => {
-                          const active = newAddr.label === opt;
-                          return (
-                            <button
-                              key={opt}
-                              type="button"
-                              onClick={() => setNewAddr({ ...newAddr, label: opt })}
-                              className={`min-h-9 px-3 rounded-full border text-xs font-medium transition-colors ${
-                                active
-                                  ? "border-clinical-gold/60 bg-clinical-gold/10 text-clinical-gold"
-                                  : "border-clinical-slate/30 text-clinical-zinc hover:text-white"
-                              }`}
-                            >
-                              {opt}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    <Input
-                      type="text"
-                      inputMode="numeric"
-                      autoComplete="tel-national"
-                      pattern="\d{10,12}"
-                      maxLength={12}
-                      placeholder="Phone (10-digit, rider will call this)"
-                      value={newAddr.phone}
-                      onChange={(e) =>
-                        setNewAddr({
-                          ...newAddr,
-                          phone: e.target.value.replace(/\D/g, "").slice(0, 12),
-                        })
-                      }
-                      className="h-10 text-sm bg-clinical-surface border-clinical-slate/30"
-                    />
-
-                    <Input
-                      autoComplete="address-line1"
-                      placeholder="Flat / building / street"
-                      value={newAddr.line1}
-                      onChange={(e) => setNewAddr({ ...newAddr, line1: e.target.value })}
-                      className="h-10 text-sm bg-clinical-surface border-clinical-slate/30"
-                    />
-                    <Input
-                      autoComplete="address-line2"
-                      placeholder="Apartment / floor (optional)"
-                      value={newAddr.line2}
-                      onChange={(e) => setNewAddr({ ...newAddr, line2: e.target.value })}
-                      className="h-10 text-sm bg-clinical-surface border-clinical-slate/30"
-                    />
-                    <Input
-                      placeholder="Landmark (e.g. opposite Reliance Fresh)"
-                      value={newAddr.landmark}
-                      onChange={(e) => setNewAddr({ ...newAddr, landmark: e.target.value })}
-                      className="h-10 text-sm bg-clinical-surface border-clinical-slate/30"
-                    />
-                  </>
-                )}
-
+                <div className="grid grid-cols-2 gap-2">
+                  <Input placeholder="City" value={newAddr.city} onChange={(e) => setNewAddr({ ...newAddr, city: e.target.value })} className="h-9 text-xs bg-clinical-surface border-clinical-border" />
+                  <Input placeholder="Pincode" value={newAddr.pincode} onChange={(e) => setNewAddr({ ...newAddr, pincode: e.target.value })} className="h-9 text-xs bg-clinical-surface border-clinical-border" />
+                </div>
+                <Input placeholder="Address line 1 (street, building)" value={newAddr.line1} onChange={(e) => setNewAddr({ ...newAddr, line1: e.target.value })} className="h-9 text-xs bg-clinical-surface border-clinical-border" />
+                <Input placeholder="Address line 2 (apt, floor — optional)" value={newAddr.line2} onChange={(e) => setNewAddr({ ...newAddr, line2: e.target.value })} className="h-9 text-xs bg-clinical-surface border-clinical-border" />
                 {addressFormError && (
                   <p className="text-[11px] alert-allergen-text" role="alert">
                     {addressFormError}
@@ -1039,8 +896,8 @@ export default function Checkout() {
                   type="button"
                   size="sm"
                   onClick={handleSaveNewAddress}
-                  disabled={savingAddress || pincodeCheck.state !== "serviceable"}
-                  className="bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold w-full min-h-11 text-xs disabled:opacity-50"
+                  disabled={savingAddress}
+                  className="bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold w-full h-9 text-xs"
                 >
                   {savingAddress ? "Saving…" : "Save address"}
                 </Button>
@@ -1051,7 +908,7 @@ export default function Checkout() {
 
         <Card
           id="checkout-fulfillment"
-          className="bg-clinical-surface border-clinical-slate/20 scroll-mt-24"
+          className="bg-clinical-surface border-clinical-border scroll-mt-24"
         >
           <CardContent className="p-5 space-y-4">
             <div className="flex items-center gap-2">
@@ -1065,7 +922,7 @@ export default function Checkout() {
                 className={`p-3 rounded-lg border text-left transition-all ${
                   fulfillmentType === "delivery"
                     ? "border-clinical-gold/50 bg-clinical-gold/5"
-                    : "border-clinical-slate/20 hover:border-clinical-slate/40"
+                    : "border-clinical-border hover:border-clinical-border"
                 }`}
               >
                 <div className="flex items-center gap-2">
@@ -1083,7 +940,7 @@ export default function Checkout() {
                 className={`p-3 rounded-lg border text-left transition-all disabled:opacity-50 ${
                   fulfillmentType === "pickup"
                     ? "border-clinical-gold/50 bg-clinical-gold/5"
-                    : "border-clinical-slate/20 hover:border-clinical-slate/40"
+                    : "border-clinical-border hover:border-clinical-border"
                 }`}
               >
                 <div className="flex items-center gap-2">
@@ -1091,7 +948,7 @@ export default function Checkout() {
                   <span className="text-xs font-medium text-white">Partner pickup</span>
                 </div>
                 <p className="text-[10px] text-clinical-sage mt-1">
-                  Save up to ₹{Math.max(0, ...pickupLocations.map((p) => p.discountPaise)) / 100 || 30}
+                  Save up to Rs.{Math.max(0, ...pickupLocations.map((p) => p.discountPaise)) / 100 || 30}
                 </p>
               </button>
             </div>
@@ -1117,10 +974,10 @@ export default function Checkout() {
                       const day = start.toLocaleDateString([], {
                         weekday: "short",
                       });
-                      const window = `${start.toLocaleTimeString("en-IN", {
+                      const window = `${start.toLocaleTimeString([], {
                         hour: "numeric",
                         minute: "2-digit",
-                      })} – ${end.toLocaleTimeString("en-IN", {
+                      })} – ${end.toLocaleTimeString([], {
                         hour: "numeric",
                         minute: "2-digit",
                       })}`;
@@ -1140,7 +997,7 @@ export default function Checkout() {
                           className={`p-2 rounded-md border text-left text-[11px] transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
                             selected
                               ? "border-clinical-gold/60 bg-clinical-gold/10 text-white"
-                              : "border-clinical-slate/20 text-clinical-zinc hover:border-clinical-slate/40"
+                              : "border-clinical-border text-clinical-zinc hover:border-clinical-border"
                           }`}
                         >
                           <div className="font-medium text-white">{day}</div>
@@ -1184,7 +1041,7 @@ export default function Checkout() {
                         className={`w-full p-3 rounded-lg border text-left transition-all ${
                           selected
                             ? "border-clinical-gold/50 bg-clinical-gold/5"
-                            : "border-clinical-slate/20 hover:border-clinical-slate/40"
+                            : "border-clinical-border hover:border-clinical-border"
                         }`}
                       >
                         <div className="flex items-center gap-2">
@@ -1196,7 +1053,7 @@ export default function Checkout() {
                             variant="outline"
                             className="ml-auto text-[9px] h-4 px-1 border-clinical-sage/40 text-clinical-sage"
                           >
-                            -₹{(loc.discountPaise / 100).toFixed(0)}
+                            -Rs.{(loc.discountPaise / 100).toFixed(0)}
                           </Badge>
                         </div>
                         <p className="text-[10px] text-clinical-zinc mt-1">
@@ -1223,7 +1080,7 @@ export default function Checkout() {
                       Reusable eco packaging
                     </p>
                     <p className="text-[10px] text-clinical-zinc">
-                      Return clean containers on your next order to earn ₹20 credit
+                      Return clean containers on your next order to earn Rs.20 credit
                     </p>
                   </div>
                 </div>
@@ -1236,7 +1093,7 @@ export default function Checkout() {
           </CardContent>
         </Card>
 
-        <Card className="bg-clinical-surface border-clinical-slate/20">
+        <Card className="bg-clinical-surface border-clinical-border">
           <CardContent className="p-5 space-y-4">
             <div className="flex items-center gap-2">
               <Bike className="w-4 h-4 text-clinical-gold" />
@@ -1255,7 +1112,7 @@ export default function Checkout() {
                     className={`flex-1 h-9 text-xs tabular-nums ${
                       selected
                         ? "bg-clinical-gold/15 text-clinical-gold border-clinical-gold/40"
-                        : "border-clinical-slate/30 text-clinical-zinc hover:border-clinical-slate/50"
+                        : "border-clinical-border text-clinical-zinc hover:border-clinical-border"
                     }`}
                     onClick={() => {
                       setTipAmount(tip);
@@ -1263,7 +1120,7 @@ export default function Checkout() {
                       setIsCustomTip(false);
                     }}
                   >
-                    {tip === 0 ? "No Tip" : `+₹${(tip / 100).toFixed(0)}`}
+                    {tip === 0 ? "No Tip" : `+Rs.${(tip / 100).toFixed(0)}`}
                   </Button>
                 );
               })}
@@ -1273,7 +1130,7 @@ export default function Checkout() {
                 className={`h-9 text-xs px-3 ${
                   isCustomTip
                     ? "bg-clinical-gold/15 text-clinical-gold border-clinical-gold/40"
-                    : "border-clinical-slate/30 text-clinical-zinc"
+                    : "border-clinical-border text-clinical-zinc"
                 }`}
                 onClick={() => {
                   setIsCustomTip(true);
@@ -1295,7 +1152,7 @@ export default function Checkout() {
                   type="number"
                   value={customTip}
                   onChange={(e) => setCustomTip(e.target.value)}
-                  className="h-9 text-xs bg-clinical-surface border-clinical-slate/30 tabular-nums"
+                  className="h-9 text-xs bg-clinical-surface border-clinical-border tabular-nums"
                   autoFocus
                   aria-label="Custom tip amount in rupees"
                 />
@@ -1305,13 +1162,13 @@ export default function Checkout() {
             {effectiveTip > 0 && (
               <p className="text-[10px] text-clinical-sage flex items-center gap-1">
                 <ShieldCheck className="w-3 h-3" />
-                Your rider will receive ₹{(effectiveTip / 100).toFixed(0)} extra
+                Your rider will receive Rs.{(effectiveTip / 100).toFixed(0)} extra
               </p>
             )}
           </CardContent>
         </Card>
 
-        <Card className="bg-clinical-surface border-clinical-slate/20">
+        <Card className="bg-clinical-surface border-clinical-border">
           <CardContent className="p-5 space-y-3">
             <div className="flex items-center gap-2">
               <CalendarClock className="w-4 h-4 text-clinical-gold" />
@@ -1324,7 +1181,7 @@ export default function Checkout() {
                 </p>
                 <p className="text-[10px] text-clinical-zinc">
                   {preorderTomorrow
-                    ? `Scheduled for ${tomorrowSlot.toLocaleString("en-IN", {
+                    ? `Scheduled for ${tomorrowSlot.toLocaleString([], {
                         weekday: "short",
                         hour: "numeric",
                         minute: "2-digit",
@@ -1346,58 +1203,25 @@ export default function Checkout() {
           </CardContent>
         </Card>
 
-        <Card className="bg-clinical-surface border-clinical-slate/20">
+        <Card className="bg-clinical-surface border-clinical-border">
           <CardContent className="p-5 space-y-3">
             <div className="flex items-center gap-2">
               <CreditCard className="w-4 h-4 text-clinical-gold" />
               <h2 className="text-sm font-semibold text-white">Payment</h2>
             </div>
-            <button
-              type="button"
-              onClick={() => setPaymentMethod("razorpay")}
-              aria-pressed={paymentMethod === "razorpay"}
-              className={`w-full p-3 rounded-lg border flex items-center gap-3 text-left transition-colors ${
-                paymentMethod === "razorpay"
-                  ? "border-clinical-gold/60 bg-clinical-gold/10"
-                  : "border-clinical-slate/30 bg-clinical-surface-elevated/40 hover:border-clinical-gold/30"
-              }`}
+            <div
+              className="p-3 rounded-lg border border-clinical-gold/30 bg-clinical-gold/5 flex items-center gap-3"
               title="Razorpay handles your payment securely. Tanmatra never sees your card or UPI details."
             >
-              <div className="w-8 h-8 rounded-md bg-clinical-gold/20 flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-md bg-clinical-gold/20 flex items-center justify-center">
                 <CreditCard className="w-4 h-4 text-clinical-gold" />
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-white">Pay now — UPI / Card / Wallet</p>
-                <p className="text-[10px] text-clinical-zinc">Razorpay · UPI · Cards · Net Banking · PCI-DSS Level 1</p>
+              <div>
+                <p className="text-xs font-medium text-white">Razorpay Secure Checkout</p>
+                <p className="text-[10px] text-clinical-zinc">UPI · Cards · Net Banking · Wallets · PCI-DSS Level 1</p>
               </div>
-              <ShieldCheck className="w-4 h-4 text-clinical-sage shrink-0" aria-label="Encrypted payment" />
-            </button>
-
-            {/* Cash on Delivery — gated behind VITE_ENABLE_COD until
-                backend accepts paymentMethod=cod on /orders/finalize.
-                When enabled, COD is the trust-bridge that closes the
-                first-order conversion gap for unfamiliar premium
-                brands in India. */}
-            {codAvailable && (
-              <button
-                type="button"
-                onClick={() => setPaymentMethod("cod")}
-                aria-pressed={paymentMethod === "cod"}
-                className={`w-full p-3 rounded-lg border flex items-center gap-3 text-left transition-colors ${
-                  paymentMethod === "cod"
-                    ? "border-clinical-sage/60 bg-clinical-sage/10"
-                    : "border-clinical-slate/30 bg-clinical-surface-elevated/40 hover:border-clinical-sage/30"
-                }`}
-              >
-                <div className="w-8 h-8 rounded-md bg-clinical-sage/20 flex items-center justify-center shrink-0">
-                  <IndianRupee className="w-4 h-4 text-clinical-sage" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-white">Cash on Delivery</p>
-                  <p className="text-[10px] text-clinical-zinc">Pay the rider in cash · exact change appreciated</p>
-                </div>
-              </button>
-            )}
+              <ShieldCheck className="w-4 h-4 text-clinical-sage ml-auto" aria-label="Encrypted payment" />
+            </div>
 
             {/* Recurring upsell — closes the missing one-off → subscription
                 bridge. Per UX audit Journey-B finding 4. We don't toggle
@@ -1440,7 +1264,7 @@ export default function Checkout() {
           selected={selectedAddons}
           onChange={setSelectedAddons}
         />
-        <Card className="bg-clinical-surface border-clinical-slate/20 sticky top-20">
+        <Card className="bg-clinical-surface border-clinical-border sticky top-20">
           <CardContent className="p-5 space-y-4">
             <h2 className="text-sm font-semibold text-white flex items-center gap-2">
               <ClipboardList className="w-4 h-4 text-clinical-gold" />
@@ -1450,14 +1274,14 @@ export default function Checkout() {
             <div className="space-y-3">
               {items.map((item) => (
                 <div key={item.lineId} className="flex items-start gap-3">
-                  <img src={item.image} alt={item.name} className="w-12 h-12 rounded-lg object-cover border border-clinical-slate/20 shrink-0" loading="lazy" />
+                  <img src={item.image} alt={item.name} className="w-12 h-12 rounded-lg object-cover border border-clinical-border shrink-0" loading="lazy" />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium text-white truncate">{item.name}</p>
                     <p className="text-[10px] text-clinical-zinc">Qty: {item.quantity}</p>
                     {item.customizations.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1">
                         {item.customizations.map((c) => (
-                          <span key={c} className="text-[9px] px-1 py-0.5 rounded bg-clinical-slate/20 text-clinical-zinc">
+                          <span key={c} className="text-[9px] px-1 py-0.5 rounded bg-clinical-surface-elevated text-clinical-zinc">
                             {c}
                           </span>
                         ))}
@@ -1471,7 +1295,7 @@ export default function Checkout() {
               ))}
             </div>
 
-            <Separator className="bg-clinical-slate/20" />
+            <Separator className="bg-clinical-surface-elevated" />
 
             {activeAddr && (
               <div className="space-y-1 text-[10px] text-clinical-zinc">
@@ -1488,7 +1312,7 @@ export default function Checkout() {
               </div>
             )}
 
-            <Separator className="bg-clinical-slate/20" />
+            <Separator className="bg-clinical-surface-elevated" />
 
             <div className="space-y-2">
               <div className="flex justify-between text-xs">
@@ -1562,7 +1386,7 @@ export default function Checkout() {
               )}
 
               {subsidy?.active && subsidy.company && (
-                <div className="rounded-lg border border-clinical-slate/30 bg-clinical-dark/40 p-2.5 space-y-1.5">
+                <div className="rounded-lg border border-clinical-border bg-clinical-dark/40 p-2.5 space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5 text-[11px] text-white">
                       <Building2Icon className="w-3.5 h-3.5 text-clinical-gold" />
@@ -1587,7 +1411,7 @@ export default function Checkout() {
                 </div>
               )}
 
-              <div className="rounded-lg border border-clinical-slate/30 bg-clinical-dark/40 p-2.5 space-y-1.5">
+              <div className="rounded-lg border border-clinical-border bg-clinical-dark/40 p-2.5 space-y-1.5">
                 <div className="flex items-center gap-1.5 text-[11px] text-white">
                   <Ticket className="w-3.5 h-3.5 text-clinical-gold" />
                   <span className="font-medium">Have a voucher?</span>
@@ -1603,10 +1427,10 @@ export default function Checkout() {
                       if (voucherError) setVoucherError(null);
                     }}
                     placeholder="VOUCHER CODE"
-                    className={`flex-1 min-w-0 h-8 rounded-md bg-clinical-dark border px-2 text-[11px] text-white placeholder:text-clinical-zinc/60 tracking-wider uppercase focus:outline-none ${
+                    className={`flex-1 min-w-0 h-8 rounded-md bg-clinical-dark border px-2 text-[11px] text-white placeholder:text-clinical-zinc-muted tracking-wider uppercase focus:outline-none ${
                       voucherError
                         ? "alert-allergen-border focus:alert-allergen-border"
-                        : "border-clinical-slate/30 focus:border-clinical-gold/60"
+                        : "border-clinical-border focus:border-clinical-gold/60"
                     }`}
                     disabled={redeemingVoucher}
                     aria-invalid={voucherError ? true : undefined}
@@ -1637,7 +1461,7 @@ export default function Checkout() {
               </div>
             </div>
 
-            <Separator className="bg-clinical-slate/20" />
+            <Separator className="bg-clinical-surface-elevated" />
 
             {/* Total savings summary (C8). Sums every discount applied to
                 this order so the user sees a single trustworthy "you saved
@@ -1712,7 +1536,7 @@ export default function Checkout() {
             <Button
               onClick={() => setConfirmOpen(true)}
               disabled={checkoutBlocked}
-              className="hidden lg:flex w-full bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold h-11 shadow-clinical gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-clinical-slate/40 disabled:text-clinical-zinc disabled:shadow-none"
+              className="hidden lg:flex w-full bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold h-11 shadow-clinical gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-clinical-surface-elevated disabled:text-clinical-zinc disabled:shadow-none"
               title={checkoutBlocked ? checkoutBlockedReason ?? undefined : undefined}
             >
               <CreditCard className="w-4 h-4" />
@@ -1742,7 +1566,7 @@ export default function Checkout() {
         asChild
       >
         <div>
-          <CollapsibleContent className="pointer-events-auto rounded-xl border border-clinical-slate/40 bg-clinical-surface/95 backdrop-blur-xl shadow-2xl p-3 mb-2 space-y-1 text-[11px]">
+          <CollapsibleContent className="pointer-events-auto rounded-xl border border-clinical-border bg-clinical-surface/95 backdrop-blur-xl shadow-2xl p-3 mb-2 space-y-1 text-[11px]">
             <div className="flex justify-between text-clinical-zinc">
               <span>Subtotal</span>
               <span className="tabular-nums text-white">{formatPrice(subtotal)}</span>
@@ -1770,13 +1594,13 @@ export default function Checkout() {
             {effectiveTip > 0 && (
               <div className="flex justify-between"><span className="text-clinical-zinc">Rider tip</span><span className="tabular-nums text-clinical-gold">+{formatPrice(effectiveTip)}</span></div>
             )}
-            <Separator className="bg-clinical-slate/20 my-1" />
+            <Separator className="bg-clinical-surface-elevated my-1" />
             <div className="flex justify-between font-semibold pt-0.5">
               <span className="text-white">Total</span>
               <span className="tabular-nums text-clinical-gold">{formatPrice(razorpayTotal)}</span>
             </div>
           </CollapsibleContent>
-          <div className="pointer-events-auto rounded-xl border border-clinical-slate/40 bg-clinical-surface/95 backdrop-blur-xl shadow-2xl p-3 flex items-center gap-3">
+          <div className="pointer-events-auto rounded-xl border border-clinical-border bg-clinical-surface/95 backdrop-blur-xl shadow-2xl p-3 flex items-center gap-3">
             <CollapsibleTrigger asChild>
               <button
                 type="button"
@@ -1788,7 +1612,7 @@ export default function Checkout() {
                     {fulfillmentType === "pickup" ? "Self-collect" : deliveryFee === 0 ? "FREE delivery" : `+ ${formatPrice(deliveryFee)} delivery`}
                   </span>
                   <ChevronDown className="w-3 h-3 text-clinical-zinc transition-transform group-data-[state=open]:rotate-180 shrink-0" />
-                  <span className="text-clinical-zinc/70 truncate">
+                  <span className="text-clinical-zinc-muted truncate">
                     See breakdown
                   </span>
                 </p>
@@ -1800,7 +1624,7 @@ export default function Checkout() {
             <Button
               onClick={() => setConfirmOpen(true)}
               disabled={checkoutBlocked}
-              className="h-12 px-4 bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold gap-2 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-clinical-slate/40 disabled:text-clinical-zinc"
+              className="h-12 px-4 bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold gap-2 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-clinical-surface-elevated disabled:text-clinical-zinc"
               title={checkoutBlocked ? checkoutBlockedReason ?? undefined : undefined}
             >
               <CreditCard className="w-4 h-4" />
@@ -1812,7 +1636,7 @@ export default function Checkout() {
 
       {/* Payment confirmation dialog */}
       <Dialog open={confirmOpen} onOpenChange={(open) => !isProcessing && setConfirmOpen(open)}>
-        <DialogContent className="bg-clinical-surface border-clinical-slate/30">
+        <DialogContent className="bg-clinical-surface border-clinical-border">
           <DialogHeader>
             <DialogTitle className="text-white flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-clinical-sage" />
@@ -1823,7 +1647,7 @@ export default function Checkout() {
               Your rider will contact you on <span className="text-white">{activeAddr?.phone}</span> after pickup.
             </DialogDescription>
           </DialogHeader>
-          <div className="bg-clinical-dark/60 border border-clinical-slate/20 rounded-lg p-3 space-y-1.5 text-xs">
+          <div className="bg-clinical-dark/60 border border-clinical-border rounded-lg p-3 space-y-1.5 text-xs">
             <div className="flex justify-between">
               <span className="text-clinical-zinc">Subtotal ({items.length} item{items.length === 1 ? "" : "s"})</span>
               <span className="tabular-nums text-white">{formatPrice(subtotal)}</span>
@@ -1840,7 +1664,7 @@ export default function Checkout() {
                 <span className="tabular-nums text-clinical-gold">{formatPrice(effectiveTip)}</span>
               </div>
             )}
-            <Separator className="bg-clinical-slate/20 my-1" />
+            <Separator className="bg-clinical-surface-elevated my-1" />
             <div className="flex justify-between font-semibold">
               <span className="text-white">Total</span>
               <span className="tabular-nums text-clinical-gold">{formatPrice(razorpayTotal)}</span>
@@ -1851,22 +1675,17 @@ export default function Checkout() {
               variant="outline"
               onClick={() => setConfirmOpen(false)}
               disabled={isProcessing}
-              className="border-clinical-slate/30 text-clinical-zinc"
+              className="border-clinical-border text-clinical-zinc"
             >
               Cancel
             </Button>
             <Button
               onClick={handleConfirmedPayment}
               disabled={isProcessing || checkoutBlocked}
-              className="bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-clinical-slate/40 disabled:text-clinical-zinc"
+              className="bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-clinical-surface-elevated disabled:text-clinical-zinc"
             >
               {isProcessing ? "Processing…" : checkoutBlocked ? (
                 "Blocked by patient safety"
-              ) : paymentMethod === "cod" ? (
-                <>
-                  <IndianRupee className="w-4 h-4" />
-                  Place order · pay {formatPrice(razorpayTotal)} on delivery
-                </>
               ) : (
                 <>
                   <CreditCard className="w-4 h-4" />

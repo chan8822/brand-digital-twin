@@ -38,7 +38,7 @@ export default function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 border-b border-clinical-slate/30 bg-[#050505]/80 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 border-b border-clinical-border bg-[#050505]/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
           <Link to="/" className="flex items-center gap-2 shrink-0" aria-label="Tanmatra">
             <Logo className="h-7 w-auto text-clinical-gold" aria-hidden="true" />
@@ -76,11 +76,11 @@ export default function Header() {
               type="button"
               onClick={() => palette.setOpen(true)}
               aria-label="Open command palette"
-              className="hidden md:inline-flex items-center gap-2 h-8 pl-2 pr-1.5 rounded-md border border-clinical-slate/40 bg-white/5 text-[11px] text-clinical-zinc hover:text-white hover:border-clinical-gold/40 transition-colors"
+              className="hidden md:inline-flex items-center gap-2 h-8 pl-2 pr-1.5 rounded-md border border-clinical-border bg-white/5 text-[11px] text-clinical-zinc hover:text-white hover:border-clinical-gold/40 transition-colors"
             >
               <MagnifyingGlass className="w-3.5 h-3.5" aria-hidden />
               <span>Search</span>
-              <kbd className="ml-1 inline-flex items-center gap-0.5 rounded bg-clinical-slate/40 px-1.5 py-0.5 font-mono text-[10px] text-clinical-zinc">
+              <kbd className="ml-1 inline-flex items-center gap-0.5 rounded bg-clinical-surface-elevated px-1.5 py-0.5 font-mono text-[10px] text-clinical-zinc">
                 ⌘K
               </kbd>
             </button>

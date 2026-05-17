@@ -24,9 +24,9 @@ import {
 export default function Refunds() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-10 space-y-8 text-sm text-clinical-zinc leading-relaxed">
-      <header className="space-y-3 border-b border-clinical-slate/20 pb-6">
+      <header className="space-y-3 border-b border-clinical-border pb-6">
         <h1 className="text-clinical-h1 text-white">Refund & Cancellation</h1>
-        <p className="text-xs text-clinical-zinc/70">
+        <p className="text-xs text-clinical-zinc-muted">
           Last updated: {new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" })}
         </p>
         <p>
@@ -41,7 +41,7 @@ export default function Refunds() {
         <h2 className="text-clinical-h3 text-white flex items-center gap-2">
           <Clock className="w-4 h-4 text-clinical-gold" /> One-off orders
         </h2>
-        <Card className="bg-clinical-surface border-clinical-slate/20">
+        <Card className="bg-clinical-surface border-clinical-border">
           <CardContent className="p-5 space-y-3">
             <div>
               <p className="text-white font-medium">Cancellation</p>
@@ -76,7 +76,7 @@ export default function Refunds() {
         <h2 className="text-clinical-h3 text-white flex items-center gap-2">
           <Repeat className="w-4 h-4 text-clinical-gold" /> Subscriptions & meal plans
         </h2>
-        <Card className="bg-clinical-surface border-clinical-slate/20">
+        <Card className="bg-clinical-surface border-clinical-border">
           <CardContent className="p-5 space-y-3 text-xs">
             <p>
               <span className="text-white font-medium">Skip a delivery</span> — free up
@@ -107,7 +107,7 @@ export default function Refunds() {
         <h2 className="text-clinical-h3 text-white flex items-center gap-2">
           <CalendarX className="w-4 h-4 text-clinical-gold" /> RD consults & appointments
         </h2>
-        <Card className="bg-clinical-surface border-clinical-slate/20">
+        <Card className="bg-clinical-surface border-clinical-border">
           <CardContent className="p-5 space-y-2 text-xs">
             <p>
               <span className="text-white font-medium">Free cancellation up to 12 hours</span>
@@ -129,7 +129,7 @@ export default function Refunds() {
         <h2 className="text-clinical-h3 text-white flex items-center gap-2">
           <ShieldAlert className="w-4 h-4 text-clinical-gold" /> Grievance Officer
         </h2>
-        <Card className="bg-clinical-surface border-clinical-slate/20">
+        <Card className="bg-clinical-surface border-clinical-border">
           <CardContent className="p-5 space-y-3 text-xs">
             <p>
               In compliance with the Digital Personal Data Protection Act 2023 §32
@@ -137,14 +137,14 @@ export default function Refunds() {
               that cannot be resolved through normal customer support can be
               escalated to our Grievance Officer:
             </p>
-            <div className="rounded-md border border-clinical-slate/20 bg-clinical-surface-elevated/50 p-3 space-y-1.5">
+            <div className="rounded-md border border-clinical-border bg-clinical-surface-elevated/50 p-3 space-y-1.5">
               <p className="text-white font-medium">Tanmatra Health Technologies Pvt. Ltd.</p>
               <p>Grievance Officer · Care Operations</p>
               <p className="flex items-center gap-2"><Mail className="w-3 h-3 text-clinical-gold" /> <a href="mailto:grievance@tanmatra.food" className="hover:text-white">grievance@tanmatra.food</a></p>
               <p className="flex items-center gap-2"><Phone className="w-3 h-3 text-clinical-gold" /> <a href="tel:+918047019200" className="hover:text-white">+91 80 4701 9200</a> (Mon-Sat 09:00-19:00 IST)</p>
               <p className="flex items-center gap-2"><MessageCircle className="w-3 h-3 text-clinical-sage" /> <a href="https://wa.me/918047019200" target="_blank" rel="noopener noreferrer" className="hover:text-white">WhatsApp +91 80 4701 9200</a></p>
             </div>
-            <p className="text-clinical-zinc/70">
+            <p className="text-clinical-zinc-muted">
               We acknowledge complaints within 24 hours and aim to resolve them
               within 7 business days. Issues unresolved after 30 days may be
               escalated to the National Consumer Helpline (1915) or the
@@ -154,7 +154,7 @@ export default function Refunds() {
         </Card>
       </section>
 
-      <p className="text-[11px] text-clinical-zinc/60 pt-4 border-t border-clinical-slate/20">
+      <p className="text-[11px] text-clinical-zinc-muted pt-4 border-t border-clinical-border">
         This policy is provided for transparency and may be updated. Material
         changes will be notified by email + in-app banner. The most recent
         version always lives at this URL. See also our{" "}

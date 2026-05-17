@@ -133,13 +133,13 @@ export default function PatientContextStrip() {
             )}
           </div>
 
-          <div className="rounded-md border border-clinical-slate/30 bg-clinical-surface/50 px-2.5 py-1.5">
+          <div className="rounded-md border border-clinical-border bg-clinical-surface/50 px-2.5 py-1.5">
             <p className="text-[9px] uppercase tracking-[0.14em] font-semibold text-clinical-zinc flex items-center gap-1">
               <Utensils className="w-3 h-3 text-clinical-gold" aria-hidden />
               Last 3 meals
             </p>
             {recent.length === 0 ? (
-              <p className="text-[11px] text-clinical-zinc/70 mt-1">
+              <p className="text-[11px] text-clinical-zinc-muted mt-1">
                 No prior meals on record.
               </p>
             ) : (

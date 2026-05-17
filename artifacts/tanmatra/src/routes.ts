@@ -1,7 +1,6 @@
 import { type RouteConfig, index, route, layout } from "@react-router/dev/routes";
 
 export default [
-  layout("routes/Layout.tsx", [
     index("pages/Home.tsx"),
     route("menu", "pages/Menu.tsx"),
     route("dish/:slug", "pages/Dish.tsx"),
@@ -28,26 +27,32 @@ export default [
     route("rd", "pages/RdDirectory.tsx"),
     route("rd/:slug", "pages/RdProfile.tsx"),
     route("appointments", "pages/Appointments.tsx"),
-    route("rd-console", "pages/RdConsoleGate.tsx"),
+    layout("routes/RdAuthLayout.tsx", [
+      route("rd-console", "pages/RdConsole.tsx")
+    ]),
     route("checkout-appointment", "pages/CheckoutAppointment.tsx"),
     route("faq", "pages/Faq.tsx"),
-    route("admin", "pages/AdminIndexGate.tsx"),
-    route("admin/ops", "pages/AdminOpsDashboardGate.tsx"),
-    route("admin/ai-runs", "pages/AdminAiRunsGate.tsx"),
-    route("admin/ops-agent", "pages/AdminOpsAgentGate.tsx"),
-    route("admin/cms-agent", "pages/AdminCmsAgentGate.tsx"),
-    route("admin/forecasting", "pages/AdminForecastingGate.tsx"),
-    route("admin/menu-engineering", "pages/AdminMenuEngineeringGate.tsx"),
-    route("admin/analytics", "pages/AdminAnalyticsGate.tsx"),
-    route("admin/support-tickets", "pages/AdminSupportTicketsGate.tsx"),
+    layout("routes/AdminAuthLayout.tsx", [
+      route("admin", "pages/AdminIndex.tsx"),
+      route("admin/ops", "pages/AdminOpsDashboard.tsx"),
+      route("admin/ai-runs", "pages/AdminAiRuns.tsx"),
+      route("admin/ops-agent", "pages/AdminOpsAgent.tsx"),
+      route("admin/cms-agent", "pages/AdminCmsAgent.tsx"),
+      route("admin/forecasting", "pages/AdminForecasting.tsx"),
+      route("admin/menu-engineering", "pages/AdminMenuEngineering.tsx"),
+      route("admin/analytics", "pages/AdminAnalytics.tsx"),
+      route("admin/support-tickets", "pages/AdminSupportTickets.tsx"),
+      route("admin/rd-applications", "pages/AdminRdApplications.tsx"),
+      route("admin/moderation", "pages/AdminModeration.tsx"),
+      route("admin/community-moderation", "pages/AdminCommunityModeration.tsx"),
+      route("admin/sales-console", "pages/AdminSalesConsole.tsx"),
+      route("admin/sales-console/:slug", "pages/AdminSalesAccount.tsx")
+    ]),
     route("rd-partners", "pages/RdPartnersLanding.tsx"),
     route("rd-partners/apply", "pages/RdPartnersWizard.tsx"),
-    route("admin/rd-applications", "pages/AdminRdApplicationsGate.tsx"),
     route("group/:code", "pages/GroupOrder.tsx"),
     route("recipes", "pages/Recipes.tsx"),
     route("recipes/:slug", "pages/RecipeDetail.tsx"),
-    route("admin/moderation", "pages/AdminModerationGate.tsx"),
-    route("admin/community-moderation", "pages/AdminCommunityModerationGate.tsx"),
     route("challenges", "pages/Challenges.tsx"),
     route("challenges/:slug", "pages/ChallengeDetail.tsx"),
     route("corporate", "pages/Corporate.tsx"),
@@ -55,8 +60,6 @@ export default [
     route("corporate/:slug", "pages/CorporateAdmin.tsx"),
     route("corporate/:slug/lunch-planner", "pages/CorporateLunchPlanner.tsx"),
     route("office-lunch/:id", "pages/OfficeLunch.tsx"),
-    route("admin/sales-console", "pages/AdminSalesConsoleGate.tsx"),
-    route("admin/sales-console/:slug", "pages/AdminSalesAccountGate.tsx"),
     route("vouchers", "pages/Vouchers.tsx"),
     route("premium", "pages/Premium.tsx"),
     route("marketplace", "pages/Marketplace.tsx"),
@@ -64,5 +67,4 @@ export default [
     route("login", "pages/Login.tsx"),
     route("admin/login", "pages/AdminLogin.tsx"),
     route("*", "pages/not-found.tsx")
-  ])
 ] satisfies RouteConfig;

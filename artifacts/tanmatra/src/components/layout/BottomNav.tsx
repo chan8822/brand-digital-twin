@@ -197,9 +197,9 @@ function MoreSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="w-[88vw] max-w-sm bg-clinical-surface border-clinical-slate/30 p-0 flex flex-col"
+        className="w-[88vw] max-w-sm bg-clinical-surface border-clinical-border p-0 flex flex-col"
       >
-        <SheetHeader className="px-5 pt-5 pb-3 border-b border-clinical-slate/20">
+        <SheetHeader className="px-5 pt-5 pb-3 border-b border-clinical-border">
           <SheetTitle className="text-white text-base font-serif flex items-center justify-between">
             Explore Tanmatra
             <SheetClose
@@ -228,7 +228,7 @@ function MoreSheet({
 
           {MORE_GROUPS.map((group) => (
             <div key={group.title}>
-              <p className="text-[10px] uppercase tracking-widest text-clinical-zinc/70 mb-2 px-1">
+              <p className="text-[10px] uppercase tracking-widest text-clinical-zinc-muted mb-2 px-1">
                 {group.title}
               </p>
               <ul className="space-y-1">
@@ -258,24 +258,20 @@ function MoreSheet({
             </div>
           ))}
 
-          <div className="pt-4 mt-2 border-t border-clinical-slate/20 space-y-2 text-[11px] text-clinical-zinc">
-            <a href="mailto:care@tanmatra.food" className="flex items-center gap-2 min-h-9 hover:text-white">
+          <div className="pt-4 mt-2 border-t border-clinical-border space-y-2 text-[11px] text-clinical-zinc">
+            <div className="flex items-center gap-2">
               <EnvelopeSimple className="w-3 h-3 text-clinical-gold" />
-              care@tanmatra.food
-            </a>
-            <a href="tel:+918047019200" className="flex items-center gap-2 min-h-9 hover:text-white">
+              care@tanmatra.health
+            </div>
+            <div className="flex items-center gap-2">
               <Phone className="w-3 h-3 text-clinical-gold" />
               +91 80 4701 9200
-            </a>
-            <a href="https://wa.me/918047019200" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 min-h-9 hover:text-white">
-              <Phone className="w-3 h-3 text-clinical-sage" />
-              WhatsApp us
-            </a>
+            </div>
             <div className="flex items-center gap-2 pt-1">
               <ShieldCheck className="w-3 h-3 text-clinical-sage" />
               ISO 22000 · FSSAI Lic. 22725926001018
             </div>
-            <p className="pt-2 text-[10px] text-clinical-zinc/70">
+            <p className="pt-2 text-[10px] text-clinical-zinc-muted">
               © {new Date().getFullYear()} Tanmatra Health Technologies
             </p>
           </div>
@@ -292,7 +288,7 @@ export default function BottomNav() {
   return (
     <nav
       aria-label="Primary"
-      className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-clinical-slate/30 bg-[#050505]/95 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]"
+      className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-clinical-border bg-[#050505]/95 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]"
     >
       <ul className="grid grid-cols-5">
         {PRIMARY.map((item) => {

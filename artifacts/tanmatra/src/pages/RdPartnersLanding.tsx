@@ -54,7 +54,7 @@ export default function RdPartnersLanding() {
   return (
     <div className="bg-clinical-dark text-white">
       {/* hero */}
-      <section className="border-b border-clinical-slate/30">
+      <section className="border-b border-clinical-border">
         <div className="max-w-6xl mx-auto px-4 py-14 grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-10 items-start">
           <div className="space-y-5">
             <Badge className="bg-clinical-gold/15 text-clinical-gold border-clinical-gold/30 uppercase tracking-widest text-[10px]">
@@ -106,25 +106,25 @@ export default function RdPartnersLanding() {
             </div>
           </div>
 
-          <Card className="bg-clinical-surface border-clinical-slate/30">
+          <Card className="bg-clinical-surface border-clinical-border">
             <CardContent className="p-5 space-y-4">
               <p className="text-[10px] uppercase tracking-widest text-clinical-zinc">
                 The deal, in one card
               </p>
               <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="rounded-md border border-clinical-slate/30 p-3">
+                <div className="rounded-md border border-clinical-border p-3">
                   <p className="text-clinical-gold font-semibold">70 / 30</p>
                   <p className="text-clinical-zinc">RD / platform split on follow-ups</p>
                 </div>
-                <div className="rounded-md border border-clinical-slate/30 p-3">
+                <div className="rounded-md border border-clinical-border p-3">
                   <p className="text-clinical-gold font-semibold">Free</p>
                   <p className="text-clinical-zinc">15-min intro covered by Tanmatra</p>
                 </div>
-                <div className="rounded-md border border-clinical-slate/30 p-3">
+                <div className="rounded-md border border-clinical-border p-3">
                   <p className="text-clinical-gold font-semibold">Monthly</p>
                   <p className="text-clinical-zinc">Direct payout, no minimums</p>
                 </div>
-                <div className="rounded-md border border-clinical-slate/30 p-3">
+                <div className="rounded-md border border-clinical-border p-3">
                   <p className="text-clinical-gold font-semibold">Owned</p>
                   <p className="text-clinical-zinc">Your client list stays yours</p>
                 </div>
@@ -149,12 +149,12 @@ export default function RdPartnersLanding() {
       </section>
 
       {/* value props */}
-      <section className="border-b border-clinical-slate/30">
+      <section className="border-b border-clinical-border">
         <div className="max-w-6xl mx-auto px-4 py-12 grid grid-cols-1 sm:grid-cols-2 gap-4">
           {VALUE_PROPS.map(({ icon: Icon, title, body }) => (
             <div
               key={title}
-              className="rounded-xl border border-clinical-slate/30 bg-clinical-surface p-5"
+              className="rounded-xl border border-clinical-border bg-clinical-surface p-5"
             >
               <Icon className="w-5 h-5 text-clinical-gold mb-3" />
               <h3 className="text-sm font-semibold text-white mb-1">{title}</h3>
@@ -167,7 +167,7 @@ export default function RdPartnersLanding() {
       </section>
 
       {/* how it works */}
-      <section id="how-it-works" className="border-b border-clinical-slate/30">
+      <section id="how-it-works" className="border-b border-clinical-border">
         <div className="max-w-4xl mx-auto px-4 py-12 space-y-6">
           <div>
             <Badge className="bg-clinical-sage/15 text-clinical-sage border-clinical-sage/30 uppercase tracking-widest text-[10px] mb-2">
@@ -181,7 +181,7 @@ export default function RdPartnersLanding() {
             {STEPS.map((step, i) => (
               <li
                 key={step}
-                className="flex gap-3 rounded-lg border border-clinical-slate/30 bg-clinical-surface p-4"
+                className="flex gap-3 rounded-lg border border-clinical-border bg-clinical-surface p-4"
               >
                 <span className="w-7 h-7 rounded-full bg-clinical-gold/15 text-clinical-gold border border-clinical-gold/30 flex items-center justify-center text-xs font-semibold">
                   {i + 1}
@@ -217,7 +217,7 @@ export default function RdPartnersLanding() {
         <div className="max-w-4xl mx-auto px-4 py-12 space-y-4">
           <h2 className="font-serif text-xl text-white">Common questions</h2>
           <div className="space-y-3 text-xs text-clinical-zinc">
-            <div className="rounded-lg border border-clinical-slate/30 bg-clinical-surface p-4">
+            <div className="rounded-lg border border-clinical-border bg-clinical-surface p-4">
               <p className="text-white text-sm font-medium mb-1">
                 Do I have to leave my current practice?
               </p>
@@ -225,14 +225,14 @@ export default function RdPartnersLanding() {
               ask for at least 4 booking hours per week to keep response times
               honest with members.
             </div>
-            <div className="rounded-lg border border-clinical-slate/30 bg-clinical-surface p-4">
+            <div className="rounded-lg border border-clinical-border bg-clinical-surface p-4">
               <p className="text-white text-sm font-medium mb-1">
                 Who handles the meals?
               </p>
               We do — formulation, sourcing, kitchen, last-mile. You own the
               clinical relationship; we own the cold chain.
             </div>
-            <div className="rounded-lg border border-clinical-slate/30 bg-clinical-surface p-4">
+            <div className="rounded-lg border border-clinical-border bg-clinical-surface p-4">
               <p className="text-white text-sm font-medium mb-1">
                 What's "advisory" vs "partner"?
               </p>

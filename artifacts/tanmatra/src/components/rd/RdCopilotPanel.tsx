@@ -187,7 +187,7 @@ export function RdCopilotPanel({
 
   return (
     <div className="space-y-4">
-      <Card className="bg-clinical-surface border-clinical-slate/30">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-5 space-y-3">
           <div className="flex items-center justify-between">
             <div>
@@ -223,7 +223,7 @@ export function RdCopilotPanel({
         </CardContent>
       </Card>
 
-      <Card className="bg-clinical-surface border-clinical-slate/30">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-5 space-y-3">
           <div className="flex items-center justify-between gap-2">
             <Badge className="bg-clinical-gold/15 text-clinical-gold border-clinical-gold/30 uppercase tracking-widest text-[10px]">
@@ -234,7 +234,7 @@ export function RdCopilotPanel({
                 type="date"
                 value={weekStart}
                 onChange={(e) => setWeekStart(e.target.value)}
-                className="bg-clinical-bg border border-clinical-slate/30 text-xs rounded-md px-2 h-8 text-white"
+                className="bg-clinical-bg border border-clinical-border text-xs rounded-md px-2 h-8 text-white"
               />
               <Button
                 size="sm"
@@ -250,7 +250,7 @@ export function RdCopilotPanel({
           {proposal ? (
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-[11px] text-clinical-zinc">
-                <Badge className="bg-clinical-bg border-clinical-slate/30 text-clinical-zinc">
+                <Badge className="bg-clinical-bg border-clinical-border text-clinical-zinc">
                   {proposal.status}
                 </Badge>
                 <span>Week of {proposal.weekStartDate}</span>
@@ -272,7 +272,7 @@ export function RdCopilotPanel({
                 {proposal.days.map((d) => (
                   <div
                     key={d.date}
-                    className="rounded-md border border-clinical-slate/20 p-2 text-[11px] text-clinical-zinc"
+                    className="rounded-md border border-clinical-border p-2 text-[11px] text-clinical-zinc"
                   >
                     <div className="text-white text-xs mb-1">{d.date}</div>
                     <div>B: {d.breakfast?.name ?? "—"}</div>
@@ -286,7 +286,7 @@ export function RdCopilotPanel({
                 value={rdNotes}
                 onChange={(e) => setRdNotes(e.target.value)}
                 placeholder="RD notes — clinical reasoning, edits to discuss with client…"
-                className="bg-clinical-bg border-clinical-slate/30 text-xs"
+                className="bg-clinical-bg border-clinical-border text-xs"
                 rows={3}
               />
 
@@ -336,7 +336,7 @@ export function RdCopilotPanel({
         </CardContent>
       </Card>
 
-      <Card className="bg-clinical-surface border-clinical-slate/30">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-5 space-y-3">
           <div className="flex items-center justify-between">
             <Badge className="bg-clinical-gold/15 text-clinical-gold border-clinical-gold/30 uppercase tracking-widest text-[10px]">
@@ -373,7 +373,7 @@ export function RdCopilotPanel({
                   ).map(([k, v]) => (
                     <span
                       key={k}
-                      className="px-2 py-1 rounded border border-clinical-slate/30 text-clinical-zinc"
+                      className="px-2 py-1 rounded border border-clinical-border text-clinical-zinc"
                     >
                       {DRIFT_LABEL[k]}: {v}
                     </span>
@@ -389,7 +389,7 @@ export function RdCopilotPanel({
                 {adherence.events.map((ev) => (
                   <div
                     key={ev.id}
-                    className="rounded-md border border-clinical-slate/20 p-2 flex items-start justify-between gap-2"
+                    className="rounded-md border border-clinical-border p-2 flex items-start justify-between gap-2"
                   >
                     <div className="text-[11px] text-clinical-zinc">
                       <div className="text-white text-xs">
@@ -419,7 +419,7 @@ export function RdCopilotPanel({
         </CardContent>
       </Card>
 
-      <Card className="bg-clinical-surface border-clinical-slate/30">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-5 space-y-2">
           <Badge className="bg-clinical-gold/15 text-clinical-gold border-clinical-gold/30 uppercase tracking-widest text-[10px]">
             AI Audit Log
@@ -438,7 +438,7 @@ export function RdCopilotPanel({
                 <span>
                   <span className="text-white">{e.kind}</span> · {e.actor}
                 </span>
-                <span className="text-clinical-zinc/60">
+                <span className="text-clinical-zinc-muted">
                   {new Date(e.createdAt).toLocaleString("en-IN")}
                 </span>
               </div>

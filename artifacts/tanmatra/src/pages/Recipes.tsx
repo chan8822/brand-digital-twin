@@ -40,7 +40,7 @@ export default function Recipes() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
       <div className="space-y-1">
-        <p className="text-[10px] uppercase tracking-[0.18em] text-clinical-zinc/70 font-semibold flex items-center gap-1.5">
+        <p className="text-[10px] uppercase tracking-[0.18em] text-clinical-zinc-muted font-semibold flex items-center gap-1.5">
           <BookOpen className="w-3 h-3 text-clinical-gold" />
           Recipe Library
         </p>
@@ -54,12 +54,12 @@ export default function Recipes() {
       </div>
 
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-clinical-zinc/60" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-clinical-zinc-muted" />
         <Input
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search recipes…"
-          className="pl-9 h-11 bg-clinical-surface border-clinical-slate/20"
+          className="pl-9 h-11 bg-clinical-surface border-clinical-border"
         />
       </div>
 
@@ -67,7 +67,7 @@ export default function Recipes() {
         <FilterRow label="Goal" options={GOALS} value={goal} onChange={setGoal} />
         <FilterRow label="Diet" options={DIETS} value={diet} onChange={setDiet} />
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[10px] uppercase tracking-[0.18em] text-clinical-zinc/60 font-semibold pr-1">
+          <span className="text-[10px] uppercase tracking-[0.18em] text-clinical-zinc-muted font-semibold pr-1">
             Time
           </span>
           {TIME_OPTIONS.map((t) => {
@@ -79,7 +79,7 @@ export default function Recipes() {
                 className={`px-3 py-1 rounded-full border text-[11px] uppercase tracking-[0.12em] font-semibold transition-all ${
                   active
                     ? "border-clinical-gold/50 bg-clinical-gold/10 text-clinical-gold"
-                    : "border-clinical-slate/30 text-clinical-zinc hover:text-clinical-gold"
+                    : "border-clinical-border text-clinical-zinc hover:text-clinical-gold"
                 }`}
               >
                 {t.label}
@@ -89,14 +89,14 @@ export default function Recipes() {
         </div>
       </div>
 
-      <div className="text-xs text-clinical-zinc/70 tabular-nums">
+      <div className="text-xs text-clinical-zinc-muted tabular-nums">
         {isLoading ? "Loading…" : `${recipes?.length ?? 0} recipe${(recipes?.length ?? 0) === 1 ? "" : "s"}`}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {recipes?.map((r) => (
           <Link key={r.id} to={`/recipes/${r.slug}`}>
-            <Card className="group bg-clinical-surface border-clinical-slate/20 hover:border-clinical-gold/40 transition-all overflow-hidden h-full">
+            <Card className="group bg-clinical-surface border-clinical-border hover:border-clinical-gold/40 transition-all overflow-hidden h-full">
               {r.image && (
                 <div className="relative aspect-[4/3] overflow-hidden">
                   <img
@@ -119,7 +119,7 @@ export default function Recipes() {
                 <p className="text-[11px] text-clinical-zinc line-clamp-2 leading-relaxed">
                   {r.summary}
                 </p>
-                <div className="flex items-center gap-3 text-[10px] text-clinical-zinc/80 tabular-nums pt-1">
+                <div className="flex items-center gap-3 text-[10px] text-clinical-zinc-muted tabular-nums pt-1">
                   <span className="flex items-center gap-1">
                     <Clock className="w-3 h-3 text-clinical-gold" />
                     {r.timeMinutes} min
@@ -134,7 +134,7 @@ export default function Recipes() {
                     <span>{r.proteinGrams}g protein</span>
                   )}
                 </div>
-                <p className="text-[10px] text-clinical-zinc/70 pt-1">
+                <p className="text-[10px] text-clinical-zinc-muted pt-1">
                   By {r.authorName}
                 </p>
               </CardContent>
@@ -165,7 +165,7 @@ function FilterRow({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="text-[10px] uppercase tracking-[0.18em] text-clinical-zinc/60 font-semibold pr-1">
+      <span className="text-[10px] uppercase tracking-[0.18em] text-clinical-zinc-muted font-semibold pr-1">
         {label}
       </span>
       {options.map((o) => {
@@ -177,7 +177,7 @@ function FilterRow({
             className={`px-3 py-1 rounded-full border text-[11px] uppercase tracking-[0.12em] font-semibold transition-all ${
               active
                 ? "border-clinical-gold/50 bg-clinical-gold/10 text-clinical-gold"
-                : "border-clinical-slate/30 text-clinical-zinc hover:text-clinical-gold"
+                : "border-clinical-border text-clinical-zinc hover:text-clinical-gold"
             }`}
           >
             {o.label}

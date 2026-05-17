@@ -58,7 +58,7 @@ export default function CorporateInvite() {
         You've been invited as a <strong>{invite.invite.role}</strong>. Accept to start using the
         company meal program.
       </p>
-      <Card className="bg-clinical-surface border-clinical-slate/20">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-4 space-y-2">
           <p className="text-xs text-clinical-zinc">Invitation for</p>
           <p className="text-sm text-white">{invite.invite.email}</p>

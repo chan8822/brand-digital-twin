@@ -1,10 +1,26 @@
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "react-router";
-import type { LinksFunction } from "react-router";
+import type { LinksFunction, MetaFunction } from "react-router";
 import "./index.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: "/src/index.css" },
+];
+
+export const meta: MetaFunction = () => [
+  { title: "Tanmatra — Therapeutic Meal Delivery" },
+  { name: "description", content: "Tanmatra delivers clinical-grade therapeutic meals designed by registered dietitians. Browse the curated menu, build personalised weekly plans, and track wellness, performance, and clinical protocols." },
+  { name: "theme-color", content: "#050505" },
+  { property: "og:type", content: "website" },
+  { property: "og:site_name", content: "Tanmatra" },
+  { property: "og:title", content: "Tanmatra — Therapeutic Meal Delivery" },
+  { property: "og:description", content: "Clinical-grade therapeutic meals designed by registered dietitians. Curated menu, personalised plans, wellness tracking." },
+  { property: "og:image", content: "https://tanmatra.food/og-image.jpg" },
+  { property: "og:url", content: "https://tanmatra.food/" },
+  { name: "twitter:card", content: "summary_large_image" },
+  { name: "twitter:title", content: "Tanmatra — Therapeutic Meal Delivery" },
+  { name: "twitter:description", content: "Clinical-grade therapeutic meals designed by registered dietitians." },
+  { name: "twitter:image", content: "https://tanmatra.food/og-image.jpg" },
 ];
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";

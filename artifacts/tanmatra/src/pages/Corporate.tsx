@@ -65,7 +65,7 @@ export default function Corporate() {
             { title: "Office lunch programs", desc: "Schedule recurring team meals with one-click reorder." },
             { title: "Wellness vouchers", desc: "Gift one-off meals and RD consults for milestones or hires." },
           ].map((b) => (
-            <div key={b.title} className="rounded-lg border border-clinical-slate/20 bg-clinical-surface p-4 space-y-1">
+            <div key={b.title} className="rounded-lg border border-clinical-border bg-clinical-surface p-4 space-y-1">
               <p className="text-sm font-semibold text-white">{b.title}</p>
               <p className="text-[11px] text-clinical-zinc">{b.desc}</p>
             </div>
@@ -101,7 +101,7 @@ export default function Corporate() {
         </p>
       </div>
 
-      <Card className="bg-clinical-surface border-clinical-slate/20">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-5 space-y-3">
           <h2 className="text-sm font-semibold text-white">Your companies</h2>
           {loading ? (
@@ -116,7 +116,7 @@ export default function Corporate() {
                 <Link
                   key={company.id}
                   to={`/corporate/${company.slug}`}
-                  className="flex items-center justify-between p-3 rounded-lg border border-clinical-slate/20 bg-clinical-dark hover:border-clinical-gold/40 transition-colors"
+                  className="flex items-center justify-between p-3 rounded-lg border border-clinical-border bg-clinical-dark hover:border-clinical-gold/40 transition-colors"
                 >
                   <div>
                     <p className="text-sm font-medium text-white">{company.name}</p>
@@ -132,7 +132,7 @@ export default function Corporate() {
         </CardContent>
       </Card>
 
-      <Card className="bg-clinical-surface border-clinical-slate/20">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-5 space-y-3">
           <h2 className="text-sm font-semibold text-white flex items-center gap-2">
             <Plus className="w-4 h-4 text-clinical-gold" /> Create a company
@@ -144,18 +144,18 @@ export default function Corporate() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Acme Inc."
-                className="h-9 text-xs bg-clinical-dark border-clinical-slate/30"
+                className="h-9 text-xs bg-clinical-dark border-clinical-border"
               />
             </div>
             <div className="space-y-1">
               <Label className="text-[10px] text-clinical-zinc">
-                Monthly budget per employee (₹)
+                Monthly budget per employee (Rs.)
               </Label>
               <Input
                 type="number"
                 value={budgetRupees}
                 onChange={(e) => setBudgetRupees(e.target.value)}
-                className="h-9 text-xs bg-clinical-dark border-clinical-slate/30"
+                className="h-9 text-xs bg-clinical-dark border-clinical-border"
               />
             </div>
           </div>

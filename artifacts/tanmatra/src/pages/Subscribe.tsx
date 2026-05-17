@@ -313,7 +313,7 @@ export default function Subscribe() {
       )}
 
       {/* Cadence */}
-      <Card className="bg-clinical-surface border-clinical-slate/20">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-5 space-y-4">
           <div className="flex items-center gap-2 text-clinical-zinc text-xs uppercase tracking-widest">
             <CalendarDays className="w-4 h-4 text-clinical-gold" /> Step 1 — Cadence
@@ -328,7 +328,7 @@ export default function Subscribe() {
                   className={`text-left rounded-lg border p-4 transition-all ${
                     active
                       ? "border-clinical-gold bg-clinical-gold/10"
-                      : "border-clinical-slate/30 hover:border-clinical-gold/40"
+                      : "border-clinical-border hover:border-clinical-gold/40"
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -350,7 +350,7 @@ export default function Subscribe() {
       </Card>
 
       {/* Meals + window */}
-      <Card className="bg-clinical-surface border-clinical-slate/20">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-5 space-y-5">
           <div className="flex items-center gap-2 text-clinical-zinc text-xs uppercase tracking-widest">
             <Sparkles className="w-4 h-4 text-clinical-gold" /> Step 2 — Volume & Window
@@ -365,7 +365,7 @@ export default function Subscribe() {
                   className={`px-4 py-2 rounded-md border text-sm transition-all ${
                     meals === m
                       ? "border-clinical-gold bg-clinical-gold/10 text-clinical-gold"
-                      : "border-clinical-slate/30 text-clinical-zinc hover:text-white"
+                      : "border-clinical-border text-clinical-zinc hover:text-white"
                   }`}
                 >
                   {m} meals
@@ -386,7 +386,7 @@ export default function Subscribe() {
                     className={`px-3 py-1.5 rounded-md border text-xs transition-all ${
                       window === w
                         ? "border-clinical-gold bg-clinical-gold/10 text-clinical-gold"
-                        : "border-clinical-slate/30 text-clinical-zinc hover:text-white"
+                        : "border-clinical-border text-clinical-zinc hover:text-white"
                     }`}
                   >
                     {w}
@@ -401,7 +401,7 @@ export default function Subscribe() {
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
                 min={new Date().toISOString().slice(0, 10)}
-                className="bg-clinical-dark border-clinical-slate/30 text-white"
+                className="bg-clinical-dark border-clinical-border text-white"
               />
             </div>
           </div>
@@ -409,7 +409,7 @@ export default function Subscribe() {
       </Card>
 
       {/* Members */}
-      <Card className="bg-clinical-surface border-clinical-slate/20">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-5 space-y-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-clinical-zinc text-xs uppercase tracking-widest">
@@ -427,14 +427,14 @@ export default function Subscribe() {
           {members.map((m, idx) => (
             <div
               key={idx}
-              className="rounded-lg border border-clinical-slate/30 p-4 space-y-3"
+              className="rounded-lg border border-clinical-border p-4 space-y-3"
             >
               <div className="flex items-center justify-between gap-2">
                 <Input
                   placeholder="Member name"
                   value={m.name}
                   onChange={(e) => updateMember(idx, { name: e.target.value })}
-                  className="bg-clinical-dark border-clinical-slate/30 text-white max-w-[260px]"
+                  className="bg-clinical-dark border-clinical-border text-white max-w-[260px]"
                 />
                 {members.length > 1 && (
                   <Button
@@ -458,7 +458,7 @@ export default function Subscribe() {
                         className={`flex-1 px-2 py-1 rounded-md border text-[11px] uppercase tracking-wide ${
                           m.diet === d
                             ? "border-clinical-gold bg-clinical-gold/10 text-clinical-gold"
-                            : "border-clinical-slate/30 text-clinical-zinc"
+                            : "border-clinical-border text-clinical-zinc"
                         }`}
                       >
                         {d}
@@ -476,7 +476,7 @@ export default function Subscribe() {
                         className={`flex-1 px-2 py-1 rounded-md border text-[11px] uppercase tracking-wide ${
                           m.spiceLevel === s
                             ? "border-clinical-gold bg-clinical-gold/10 text-clinical-gold"
-                            : "border-clinical-slate/30 text-clinical-zinc"
+                            : "border-clinical-border text-clinical-zinc"
                         }`}
                       >
                         {s}
@@ -489,7 +489,7 @@ export default function Subscribe() {
                   <select
                     value={m.lifestyle}
                     onChange={(e) => updateMember(idx, { lifestyle: e.target.value })}
-                    className="w-full bg-clinical-dark border border-clinical-slate/30 text-white text-xs rounded-md px-2 py-1.5"
+                    className="w-full bg-clinical-dark border border-clinical-border text-white text-xs rounded-md px-2 py-1.5"
                   >
                     {LIFESTYLES.map((l) => (
                       <option key={l.value} value={l.value}>
@@ -511,7 +511,7 @@ export default function Subscribe() {
                         className={`px-2 py-1 rounded-full text-[10px] capitalize border transition-all ${
                           on
                             ? "border-red-400/50 bg-red-500/10 text-red-300"
-                            : "border-clinical-slate/30 text-clinical-zinc hover:text-white"
+                            : "border-clinical-border text-clinical-zinc hover:text-white"
                         }`}
                       >
                         {a}
@@ -526,7 +526,7 @@ export default function Subscribe() {
       </Card>
 
       {/* Address */}
-      <Card className="bg-clinical-surface border-clinical-slate/20">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-5 space-y-4">
           <div className="flex items-center gap-2 text-clinical-zinc text-xs uppercase tracking-widest">
             <MapPin className="w-3.5 h-3.5 text-clinical-gold" />
@@ -538,7 +538,7 @@ export default function Subscribe() {
               <Input
                 value={address.label}
                 onChange={(e) => setAddress({ ...address, label: e.target.value })}
-                className="bg-clinical-dark border-clinical-slate/30 text-white"
+                className="bg-clinical-dark border-clinical-border text-white"
               />
             </div>
             <div className="space-y-1.5">
@@ -546,7 +546,7 @@ export default function Subscribe() {
               <Input
                 value={address.phone}
                 onChange={(e) => setAddress({ ...address, phone: e.target.value })}
-                className="bg-clinical-dark border-clinical-slate/30 text-white"
+                className="bg-clinical-dark border-clinical-border text-white"
               />
             </div>
             <div className="space-y-1.5 md:col-span-2">
@@ -554,7 +554,7 @@ export default function Subscribe() {
               <Input
                 value={address.line}
                 onChange={(e) => setAddress({ ...address, line: e.target.value })}
-                className="bg-clinical-dark border-clinical-slate/30 text-white"
+                className="bg-clinical-dark border-clinical-border text-white"
               />
             </div>
             <div className="space-y-1.5">
@@ -562,7 +562,7 @@ export default function Subscribe() {
               <Input
                 value={address.city}
                 onChange={(e) => setAddress({ ...address, city: e.target.value })}
-                className="bg-clinical-dark border-clinical-slate/30 text-white"
+                className="bg-clinical-dark border-clinical-border text-white"
               />
             </div>
             <div className="space-y-1.5">
@@ -570,7 +570,7 @@ export default function Subscribe() {
               <Input
                 value={address.pincode}
                 onChange={(e) => setAddress({ ...address, pincode: e.target.value })}
-                className="bg-clinical-dark border-clinical-slate/30 text-white"
+                className="bg-clinical-dark border-clinical-border text-white"
               />
             </div>
           </div>

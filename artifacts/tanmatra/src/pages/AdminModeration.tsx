@@ -145,14 +145,14 @@ export default function AdminModeration() {
         </p>
       </header>
 
-      <Card className="bg-clinical-surface border-clinical-slate/20">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-4 flex flex-wrap items-center gap-3">
           <label className="text-xs text-clinical-zinc">Admin token</label>
           <input
             value={token}
             onChange={(e) => saveToken(e.target.value)}
             placeholder="x-admin-token"
-            className="bg-clinical-dark border border-clinical-slate/40 rounded px-2 py-1 text-sm text-white flex-1 min-w-[200px]"
+            className="bg-clinical-dark border border-clinical-border rounded px-2 py-1 text-sm text-white flex-1 min-w-[200px]"
           />
           <Button onClick={() => void refresh()} disabled={loading}>
             {loading ? "Refreshing..." : "Refresh"}
@@ -187,7 +187,7 @@ export default function AdminModeration() {
           {reviews.map((r) => (
             <Card
               key={r.id}
-              className="bg-clinical-surface border-clinical-slate/20"
+              className="bg-clinical-surface border-clinical-border"
             >
               <CardContent className="p-4 space-y-2">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -200,10 +200,10 @@ export default function AdminModeration() {
                   >
                     {r.hidden ? "Hidden" : "Visible"}
                   </Badge>
-                  <Badge className="bg-clinical-slate/30 text-clinical-zinc border-0 text-[10px]">
+                  <Badge className="bg-clinical-surface-elevated text-clinical-zinc border-0 text-[10px]">
                     {r.slug}
                   </Badge>
-                  <Badge className="bg-clinical-slate/30 text-clinical-zinc border-0 text-[10px]">
+                  <Badge className="bg-clinical-surface-elevated text-clinical-zinc border-0 text-[10px]">
                     {r.rating}★
                   </Badge>
                   <span className="text-[10px] text-clinical-zinc ml-auto">
@@ -241,7 +241,7 @@ export default function AdminModeration() {
           {posts.map((p) => (
             <Card
               key={p.id}
-              className="bg-clinical-surface border-clinical-slate/20"
+              className="bg-clinical-surface border-clinical-border"
             >
               <CardContent className="p-4 space-y-2">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -254,10 +254,10 @@ export default function AdminModeration() {
                   >
                     {p.hidden ? "Hidden" : "Visible"}
                   </Badge>
-                  <Badge className="bg-clinical-slate/30 text-clinical-zinc border-0 text-[10px]">
+                  <Badge className="bg-clinical-surface-elevated text-clinical-zinc border-0 text-[10px]">
                     {p.challengeTitle}
                   </Badge>
-                  <Badge className="bg-clinical-slate/30 text-clinical-zinc border-0 text-[10px]">
+                  <Badge className="bg-clinical-surface-elevated text-clinical-zinc border-0 text-[10px]">
                     {p.authorName}
                   </Badge>
                   <span className="text-[10px] text-clinical-zinc ml-auto">

@@ -10,7 +10,7 @@ export default function Terms() {
         </p>
         <h1 className="text-3xl font-semibold text-white">Terms of Service</h1>
       </header>
-      <Card className="bg-clinical-surface border-clinical-slate/20">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-6 space-y-4 text-sm text-clinical-zinc leading-relaxed">
           <p>
             Welcome to Tanmatra. By placing an order, signing in, or using any

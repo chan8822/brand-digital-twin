@@ -221,7 +221,7 @@ export default function Rewards() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="md:col-span-2 bg-clinical-surface border-clinical-slate/20">
+        <Card className="md:col-span-2 bg-clinical-surface border-clinical-border">
           <CardContent className="p-5 space-y-3">
             <div className="flex items-center gap-2">
               <Gift className="w-4 h-4 text-clinical-gold" />
@@ -231,10 +231,10 @@ export default function Rewards() {
               <code className="font-mono text-2xl tracking-widest text-clinical-gold bg-clinical-dark/60 px-4 py-2 rounded-lg border border-clinical-gold/30">
                 {referral?.code}
               </code>
-              <Button size="sm" variant="outline" onClick={copyCode} className="border-clinical-slate/30 text-clinical-zinc gap-1.5">
+              <Button size="sm" variant="outline" onClick={copyCode} className="border-clinical-border text-clinical-zinc gap-1.5">
                 <Copy className="w-3.5 h-3.5" /> Code
               </Button>
-              <Button size="sm" variant="outline" onClick={copyLink} className="border-clinical-slate/30 text-clinical-zinc gap-1.5">
+              <Button size="sm" variant="outline" onClick={copyLink} className="border-clinical-border text-clinical-zinc gap-1.5">
                 <Share2 className="w-3.5 h-3.5" /> Link
               </Button>
             </div>
@@ -248,7 +248,7 @@ export default function Rewards() {
           </CardContent>
         </Card>
 
-        <Card className="bg-clinical-surface border-clinical-slate/20">
+        <Card className="bg-clinical-surface border-clinical-border">
           <CardContent className="p-5 space-y-3">
             <div className="flex items-center gap-2">
               <Wallet className="w-4 h-4 text-clinical-sage" />
@@ -264,7 +264,7 @@ export default function Rewards() {
         </Card>
       </div>
 
-      <Card className="bg-clinical-surface border-clinical-slate/20">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-5 space-y-3">
           <div className="flex items-center gap-2">
             <Gift className="w-4 h-4 text-clinical-gold" />
@@ -275,7 +275,7 @@ export default function Rewards() {
               value={redeemCode}
               onChange={(e) => setRedeemCode(e.target.value.toUpperCase())}
               placeholder="ENTER CODE"
-              className="h-10 bg-clinical-dark border-clinical-slate/30 font-mono tracking-widest"
+              className="h-10 bg-clinical-dark border-clinical-border font-mono tracking-widest"
             />
             <Button
               onClick={handleRedeem}
@@ -290,7 +290,7 @@ export default function Rewards() {
         </CardContent>
       </Card>
 
-      <Card className="bg-clinical-surface border-clinical-slate/20">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-5 space-y-3">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2">
@@ -306,7 +306,7 @@ export default function Rewards() {
               size="sm"
               variant="outline"
               onClick={handleEngine}
-              className="border-clinical-slate/30 text-clinical-zinc hover:text-clinical-gold gap-1.5 text-xs"
+              className="border-clinical-border text-clinical-zinc hover:text-clinical-gold gap-1.5 text-xs"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               Check for new rewards
@@ -323,7 +323,7 @@ export default function Rewards() {
                 return (
                   <div
                     key={n.id}
-                    className="flex items-start gap-3 p-3 rounded-lg border border-clinical-slate/20 bg-clinical-dark/40"
+                    className="flex items-start gap-3 p-3 rounded-lg border border-clinical-border bg-clinical-dark/40"
                   >
                     <div className="w-8 h-8 rounded-md bg-clinical-gold/15 flex items-center justify-center shrink-0">
                       <Icon className="w-4 h-4 text-clinical-gold" />
@@ -349,7 +349,7 @@ export default function Rewards() {
         </CardContent>
       </Card>
 
-      <Card className="bg-clinical-surface border-clinical-slate/20">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-5 space-y-3">
           <div className="flex items-center gap-2">
             <CalendarHeart className="w-4 h-4 text-pink-400" />
@@ -365,7 +365,7 @@ export default function Rewards() {
                 type="date"
                 value={birthDate}
                 onChange={(e) => setBirthDate(e.target.value)}
-                className="h-10 bg-clinical-dark border-clinical-slate/30"
+                className="h-10 bg-clinical-dark border-clinical-border"
               />
             </div>
             <div className="space-y-1">
@@ -374,7 +374,7 @@ export default function Rewards() {
                 type="date"
                 value={anniversaryDate}
                 onChange={(e) => setAnniversaryDate(e.target.value)}
-                className="h-10 bg-clinical-dark border-clinical-slate/30"
+                className="h-10 bg-clinical-dark border-clinical-border"
               />
             </div>
           </div>
@@ -395,13 +395,13 @@ export default function Rewards() {
         </CardContent>
       </Card>
 
-      <Card className="bg-clinical-surface border-clinical-slate/20">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-5 space-y-3">
           <div className="flex items-center gap-2">
             <Wallet className="w-4 h-4 text-clinical-zinc" />
             <h2 className="text-sm font-semibold text-white">Credit history</h2>
           </div>
-          <Separator className="bg-clinical-slate/20" />
+          <Separator className="bg-clinical-surface-elevated" />
           {entries.length === 0 ? (
             <p className="text-xs text-clinical-zinc py-3 text-center">
               No credits yet. Refer a friend or wait for a loyalty unlock.

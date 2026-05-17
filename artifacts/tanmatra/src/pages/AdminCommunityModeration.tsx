@@ -159,14 +159,14 @@ export default function AdminCommunityModeration() {
         </p>
       </header>
 
-      <Card className="bg-clinical-surface border-clinical-slate/20">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-4 flex flex-wrap items-center gap-3">
           <label className="text-xs text-clinical-zinc">Admin token</label>
           <input
             value={token}
             onChange={(e) => saveToken(e.target.value)}
             placeholder="x-admin-token"
-            className="bg-clinical-dark border border-clinical-slate/40 rounded px-2 py-1 text-sm text-white flex-1 min-w-[200px]"
+            className="bg-clinical-dark border border-clinical-border rounded px-2 py-1 text-sm text-white flex-1 min-w-[200px]"
           />
           <Button onClick={refresh} disabled={loading}>
             Refresh
@@ -203,7 +203,7 @@ export default function AdminCommunityModeration() {
           {decisions.map((d) => (
             <Card
               key={d.id}
-              className="bg-clinical-surface border-clinical-slate/20"
+              className="bg-clinical-surface border-clinical-border"
             >
               <CardContent className="p-4 space-y-2">
                 <div className="flex items-center gap-2">
@@ -216,10 +216,10 @@ export default function AdminCommunityModeration() {
                   >
                     {d.decision} · sev {d.severity}
                   </Badge>
-                  <Badge className="bg-clinical-slate/30 text-clinical-zinc border-0 text-[10px]">
+                  <Badge className="bg-clinical-surface-elevated text-clinical-zinc border-0 text-[10px]">
                     {d.contentType} #{d.contentId}
                   </Badge>
-                  <Badge className="bg-clinical-slate/30 text-clinical-zinc border-0 text-[10px]">
+                  <Badge className="bg-clinical-surface-elevated text-clinical-zinc border-0 text-[10px]">
                     {d.actor === "ai" ? d.model ?? "ai" : "human"}
                   </Badge>
                   <span className="text-[10px] text-clinical-zinc ml-auto">
@@ -251,7 +251,7 @@ export default function AdminCommunityModeration() {
           {appeals.map(({ appeal, decision }) => (
             <Card
               key={appeal.id}
-              className="bg-clinical-surface border-clinical-slate/20"
+              className="bg-clinical-surface border-clinical-border"
             >
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-center gap-2">
@@ -266,7 +266,7 @@ export default function AdminCommunityModeration() {
                   >
                     Appeal · {appeal.status}
                   </Badge>
-                  <Badge className="bg-clinical-slate/30 text-clinical-zinc border-0 text-[10px]">
+                  <Badge className="bg-clinical-surface-elevated text-clinical-zinc border-0 text-[10px]">
                     Decision #{decision.id} ({decision.decision})
                   </Badge>
                   <span className="text-[10px] text-clinical-zinc ml-auto">
@@ -275,7 +275,7 @@ export default function AdminCommunityModeration() {
                 </div>
                 <div className="grid md:grid-cols-2 gap-3">
                   <div>
-                    <p className="text-xs uppercase text-clinical-zinc/70 mb-1">
+                    <p className="text-xs uppercase text-clinical-zinc-muted mb-1">
                       User reason
                     </p>
                     <p className="text-sm text-white whitespace-pre-wrap">
@@ -283,7 +283,7 @@ export default function AdminCommunityModeration() {
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs uppercase text-clinical-zinc/70 mb-1">
+                    <p className="text-xs uppercase text-clinical-zinc-muted mb-1">
                       Original content
                     </p>
                     <p className="text-sm text-clinical-zinc whitespace-pre-wrap">
@@ -302,7 +302,7 @@ export default function AdminCommunityModeration() {
                         }))
                       }
                       placeholder="Reviewer note (optional)"
-                      className="bg-clinical-dark border-clinical-slate/40 text-white text-sm"
+                      className="bg-clinical-dark border-clinical-border text-white text-sm"
                       rows={2}
                     />
                     <div className="flex gap-2">
@@ -341,7 +341,7 @@ export default function AdminCommunityModeration() {
             {cohorts.map((c) => (
               <Card
                 key={c.id}
-                className="bg-clinical-surface border-clinical-slate/20"
+                className="bg-clinical-surface border-clinical-border"
               >
                 <CardContent className="p-4 flex items-center justify-between">
                   <div>
@@ -358,17 +358,17 @@ export default function AdminCommunityModeration() {
             ))}
           </div>
           <div>
-            <p className="text-xs uppercase text-clinical-zinc/70 mb-2">
+            <p className="text-xs uppercase text-clinical-zinc-muted mb-2">
               Recent challenges
             </p>
             <div className="space-y-2">
               {challenges.map((c) => (
                 <Card
                   key={c.id}
-                  className="bg-clinical-surface border-clinical-slate/20"
+                  className="bg-clinical-surface border-clinical-border"
                 >
                   <CardContent className="p-3 text-sm flex items-center gap-3">
-                    <Badge className="bg-clinical-slate/30 text-clinical-zinc border-0 text-[10px]">
+                    <Badge className="bg-clinical-surface-elevated text-clinical-zinc border-0 text-[10px]">
                       {c.weekStartDate}
                     </Badge>
                     <span className="text-white">{c.title}</span>

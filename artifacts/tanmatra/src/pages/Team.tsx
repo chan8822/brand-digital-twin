@@ -10,7 +10,7 @@ export default function Team() {
 
   return (
     <div className="min-h-screen bg-clinical-dark pb-16">
-      <section className="border-b border-clinical-slate/20 py-12">
+      <section className="border-b border-clinical-border py-12">
         <div className="max-w-5xl mx-auto px-4 space-y-3">
           <Badge className="bg-clinical-gold/15 text-clinical-gold border-clinical-gold/30 text-[10px] tracking-widest uppercase">
             Behind the food
@@ -24,7 +24,7 @@ export default function Team() {
         </div>
       </section>
 
-      <section className="py-10 border-b border-clinical-slate/20">
+      <section className="py-10 border-b border-clinical-border">
         <div className="max-w-5xl mx-auto px-4 space-y-5">
           <div className="flex items-center gap-2">
             <ChefHat className="w-4 h-4 text-clinical-gold" />
@@ -59,7 +59,7 @@ function TeamCard({ member }: { member: (typeof TEAM)[number] }) {
   const accent = ACCENT_CLASSES[member.accent];
   return (
     <Link to={`/team/${member.slug}`}>
-      <Card className="bg-clinical-surface border-clinical-slate/20 hover:border-clinical-gold/40 transition-colors h-full">
+      <Card className="bg-clinical-surface border-clinical-border hover:border-clinical-gold/40 transition-colors h-full">
         <CardContent className="p-5 space-y-3">
           <div className="flex items-start gap-3">
             <div
@@ -82,7 +82,7 @@ function TeamCard({ member }: { member: (typeof TEAM)[number] }) {
             {member.signatureLine}
           </p>
           <div className="flex items-center justify-between pt-1">
-            <span className="text-[10px] uppercase tracking-wider text-clinical-zinc/70">
+            <span className="text-[10px] uppercase tracking-wider text-clinical-zinc-muted">
               {member.yearsExperience} yrs experience
             </span>
             <span className="text-[11px] text-clinical-gold inline-flex items-center gap-1">

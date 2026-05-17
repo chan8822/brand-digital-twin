@@ -143,7 +143,7 @@ export default function Preferences() {
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
       <div className="space-y-1">
         <h1 className="font-serif text-3xl text-white">Your Preferences</h1>
-        <p className="text-xs uppercase tracking-[0.18em] text-clinical-zinc/70 font-medium">
+        <p className="text-xs uppercase tracking-[0.18em] text-clinical-zinc-muted font-medium">
           Used by menu, dish detail, and recommendations
         </p>
       </div>
@@ -168,7 +168,7 @@ export default function Preferences() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {recommendations.map(({ plan, reasons }) => (
                 <Link to={`/plans/${plan.slug}`} key={plan.slug}>
-                  <div className="rounded-lg border border-clinical-slate/30 bg-clinical-surface p-3 hover:border-clinical-gold/40 transition-all h-full space-y-1.5">
+                  <div className="rounded-lg border border-clinical-border bg-clinical-surface p-3 hover:border-clinical-gold/40 transition-all h-full space-y-1.5">
                     <Badge className="bg-clinical-gold/15 text-clinical-gold border-clinical-gold/30 text-[9px]">
                       {PLAN_GOAL_LABEL[plan.goal]}
                     </Badge>
@@ -186,7 +186,7 @@ export default function Preferences() {
         </Card>
       )}
 
-      <Card className="bg-clinical-surface border-clinical-slate/20">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-6 space-y-6">
           <Section title="Dietary style">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -202,7 +202,7 @@ export default function Preferences() {
             </div>
           </Section>
 
-          <Separator className="bg-clinical-slate/20" />
+          <Separator className="bg-clinical-surface-elevated" />
 
           <Section title="Wellness goal">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -228,7 +228,7 @@ export default function Preferences() {
             </div>
           </Section>
 
-          <Separator className="bg-clinical-slate/20" />
+          <Separator className="bg-clinical-surface-elevated" />
 
           <Section title="Cuisines you enjoy">
             <div className="flex flex-wrap gap-2">
@@ -259,7 +259,7 @@ export default function Preferences() {
             </div>
           </Section>
 
-          <Separator className="bg-clinical-slate/20" />
+          <Separator className="bg-clinical-surface-elevated" />
 
           <Section title="Allergens — these dishes are blocked">
             <div className="flex flex-wrap gap-2">
@@ -282,11 +282,11 @@ export default function Preferences() {
               value={dislikes}
               onChange={(e) => setDislikes(e.target.value)}
               placeholder="e.g. mushrooms, olives, cilantro"
-              className="bg-clinical-surface-elevated border-clinical-slate/30 text-sm"
+              className="bg-clinical-surface-elevated border-clinical-border text-sm"
             />
           </Section>
 
-          <Separator className="bg-clinical-slate/20" />
+          <Separator className="bg-clinical-surface-elevated" />
 
           <Section title="Daily macro targets (optional)">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -317,7 +317,7 @@ export default function Preferences() {
             </div>
           </Section>
 
-          <div className="sticky bottom-0 -mx-6 -mb-6 px-6 py-3 mt-2 bg-clinical-surface/95 backdrop-blur border-t border-clinical-slate/20 flex items-center justify-end gap-2 z-10">
+          <div className="sticky bottom-0 -mx-6 -mb-6 px-6 py-3 mt-2 bg-clinical-surface/95 backdrop-blur border-t border-clinical-border flex items-center justify-end gap-2 z-10">
             <span className="text-[11px] text-clinical-zinc mr-auto">
               Changes apply to future menu suggestions and meal plans.
             </span>
@@ -333,7 +333,7 @@ export default function Preferences() {
         </CardContent>
       </Card>
 
-      <Card className="bg-clinical-surface border-clinical-slate/20">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-6 space-y-3">
           <div className="flex items-center gap-2 text-clinical-gold">
             <Sparkles className="w-4 h-4" />
@@ -390,7 +390,7 @@ function Pill({
       className={`text-xs px-3 py-2 rounded-md border transition-all ${
         active
           ? activeCls
-          : "border-clinical-slate/30 text-clinical-zinc hover:text-white"
+          : "border-clinical-border text-clinical-zinc hover:text-white"
       } ${className}`}
     >
       {children}
@@ -411,7 +411,7 @@ function NumField({
 }) {
   return (
     <div className="space-y-1">
-      <Label className="text-[10px] uppercase tracking-[0.12em] text-clinical-zinc/70">
+      <Label className="text-[10px] uppercase tracking-[0.12em] text-clinical-zinc-muted">
         {label}
       </Label>
       <Input
@@ -420,7 +420,7 @@ function NumField({
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className="bg-clinical-surface-elevated border-clinical-slate/30 text-sm"
+        className="bg-clinical-surface-elevated border-clinical-border text-sm"
       />
     </div>
   );

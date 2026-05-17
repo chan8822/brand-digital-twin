@@ -136,7 +136,7 @@ export default function AdminRdApplications() {
           value={token}
           onChange={(e) => saveToken(e.target.value)}
           placeholder="x-admin-token"
-          className="bg-clinical-surface border-clinical-slate/40 text-xs h-9 w-full sm:w-64"
+          className="bg-clinical-surface border-clinical-border text-xs h-9 w-full sm:w-64"
         />
       </header>
 
@@ -149,7 +149,7 @@ export default function AdminRdApplications() {
             className={`text-xs px-3 h-8 rounded-full border ${
               filter === f.id
                 ? "bg-clinical-gold/15 text-clinical-gold border-clinical-gold/40"
-                : "border-clinical-slate/30 text-clinical-zinc hover:border-clinical-gold/30"
+                : "border-clinical-border text-clinical-zinc hover:border-clinical-gold/30"
             }`}
           >
             {f.label}
@@ -169,7 +169,7 @@ export default function AdminRdApplications() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.4fr] gap-5">
-        <Card className="bg-clinical-surface border-clinical-slate/30">
+        <Card className="bg-clinical-surface border-clinical-border">
           <CardContent className="p-0">
             {loading && rows.length === 0 ? (
               <div className="p-8 text-center text-xs text-clinical-zinc">
@@ -181,7 +181,7 @@ export default function AdminRdApplications() {
                 No applications yet.
               </div>
             ) : (
-              <div className="divide-y divide-clinical-slate/30">
+              <div className="divide-y divide-clinical-border">
                 {rows.map((r) => (
                   <button
                     key={r.id}
@@ -229,7 +229,7 @@ export default function AdminRdApplications() {
             }}
           />
         ) : (
-          <Card className="bg-clinical-surface border-clinical-slate/30">
+          <Card className="bg-clinical-surface border-clinical-border">
             <CardContent className="p-8 text-center text-xs text-clinical-zinc">
               Select an application to review.
             </CardContent>
@@ -294,7 +294,7 @@ function ApplicationDetail({
     `${application.whatsappCountryCode}${application.whatsappPhone}`;
 
   return (
-    <Card className="bg-clinical-surface border-clinical-slate/30">
+    <Card className="bg-clinical-surface border-clinical-border">
       <CardContent className="p-5 space-y-5">
         <div>
           <h2 className="font-serif text-2xl text-white">
@@ -364,7 +364,7 @@ function ApplicationDetail({
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             rows={4}
-            className="bg-[#050505] border-clinical-slate/40 text-xs"
+            className="bg-[#050505] border-clinical-border text-xs"
             placeholder="Call summary, references, follow-ups…"
           />
           <Button
@@ -377,7 +377,7 @@ function ApplicationDetail({
           </Button>
         </div>
 
-        <div className="space-y-2 border-t border-clinical-slate/30 pt-4">
+        <div className="space-y-2 border-t border-clinical-border pt-4">
           <p className="text-[10px] uppercase tracking-widest text-clinical-zinc">
             Status
           </p>
@@ -389,7 +389,7 @@ function ApplicationDetail({
                 onClick={() => patch({ status: s }, `Marked ${s}`)}
                 disabled={application.status === s || busy === `Marked ${s}`}
                 variant="outline"
-                className="border-clinical-slate/30 text-xs h-8"
+                className="border-clinical-border text-xs h-8"
               >
                 Mark {s}
               </Button>
@@ -397,7 +397,7 @@ function ApplicationDetail({
           </div>
         </div>
 
-        <div className="space-y-2 border-t border-clinical-slate/30 pt-4">
+        <div className="space-y-2 border-t border-clinical-border pt-4">
           <p className="text-[10px] uppercase tracking-widest text-clinical-zinc">
             Provision RD seat (on approve)
           </p>
@@ -419,7 +419,7 @@ function ApplicationDetail({
               value={provisionSlug}
               onChange={(e) => setProvisionSlug(e.target.value)}
               placeholder="rd-slug-here"
-              className="bg-[#050505] border-clinical-slate/40 text-xs h-8 w-48"
+              className="bg-[#050505] border-clinical-border text-xs h-8 w-48"
             />
             <Button
               size="sm"

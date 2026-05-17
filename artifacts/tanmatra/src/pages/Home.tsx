@@ -145,7 +145,7 @@ function DaypartGrid({
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
       {dishes.map((d) => (
         <Link to={`/dish/${d.slug}`} key={d.id} className="group">
-          <Card className="bg-clinical-surface border-clinical-slate/20 hover:border-clinical-gold/40 transition-colors overflow-hidden">
+          <Card className="bg-clinical-surface border-clinical-border hover:border-clinical-gold/40 transition-colors overflow-hidden">
             <div className="relative aspect-square overflow-hidden">
               <img
                 src={d.image}
@@ -328,7 +328,7 @@ export default function Home() {
                 Indian first-time visitors decide on price/delivery before
                 committing to an assessment. Don't let the metabolic
                 assessment CTA be the only signal in the hero. */}
-            <p className="text-sm text-clinical-zinc/90 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <p className="text-sm text-clinical-zinc-muted flex flex-wrap items-center gap-x-3 gap-y-1">
               <span className="text-white font-semibold">Meals from ₹140</span>
               <span className="opacity-50">·</span>
               <span>Free delivery over ₹500</span>
@@ -361,9 +361,9 @@ export default function Home() {
                 stays honest as the team grows. */}
             <div className="flex flex-wrap items-start gap-x-5 gap-y-3 pt-4">
               <div className="min-w-0"><p className="tabular-nums text-2xl font-bold text-white">{TEAM.filter((m) => m.role === "rd").length}</p><p className="text-clinical-label mt-0.5">Registered Dietitians on staff</p></div>
-              <div className="hidden sm:block w-px self-stretch bg-clinical-slate/30" />
+              <div className="hidden sm:block w-px self-stretch bg-clinical-surface-elevated" />
               <div className="min-w-0"><p className="tabular-nums text-2xl font-bold text-white">100%</p><p className="text-clinical-label mt-0.5">Macros &amp; allergens disclosed</p></div>
-              <div className="hidden sm:block w-px self-stretch bg-clinical-slate/30" />
+              <div className="hidden sm:block w-px self-stretch bg-clinical-surface-elevated" />
               <div className="min-w-0"><p className="tabular-nums text-2xl font-bold text-white">FSSAI</p><p className="text-clinical-label mt-0.5">Licensed · ISO 22000 kitchen</p></div>
             </div>
           </div>
@@ -371,7 +371,7 @@ export default function Home() {
       </section>
 
       {/* ═══════════════ MOBILE QUICK ACTIONS ═══════════════ */}
-      <section className="md:hidden border-b border-clinical-slate/15 bg-clinical-surface/40">
+      <section className="md:hidden border-b border-clinical-border bg-clinical-surface/40">
         <div className="px-4 py-5">
           <p className="text-[10px] tracking-widest uppercase text-clinical-zinc mb-3">
             Quick start
@@ -389,7 +389,7 @@ export default function Home() {
               <Link
                 key={a.to}
                 to={a.to}
-                className="group flex flex-col items-center justify-start gap-1.5 min-h-[76px] rounded-xl bg-[#050505] border border-clinical-slate/25 px-2 py-3 active:bg-clinical-gold/5 active:border-clinical-gold/40 transition-colors"
+                className="group flex flex-col items-center justify-start gap-1.5 min-h-[76px] rounded-xl bg-[#050505] border border-clinical-border px-2 py-3 active:bg-clinical-gold/5 active:border-clinical-gold/40 transition-colors"
               >
                 <span className="w-9 h-9 rounded-lg bg-clinical-gold/10 border border-clinical-gold/25 flex items-center justify-center group-active:bg-clinical-gold/20">
                   <a.icon className="w-4 h-4 text-clinical-gold" strokeWidth={1.8} />
@@ -404,7 +404,7 @@ export default function Home() {
       </section>
 
       {/* ═══════════════ TRUST BAR (desktop only — demoted on mobile so food sits above the fold) ═══════════════ */}
-      <section className="hidden md:block border-y border-clinical-slate/20 bg-clinical-surface">
+      <section className="hidden md:block border-y border-clinical-border bg-clinical-surface">
         <div className="max-w-7xl mx-auto px-4 py-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {TRUST_SIGNALS.map((sig) => (
@@ -424,7 +424,7 @@ export default function Home() {
 
       {/* ═══════════════ COHORT CHALLENGE CTA ═══════════════ */}
       {featuredChallenge && (
-        <section className="py-8 border-b border-clinical-slate/15">
+        <section className="py-8 border-b border-clinical-border">
           <div className="max-w-7xl mx-auto px-4">
             <Link to={`/challenges/${featuredChallenge.slug}`} className="block group">
               <Card className="bg-clinical-surface border-clinical-gold/30 hover:border-clinical-gold/60 transition-colors overflow-hidden">
@@ -451,7 +451,7 @@ export default function Home() {
                     <p className="text-sm text-clinical-zinc max-w-xl">
                       {featuredChallenge.tagline}
                     </p>
-                    <div className="flex flex-wrap items-center gap-3 text-[11px] text-clinical-zinc/80 tabular-nums">
+                    <div className="flex flex-wrap items-center gap-3 text-[11px] text-clinical-zinc-muted tabular-nums">
                       <span className="flex items-center gap-1">
                         <CalendarDays className="w-3 h-3 text-clinical-gold" />
                         {featuredChallenge.durationDays} days
@@ -477,8 +477,8 @@ export default function Home() {
         </section>
       )}
 
-      {/* ═══════════════ WELLNESS WEEKLY SUMMARY ═══════════════ */}
-      <section className="py-8 border-b border-clinical-slate/15">
+      {/* ═���═════════════ WELLNESS WEEKLY SUMMARY ═══════════════ */}
+      <section className="py-8 border-b border-clinical-border">
         <div className="max-w-7xl mx-auto px-4">
           <WeeklySummaryCard />
         </div>
@@ -486,7 +486,7 @@ export default function Home() {
 
       {/* ═══════════════ ORDER AGAIN RAIL ═══════════════ */}
       {reorderRail.length > 0 && (
-        <section className="py-10 border-b border-clinical-slate/15">
+        <section className="py-10 border-b border-clinical-border">
           <div className="max-w-7xl mx-auto px-4 space-y-5">
             <div className="flex items-end justify-between">
               <div>
@@ -509,7 +509,7 @@ export default function Home() {
               {reorderRail.map((order) => (
                 <Card
                   key={order.orderId}
-                  className="bg-clinical-surface border-clinical-slate/20 hover:border-clinical-gold/30 transition-colors"
+                  className="bg-clinical-surface border-clinical-border hover:border-clinical-gold/30 transition-colors"
                 >
                   <CardContent className="p-4 space-y-3">
                     <div className="flex items-start justify-between gap-2">
@@ -525,7 +525,7 @@ export default function Home() {
                       </div>
                       <Badge
                         variant="outline"
-                        className="text-[9px] border-clinical-slate/30 text-clinical-zinc"
+                        className="text-[9px] border-clinical-border text-clinical-zinc"
                       >
                         {order.status.replace(/_/g, " ")}
                       </Badge>
@@ -536,12 +536,12 @@ export default function Home() {
                           key={it.lineId}
                           src={it.image}
                           alt={it.name}
-                          className="w-12 h-12 rounded object-cover border border-clinical-slate/20 shrink-0"
+                          className="w-12 h-12 rounded object-cover border border-clinical-border shrink-0"
                           loading="lazy"
                         />
                       ))}
                       {order.items.length > 4 && (
-                        <div className="w-12 h-12 rounded border border-clinical-slate/20 flex items-center justify-center text-[10px] text-clinical-zinc shrink-0">
+                        <div className="w-12 h-12 rounded border border-clinical-border flex items-center justify-center text-[10px] text-clinical-zinc shrink-0">
                           +{order.items.length - 4}
                         </div>
                       )}
@@ -587,7 +587,7 @@ export default function Home() {
 
       {/* ═══════════════ TIME-OF-DAY RAIL ═══════════════ */}
       {daypartDishes.length > 0 && (
-        <section className="py-10 border-b border-clinical-slate/15">
+        <section className="py-10 border-b border-clinical-border">
           <div className="max-w-7xl mx-auto px-4 space-y-5">
             <div className="flex items-end justify-between gap-3 flex-wrap">
               <div>
@@ -646,7 +646,7 @@ export default function Home() {
                 key={meal.id}
                 aria-label={`${meal.name} — ${formatPrice(meal.price)}, ${meal.macros.calories} kilocalories${meal.rdVerified ? ", Registered Dietitian verified" : ""}. Open dish details.`}
               >
-                <Card className="group bg-clinical-surface border-clinical-slate/20 hover:border-clinical-gold/30 transition-all duration-300 hover:shadow-clinical overflow-hidden">
+                <Card className="group bg-clinical-surface border-clinical-border hover:border-clinical-gold/30 transition-all duration-300 hover:shadow-clinical overflow-hidden">
                   <div className="relative aspect-[4/3] overflow-hidden">
                     <img src={meal.image} alt={meal.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading={i < 3 ? "eager" : "lazy"} />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#050505]/80 via-transparent to-transparent" />
@@ -656,7 +656,7 @@ export default function Home() {
                           <ShieldCheck className="w-2.5 h-2.5" />RD
                         </Badge>
                       )}
-                      <Badge className="bg-[#050505]/60 text-clinical-zinc border-clinical-slate/30 text-[9px] h-5 backdrop-blur-sm capitalize">{meal.category}</Badge>
+                      <Badge className="bg-[#050505]/60 text-clinical-zinc border-clinical-border text-[9px] h-5 backdrop-blur-sm capitalize">{meal.category}</Badge>
                     </div>
                     <div className="absolute top-3 right-3">
                       <Badge className="bg-clinical-gold/90 text-[#050505] border-0 text-xs font-bold tabular-nums backdrop-blur-sm">{formatPrice(meal.price)}</Badge>
@@ -670,7 +670,7 @@ export default function Home() {
                     <p className="text-xs text-clinical-zinc line-clamp-2 leading-relaxed">{meal.description}</p>
                     <div className="flex flex-wrap gap-1 pt-0.5">
                       {meal.tags.map((tag) => (
-                        <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded bg-clinical-slate/20 text-clinical-zinc capitalize">{tag}</span>
+                        <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded bg-clinical-surface-elevated text-clinical-zinc capitalize">{tag}</span>
                       ))}
                     </div>
                   </CardContent>
@@ -682,7 +682,7 @@ export default function Home() {
       </section>
 
       {/* ═══════════════ NUTRITION PROGRAMS (Redesigned) ═══════════════ */}
-      <section className="py-16 border-t border-clinical-slate/20">
+      <section className="py-16 border-t border-clinical-border">
         <div className="max-w-7xl mx-auto px-4 space-y-10">
           <div className="text-center space-y-2">
             <p className="text-clinical-label">Three Evidence-Based Protocols</p>
@@ -739,7 +739,7 @@ export default function Home() {
       </section>
 
       {/* ═══════════════ CTA ═══════════════ */}
-      <section className="py-16 border-t border-clinical-slate/20">
+      <section className="py-16 border-t border-clinical-border">
         <div className="max-w-7xl mx-auto px-4 text-center space-y-6">
           <h2 className="text-clinical-h2 text-white">
             Ready to begin your <span className="text-clinical-gold">clinical nutrition journey</span>?

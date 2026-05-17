@@ -34,9 +34,9 @@ export default function DishNutritionCard({ macros }: DishNutritionCardProps) {
           <motion.div
             key={stat.label}
             whileHover={{ y: -2 }}
-            className="text-center p-3 rounded-lg bg-clinical-dark/50 border border-clinical-slate/20 hover:border-clinical-slate/40 transition-colors"
+            className="text-center p-3 rounded-lg bg-clinical-dark/50 border border-clinical-border hover:border-clinical-border transition-colors"
           >
-            <p className="text-[10px] uppercase tracking-[0.12em] text-clinical-zinc/70 font-semibold mb-1">
+            <p className="text-[10px] uppercase tracking-[0.12em] text-clinical-zinc-muted font-semibold mb-1">
               {stat.label}
             </p>
             <p className={`text-2xl font-bold tabular-nums ${stat.color}`}>

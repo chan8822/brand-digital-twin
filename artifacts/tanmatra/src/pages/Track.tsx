@@ -342,7 +342,7 @@ export default function Track() {
           </div>
         </div>
 
-        <Card className="bg-clinical-surface border-clinical-slate/20">
+        <Card className="bg-clinical-surface border-clinical-border">
           <CardContent className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
             <div>
               <p className="text-clinical-zinc text-[10px] uppercase tracking-wide">Submitted</p>
@@ -441,7 +441,7 @@ export default function Track() {
                 <div className="flex gap-1.5">
                   <a
                     href={`tel:${order.riderPhone}`}
-                    className="inline-flex items-center justify-center gap-1 min-h-9 px-3 rounded-md border border-clinical-slate/40 text-xs text-clinical-zinc hover:text-white hover:border-clinical-gold/40"
+                    className="inline-flex items-center justify-center gap-1 min-h-9 px-3 rounded-md border border-clinical-border text-xs text-clinical-zinc hover:text-white hover:border-clinical-gold/40"
                     aria-label={`Call rider${order.riderName ? " " + order.riderName : ""}`}
                   >
                     <Phone className="w-3 h-3" />
@@ -463,7 +463,7 @@ export default function Track() {
           </CardContent>
         </Card>
       ) : (
-        <Card className="border border-dashed border-clinical-slate/30">
+        <Card className="border border-dashed border-clinical-border">
           <CardContent className="p-4 text-xs text-clinical-zinc flex items-center gap-2">
             <ChefHat className="w-4 h-4 text-clinical-gold" />
             Kitchen is preparing your order. A rider will be assigned once it's ready.
@@ -505,7 +505,7 @@ export default function Track() {
             </p>
           )}
           {order.deliveryInstructions && (
-            <div className="mt-2 p-2 rounded-md bg-clinical-dark border border-clinical-slate/20">
+            <div className="mt-2 p-2 rounded-md bg-clinical-dark border border-clinical-border">
               <p className="text-[10px] text-clinical-zinc uppercase tracking-wider flex items-center gap-1">
                 <NotebookPen className="w-3 h-3" /> Notes for rider
               </p>
@@ -585,7 +585,7 @@ export default function Track() {
         <CardContent className="space-y-2">
           {order.items.map((item) => (
             <div key={item.lineId} className="flex items-center gap-3 text-xs">
-              <img src={item.image} alt={item.name} className="w-10 h-10 rounded object-cover border border-clinical-slate/20 clinical-decorative" />
+              <img src={item.image} alt={item.name} className="w-10 h-10 rounded object-cover border border-clinical-border clinical-decorative" />
               <div className="flex-1 min-w-0">
                 <p className="text-white truncate">{item.name}</p>
                 <p className="text-[10px] text-clinical-zinc">Qty: {item.quantity}</p>

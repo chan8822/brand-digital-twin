@@ -32,7 +32,7 @@ export default function Challenges() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
       <div className="space-y-1">
-        <p className="text-[10px] uppercase tracking-[0.18em] text-clinical-zinc/70 font-semibold flex items-center gap-1.5">
+        <p className="text-[10px] uppercase tracking-[0.18em] text-clinical-zinc-muted font-semibold flex items-center gap-1.5">
           <Flag className="w-3 h-3 text-clinical-gold" />
           Cohort Challenges
         </p>
@@ -57,7 +57,7 @@ export default function Challenges() {
           return (
             <Card
               key={c.id}
-              className="bg-clinical-surface border-clinical-slate/20 hover:border-clinical-gold/40 transition-colors overflow-hidden flex flex-col"
+              className="bg-clinical-surface border-clinical-border hover:border-clinical-gold/40 transition-colors overflow-hidden flex flex-col"
             >
               {c.image && (
                 <div className="relative aspect-[16/9] overflow-hidden">
@@ -94,14 +94,14 @@ export default function Challenges() {
                     {c.goalTags.slice(0, 3).map((tag) => (
                       <span
                         key={tag}
-                        className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-clinical-surface-elevated text-clinical-zinc border border-clinical-slate/30"
+                        className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-clinical-surface-elevated text-clinical-zinc border border-clinical-border"
                       >
                         {tag}
                       </span>
                     ))}
                   </div>
                 )}
-                <div className="flex items-center gap-3 text-[10px] text-clinical-zinc/80 tabular-nums">
+                <div className="flex items-center gap-3 text-[10px] text-clinical-zinc-muted tabular-nums">
                   <span className="flex items-center gap-1">
                     <CalendarDays className="w-3 h-3 text-clinical-gold" />
                     {c.durationDays}-day program
@@ -111,7 +111,7 @@ export default function Challenges() {
                     {c.memberCount} joined
                   </span>
                 </div>
-                <p className="text-[10px] text-clinical-zinc/70">
+                <p className="text-[10px] text-clinical-zinc-muted">
                   {formatRange(c.startsAt, c.endsAt)} · Led by {c.rdName}
                 </p>
                 <div className="mt-auto pt-2">

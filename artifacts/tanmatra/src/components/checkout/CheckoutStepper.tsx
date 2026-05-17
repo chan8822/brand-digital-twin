@@ -28,7 +28,7 @@ export default function CheckoutStepper({
   };
 
   return (
-    <div className="rounded-xl border border-clinical-slate/20 bg-clinical-surface p-4">
+    <div className="rounded-xl border border-clinical-border bg-clinical-surface p-4">
       <div className="flex items-center justify-between gap-3">
         {STEPS.map((step, i) => {
           const active = step.id === current;
@@ -79,7 +79,7 @@ export default function CheckoutStepper({
                 </span>
               </div>
               {i < STEPS.length - 1 && (
-                <div className="relative flex-1 h-px bg-clinical-slate/20 overflow-hidden">
+                <div className="relative flex-1 h-px bg-clinical-surface-elevated overflow-hidden">
                   <motion.div
                     initial={false}
                     animate={{
