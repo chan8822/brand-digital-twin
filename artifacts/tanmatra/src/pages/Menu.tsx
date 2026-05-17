@@ -75,7 +75,7 @@ import {
   matchesProtocol,
   type Protocol,
 } from "@/lib/protocols";
-import { useCart } from "@/lib/cartContext";
+import { useCart, useCartDrawer } from "@/lib/cartContext";
 import { usePreferences } from "@/lib/preferencesContext";
 import { usePremiumStatus, usePremiumSlugs } from "@/lib/usePremium";
 import { useNavigate } from "react-router";
@@ -152,6 +152,7 @@ export default function Menu() {
   const [query, setQuery] = useState("");
   const [hideBlocked, setHideBlocked] = useState(true);
   const { addItem, addBundleSlug } = useCart();
+  const { open: openCart } = useCartDrawer();
   const { preferences } = usePreferences();
   const [searchParams, setSearchParams] = useSearchParams();
   const groupCode = searchParams.get("group");
@@ -202,9 +203,10 @@ export default function Menu() {
       macros: item.macros,
       customizations: [],
     });
+    openCart();
     toast.success(`Added ${item.name} to your order`, {
       description: "Tap View Cart to review and check out.",
-      action: { label: "View Cart", onClick: () => navigate("/cart") },
+      action: { label: "View Cart", onClick: openCart },
     });
   };
 
@@ -246,9 +248,10 @@ export default function Menu() {
       // apply the authoritative bundle discount (client-side per-line
       // pricing is just for cart UX).
       addBundleSlug(bundle.slug);
+      openCart();
       toast.success(`${bundle.name} added to your order`, {
         description: `${added} item${added === 1 ? "" : "s"} for ${formatPrice(bundle.pricePaise)}`,
-        action: { label: "View Cart", onClick: () => navigate("/cart") },
+        action: { label: "View Cart", onClick: openCart },
       });
     }
   };

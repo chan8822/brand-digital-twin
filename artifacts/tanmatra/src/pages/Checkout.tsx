@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ import {
 import { toast } from "sonner";
 import { formatPrice } from "@/lib/api/adapter";
 import { useCart, FREE_DELIVERY_THRESHOLD, DELIVERY_FEE } from "@/lib/cartContext";
+import { addonsApi } from "@/lib/marketplaceApi";
 import { useOrders, generateOrderId, submitOrderIdempotencyKey } from "@/lib/ordersContext";
 import { loyaltyApi } from "@/lib/loyaltyApi";
 import { corporateApi, type CompanySubsidy } from "@/lib/corporateApi";
@@ -141,6 +143,34 @@ export default function Checkout() {
   const [selectedAddons, setSelectedAddons] = useState<Map<number, number>>(
     new Map(),
   );
+  // Derive cartTags once so the AddOnRail query and our addonTotal query share the same cache key.
+  const cartTags = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          items.flatMap((it) => [
+            it.kitchen,
+            it.isVeg ? "vegan" : "nonveg",
+            ...(it.macros.protein >= 25 ? ["fitness", "performance"] : []),
+            "lunch",
+          ]),
+        ),
+      ),
+    [items],
+  );
+  const addonsQuery = useQuery({
+    queryKey: ["addons", cartTags.slice().sort().join(",")],
+    queryFn: () => addonsApi.list(cartTags),
+    staleTime: 60_000,
+    enabled: selectedAddons.size > 0,
+  });
+  const addonTotal = useMemo(() => {
+    const addons = addonsQuery.data?.addons ?? [];
+    return Array.from(selectedAddons.entries()).reduce((sum, [id, qty]) => {
+      const a = addons.find((x) => x.id === id);
+      return sum + (a ? a.pricePaise * qty : 0);
+    }, 0);
+  }, [selectedAddons, addonsQuery.data]);
   const [showNewAddress, setShowNewAddress] = useState(false);
   const [tipAmount, setTipAmount] = useState(0);
   const [customTip, setCustomTip] = useState("");
@@ -303,7 +333,7 @@ export default function Checkout() {
   const deliveryFee =
     fulfillmentType === "pickup" ? 0 : subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
   const discountedSubtotal = Math.max(0, subtotal - preorderDiscount - pickupDiscount);
-  const grossTotal = discountedSubtotal + deliveryFee + effectiveTip;
+  const grossTotal = discountedSubtotal + deliveryFee + effectiveTip + addonTotal;
   // Server only redeems against the (discounted) meal subtotal; cap here too
   // so the UI total matches the server final total exactly.
   const creditApplied =
@@ -1254,16 +1284,7 @@ export default function Checkout() {
 
       <div className="lg:col-span-2 space-y-4">
         <AddOnRail
-          cartTags={Array.from(
-            new Set(
-              items.flatMap((it) => [
-                it.kitchen,
-                it.isVeg ? "vegan" : "nonveg",
-                ...(it.macros.protein >= 25 ? ["fitness", "performance"] : []),
-                "lunch",
-              ]),
-            ),
-          )}
+          cartTags={cartTags}
           selected={selectedAddons}
           onChange={setSelectedAddons}
         />

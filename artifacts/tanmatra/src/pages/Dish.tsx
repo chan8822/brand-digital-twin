@@ -65,7 +65,7 @@ import {
   getUpsellsForDish,
   stripIngredientAmount,
 } from "@/lib/dishEnrichment";
-import { useCart } from "@/lib/cartContext";
+import { useCart, useCartDrawer } from "@/lib/cartContext";
 import { usePreferences } from "@/lib/preferencesContext";
 import { usePremiumStatus, usePremiumSlugs } from "@/lib/usePremium";
 import {
@@ -94,6 +94,7 @@ export default function Dish() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { addItem } = useCart();
+  const { open: openCart } = useCartDrawer();
   const { preferences } = usePreferences();
   const { isPremium } = usePremiumStatus();
   const premiumSlugs = usePremiumSlugs();
@@ -232,14 +233,11 @@ export default function Dish() {
       macros: meal.macros,
       customizations,
     });
+    openCart();
     toast.success(`Added ${meal.name} to your order`, {
       description: `${formatPrice(calculatedTotal)} · Qty: ${quantity}${
         customizations.length > 0 ? ` · ${customizations.length} custom` : ""
       }`,
-      action: {
-        label: "View Cart",
-        onClick: () => navigate("/cart"),
-      },
     });
   };
 
@@ -699,26 +697,45 @@ export default function Dish() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {upsells.map((u) => (
-                <Link
-                  to={`/dish/${u.slug}`}
+                <div
                   key={u.id}
-                  className="group flex items-center gap-2.5 p-2 rounded-lg bg-clinical-surface border border-clinical-border hover:border-clinical-gold/40 transition-colors"
+                  className="flex items-center gap-2.5 p-2 rounded-lg bg-clinical-surface border border-clinical-border"
                 >
-                  <img
-                    src={u.image}
-                    alt={u.name}
-                    className="w-12 h-12 rounded-md object-cover shrink-0"
-                    loading="lazy"
-                  />
+                  <Link to={`/dish/${u.slug}`} className="shrink-0">
+                    <img
+                      src={u.image}
+                      alt={u.name}
+                      className="w-12 h-12 rounded-md object-cover"
+                      loading="lazy"
+                    />
+                  </Link>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[11px] font-medium text-white truncate group-hover:text-clinical-gold transition-colors">
-                      {u.name}
-                    </p>
+                    <Link to={`/dish/${u.slug}`}>
+                      <p className="text-[11px] font-medium text-white truncate hover:text-clinical-gold transition-colors">
+                        {u.name}
+                      </p>
+                    </Link>
                     <p className="text-[10px] text-clinical-zinc tabular-nums">
                       {u.macros.calories} kcal · {formatPrice(u.price)}
                     </p>
                   </div>
-                </Link>
+                  <button
+                    type="button"
+                    aria-label={`Add ${u.name} to order`}
+                    onClick={() => {
+                      addItem({
+                        dishId: u.id, slug: u.slug, name: u.name, image: u.image,
+                        basePrice: u.price, unitPrice: u.price, quantity: 1,
+                        kitchen: u.kitchen, isVeg: u.isVeg, rdVerified: u.rdVerified,
+                        macros: u.macros, customizations: [],
+                      });
+                      openCart();
+                    }}
+                    className="shrink-0 w-7 h-7 rounded-md bg-clinical-gold text-[#050505] flex items-center justify-center hover:bg-clinical-gold/90 transition-colors"
+                  >
+                    <span className="text-sm font-bold leading-none">+</span>
+                  </button>
+                </div>
               ))}
             </div>
           </div>
