@@ -375,7 +375,7 @@ export default function Menu() {
               const includesLine = includedDishes.map((d) => d.name).join(" · ");
               return (
                 <Dialog key={b.id}>
-                  <Card className="bg-clinical-surface border-clinical-slate/20 hover:border-clinical-gold/40 transition-colors overflow-hidden flex flex-col">
+                  <Card className="bg-clinical-surface border-clinical-border hover:border-clinical-gold/40 transition-colors overflow-hidden flex flex-col">
                     <DialogTrigger asChild>
                       <button
                         type="button"
@@ -434,7 +434,7 @@ export default function Menu() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="border-clinical-slate/40 text-clinical-zinc hover:text-white hover:border-clinical-slate/60 h-9 text-xs"
+                            className="border-clinical-border text-clinical-zinc hover:text-white hover:border-clinical-border h-9 text-xs"
                           >
                             View
                           </Button>
@@ -450,7 +450,7 @@ export default function Menu() {
                       </div>
                     </CardContent>
                   </Card>
-                  <DialogContent className="bg-clinical-surface border-clinical-slate/20 max-w-lg max-h-[85vh] overflow-y-auto">
+                  <DialogContent className="bg-clinical-surface border-clinical-border max-w-lg max-h-[85vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle className="text-white font-serif text-xl">
                         {b.name}
@@ -460,7 +460,7 @@ export default function Menu() {
                       </DialogDescription>
                     </DialogHeader>
                     {b.image && (
-                      <div className="relative aspect-[16/9] rounded-lg overflow-hidden border border-clinical-slate/20">
+                      <div className="relative aspect-[16/9] rounded-lg overflow-hidden border border-clinical-border">
                         <img
                           src={b.image}
                           alt={b.name}
@@ -474,11 +474,11 @@ export default function Menu() {
                       </div>
                     )}
                     <div className="space-y-2">
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-clinical-zinc/60 font-semibold">
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-clinical-zinc-muted font-semibold">
                         What's inside ({includedDishes.length} {includedDishes.length === 1 ? "dish" : "dishes"})
                       </p>
                       {includedDishes.length === 0 ? (
-                        <p className="text-xs text-clinical-zinc/70 italic">
+                        <p className="text-xs text-clinical-zinc-muted italic">
                           This combo's dishes are temporarily unavailable.
                         </p>
                       ) : (
@@ -487,7 +487,7 @@ export default function Menu() {
                             <li key={d.id}>
                               <Link
                                 to={`/dish/${d.slug}`}
-                                className="flex items-center gap-3 p-2 rounded-lg border border-clinical-slate/20 hover:border-clinical-gold/40 transition-colors group"
+                                className="flex items-center gap-3 p-2 rounded-lg border border-clinical-border hover:border-clinical-gold/40 transition-colors group"
                               >
                                 <img
                                   src={d.image}
@@ -511,7 +511,7 @@ export default function Menu() {
                         </ul>
                       )}
                     </div>
-                    <div className="flex items-center justify-between pt-2 border-t border-clinical-slate/20">
+                    <div className="flex items-center justify-between pt-2 border-t border-clinical-border">
                       <div className="space-y-0.5">
                         <div className="flex items-baseline gap-2">
                           <span className="text-xl font-bold text-clinical-gold tabular-nums">
@@ -545,12 +545,12 @@ export default function Menu() {
 
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-clinical-zinc/60" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-clinical-zinc-muted" />
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search dishes, ingredients, protocols..."
-          className="pl-9 pr-9 h-11 bg-clinical-surface border-clinical-slate/20 focus-visible:border-clinical-gold/40 focus-visible:ring-clinical-gold/20 text-sm"
+          className="pl-9 pr-9 h-11 bg-clinical-surface border-clinical-border focus-visible:border-clinical-gold/40 focus-visible:ring-clinical-gold/20 text-sm"
         />
         {query && (
           <button
@@ -593,7 +593,7 @@ export default function Menu() {
                 className={`shrink-0 inline-flex items-center px-3 min-h-[36px] rounded-full border text-[11px] uppercase tracking-[0.12em] font-semibold transition-all ${
                   active
                     ? "border-clinical-gold/50 bg-clinical-gold/10 text-clinical-gold shadow-[0_0_12px_rgba(212,175,55,0.18)]"
-                    : "border-clinical-slate/30 text-clinical-zinc hover:border-clinical-gold/30 hover:text-clinical-gold"
+                    : "border-clinical-border text-clinical-zinc hover:border-clinical-gold/30 hover:text-clinical-gold"
                 }`}
               >
                 {label}
@@ -610,7 +610,7 @@ export default function Menu() {
         type="button"
         onClick={() => setShowFilters((v) => !v)}
         aria-expanded={showFilters}
-        className="md:hidden flex items-center justify-between w-full px-3 py-2.5 rounded-md border border-clinical-slate/30 bg-clinical-surface text-xs text-white hover:border-clinical-gold/40 min-h-11"
+        className="md:hidden flex items-center justify-between w-full px-3 py-2.5 rounded-md border border-clinical-border bg-clinical-surface text-xs text-white hover:border-clinical-gold/40 min-h-11"
       >
         <span className="flex items-center gap-2">
           <SlidersHorizontal className="w-3.5 h-3.5 text-clinical-gold" />
@@ -649,7 +649,7 @@ export default function Menu() {
                 className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-[11px] uppercase tracking-[0.12em] font-semibold transition-all ${
                   active
                     ? "border-clinical-gold/50 bg-clinical-gold/10 text-clinical-gold shadow-[0_0_12px_rgba(212,175,55,0.18)]"
-                    : "border-clinical-slate/30 text-clinical-zinc hover:border-clinical-gold/30 hover:text-clinical-gold"
+                    : "border-clinical-border text-clinical-zinc hover:border-clinical-gold/30 hover:text-clinical-gold"
                 }`}
               >
                 <Icon className="w-3 h-3" />
@@ -676,7 +676,7 @@ export default function Menu() {
                 className={`shrink-0 inline-flex items-center gap-1.5 px-3 min-h-[36px] rounded-full border text-[11px] uppercase tracking-[0.12em] font-semibold transition-all ${
                   active
                     ? "border-clinical-gold/50 bg-clinical-gold/10 text-clinical-gold"
-                    : "border-clinical-slate/30 text-clinical-zinc hover:text-clinical-gold"
+                    : "border-clinical-border text-clinical-zinc hover:text-clinical-gold"
                 }`}
               >
                 {dot && <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />}
@@ -699,7 +699,7 @@ export default function Menu() {
                 className={`shrink-0 inline-flex items-center px-3 min-h-[36px] rounded-full border text-[11px] uppercase tracking-[0.12em] font-semibold transition-all ${
                   active
                     ? "border-clinical-gold/50 bg-clinical-gold/10 text-clinical-gold"
-                    : "border-clinical-slate/30 text-clinical-zinc hover:text-clinical-gold"
+                    : "border-clinical-border text-clinical-zinc hover:text-clinical-gold"
                 }`}
               >
                 {c === "all" ? "All Categories" : CATEGORY_LABELS[c]}
@@ -721,7 +721,7 @@ export default function Menu() {
                 className={`shrink-0 inline-flex items-center px-3 min-h-[36px] rounded-full border text-[11px] uppercase tracking-[0.12em] font-semibold transition-all ${
                   active
                     ? "border-clinical-gold/50 bg-clinical-gold/10 text-clinical-gold"
-                    : "border-clinical-slate/30 text-clinical-zinc hover:text-clinical-gold"
+                    : "border-clinical-border text-clinical-zinc hover:text-clinical-gold"
                 }`}
               >
                 {k === "all" ? "All Kitchens" : k.charAt(0).toUpperCase() + k.slice(1)}
@@ -890,3 +890,31 @@ export default function Menu() {
 
 // Legacy inline card markup removed — moved to <MenuCard /> component.
 // Original implementation below intentionally stripped to avoid duplicate JSX.
+
+import { DISHES } from "@/lib/menuData";
+
+export function meta() {
+  const hasMenuItem = DISHES.filter(d => Boolean(d)).map(dish => ({
+    "@type": "MenuItem",
+    "name": dish.name,
+    "description": dish.description,
+    "offers": {
+      "@type": "Offer",
+      "price": (dish.price / 100).toFixed(2),
+      "priceCurrency": "INR"
+    },
+    ...(dish.allergens && dish.allergens.length > 0 ? { "allergenDeclaration": dish.allergens.join(", ") } : {})
+  }));
+
+  return [
+    { title: "Clinical Menu | Tanmatra" },
+    {
+      "script:ld+json": {
+        "@context": "https://schema.org",
+        "@type": "Menu",
+        "name": "Tanmatra Clinical Menu",
+        "hasMenuItem": hasMenuItem
+      }
+    }
+  ];
+}

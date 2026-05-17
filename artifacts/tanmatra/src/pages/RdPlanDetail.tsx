@@ -55,7 +55,7 @@ export default function RdPlanDetail() {
             {plan.name}
           </h1>
           <p className="text-sm text-clinical-zinc">{plan.tagline}</p>
-          <p className="text-sm text-clinical-zinc/80 leading-relaxed">
+          <p className="text-sm text-clinical-zinc-muted leading-relaxed">
             {plan.description}
           </p>
           <div className="flex flex-wrap gap-1.5 pt-1">
@@ -78,8 +78,8 @@ export default function RdPlanDetail() {
               <Stat label="carbs" value={`${plan.carbsTargetGrams}g`} />
               <Stat label="fat" value={`${plan.fatTargetGrams}g`} />
             </div>
-            <div className="border-t border-clinical-slate/20 pt-3">
-              <p className="text-[10px] uppercase tracking-widest text-clinical-zinc/70">
+            <div className="border-t border-clinical-border pt-3">
+              <p className="text-[10px] uppercase tracking-widest text-clinical-zinc-muted">
                 from
               </p>
               <p className="text-2xl font-semibold text-clinical-gold tabular-nums">
@@ -101,7 +101,7 @@ export default function RdPlanDetail() {
 
       {/* Author */}
       {rd && (
-        <Card className="bg-clinical-surface border-clinical-slate/20">
+        <Card className="bg-clinical-surface border-clinical-border">
           <CardContent className="p-5 flex flex-col sm:flex-row gap-5 items-start">
             <div
               className={`w-16 h-16 rounded-full ${accent?.bg} ring-2 ${accent?.ring} flex items-center justify-center text-lg font-bold ${accent?.text} shrink-0`}
@@ -110,7 +110,7 @@ export default function RdPlanDetail() {
             </div>
             <div className="space-y-2 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <p className="text-[10px] uppercase tracking-widest text-clinical-zinc/70">
+                <p className="text-[10px] uppercase tracking-widest text-clinical-zinc-muted">
                   Authored by
                 </p>
                 <Badge className={`text-[10px] ${accent?.chip}`}>
@@ -124,7 +124,7 @@ export default function RdPlanDetail() {
                 {rd.name}
               </Link>
               <p className="text-xs text-clinical-zinc leading-relaxed">{rd.bio}</p>
-              <p className="text-[11px] text-clinical-zinc/70">
+              <p className="text-[11px] text-clinical-zinc-muted">
                 {rd.credentials.join(" · ")}
               </p>
             </div>
@@ -181,7 +181,7 @@ export default function RdPlanDetail() {
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="font-serif text-2xl text-white">Sample week</h2>
-          <p className="text-[11px] text-clinical-zinc/70 uppercase tracking-widest">
+          <p className="text-[11px] text-clinical-zinc-muted uppercase tracking-widest">
             3 meals × 7 days
           </p>
         </div>
@@ -189,7 +189,7 @@ export default function RdPlanDetail() {
           {week.map((day) => (
             <Card
               key={day.label}
-              className="bg-clinical-surface border-clinical-slate/20"
+              className="bg-clinical-surface border-clinical-border"
             >
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
@@ -201,7 +201,7 @@ export default function RdPlanDetail() {
                 <MealRow label="Lunch" dish={day.lunch} />
                 <MealRow label="Dinner" dish={day.dinner} />
                 {day.rdTip && (
-                  <div className="flex items-start gap-1.5 pt-2 border-t border-clinical-slate/20 text-[11px] text-clinical-sage">
+                  <div className="flex items-start gap-1.5 pt-2 border-t border-clinical-border text-[11px] text-clinical-sage">
                     <Sparkles className="w-3 h-3 mt-0.5 shrink-0" />
                     <span className="leading-snug">{day.rdTip}</span>
                   </div>
@@ -219,7 +219,7 @@ export default function RdPlanDetail() {
           {plan.weeklyNotes.map((note) => (
             <Card
               key={note.weekNumber}
-              className="bg-clinical-surface border-clinical-slate/20"
+              className="bg-clinical-surface border-clinical-border"
             >
               <CardContent className="p-5 space-y-2">
                 <Badge className={`text-[10px] ${accent?.chip ?? ""}`}>
@@ -248,22 +248,22 @@ function MealRow({
   if (!dish) {
     return (
       <div className="space-y-0.5">
-        <p className="text-[10px] uppercase tracking-widest text-clinical-zinc/60">
+        <p className="text-[10px] uppercase tracking-widest text-clinical-zinc-muted">
           {label}
         </p>
-        <p className="text-xs text-clinical-zinc/50 italic">Curator's choice</p>
+        <p className="text-xs text-clinical-zinc-muted italic">Curator's choice</p>
       </div>
     );
   }
   return (
     <Link to={`/dish/${dish.slug}`} className="block space-y-0.5 group">
-      <p className="text-[10px] uppercase tracking-widest text-clinical-zinc/60">
+      <p className="text-[10px] uppercase tracking-widest text-clinical-zinc-muted">
         {label}
       </p>
       <p className="text-xs text-white group-hover:text-clinical-gold transition-colors">
         {dish.name}
       </p>
-      <p className="text-[10px] text-clinical-zinc/70 tabular-nums">
+      <p className="text-[10px] text-clinical-zinc-muted tabular-nums">
         {dish.macros.calories} kcal · {dish.macros.protein}g protein
       </p>
     </Link>
@@ -272,8 +272,8 @@ function MealRow({
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border border-clinical-slate/20 bg-clinical-surface-elevated px-2 py-1.5 text-center">
-      <p className="text-[9px] uppercase tracking-widest text-clinical-zinc/60">
+    <div className="rounded-md border border-clinical-border bg-clinical-surface-elevated px-2 py-1.5 text-center">
+      <p className="text-[9px] uppercase tracking-widest text-clinical-zinc-muted">
         {label}
       </p>
       <p className="text-sm font-semibold text-clinical-gold tabular-nums">

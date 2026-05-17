@@ -17,7 +17,7 @@ const STAGE_ICONS: Record<ClinicalStage, React.ComponentType<{ className?: strin
 
 function fmtTime(iso?: string): string {
   if (!iso) return "";
-  return new Date(iso).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+  return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
 function stageTimestamp(order: PastOrder, stage: ClinicalStage): string | undefined {
@@ -104,10 +104,10 @@ export function ClinicalLifecycleStepper({ order, socketConnected, compact = fal
               <div
                 className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-colors z-10 ${
                   isCancelled
-                    ? "bg-clinical-slate/20 border-clinical-slate/30 text-clinical-zinc"
+                    ? "bg-clinical-surface-elevated border-clinical-border text-clinical-zinc"
                     : reached
                       ? "bg-clinical-gold border-clinical-gold text-[#050505]"
-                      : "bg-clinical-surface border-clinical-slate/30 text-clinical-zinc"
+                      : "bg-clinical-surface border-clinical-border text-clinical-zinc"
                 } ${isCurrent ? "ring-2 ring-clinical-gold/50" : ""}`}
               >
                 <Icon className="w-4 h-4" aria-hidden />
@@ -115,7 +115,7 @@ export function ClinicalLifecycleStepper({ order, socketConnected, compact = fal
               {idx < CLINICAL_STAGES.length - 1 && (
                 <div
                   className={`absolute top-4 left-1/2 w-full h-0.5 ${
-                    !isCancelled && idx < currentIdx ? "bg-clinical-gold/60" : "bg-clinical-slate/30"
+                    !isCancelled && idx < currentIdx ? "bg-clinical-gold/60" : "bg-clinical-surface-elevated"
                   }`}
                   aria-hidden
                 />

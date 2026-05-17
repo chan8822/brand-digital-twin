@@ -50,7 +50,7 @@ export default function RecipeDetail() {
       </Link>
 
       {recipe.image && (
-        <div className="relative aspect-[16/9] rounded-2xl overflow-hidden border border-clinical-slate/20">
+        <div className="relative aspect-[16/9] rounded-2xl overflow-hidden border border-clinical-border">
           <img src={recipe.image} alt={recipe.title} className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-[#050505]/70 to-transparent" />
         </div>
@@ -62,21 +62,21 @@ export default function RecipeDetail() {
             <ShieldCheck className="w-3 h-3" />
             {recipe.authorRole} authored
           </Badge>
-          <Badge variant="outline" className="border-clinical-slate/30 text-clinical-zinc text-[10px] capitalize">
+          <Badge variant="outline" className="border-clinical-border text-clinical-zinc text-[10px] capitalize">
             {recipe.goal.replaceAll("_", " ")}
           </Badge>
-          <Badge variant="outline" className="border-clinical-slate/30 text-clinical-zinc text-[10px] capitalize">
+          <Badge variant="outline" className="border-clinical-border text-clinical-zinc text-[10px] capitalize">
             {recipe.diet}
           </Badge>
         </div>
         <h1 className="font-serif text-3xl sm:text-4xl text-white">{recipe.title}</h1>
         <p className="text-sm text-clinical-zinc leading-relaxed">{recipe.summary}</p>
-        <p className="text-[11px] text-clinical-zinc/70">
+        <p className="text-[11px] text-clinical-zinc-muted">
           By {recipe.authorName} · {recipe.authorRole}
         </p>
       </div>
 
-      <Card className="bg-clinical-surface border-clinical-slate/20">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
           <Stat icon={Clock} label="Time" value={`${recipe.timeMinutes} min`} />
           {recipe.calories != null && (
@@ -99,7 +99,7 @@ export default function RecipeDetail() {
           {recipe.ingredients.map((ing, i) => (
             <li
               key={i}
-              className="text-sm text-white flex items-baseline gap-2 border-b border-clinical-slate/10 pb-1.5"
+              className="text-sm text-white flex items-baseline gap-2 border-b border-clinical-border pb-1.5"
             >
               <span className="text-clinical-gold">·</span>
               {ing}
@@ -136,7 +136,7 @@ function Stat({
 }) {
   return (
     <div className="space-y-1">
-      <p className="text-[10px] uppercase tracking-[0.12em] text-clinical-zinc/70 font-semibold flex items-center gap-1">
+      <p className="text-[10px] uppercase tracking-[0.12em] text-clinical-zinc-muted font-semibold flex items-center gap-1">
         <Icon className="w-3 h-3 text-clinical-gold" />
         {label}
       </p>

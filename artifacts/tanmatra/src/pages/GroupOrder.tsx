@@ -158,7 +158,7 @@ export default function GroupOrder() {
               className={`text-[10px] ${
                 group.status === "open"
                   ? "border-clinical-sage/50 text-clinical-sage bg-clinical-sage/10"
-                  : "border-clinical-slate/50 text-clinical-zinc"
+                  : "border-clinical-border text-clinical-zinc"
               }`}
             >
               {group.status === "open" ? "OPEN" : "CLOSED"}
@@ -192,7 +192,7 @@ export default function GroupOrder() {
       </Card>
 
       {group.status === "open" && (
-        <Card className="bg-clinical-surface border-clinical-slate/20">
+        <Card className="bg-clinical-surface border-clinical-border">
           <CardContent className="p-4 flex items-center justify-between gap-3">
             <div>
               <p className="text-sm text-white font-medium">Add your items</p>
@@ -209,7 +209,7 @@ export default function GroupOrder() {
         </Card>
       )}
 
-      <Card className="bg-clinical-surface border-clinical-slate/20">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-4 space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-white">Items in this group</h2>
@@ -228,12 +228,12 @@ export default function GroupOrder() {
             {group.items.map((it) => (
               <div
                 key={it.lineId}
-                className="flex items-center gap-3 p-2 rounded-lg border border-clinical-slate/15 bg-clinical-dark/40"
+                className="flex items-center gap-3 p-2 rounded-lg border border-clinical-border bg-clinical-dark/40"
               >
                 <img
                   src={it.image}
                   alt={it.name}
-                  className="w-12 h-12 rounded object-cover border border-clinical-slate/20 shrink-0"
+                  className="w-12 h-12 rounded object-cover border border-clinical-border shrink-0"
                   loading="lazy"
                 />
                 <div className="flex-1 min-w-0">
@@ -265,7 +265,7 @@ export default function GroupOrder() {
           </div>
 
           {group.items.length > 0 && (
-            <div className="flex items-center justify-between pt-2 border-t border-clinical-slate/15">
+            <div className="flex items-center justify-between pt-2 border-t border-clinical-border">
               <span className="text-xs text-clinical-zinc">Group subtotal</span>
               <span className="tabular-nums text-base font-bold text-clinical-gold">
                 {formatPrice(subtotal)}
@@ -280,7 +280,7 @@ export default function GroupOrder() {
           <Button
             variant="outline"
             onClick={copyShare}
-            className="border-clinical-slate/30 text-clinical-zinc gap-2"
+            className="border-clinical-border text-clinical-zinc gap-2"
           >
             <Copy className="w-4 h-4" /> Copy link
           </Button>
@@ -302,7 +302,7 @@ export default function GroupOrder() {
       )}
 
       {group.status === "closed" && (
-        <Card className="bg-clinical-slate/10 border-clinical-slate/30">
+        <Card className="bg-clinical-surface-elevated border-clinical-border">
           <CardContent className="p-4 text-xs text-clinical-zinc flex items-center gap-2">
             <Lock className="w-4 h-4" />
             This group order is closed. The host has moved everything to checkout.

@@ -13,7 +13,7 @@ export default function Privacy() {
           Compliant with the Digital Personal Data Protection Act, 2023 (India).
         </p>
       </header>
-      <Card className="bg-clinical-surface border-clinical-slate/20">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-6 space-y-4 text-sm text-clinical-zinc leading-relaxed">
           <h2 className="text-base font-semibold text-white">
             What we collect

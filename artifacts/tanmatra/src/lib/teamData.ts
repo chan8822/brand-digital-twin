@@ -18,23 +18,9 @@ export interface TeamMember {
   ownedDishSlugs?: string[];
   initials: string;
   accent: "gold" | "sage" | "blue";
-  // ---- Verifiable-credential fields (optional, additive) ----
-  //
-  // Populate these when the RD has consented to public display of
-  // their council number / registry link / photo. Empty fields render
-  // nothing — never invent values. Required for ASCI 2022 endorsement
-  // compliance (RDs cited on health-outcome copy must be verifiable).
-  //
-  // - `councilNumber`: IDA / dietitian-council registration id.
-  // - `councilName`: human-readable issuing body (e.g. "Indian Dietetic
-  //   Association").
-  // - `verifyUrl`: a public URL where the registration can be checked
-  //   (IDA member directory, ORCID, LinkedIn).
-  // - `photoUrl`: a real headshot. Avoid stock photography.
   councilNumber?: string;
   councilName?: string;
   verifyUrl?: string;
-  photoUrl?: string;
 }
 
 export const TEAM: TeamMember[] = [

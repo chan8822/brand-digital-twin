@@ -150,7 +150,7 @@ export default function Premium() {
                 {membership?.status !== "cancelled" && (
                   <Button
                     variant="outline"
-                    className="border-clinical-slate/40 text-clinical-zinc hover:text-white"
+                    className="border-clinical-border text-clinical-zinc hover:text-white"
                     onClick={() => cancel.mutate()}
                     disabled={cancel.isPending}
                   >
@@ -173,7 +173,7 @@ export default function Premium() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {BENEFITS.map((b) => (
-          <Card key={b.title} className="bg-clinical-surface border-clinical-slate/20">
+          <Card key={b.title} className="bg-clinical-surface border-clinical-border">
             <CardContent className="p-5 flex gap-3">
               <div className="w-9 h-9 rounded-lg bg-clinical-gold/15 text-clinical-gold flex items-center justify-center shrink-0">
                 <b.icon className="w-4 h-4" />
@@ -189,9 +189,9 @@ export default function Premium() {
         ))}
       </div>
 
-      <Separator className="bg-clinical-slate/20" />
+      <Separator className="bg-clinical-surface-elevated" />
 
-      <Card className="bg-clinical-surface border-clinical-slate/20">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-5 flex items-start gap-3 text-[12px] text-clinical-zinc">
           <ShieldCheck className="w-4 h-4 text-clinical-sage shrink-0 mt-0.5" />
           <p>

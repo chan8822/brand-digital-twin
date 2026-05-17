@@ -156,7 +156,7 @@ export default function RdPlans() {
                         ))}
                       </ul>
                       {rd && (
-                        <p className="text-[10px] text-clinical-zinc/70">
+                        <p className="text-[10px] text-clinical-zinc-muted">
                           By {rd.name}
                         </p>
                       )}
@@ -171,7 +171,7 @@ export default function RdPlans() {
 
       {/* Filters */}
       <section className="space-y-3">
-        <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-clinical-zinc/70 font-semibold">
+        <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-clinical-zinc-muted font-semibold">
           <Filter className="w-3.5 h-3.5" /> Filters
         </div>
         <div className="flex flex-wrap gap-2">
@@ -184,7 +184,7 @@ export default function RdPlans() {
                 className={`px-3 py-1 rounded-full border text-[11px] uppercase tracking-[0.12em] font-semibold transition-all ${
                   active
                     ? "border-clinical-gold/50 bg-clinical-gold/10 text-clinical-gold"
-                    : "border-clinical-slate/30 text-clinical-zinc hover:text-clinical-gold"
+                    : "border-clinical-border text-clinical-zinc hover:text-clinical-gold"
                 }`}
               >
                 {g.label}
@@ -202,7 +202,7 @@ export default function RdPlans() {
                 className={`px-3 py-1 rounded-full border text-[11px] uppercase tracking-[0.12em] font-semibold transition-all ${
                   active
                     ? "border-clinical-gold/50 bg-clinical-gold/10 text-clinical-gold"
-                    : "border-clinical-slate/30 text-clinical-zinc hover:text-clinical-gold"
+                    : "border-clinical-border text-clinical-zinc hover:text-clinical-gold"
                 }`}
               >
                 {b.label}
@@ -221,7 +221,7 @@ export default function RdPlans() {
                   className={`px-3 py-1 rounded-full border text-[11px] uppercase tracking-[0.12em] font-semibold transition-all ${
                     active
                       ? "border-clinical-gold/50 bg-clinical-gold/10 text-clinical-gold"
-                      : "border-clinical-slate/30 text-clinical-zinc hover:text-clinical-gold"
+                      : "border-clinical-border text-clinical-zinc hover:text-clinical-gold"
                   }`}
                 >
                   {s === "all" ? "Any diet" : s}
@@ -232,7 +232,7 @@ export default function RdPlans() {
         </div>
       </section>
 
-      <div className="text-xs text-clinical-zinc/70 tabular-nums">
+      <div className="text-xs text-clinical-zinc-muted tabular-nums">
         {filtered.length} {filtered.length === 1 ? "plan" : "plans"}
       </div>
 
@@ -243,7 +243,7 @@ export default function RdPlans() {
           return (
             <Card
               key={plan.slug}
-              className="bg-clinical-surface border-clinical-slate/20 hover:border-clinical-gold/40 transition-all overflow-hidden"
+              className="bg-clinical-surface border-clinical-border hover:border-clinical-gold/40 transition-all overflow-hidden"
             >
               <CardContent className="p-6 space-y-4">
                 <div className="flex items-start justify-between gap-3">
@@ -255,13 +255,13 @@ export default function RdPlans() {
                     <p className="text-xs text-clinical-zinc">{plan.tagline}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-[10px] uppercase tracking-widest text-clinical-zinc/60">
+                    <p className="text-[10px] uppercase tracking-widest text-clinical-zinc-muted">
                       from
                     </p>
                     <p className="text-lg font-semibold text-clinical-gold tabular-nums">
                       {formatRupees(plan.pricePerWeekPaise)}
                     </p>
-                    <p className="text-[10px] text-clinical-zinc/60">/ week</p>
+                    <p className="text-[10px] text-clinical-zinc-muted">/ week</p>
                   </div>
                 </div>
 
@@ -285,7 +285,7 @@ export default function RdPlans() {
                 </div>
 
                 {rd && (
-                  <div className="flex items-center gap-2 pt-1 border-t border-clinical-slate/20">
+                  <div className="flex items-center gap-2 pt-1 border-t border-clinical-border">
                     <Link
                       to={`/team/${rd.slug}`}
                       className={`flex items-center gap-2 text-xs ${accent?.text}`}
@@ -307,7 +307,7 @@ export default function RdPlans() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="w-full border-clinical-slate/30 text-clinical-zinc hover:text-white hover:border-clinical-gold/40 text-[11px] uppercase tracking-wide"
+                      className="w-full border-clinical-border text-clinical-zinc hover:text-white hover:border-clinical-gold/40 text-[11px] uppercase tracking-wide"
                     >
                       View week & RD notes
                     </Button>
@@ -332,8 +332,8 @@ export default function RdPlans() {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border border-clinical-slate/20 bg-clinical-surface-elevated px-2 py-1.5 text-center">
-      <p className="text-[9px] uppercase tracking-widest text-clinical-zinc/60">
+    <div className="rounded-md border border-clinical-border bg-clinical-surface-elevated px-2 py-1.5 text-center">
+      <p className="text-[9px] uppercase tracking-widest text-clinical-zinc-muted">
         {label}
       </p>
       <p className="text-sm font-semibold text-clinical-gold tabular-nums">

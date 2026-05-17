@@ -92,7 +92,7 @@ function Ring({ label, value, target, unit, color, icon: Icon }: RingProps) {
             stroke="currentColor"
             strokeWidth="8"
             fill="none"
-            className="text-clinical-slate/20"
+            className="text-clinical-zinc-muted"
           />
           <circle
             cx="50"
@@ -111,16 +111,16 @@ function Ring({ label, value, target, unit, color, icon: Icon }: RingProps) {
           <Icon className={`w-4 h-4 ${color}`} />
           <div className="text-white font-semibold text-sm mt-1">
             {Math.round(value)}
-            <span className="text-clinical-slate text-[10px] ml-0.5">
+            <span className="text-clinical-zinc-muted text-[10px] ml-0.5">
               /{Math.round(target)}
             </span>
           </div>
-          <div className="text-[9px] uppercase tracking-wider text-clinical-slate">
+          <div className="text-[9px] uppercase tracking-wider text-clinical-zinc-muted">
             {unit}
           </div>
         </div>
       </div>
-      <div className="text-xs uppercase tracking-widest text-clinical-slate">
+      <div className="text-xs uppercase tracking-widest text-clinical-zinc-muted">
         {label}
       </div>
     </div>
@@ -146,10 +146,10 @@ function WeekBars({
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <div className="text-xs uppercase tracking-widest text-clinical-slate">
+        <div className="text-xs uppercase tracking-widest text-clinical-zinc-muted">
           {label}
         </div>
-        <div className="text-[10px] text-clinical-slate">
+        <div className="text-[10px] text-clinical-zinc-muted">
           target {target} {unit}
         </div>
       </div>
@@ -169,12 +169,12 @@ function WeekBars({
             >
               <div className="w-full h-full flex items-end">
                 <div
-                  className={`w-full rounded-t ${hit ? color : "bg-clinical-slate/40"}`}
+                  className={`w-full rounded-t ${hit ? color : "bg-clinical-surface-elevated"}`}
                   style={{ height: `${Math.max(4, pct)}%` }}
                   title={`${d.date}: ${Math.round(v)} ${unit}`}
                 />
               </div>
-              <div className="text-[10px] text-clinical-slate">{day}</div>
+              <div className="text-[10px] text-clinical-zinc-muted">{day}</div>
             </div>
           );
         })}
@@ -263,7 +263,7 @@ function ManualLogDialog({ onSaved }: { onSaved: () => void }) {
         </Button>
       </DialogTrigger>
       <DialogContent
-        className="bg-clinical-dark border border-clinical-slate/30 text-white"
+        className="bg-clinical-dark border border-clinical-border text-white"
         aria-describedby="manual-log-help"
       >
         <DialogHeader>
@@ -274,20 +274,20 @@ function ManualLogDialog({ onSaved }: { onSaved: () => void }) {
         </p>
         <div className="space-y-3">
           <div>
-            <Label className="text-clinical-slate text-xs uppercase tracking-widest">
+            <Label className="text-clinical-zinc-muted text-xs uppercase tracking-widest">
               What was it?
             </Label>
             <Input
               value={form.label}
               onChange={(e) => setForm({ ...form, label: e.target.value })}
               placeholder="e.g. Greek yoghurt with berries"
-              className="bg-clinical-slate/10 border-clinical-slate/30 text-white"
+              className="bg-clinical-surface-elevated border-clinical-border text-white"
             />
           </div>
           <div className="grid grid-cols-3 gap-3">
             {NUMERIC_FIELDS.map(({ key, label }) => (
               <div key={key}>
-                <Label className="text-clinical-slate text-[10px] uppercase tracking-widest">
+                <Label className="text-clinical-zinc-muted text-[10px] uppercase tracking-widest">
                   {label}
                 </Label>
                 <Input
@@ -300,7 +300,7 @@ function ManualLogDialog({ onSaved }: { onSaved: () => void }) {
                       [key]: Math.max(0, Number(e.target.value) || 0),
                     }))
                   }
-                  className="bg-clinical-slate/10 border-clinical-slate/30 text-white"
+                  className="bg-clinical-surface-elevated border-clinical-border text-white"
                 />
               </div>
             ))}
@@ -310,7 +310,7 @@ function ManualLogDialog({ onSaved }: { onSaved: () => void }) {
           <Button
             variant="ghost"
             onClick={() => setOpen(false)}
-            className="text-clinical-slate"
+            className="text-clinical-zinc-muted"
           >
             Cancel
           </Button>
@@ -385,12 +385,12 @@ function WearableCard({
   ) {
     const linked = link?.connected;
     return (
-      <div className="flex items-center justify-between py-2 border-b border-clinical-slate/15 last:border-b-0">
+      <div className="flex items-center justify-between py-2 border-b border-clinical-border last:border-b-0">
         <div className="flex items-center gap-2">
           <Activity className="w-4 h-4 text-clinical-sage" />
           <div>
             <div className="text-sm text-white">{name}</div>
-            <div className="text-[11px] text-clinical-slate">
+            <div className="text-[11px] text-clinical-zinc-muted">
               {linked
                 ? link?.lastSyncedAt
                   ? `Last sync ${new Date(link.lastSyncedAt).toLocaleString()} · +${link.lastActivityKcal ?? 0} kcal`
@@ -406,7 +406,7 @@ function WearableCard({
               variant="outline"
               disabled={busy}
               onClick={() => sync(provider)}
-              className="border-clinical-slate/40 text-clinical-slate hover:text-white"
+              className="border-clinical-border text-clinical-zinc-muted hover:text-white"
             >
               <RefreshCw className="w-3.5 h-3.5 mr-1" /> Sync
             </Button>
@@ -434,7 +434,7 @@ function WearableCard({
       open={pendingProvider !== null}
       onOpenChange={(open) => !open && setPendingProvider(null)}
     >
-      <AlertDialogContent className="bg-clinical-surface border-clinical-slate/30">
+      <AlertDialogContent className="bg-clinical-surface border-clinical-border">
         <AlertDialogHeader>
           <AlertDialogTitle className="text-white">
             Connect {consentLabel}
@@ -478,7 +478,7 @@ function WearableCard({
             </span>
           </li>
         </ul>
-        <p className="text-[10px] text-clinical-zinc/70 leading-snug">
+        <p className="text-[10px] text-clinical-zinc-muted leading-snug">
           Full details:{" "}
           <Link to="/privacy" className="text-clinical-gold hover:underline">
             Privacy Policy → Health &amp; wearable data
@@ -504,24 +504,24 @@ function WearableCard({
   );
 
   return (
-    <Card className="bg-clinical-slate/5 border border-clinical-slate/20">
+    <Card className="bg-clinical-surface-elevated border border-clinical-border">
       <CardContent className="p-5">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <div className="text-xs uppercase tracking-widest text-clinical-slate">
+            <div className="text-xs uppercase tracking-widest text-clinical-zinc-muted">
               Activity sync
             </div>
             <div className="text-white text-sm mt-1">
               Wearables adjust your calorie target based on movement.
             </div>
           </div>
-          <Badge className="bg-clinical-slate/15 text-clinical-slate border-clinical-slate/30">
+          <Badge className="bg-clinical-surface-elevated text-clinical-zinc-muted border-clinical-border">
             Web preview
           </Badge>
         </div>
         {row("Apple Health", "apple_health", apple)}
         {row("Google Fit", "google_fit", gfit)}
-        <p className="text-[10px] text-clinical-zinc/70 mt-3 leading-snug">
+        <p className="text-[10px] text-clinical-zinc-muted mt-3 leading-snug">
           We only read steps + active calories. See{" "}
           <Link to="/privacy" className="text-clinical-gold hover:underline">
             how wearable data is handled
@@ -643,14 +643,14 @@ function PairMobileCard() {
   return (
     <Card
       id="pair-device"
-      className="bg-clinical-slate/5 border border-clinical-slate/20 scroll-mt-20"
+      className="bg-clinical-surface-elevated border border-clinical-border scroll-mt-20"
     >
       <CardContent className="p-5">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Smartphone className="w-4 h-4 text-clinical-sage" />
             <div>
-              <div className="text-xs uppercase tracking-widest text-clinical-slate">
+              <div className="text-xs uppercase tracking-widest text-clinical-zinc-muted">
                 Pair Tanmatra mobile
               </div>
               <div className="text-white text-sm mt-1">
@@ -662,7 +662,7 @@ function PairMobileCard() {
 
         {!token ? (
           <div className="space-y-3">
-            <p className="text-[12px] text-clinical-slate leading-relaxed">
+            <p className="text-[12px] text-clinical-zinc-muted leading-relaxed">
               Generate a pairing token, then paste it into the Tanmatra mobile
               app on your device. Each token is a dedicated mobile session
               (valid {Math.round((ttlMs ?? 7 * 24 * 60 * 60 * 1000) / (24 * 60 * 60 * 1000))} days)
@@ -673,7 +673,7 @@ function PairMobileCard() {
                 placeholder="Device label (e.g. iPhone 15)"
                 value={label}
                 onChange={(e) => setLabel(e.target.value)}
-                className="flex-1 bg-clinical-dark border-clinical-slate/30 text-white placeholder:text-clinical-slate/60 text-sm"
+                className="flex-1 bg-clinical-dark border-clinical-border text-white placeholder:text-clinical-zinc-muted text-sm"
               />
               <Button
                 size="sm"
@@ -688,14 +688,14 @@ function PairMobileCard() {
         ) : (
           <div className="space-y-3">
             <div className="flex items-stretch gap-2">
-              <code className="flex-1 px-3 py-2 rounded-md bg-clinical-dark border border-clinical-slate/30 text-[12px] font-mono text-clinical-sage break-all">
+              <code className="flex-1 px-3 py-2 rounded-md bg-clinical-dark border border-clinical-border text-[12px] font-mono text-clinical-sage break-all">
                 {masked}
               </code>
               <Button
                 size="sm"
                 variant="outline"
                 onClick={copy}
-                className="border-clinical-slate/40 text-clinical-slate hover:text-white"
+                className="border-clinical-border text-clinical-zinc-muted hover:text-white"
               >
                 {copied ? (
                   <Check className="w-4 h-4" />
@@ -707,13 +707,13 @@ function PairMobileCard() {
                 size="sm"
                 variant="outline"
                 onClick={() => setToken(null)}
-                className="border-clinical-slate/40 text-clinical-slate hover:text-white"
+                className="border-clinical-border text-clinical-zinc-muted hover:text-white"
                 title="Hide"
               >
                 <EyeOff className="w-4 h-4" />
               </Button>
             </div>
-            <p className="text-[11px] text-clinical-slate leading-relaxed">
+            <p className="text-[11px] text-clinical-zinc-muted leading-relaxed">
               Tap copy, open the Tanmatra mobile app, and paste into the
               pairing field. Treat this token like a password — anyone with it
               can post activity as you.
@@ -722,9 +722,9 @@ function PairMobileCard() {
         )}
 
         {sessions.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-clinical-slate/15">
+          <div className="mt-4 pt-4 border-t border-clinical-border">
             <div className="flex items-center justify-between mb-2">
-              <div className="text-[11px] uppercase tracking-widest text-clinical-slate">
+              <div className="text-[11px] uppercase tracking-widest text-clinical-zinc-muted">
                 Paired devices ({sessions.length})
               </div>
               {sessions.length > 1 && (
@@ -733,7 +733,7 @@ function PairMobileCard() {
                   variant="ghost"
                   disabled={busy}
                   onClick={() => revoke("all")}
-                  className="h-7 px-2 text-[11px] text-clinical-slate hover:text-white"
+                  className="h-7 px-2 text-[11px] text-clinical-zinc-muted hover:text-white"
                 >
                   Revoke all
                 </Button>
@@ -747,7 +747,7 @@ function PairMobileCard() {
                 >
                   <div className="min-w-0 flex-1">
                     <div className="text-white truncate">{s.label}</div>
-                    <div className="text-[10px] text-clinical-slate">
+                    <div className="text-[10px] text-clinical-zinc-muted">
                       {s.createdAt
                         ? `Paired ${new Date(s.createdAt).toLocaleDateString()}`
                         : `Expires ${new Date(s.expiresAt).toLocaleDateString()}`}
@@ -760,7 +760,7 @@ function PairMobileCard() {
                     variant="ghost"
                     disabled={busy}
                     onClick={() => revoke(s.id)}
-                    className="h-7 px-2 text-clinical-slate hover:text-red-400"
+                    className="h-7 px-2 text-clinical-zinc-muted hover:text-red-400"
                     title="Revoke this device"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -787,19 +787,19 @@ function StreakBadge({
   icon: React.ComponentType<{ className?: string }>;
 }) {
   return (
-    <Card className="bg-clinical-slate/5 border border-clinical-slate/20">
+    <Card className="bg-clinical-surface-elevated border border-clinical-border">
       <CardContent className="p-4 flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl bg-clinical-sage/15 flex items-center justify-center border border-clinical-sage/25">
           <Icon className="w-5 h-5 text-clinical-sage" />
         </div>
         <div>
-          <div className="text-xs uppercase tracking-widest text-clinical-slate">
+          <div className="text-xs uppercase tracking-widest text-clinical-zinc-muted">
             {label}
           </div>
           <div className="text-white text-lg font-semibold">
             {current} day{current === 1 ? "" : "s"}
           </div>
-          <div className="text-[11px] text-clinical-slate">
+          <div className="text-[11px] text-clinical-zinc-muted">
             Best {best} day{best === 1 ? "" : "s"}
           </div>
         </div>
@@ -829,7 +829,7 @@ function ProtocolActions() {
   );
 
   return (
-    <section className="border-b border-clinical-slate/20 bg-clinical-sage/5 py-10">
+    <section className="border-b border-clinical-border bg-clinical-sage/5 py-10">
       <div className="max-w-7xl mx-auto px-4 space-y-6">
         <div className="flex items-center gap-2">
           <Leaf className="w-4 h-4 text-clinical-sage" />
@@ -998,7 +998,7 @@ export default function Wellness() {
 
       <ProtocolActions />
 
-      <section className="border-b border-clinical-slate/20 py-10">
+      <section className="border-b border-clinical-border py-10">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-end justify-between flex-wrap gap-4">
             <div>
@@ -1013,7 +1013,7 @@ export default function Wellness() {
               <h1 className="text-3xl md:text-4xl text-white font-semibold">
                 Today's nutrition
               </h1>
-              <p className="text-clinical-slate text-sm mt-1">
+              <p className="text-clinical-zinc-muted text-sm mt-1">
                 Auto-logged from delivered orders. Manual entries and water
                 count too.
               </p>
@@ -1023,7 +1023,7 @@ export default function Wellness() {
                 size="sm"
                 variant="ghost"
                 onClick={refreshAll}
-                className="text-clinical-slate hover:text-white"
+                className="text-clinical-zinc-muted hover:text-white"
               >
                 <RefreshCw className="w-4 h-4 mr-1" /> Refresh
               </Button>
@@ -1032,9 +1032,9 @@ export default function Wellness() {
           </div>
 
           {unauth ? (
-            <Card className="mt-6 bg-clinical-slate/5 border border-clinical-slate/20">
+            <Card className="mt-6 bg-clinical-surface-elevated border border-clinical-border">
               <CardContent className="p-6 text-center space-y-3">
-                <p className="text-clinical-slate text-sm">
+                <p className="text-clinical-zinc-muted text-sm">
                   Sign in to track your daily nutrition, water, and streaks.
                 </p>
                 <Link to="/login?next=/wellness">
@@ -1045,9 +1045,9 @@ export default function Wellness() {
               </CardContent>
             </Card>
           ) : loadError ? (
-            <Card className="mt-6 bg-clinical-slate/5 border border-clinical-slate/20">
+            <Card className="mt-6 bg-clinical-surface-elevated border border-clinical-border">
               <CardContent className="p-6 text-center space-y-3">
-                <p className="text-clinical-slate text-sm">
+                <p className="text-clinical-zinc-muted text-sm">
                   Couldn't load your wellness dashboard.
                 </p>
                 <Button
@@ -1059,15 +1059,15 @@ export default function Wellness() {
               </CardContent>
             </Card>
           ) : !data ? (
-            <Card className="mt-6 bg-clinical-slate/5 border border-clinical-slate/20">
-              <CardContent className="p-6 text-clinical-slate text-sm">
+            <Card className="mt-6 bg-clinical-surface-elevated border border-clinical-border">
+              <CardContent className="p-6 text-clinical-zinc-muted text-sm">
                 Loading your dashboard…
               </CardContent>
             </Card>
           ) : (
             <>
               <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Card className="bg-clinical-slate/5 border border-clinical-slate/20">
+                <Card className="bg-clinical-surface-elevated border border-clinical-border">
                   <CardContent className="p-5 flex justify-center">
                     <Ring
                       label="Calories"
@@ -1082,7 +1082,7 @@ export default function Wellness() {
                     />
                   </CardContent>
                 </Card>
-                <Card className="bg-clinical-slate/5 border border-clinical-slate/20">
+                <Card className="bg-clinical-surface-elevated border border-clinical-border">
                   <CardContent className="p-5 flex justify-center">
                     <Ring
                       label="Protein"
@@ -1094,7 +1094,7 @@ export default function Wellness() {
                     />
                   </CardContent>
                 </Card>
-                <Card className="bg-clinical-slate/5 border border-clinical-slate/20">
+                <Card className="bg-clinical-surface-elevated border border-clinical-border">
                   <CardContent className="p-5 flex justify-center">
                     <Ring
                       label="Fiber"
@@ -1106,7 +1106,7 @@ export default function Wellness() {
                     />
                   </CardContent>
                 </Card>
-                <Card className="bg-clinical-slate/5 border border-clinical-slate/20">
+                <Card className="bg-clinical-surface-elevated border border-clinical-border">
                   <CardContent className="p-5 flex flex-col items-center gap-3">
                     <Ring
                       label="Water"
@@ -1134,7 +1134,7 @@ export default function Wellness() {
               </div>
 
               {(data.targets.activityKcal ?? 0) > 0 && (
-                <div className="mt-3 text-xs text-clinical-slate">
+                <div className="mt-3 text-xs text-clinical-zinc-muted">
                   Activity bump: +{data.targets.activityKcal} kcal added to
                   today's calorie target from your wearable.
                 </div>
@@ -1153,15 +1153,15 @@ export default function Wellness() {
                   best={data.streaks.veg?.bestDays ?? 0}
                   icon={Leaf}
                 />
-                <Card className="bg-clinical-slate/5 border border-clinical-slate/20">
+                <Card className="bg-clinical-surface-elevated border border-clinical-border">
                   <CardContent className="p-4">
-                    <div className="text-xs uppercase tracking-widest text-clinical-slate">
+                    <div className="text-xs uppercase tracking-widest text-clinical-zinc-muted">
                       Today's logs
                     </div>
                     <div className="text-white text-lg font-semibold mt-1">
                       {data.logs.length} entries
                     </div>
-                    <div className="text-[11px] text-clinical-slate">
+                    <div className="text-[11px] text-clinical-zinc-muted">
                       {
                         data.logs.filter((l) => l.source === "auto_order")
                           .length
@@ -1177,12 +1177,12 @@ export default function Wellness() {
       </section>
 
       {data && week && (
-        <section className="border-b border-clinical-slate/20 py-10">
+        <section className="border-b border-clinical-border py-10">
           <div className="max-w-7xl mx-auto px-4">
             <h2 className="text-white text-xl font-semibold mb-4">
               Last 7 days
             </h2>
-            <Card className="bg-clinical-slate/5 border border-clinical-slate/20">
+            <Card className="bg-clinical-surface-elevated border border-clinical-border">
               <CardContent className="p-5 grid grid-cols-1 md:grid-cols-2 gap-6">
                 <WeekBars
                   data={week.days}
@@ -1226,22 +1226,22 @@ export default function Wellness() {
       )}
 
       {data && (
-        <section className="border-b border-clinical-slate/20 py-10">
+        <section className="border-b border-clinical-border py-10">
           <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="bg-clinical-slate/5 border border-clinical-slate/20">
+            <Card className="bg-clinical-surface-elevated border border-clinical-border">
               <CardContent className="p-5">
                 <div className="flex items-center justify-between mb-3">
-                  <div className="text-xs uppercase tracking-widest text-clinical-slate">
+                  <div className="text-xs uppercase tracking-widest text-clinical-zinc-muted">
                     Today's entries
                   </div>
                   <ManualLogDialog onSaved={refreshAll} />
                 </div>
                 {data.logs.length === 0 ? (
-                  <div className="text-clinical-slate text-sm py-6 text-center">
+                  <div className="text-clinical-zinc-muted text-sm py-6 text-center">
                     Nothing logged yet today. Order a meal or add one manually.
                   </div>
                 ) : (
-                  <ul className="divide-y divide-clinical-slate/15">
+                  <ul className="divide-y divide-clinical-border">
                     {data.logs.map((log) => (
                       <li
                         key={log.id}
@@ -1249,7 +1249,7 @@ export default function Wellness() {
                       >
                         <div>
                           <div className="text-white text-sm">{log.label}</div>
-                          <div className="text-[11px] text-clinical-slate">
+                          <div className="text-[11px] text-clinical-zinc-muted">
                             {log.source === "auto_order"
                               ? "From delivered order"
                               : log.source === "water"
@@ -1264,7 +1264,7 @@ export default function Wellness() {
                           size="sm"
                           variant="ghost"
                           onClick={() => deleteLog(log.id)}
-                          className="text-clinical-slate hover:text-white"
+                          className="text-clinical-zinc-muted hover:text-white"
                           aria-label="Delete log"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -1312,7 +1312,7 @@ export function WeeklySummaryCard() {
   if (!week || !summary) return null;
 
   return (
-    <Card className="bg-clinical-slate/5 border border-clinical-slate/20">
+    <Card className="bg-clinical-surface-elevated border border-clinical-border">
       <CardContent className="p-5">
         <div className="flex items-center justify-between mb-3">
           <div>

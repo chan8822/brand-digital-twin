@@ -169,7 +169,7 @@ export default function ChallengeDetail() {
       </Link>
 
       {challenge.image && (
-        <div className="relative aspect-[16/9] rounded-2xl overflow-hidden border border-clinical-slate/20">
+        <div className="relative aspect-[16/9] rounded-2xl overflow-hidden border border-clinical-border">
           <img
             src={challenge.image}
             alt={challenge.title}
@@ -189,7 +189,7 @@ export default function ChallengeDetail() {
         <div className="space-y-2 flex-1">
           <h1 className="font-serif text-3xl text-white">{challenge.title}</h1>
           <p className="text-sm text-clinical-zinc">{challenge.tagline}</p>
-          <div className="flex items-center gap-3 text-[11px] text-clinical-zinc/80 tabular-nums">
+          <div className="flex items-center gap-3 text-[11px] text-clinical-zinc-muted tabular-nums">
             <span className="flex items-center gap-1">
               <CalendarDays className="w-3 h-3 text-clinical-gold" />
               {challenge.durationDays} days
@@ -198,7 +198,7 @@ export default function ChallengeDetail() {
               <Users className="w-3 h-3 text-clinical-gold" />
               {challenge.memberCount} joined
             </span>
-            <span className="text-clinical-zinc/70">Led by {challenge.rdName}</span>
+            <span className="text-clinical-zinc-muted">Led by {challenge.rdName}</span>
           </div>
         </div>
         <div className="shrink-0">
@@ -207,7 +207,7 @@ export default function ChallengeDetail() {
               variant="outline"
               onClick={() => setLeaveConfirmOpen(true)}
               disabled={leave.isPending}
-              className="min-h-11 border-clinical-slate/40 text-clinical-zinc hover:text-white"
+              className="min-h-11 border-clinical-border text-clinical-zinc hover:text-white"
             >
               Leave challenge
             </Button>
@@ -249,14 +249,14 @@ export default function ChallengeDetail() {
 
       {joined && upcomingCheckIns.length > 0 && (
         <>
-          <Separator className="bg-clinical-slate/20" />
+          <Separator className="bg-clinical-surface-elevated" />
           <section className="space-y-3">
             <div className="flex items-center gap-2">
               <Video className="w-4 h-4 text-clinical-gold" />
               <h2 className="text-clinical-label">Upcoming RD check-ins</h2>
               <Badge
                 variant="outline"
-                className="ml-auto border-clinical-slate/30 text-clinical-zinc text-[10px] tabular-nums"
+                className="ml-auto border-clinical-border text-clinical-zinc text-[10px] tabular-nums"
               >
                 {upcomingCheckIns.length} scheduled
               </Badge>
@@ -268,7 +268,7 @@ export default function ChallengeDetail() {
                 return (
                   <Card
                     key={ci.id}
-                    className="bg-clinical-surface border-clinical-slate/20"
+                    className="bg-clinical-surface border-clinical-border"
                   >
                     <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center gap-3">
                       <div className="flex-1 space-y-1">
@@ -285,7 +285,7 @@ export default function ChallengeDetail() {
                         </div>
                         <p className="text-[11px] text-clinical-zinc tabular-nums">
                           {formatCheckInWhen(ci.scheduledAt)}{" "}
-                          <span className="text-clinical-zinc/70">
+                          <span className="text-clinical-zinc-muted">
                             · {formatCountdown(ci.scheduledAt)}
                           </span>
                         </p>
@@ -315,7 +315,7 @@ export default function ChallengeDetail() {
         </>
       )}
 
-      <Separator className="bg-clinical-slate/20" />
+      <Separator className="bg-clinical-surface-elevated" />
 
       <section className="space-y-4">
         <div className="flex items-center gap-2">
@@ -323,24 +323,24 @@ export default function ChallengeDetail() {
           <h2 className="text-clinical-label">Cohort feed</h2>
           <Badge
             variant="outline"
-            className="ml-auto border-clinical-slate/30 text-clinical-zinc text-[10px] tabular-nums"
+            className="ml-auto border-clinical-border text-clinical-zinc text-[10px] tabular-nums"
           >
             {posts.length} post{posts.length === 1 ? "" : "s"}
           </Badge>
         </div>
 
         {joined ? (
-          <Card className="bg-clinical-surface border-clinical-slate/20">
+          <Card className="bg-clinical-surface border-clinical-border">
             <CardContent className="p-4 space-y-3">
               <Textarea
                 value={body}
                 onChange={(e) => setBody(e.target.value.slice(0, 1000))}
                 rows={3}
                 placeholder="Share progress, a meal photo idea, or a question for the RD…"
-                className="bg-clinical-dark border-clinical-slate/30 text-xs"
+                className="bg-clinical-dark border-clinical-border text-xs"
               />
               <div className="flex items-center justify-between">
-                <span className="text-[10px] text-clinical-zinc/70">
+                <span className="text-[10px] text-clinical-zinc-muted">
                   {body.length}/1000
                 </span>
                 <Button
@@ -355,23 +355,23 @@ export default function ChallengeDetail() {
             </CardContent>
           </Card>
         ) : (
-          <p className="text-[11px] text-clinical-zinc/70">
+          <p className="text-[11px] text-clinical-zinc-muted">
             Join the challenge to post in the cohort feed.
           </p>
         )}
 
         {posts.length === 0 ? (
-          <p className="text-[11px] text-clinical-zinc/70">
+          <p className="text-[11px] text-clinical-zinc-muted">
             No posts yet — be the first to share.
           </p>
         ) : (
           <div className="space-y-3">
             {posts.map((p) => (
-              <Card key={p.id} className="bg-clinical-surface border-clinical-slate/20">
+              <Card key={p.id} className="bg-clinical-surface border-clinical-border">
                 <CardContent className="p-4 space-y-1.5">
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-semibold text-white">{p.authorName}</p>
-                    <span className="text-[10px] text-clinical-zinc/70 tabular-nums">
+                    <span className="text-[10px] text-clinical-zinc-muted tabular-nums">
                       {formatRelative(p.createdAt)}
                     </span>
                   </div>
@@ -387,7 +387,7 @@ export default function ChallengeDetail() {
 
       {/* ------ Leave-challenge confirmation ------ */}
       <AlertDialog open={leaveConfirmOpen} onOpenChange={setLeaveConfirmOpen}>
-        <AlertDialogContent className="bg-clinical-surface border-clinical-slate/30">
+        <AlertDialogContent className="bg-clinical-surface border-clinical-border">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">
               Leave this challenge?

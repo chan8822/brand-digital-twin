@@ -46,7 +46,7 @@ export default function TeamMember() {
 
       <section className="max-w-5xl mx-auto px-4 pt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-1">
-          <Card className="bg-clinical-surface border-clinical-slate/20">
+          <Card className="bg-clinical-surface border-clinical-border">
             <CardContent className="p-6 text-center space-y-3">
               <div
                 className={`w-24 h-24 rounded-full ring-4 ${accent.ring} ${accent.bg} flex items-center justify-center mx-auto`}
@@ -70,7 +70,7 @@ export default function TeamMember() {
                 )}
                 {member.role === "rd" ? "Registered Dietitian" : "Head Chef"}
               </Badge>
-              <div className="text-[10px] uppercase tracking-widest text-clinical-zinc/70 pt-2">
+              <div className="text-[10px] uppercase tracking-widest text-clinical-zinc-muted pt-2">
                 {member.yearsExperience} years experience
               </div>
             </CardContent>
@@ -88,7 +88,7 @@ export default function TeamMember() {
           <div className="space-y-2">
             <div className="flex items-center gap-1.5">
               <Award className="w-3.5 h-3.5 text-clinical-gold" />
-              <p className="text-[10px] uppercase tracking-widest text-clinical-zinc/70 font-semibold">
+              <p className="text-[10px] uppercase tracking-widest text-clinical-zinc-muted font-semibold">
                 Credentials
               </p>
             </div>
@@ -103,7 +103,7 @@ export default function TeamMember() {
 
           {member.lifestyles && member.lifestyles.length > 0 && (
             <div className="space-y-2">
-              <p className="text-[10px] uppercase tracking-widest text-clinical-zinc/70 font-semibold">
+              <p className="text-[10px] uppercase tracking-widest text-clinical-zinc-muted font-semibold">
                 Owns these protocols
               </p>
               <div className="flex flex-wrap gap-1.5">
@@ -130,7 +130,7 @@ export default function TeamMember() {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {ownedDishes.map((d) => (
               <Link key={d.id} to={`/dish/${d.slug}`}>
-                <Card className="bg-clinical-surface border-clinical-slate/20 hover:border-clinical-gold/40 transition-colors overflow-hidden h-full">
+                <Card className="bg-clinical-surface border-clinical-border hover:border-clinical-gold/40 transition-colors overflow-hidden h-full">
                   <div className="aspect-square overflow-hidden">
                     <img
                       src={d.image}

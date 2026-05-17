@@ -135,8 +135,8 @@ export default function MarketplaceItemPage() {
       </Link>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="bg-clinical-surface border-clinical-slate/20 overflow-hidden">
-          <div className="aspect-square bg-clinical-slate/20">
+        <Card className="bg-clinical-surface border-clinical-border overflow-hidden">
+          <div className="aspect-square bg-clinical-surface-elevated">
             {item.image && (
               <img
                 src={item.image}
@@ -159,7 +159,7 @@ export default function MarketplaceItemPage() {
                 <Badge
                   key={b}
                   variant="outline"
-                  className="border-clinical-slate/40 text-clinical-zinc text-[10px]"
+                  className="border-clinical-border text-clinical-zinc text-[10px]"
                 >
                   {b}
                 </Badge>
@@ -186,7 +186,7 @@ export default function MarketplaceItemPage() {
             </div>
           </div>
 
-          <Separator className="bg-clinical-slate/20" />
+          <Separator className="bg-clinical-surface-elevated" />
 
           <div className="space-y-2">
             <Label className="text-xs text-clinical-zinc uppercase tracking-wide">
@@ -196,7 +196,7 @@ export default function MarketplaceItemPage() {
               <Button
                 variant="outline"
                 size="icon"
-                className="h-8 w-8 border-clinical-slate/40"
+                className="h-8 w-8 border-clinical-border"
                 onClick={() => setQty((q) => Math.max(1, q - 1))}
                 aria-label="Decrease"
               >
@@ -208,7 +208,7 @@ export default function MarketplaceItemPage() {
               <Button
                 variant="outline"
                 size="icon"
-                className="h-8 w-8 border-clinical-slate/40"
+                className="h-8 w-8 border-clinical-border"
                 onClick={() => setQty((q) => Math.min(20, q + 1))}
                 aria-label="Increase"
               >
@@ -229,7 +229,7 @@ export default function MarketplaceItemPage() {
               onValueChange={(v) => setDeliveryMode(v as typeof deliveryMode)}
               className="space-y-2"
             >
-              <label className="flex items-start gap-3 p-3 rounded-lg border border-clinical-slate/30 hover:border-clinical-gold/40 cursor-pointer">
+              <label className="flex items-start gap-3 p-3 rounded-lg border border-clinical-border hover:border-clinical-gold/40 cursor-pointer">
                 <RadioGroupItem value="ship" className="mt-1" />
                 <div className="flex-1">
                   <div className="text-sm text-white flex items-center gap-2">
@@ -241,7 +241,7 @@ export default function MarketplaceItemPage() {
                   </p>
                 </div>
               </label>
-              <label className="flex items-start gap-3 p-3 rounded-lg border border-clinical-slate/30 hover:border-clinical-gold/40 cursor-pointer">
+              <label className="flex items-start gap-3 p-3 rounded-lg border border-clinical-border hover:border-clinical-gold/40 cursor-pointer">
                 <RadioGroupItem
                   value="bundle_with_meal"
                   className="mt-1"
@@ -259,7 +259,7 @@ export default function MarketplaceItemPage() {
                   {deliveryMode === "bundle_with_meal" &&
                     recentOrders.length > 0 && (
                       <select
-                        className="mt-2 w-full bg-[#0b0b0b] border border-clinical-slate/30 rounded px-2 py-1.5 text-xs text-white"
+                        className="mt-2 w-full bg-[#0b0b0b] border border-clinical-border rounded px-2 py-1.5 text-xs text-white"
                         value={bundleOrderId ?? ""}
                         onChange={(e) =>
                           setBundleOrderId(
@@ -295,7 +295,7 @@ export default function MarketplaceItemPage() {
               : `Place order · ${formatPrice(item.pricePaise * qty)}`}
           </Button>
 
-          <Card className="bg-clinical-surface/60 border-clinical-slate/20">
+          <Card className="bg-clinical-surface/60 border-clinical-border">
             <CardContent className="p-3 flex items-start gap-2 text-[11px] text-clinical-zinc">
               <ShieldCheck className="w-3.5 h-3.5 text-clinical-sage shrink-0 mt-0.5" />
               7-day return on unopened items. Sealed supplements are
@@ -306,7 +306,7 @@ export default function MarketplaceItemPage() {
       </div>
 
       {item.longDescription && (
-        <Card className="bg-clinical-surface border-clinical-slate/20">
+        <Card className="bg-clinical-surface border-clinical-border">
           <CardContent className="p-5 space-y-2">
             <h2 className="text-sm font-semibold text-white">Details</h2>
             <p className="text-[12px] text-clinical-zinc leading-relaxed whitespace-pre-line">

@@ -160,7 +160,7 @@ export default function RdConsole() {
         <select
           value={claimSlug}
           onChange={(e) => setClaimSlug(e.target.value)}
-          className="bg-clinical-surface border border-clinical-slate/30 text-xs rounded-md px-3 h-9 text-white w-full"
+          className="bg-clinical-surface border border-clinical-border text-xs rounded-md px-3 h-9 text-white w-full"
         >
           {rds.map(({ profile, member: m }) => (
             <option key={profile.slug} value={profile.slug}>
@@ -173,7 +173,7 @@ export default function RdConsole() {
           placeholder="Admin token"
           value={adminToken}
           onChange={(e) => setAdminToken(e.target.value)}
-          className="bg-clinical-surface border border-clinical-slate/30 text-xs rounded-md px-3 h-9 text-white w-full"
+          className="bg-clinical-surface border border-clinical-border text-xs rounded-md px-3 h-9 text-white w-full"
         />
         <Button
           onClick={claim}
@@ -215,7 +215,7 @@ export default function RdConsole() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-4">
         {/* Appointment column */}
-        <Card className="bg-clinical-surface border-clinical-slate/30">
+        <Card className="bg-clinical-surface border-clinical-border">
           <CardContent className="p-4 space-y-3">
             <div className="flex items-center gap-2">
               <CalendarDays className="w-4 h-4 text-clinical-gold" />
@@ -237,7 +237,7 @@ export default function RdConsole() {
                   className={`w-full text-left rounded-md border p-3 transition-colors ${
                     selectedUserId === a.userId
                       ? "border-clinical-gold/50 bg-clinical-gold/10"
-                      : "border-clinical-slate/30 hover:border-clinical-gold/30"
+                      : "border-clinical-border hover:border-clinical-gold/30"
                   }`}
                 >
                   <p className="text-xs text-white tabular-nums">
@@ -251,7 +251,7 @@ export default function RdConsole() {
               ))}
             </div>
 
-            <div className="pt-2 border-t border-clinical-slate/30">
+            <div className="pt-2 border-t border-clinical-border">
               <p className="text-[10px] uppercase tracking-widest text-clinical-zinc mb-2">
                 All clients
               </p>
@@ -297,7 +297,7 @@ export default function RdConsole() {
               />
             </>
           ) : (
-            <Card className="bg-clinical-surface border-clinical-slate/30">
+            <Card className="bg-clinical-surface border-clinical-border">
               <CardContent className="p-6 text-center text-xs text-clinical-zinc">
                 Pick a session or client to see their full record.
               </CardContent>
@@ -503,7 +503,7 @@ function ActivePatientOrdersPanel() {
   );
 
   return (
-    <Card className="bg-clinical-surface border-clinical-slate/30">
+    <Card className="bg-clinical-surface border-clinical-border">
       <CardContent className="p-4 space-y-3">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2">
@@ -609,7 +609,7 @@ function ActivePatientOrderRow({
   );
 
   return (
-    <div className="rounded-md border border-clinical-slate/30 p-3 space-y-2">
+    <div className="rounded-md border border-clinical-border p-3 space-y-2">
       <div className="flex items-start justify-between gap-2 flex-wrap">
         <div>
           <p className="font-mono text-[11px] text-clinical-gold">
@@ -637,7 +637,7 @@ function ActivePatientOrderRow({
             className={
               i <= stageIndex
                 ? "text-clinical-gold"
-                : "text-clinical-zinc/60"
+                : "text-clinical-zinc-muted"
             }
           >
             {s.shortLabel}
@@ -682,7 +682,7 @@ function UserDetail({
 
   if (!data) {
     return (
-      <Card className="bg-clinical-surface border-clinical-slate/30">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-6 text-xs text-clinical-zinc">
           Loading…
         </CardContent>
@@ -707,7 +707,7 @@ function UserDetail({
 
   return (
     <>
-      <Card className="bg-clinical-surface border-clinical-slate/30">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-4 space-y-3">
           <p className="text-xs text-white font-medium">
             Sessions with user {userId.slice(0, 12)}…
@@ -734,7 +734,7 @@ function UserDetail({
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="bg-clinical-surface border-clinical-slate/30">
+        <Card className="bg-clinical-surface border-clinical-border">
           <CardContent className="p-4 space-y-3">
             <div className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-clinical-sage" />
@@ -747,7 +747,7 @@ function UserDetail({
                 {data.progress.map((l) => (
                   <div
                     key={l.id}
-                    className="rounded-md border border-clinical-slate/30 p-2 text-[11px] text-clinical-zinc"
+                    className="rounded-md border border-clinical-border p-2 text-[11px] text-clinical-zinc"
                   >
                     <p className="text-white text-xs tabular-nums">
                       {new Date(l.loggedAt).toLocaleDateString("en-IN", {
@@ -791,7 +791,7 @@ function UserDetail({
           </CardContent>
         </Card>
 
-        <Card className="bg-clinical-surface border-clinical-slate/30">
+        <Card className="bg-clinical-surface border-clinical-border">
           <CardContent className="p-4 space-y-3">
             <div className="flex items-center gap-2">
               <FileText className="w-4 h-4 text-clinical-gold" />
@@ -806,7 +806,7 @@ function UserDetail({
                 {data.labs.map((l) => (
                   <div
                     key={l.id}
-                    className="rounded-md border border-clinical-slate/30 p-2 text-[11px] text-clinical-zinc"
+                    className="rounded-md border border-clinical-border p-2 text-[11px] text-clinical-zinc"
                   >
                     <a
                       href={l.fileUrl}
@@ -831,13 +831,13 @@ function UserDetail({
         </Card>
       </div>
 
-      <Card className="bg-clinical-surface border-clinical-slate/30">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-4 space-y-3">
           <div className="flex items-center gap-2">
             <MessageCircle className="w-4 h-4 text-clinical-sage" />
             <p className="text-xs text-white font-medium">Conversation</p>
           </div>
-          <div className="space-y-2 max-h-[260px] overflow-y-auto rounded-md border border-clinical-slate/30 bg-[#050505] p-3">
+          <div className="space-y-2 max-h-[260px] overflow-y-auto rounded-md border border-clinical-border bg-[#050505] p-3">
             {data.messages.length === 0 ? (
               <p className="text-[11px] text-clinical-zinc text-center py-6">
                 No messages yet.
@@ -877,7 +877,7 @@ function UserDetail({
               rows={2}
               maxLength={4000}
               placeholder="Reply as RD…"
-              className="bg-[#050505] border-clinical-slate/30 text-xs"
+              className="bg-[#050505] border-clinical-border text-xs"
             />
             <Button
               onClick={sendReply}
@@ -925,7 +925,7 @@ function ApptEditor({
   }
 
   return (
-    <div className="rounded-md border border-clinical-slate/30 p-3 space-y-2">
+    <div className="rounded-md border border-clinical-border p-3 space-y-2">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs text-white tabular-nums">
@@ -955,7 +955,7 @@ function ApptEditor({
         value={joinUrl}
         onChange={(e) => setJoinUrl(e.target.value)}
         placeholder="Video room URL (paste from Zoom/Meet/etc.)"
-        className="bg-[#050505] border-clinical-slate/30 text-[11px] h-8"
+        className="bg-[#050505] border-clinical-border text-[11px] h-8"
       />
       <Textarea
         value={notes}
@@ -963,7 +963,7 @@ function ApptEditor({
         placeholder="Private RD notes for this session — visible to the user."
         rows={3}
         maxLength={4000}
-        className="bg-[#050505] border-clinical-slate/30 text-[11px]"
+        className="bg-[#050505] border-clinical-border text-[11px]"
       />
       <Button
         onClick={save}

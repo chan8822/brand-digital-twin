@@ -335,7 +335,7 @@ export default function WeeklyPlanner() {
                     key={i}
                     type="button"
                     onClick={() => cycleCalendar(i)}
-                    className="flex flex-col items-center gap-0.5 p-1 rounded border border-clinical-zinc/20 hover:border-clinical-cream/40"
+                    className="flex flex-col items-center gap-0.5 p-1 rounded border border-clinical-border hover:border-clinical-cream/40"
                     data-testid={`button-calendar-${i}`}
                   >
                     <span className="text-xs text-clinical-zinc">{DAY_LABELS[i]}</span>
@@ -448,7 +448,7 @@ export default function WeeklyPlanner() {
                   key={s.dishId}
                   type="button"
                   onClick={() => handleSwap(s.dishId)}
-                  className="text-left p-3 rounded-lg border border-clinical-zinc/30 hover:border-clinical-gold/60 hover:bg-clinical-gold/5 transition"
+                  className="text-left p-3 rounded-lg border border-clinical-border hover:border-clinical-gold/60 hover:bg-clinical-gold/5 transition"
                   data-testid={`button-swap-${s.dishId}`}
                 >
                   <div className="flex items-start justify-between gap-2">
@@ -665,7 +665,7 @@ function DayCard({
             return (
               <div
                 key={slot}
-                className="flex items-start justify-between gap-2 p-2 rounded border border-clinical-zinc/20"
+                className="flex items-start justify-between gap-2 p-2 rounded border border-clinical-border"
               >
                 <div className="min-w-0">
                   <div className="text-xs text-clinical-zinc">

@@ -71,7 +71,7 @@ export default function RdDirectory() {
       </header>
 
       {activeProtocol && rds.length === 0 && (
-        <div className="rounded-xl border border-clinical-slate/30 bg-clinical-surface p-5 text-sm text-clinical-zinc">
+        <div className="rounded-xl border border-clinical-border bg-clinical-surface p-5 text-sm text-clinical-zinc">
           No RDs currently match this protocol —{" "}
           <button
             type="button"
@@ -88,7 +88,7 @@ export default function RdDirectory() {
         {rds.map(({ profile, member }) => (
           <Card
             key={profile.slug}
-            className="bg-clinical-surface border-clinical-slate/30 hover:border-clinical-gold/40 transition-colors flex flex-col"
+            className="bg-clinical-surface border-clinical-border hover:border-clinical-gold/40 transition-colors flex flex-col"
           >
             <CardContent className="p-5 space-y-4 flex-1 flex flex-col">
               <div className="flex items-start gap-3">
@@ -126,7 +126,7 @@ export default function RdDirectory() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-3 mt-auto border-t border-clinical-slate/30">
+              <div className="flex items-center justify-between pt-3 mt-auto border-t border-clinical-border">
                 <div className="text-[11px] text-clinical-zinc">
                   <span className="text-clinical-sage font-semibold">Free</span>{" "}
                   intro · {formatRupees(profile.followUp30PricePaise)}/30m
@@ -147,7 +147,7 @@ export default function RdDirectory() {
         ))}
       </div>
 
-      <div className="rounded-xl border border-clinical-slate/30 bg-clinical-surface p-5">
+      <div className="rounded-xl border border-clinical-border bg-clinical-surface p-5">
         <h2 className="text-sm font-semibold text-white mb-1">
           Already booked?
         </h2>

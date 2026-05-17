@@ -54,7 +54,7 @@ function Section({ title, kicker, children }: { title: string; kicker?: string; 
         {kicker && <p className="text-clinical-label">{kicker}</p>}
         <h2 className="text-clinical-h2 text-white mt-1">{title}</h2>
       </div>
-      <Separator className="bg-clinical-slate/30" />
+      <Separator className="bg-clinical-surface-elevated" />
       <div>{children}</div>
     </section>
   );
@@ -141,7 +141,7 @@ function AlertPaletteGrid() {
           return (
             <div
               key={a.token}
-              className="rounded-lg border border-clinical-slate/30 bg-clinical-surface overflow-hidden"
+              className="rounded-lg border border-clinical-border bg-clinical-surface overflow-hidden"
             >
               <div className="flex">
                 <div className="h-20 w-20 shrink-0" style={{ background: a.accent }} />
@@ -156,7 +156,7 @@ function AlertPaletteGrid() {
                   </p>
                 </div>
               </div>
-              <div className="px-3 py-2 border-t border-clinical-slate/30 bg-clinical-dark">
+              <div className="px-3 py-2 border-t border-clinical-border bg-clinical-dark">
                 <div className="grid grid-cols-2 gap-2 text-[11px]">
                   <div>
                     <p className="text-clinical-zinc">Text on dark</p>
@@ -212,7 +212,7 @@ export default function Styleguide() {
   return (
     <div className="min-h-screen bg-clinical-dark">
       {/* Hero */}
-      <div className="border-b border-clinical-slate/20 bg-gradient-to-b from-clinical-gold/5 to-transparent">
+      <div className="border-b border-clinical-border bg-gradient-to-b from-clinical-gold/5 to-transparent">
         <div className="max-w-5xl mx-auto px-6 py-16">
           <p className="text-clinical-label text-clinical-gold">Tanmatra · Design System</p>
           <h1 className="text-display text-white mt-3">
@@ -222,7 +222,7 @@ export default function Styleguide() {
             The visual language behind Tanmatra. Every token here is wired into both Tailwind utilities and JS motion helpers so screens stay in lockstep.
           </p>
           <div className="flex items-center gap-2 mt-6 text-caption text-clinical-zinc">
-            <kbd className="rounded bg-clinical-slate/40 px-1.5 py-0.5 font-mono text-[10px]">⌘K</kbd>
+            <kbd className="rounded bg-clinical-surface-elevated px-1.5 py-0.5 font-mono text-[10px]">⌘K</kbd>
             <span>opens the command palette anywhere in the app</span>
           </div>
         </div>
@@ -275,7 +275,7 @@ export default function Styleguide() {
             {swatches.map((s) => (
               <div
                 key={s.token}
-                className="rounded-lg border border-clinical-slate/30 bg-clinical-surface overflow-hidden"
+                className="rounded-lg border border-clinical-border bg-clinical-surface overflow-hidden"
               >
                 <div className="h-16" style={{ background: `var(${s.token})` }} />
                 <div className="p-3">
@@ -293,7 +293,7 @@ export default function Styleguide() {
             {radii.map((r) => (
               <div
                 key={r.name}
-                className="flex flex-col items-center gap-2 p-4 border border-clinical-slate/30 bg-clinical-surface"
+                className="flex flex-col items-center gap-2 p-4 border border-clinical-border bg-clinical-surface"
                 style={{ borderRadius: `var(--radius-${r.name})` }}
               >
                 <div
@@ -315,7 +315,7 @@ export default function Styleguide() {
                 key={m.name}
                 whileHover={{ y: -4, scale: 1.02 }}
                 transition={{ duration: DURATION.base, ease: EASE.standard }}
-                className="rounded-lg border border-clinical-slate/30 bg-clinical-surface p-4 cursor-default"
+                className="rounded-lg border border-clinical-border bg-clinical-surface p-4 cursor-default"
               >
                 <p className="text-clinical-label">{m.name}</p>
                 <p className="text-clinical-data text-clinical-gold mt-1">{m.value}</p>
@@ -334,18 +334,18 @@ export default function Styleguide() {
 
         {/* Iconography */}
         <Section title="Iconography" kicker="Phosphor (primary) · Lucide (legacy)">
-          <Card className="bg-clinical-surface border-clinical-slate/30 p-5">
+          <Card className="bg-clinical-surface border-clinical-border p-5">
             <p className="text-body-sm text-clinical-zinc mb-4">
               Use <strong className="text-white">Phosphor</strong> for nav, anchor screens, and new components — its rounded geometry pairs with Inter Variable. <strong className="text-white">Lucide</strong> remains available for legacy admin/RD console screens already using it.
             </p>
             <div className="grid grid-cols-4 sm:grid-cols-8 gap-3">
               {[ForkKnife, Calendar, Stethoscope, UsersThree, UserCircle, Sparkle, HandHeart, ShieldCheck].map((Icon, i) => (
-                <div key={i} className="aspect-square rounded-md border border-clinical-slate/30 bg-clinical-dark flex items-center justify-center">
+                <div key={i} className="aspect-square rounded-md border border-clinical-border bg-clinical-dark flex items-center justify-center">
                   <Icon className="w-5 h-5 text-clinical-gold" weight="regular" />
                 </div>
               ))}
               {[Heart, Activity, Flame, Leaf, Dumbbell].map((Icon, i) => (
-                <div key={`l-${i}`} className="aspect-square rounded-md border border-clinical-slate/30 bg-clinical-dark flex items-center justify-center">
+                <div key={`l-${i}`} className="aspect-square rounded-md border border-clinical-border bg-clinical-dark flex items-center justify-center">
                   <Icon className="w-5 h-5 text-clinical-zinc" />
                 </div>
               ))}
@@ -387,7 +387,7 @@ export default function Styleguide() {
 
         {/* Focus rings */}
         <Section title="Focus rings" kicker="a11y · keyboard">
-          <Card className="p-6 bg-clinical-surface border-clinical-slate/30">
+          <Card className="p-6 bg-clinical-surface border-clinical-border">
             <p className="text-body-sm text-clinical-zinc mb-4">
               Every interactive primitive uses the same canonical focus ring:{" "}
               <code className="text-clinical-data text-clinical-gold">
@@ -407,15 +407,15 @@ export default function Styleguide() {
         {/* Cards */}
         <Section title="Surface elevations">
           <div className="grid sm:grid-cols-3 gap-3">
-            <div className="rounded-lg border border-clinical-slate/30 bg-clinical-dark p-5">
+            <div className="rounded-lg border border-clinical-border bg-clinical-dark p-5">
               <p className="text-clinical-label">L0 · clinical-dark</p>
               <p className="text-body text-white mt-2">Page background</p>
             </div>
-            <div className="rounded-lg border border-clinical-slate/30 bg-clinical-surface p-5">
+            <div className="rounded-lg border border-clinical-border bg-clinical-surface p-5">
               <p className="text-clinical-label">L1 · clinical-surface</p>
               <p className="text-body text-white mt-2">Cards, sheets, footer</p>
             </div>
-            <div className="rounded-lg border border-clinical-slate/30 bg-clinical-surface-elevated p-5 shadow-clinical">
+            <div className="rounded-lg border border-clinical-border bg-clinical-surface-elevated p-5 shadow-clinical">
               <p className="text-clinical-label">L2 · surface-elevated</p>
               <p className="text-body text-white mt-2">Popovers, dialogs</p>
             </div>

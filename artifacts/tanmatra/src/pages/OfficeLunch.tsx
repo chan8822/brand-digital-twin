@@ -145,7 +145,7 @@ export default function OfficeLunchPage() {
             className={`text-[10px] capitalize ${
               windowOpen
                 ? "border-clinical-sage/40 text-clinical-sage"
-                : "border-clinical-slate/40 text-clinical-zinc"
+                : "border-clinical-border text-clinical-zinc"
             }`}
           >
             {windowOpen ? "Picks open" : o.status}
@@ -157,7 +157,7 @@ export default function OfficeLunchPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <Card className="lg:col-span-2 bg-clinical-surface border-clinical-slate/20">
+        <Card className="lg:col-span-2 bg-clinical-surface border-clinical-border">
           <CardContent className="p-5 space-y-3">
             <h2 className="text-sm font-semibold text-white">Pick your meal</h2>
             {!windowOpen && (
@@ -171,7 +171,7 @@ export default function OfficeLunchPage() {
                 return (
                   <div
                     key={dish.id}
-                    className="flex items-center justify-between p-2 rounded-md border border-clinical-slate/20 bg-clinical-dark"
+                    className="flex items-center justify-between p-2 rounded-md border border-clinical-border bg-clinical-dark"
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       {dish.imageUrl && (
@@ -179,7 +179,7 @@ export default function OfficeLunchPage() {
                           src={dish.imageUrl}
                           alt={dish.name}
                           loading="lazy"
-                          className="w-10 h-10 rounded object-cover border border-clinical-slate/20"
+                          className="w-10 h-10 rounded object-cover border border-clinical-border"
                         />
                       )}
                       <div className="min-w-0">
@@ -214,7 +214,7 @@ export default function OfficeLunchPage() {
                 );
               })}
             </div>
-            <Separator className="bg-clinical-slate/20" />
+            <Separator className="bg-clinical-surface-elevated" />
             <div className="flex items-center justify-between text-xs">
               <span className="text-clinical-zinc">Your total</span>
               <span
@@ -235,7 +235,7 @@ export default function OfficeLunchPage() {
           </CardContent>
         </Card>
 
-        <Card className="bg-clinical-surface border-clinical-slate/20">
+        <Card className="bg-clinical-surface border-clinical-border">
           <CardContent className="p-5 space-y-3">
             <h2 className="text-sm font-semibold text-white flex items-center gap-2">
               <Users className="w-4 h-4 text-clinical-gold" /> Team picks ({o.picks.length})
@@ -250,7 +250,7 @@ export default function OfficeLunchPage() {
                 o.picks.map((p) => (
                   <div
                     key={p.userId}
-                    className="p-2 rounded-md border border-clinical-slate/20 bg-clinical-dark"
+                    className="p-2 rounded-md border border-clinical-border bg-clinical-dark"
                   >
                     <div className="flex items-center justify-between">
                       <p className="text-xs font-medium text-white">{p.userName}</p>

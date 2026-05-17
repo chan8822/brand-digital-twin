@@ -470,7 +470,7 @@ export function buildRecentMeals(orders: PastOrder[]): RecentMeal[] {
     .slice(0, 3)
     .map((o) => {
       const when = new Date(o.placedAt);
-      const whenLabel = when.toLocaleString("en-IN", {
+      const whenLabel = when.toLocaleString([], {
         weekday: "short",
         hour: "numeric",
         minute: "2-digit",

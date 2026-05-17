@@ -10,7 +10,6 @@ import { OrdersProvider } from "@/lib/ordersContext";
 import { PreferencesProvider } from "@/lib/preferencesContext";
 import OnboardingQuizGate from "@/components/preferences/OnboardingQuizGate";
 import Header from "@/components/layout/Header";
-import WelcomeOfferBanner from "@/components/marketing/WelcomeOfferBanner";
 import Footer from "@/components/layout/Footer";
 import BottomNav from "@/components/layout/BottomNav";
 import ScrollToTop from "@/components/layout/ScrollToTop";
@@ -55,7 +54,6 @@ const Account = lazy(() => import("@/pages/Account"));
 const Addresses = lazy(() => import("@/pages/Addresses"));
 const Terms = lazy(() => import("@/pages/Terms"));
 const Privacy = lazy(() => import("@/pages/Privacy"));
-const Refunds = lazy(() => import("@/pages/Refunds"));
 // Clinical / wellness surfaces — heavy chart deps (recharts), niche audience
 const Wellness = lazy(() => import("@/pages/Wellness"));
 const Performance = lazy(() => import("@/pages/Performance"));
@@ -207,11 +205,6 @@ export default function App() {
               <ThemeManager />
               <ScrollToTop />
               <div className="min-h-screen flex flex-col bg-clinical-dark">
-                {/* First-order offer banner sits above the header so a
-                    cold visitor sees price+offer before any chrome.
-                    Auto-hides once OrdersContext shows ≥1 past order
-                    or after dismiss (7-day TTL). */}
-                <WelcomeOfferBanner />
                 <Header />
                 <OnboardingQuizGate />
                 <main className="flex-1 pb-20 md:pb-0">
@@ -387,7 +380,6 @@ export default function App() {
                     <Route path="/login" element={<Login />} />
                     <Route path="/terms" element={<Terms />} />
                     <Route path="/privacy" element={<Privacy />} />
-                    <Route path="/refunds" element={<Refunds />} />
                     <Route path="/admin/login" element={<AdminLogin />} />
                     {import.meta.env.DEV && (
                       <Route path="/__styleguide" element={<Styleguide />} />

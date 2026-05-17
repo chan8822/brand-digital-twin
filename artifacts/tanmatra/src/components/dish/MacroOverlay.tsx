@@ -103,7 +103,7 @@ export default function MacroOverlay({ macros, rdVerified = false, compact = fal
             <span className="text-clinical-zinc">Sodium</span>
             <span className="tabular-nums text-white font-medium">
               {sodiumMg}mg
-              <span className="text-clinical-zinc/70 text-[10px] ml-1">
+              <span className="text-clinical-zinc-muted text-[10px] ml-1">
                 ({Math.round((sodiumMg / 2300) * 100)}% DV)
               </span>
             </span>
@@ -139,7 +139,7 @@ function MacroBar({
           {unit}
         </span>
       </div>
-      <div className="h-1.5 bg-clinical-slate/30 rounded-full overflow-hidden">
+      <div className="h-1.5 bg-clinical-surface-elevated rounded-full overflow-hidden">
         <div
           className={`h-full ${barColor} rounded-full transition-all duration-700 ease-out`}
           style={{ width: `${Math.max(pct, 4)}%` }}

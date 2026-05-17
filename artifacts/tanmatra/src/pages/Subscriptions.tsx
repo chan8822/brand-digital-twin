@@ -86,7 +86,7 @@ const DELIVERY_BADGE: Record<SubscriptionDelivery["status"], { label: string; cl
   },
   paused: {
     label: "Paused",
-    cls: "bg-clinical-zinc/15 text-clinical-zinc border-clinical-zinc/40",
+    cls: "bg-clinical-zinc/15 text-clinical-zinc border-clinical-border",
   },
   skipped: {
     label: "Skipped",
@@ -269,7 +269,7 @@ export default function Subscriptions() {
       </header>
 
       {/* Tabs */}
-      <div className="flex flex-wrap gap-2 border-b border-clinical-slate/20 pb-2">
+      <div className="flex flex-wrap gap-2 border-b border-clinical-border pb-2">
         {subs.map((s) => {
           const active = s.id === activeId;
           return (
@@ -303,7 +303,7 @@ export default function Subscriptions() {
             return (
               <Card
                 key={s.id}
-                className="bg-clinical-surface border-clinical-slate/20"
+                className="bg-clinical-surface border-clinical-border"
               >
                 <CardContent className="p-4 space-y-3">
                   <div className="flex items-center justify-between">
@@ -413,7 +413,7 @@ export default function Subscriptions() {
       />}
 
       <Dialog open={windowEditOpen} onOpenChange={setWindowEditOpen}>
-        <DialogContent className="bg-clinical-surface border-clinical-slate/30">
+        <DialogContent className="bg-clinical-surface border-clinical-border">
           <DialogHeader>
             <DialogTitle className="text-white flex items-center gap-2">
               <Clock className="w-4 h-4 text-clinical-gold" />
@@ -432,7 +432,7 @@ export default function Subscriptions() {
                   className={`px-2.5 py-1 rounded-md text-[11px] border ${
                     w === pendingWindow
                       ? "border-clinical-gold bg-clinical-gold/10 text-clinical-gold"
-                      : "border-clinical-slate/30 text-clinical-zinc"
+                      : "border-clinical-border text-clinical-zinc"
                   }`}
                 >
                   {w}
@@ -443,7 +443,7 @@ export default function Subscriptions() {
           <DialogFooter>
             <Button
               variant="outline"
-              className="border-clinical-slate/30 text-clinical-zinc"
+              className="border-clinical-border text-clinical-zinc"
               onClick={() => setWindowEditOpen(false)}
             >
               Cancel
@@ -469,7 +469,7 @@ export default function Subscriptions() {
       </Dialog>
 
       <Dialog open={reschedDelivery !== null} onOpenChange={(open) => !open && setReschedDelivery(null)}>
-        <DialogContent className="bg-clinical-surface border-clinical-slate/30">
+        <DialogContent className="bg-clinical-surface border-clinical-border">
           <DialogHeader>
             <DialogTitle className="text-white flex items-center gap-2">
               <Clock className="w-4 h-4 text-clinical-gold" />
@@ -484,7 +484,7 @@ export default function Subscriptions() {
                 value={reschedDate}
                 onChange={(e) => setReschedDate(e.target.value)}
                 min={new Date().toISOString().slice(0, 10)}
-                className="bg-clinical-dark border-clinical-slate/30 text-white"
+                className="bg-clinical-dark border-clinical-border text-white"
               />
             </div>
             <div className="space-y-1.5">
@@ -497,7 +497,7 @@ export default function Subscriptions() {
                     className={`px-2.5 py-1 rounded-md text-[11px] border ${
                       w === reschedWindow
                         ? "border-clinical-gold bg-clinical-gold/10 text-clinical-gold"
-                        : "border-clinical-slate/30 text-clinical-zinc"
+                        : "border-clinical-border text-clinical-zinc"
                     }`}
                   >
                     {w}
@@ -509,7 +509,7 @@ export default function Subscriptions() {
           <DialogFooter>
             <Button
               variant="outline"
-              className="border-clinical-slate/30 text-clinical-zinc"
+              className="border-clinical-border text-clinical-zinc"
               onClick={() => setReschedDelivery(null)}
             >
               Cancel
@@ -537,7 +537,7 @@ export default function Subscriptions() {
 
       {/* ------ Cancel confirmation (destructive) ------ */}
       <AlertDialog open={cancelConfirmOpen} onOpenChange={setCancelConfirmOpen}>
-        <AlertDialogContent className="bg-clinical-surface border-clinical-slate/30">
+        <AlertDialogContent className="bg-clinical-surface border-clinical-border">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">
               Cancel this subscription?
@@ -575,7 +575,7 @@ export default function Subscriptions() {
         open={skipConfirm !== null}
         onOpenChange={(open) => !open && setSkipConfirm(null)}
       >
-        <AlertDialogContent className="bg-clinical-surface border-clinical-slate/30">
+        <AlertDialogContent className="bg-clinical-surface border-clinical-border">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">
               Skip this delivery?
@@ -640,7 +640,7 @@ function DetailView({
 
   return (
     <div className="space-y-4">
-      <Card className="bg-clinical-surface border-clinical-slate/20">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-5 space-y-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="space-y-1">
@@ -696,7 +696,7 @@ function DetailView({
                 size="sm"
                 variant="outline"
                 onClick={onEditWindow}
-                className="border-clinical-slate/30 text-clinical-zinc hover:text-white gap-1.5 text-xs"
+                className="border-clinical-border text-clinical-zinc hover:text-white gap-1.5 text-xs"
               >
                 <Clock className="w-3.5 h-3.5" /> Edit window
               </Button>
@@ -711,14 +711,14 @@ function DetailView({
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-clinical-slate/15">
+          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-clinical-border">
             <Users className="w-3.5 h-3.5 text-clinical-zinc" />
             <span className="text-[11px] text-clinical-zinc">Family:</span>
             {members.map((m) => (
               <Badge
                 key={m.id}
                 variant="outline"
-                className="text-[10px] border-clinical-slate/30 text-clinical-zinc"
+                className="text-[10px] border-clinical-border text-clinical-zinc"
               >
                 {m.name}
                 {m.lifestyle ? ` · ${m.lifestyle}` : ""}
@@ -737,7 +737,7 @@ function DetailView({
           const db = DELIVERY_BADGE[d.status];
           const isUpcoming = d.status === "upcoming";
           return (
-            <Card key={d.id} className="bg-clinical-surface border-clinical-slate/20">
+            <Card key={d.id} className="bg-clinical-surface border-clinical-border">
               <CardContent className="p-4 space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-3">
@@ -772,7 +772,7 @@ function DetailView({
                   </Badge>
                 </div>
                 {isUpcoming && (
-                  <div className="flex flex-wrap gap-2 pt-2 border-t border-clinical-slate/15">
+                  <div className="flex flex-wrap gap-2 pt-2 border-t border-clinical-border">
                     <Button
                       size="sm"
                       variant="outline"
@@ -793,7 +793,7 @@ function DetailView({
                       size="sm"
                       variant="outline"
                       onClick={() => onReschedule(d)}
-                      className="border-clinical-slate/30 text-clinical-zinc hover:text-white gap-1.5 text-xs"
+                      className="border-clinical-border text-clinical-zinc hover:text-white gap-1.5 text-xs"
                     >
                       <Clock className="w-3.5 h-3.5" /> Reschedule
                     </Button>

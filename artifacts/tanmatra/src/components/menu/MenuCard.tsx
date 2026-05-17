@@ -62,7 +62,7 @@ export default function MenuCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: Math.min(index, 8) * 0.04 }}
       whileHover={{ y: -4 }}
-      className={`group relative flex flex-col rounded-2xl overflow-hidden bg-clinical-surface-elevated border border-clinical-slate/20 hover:border-clinical-gold/50 hover:shadow-[0_8px_30px_rgba(212,175,55,0.12)] transition-all duration-300 ${
+      className={`group relative flex flex-col rounded-2xl overflow-hidden bg-clinical-surface-elevated border border-clinical-border hover:border-clinical-gold/50 hover:shadow-[0_8px_30px_rgba(212,175,55,0.12)] transition-all duration-300 ${
         !item.isAvailable ? "opacity-50 grayscale" : ""
       } ${match.blocked ? "ring-1 ring-orange-500/40" : ""}`}
     >
@@ -176,7 +176,7 @@ export default function MenuCard({
           (preferences.calorieTarget || preferences.proteinTargetGrams) && (
             <div className="flex flex-wrap gap-1.5 text-[10px]">
               {preferences.calorieTarget && (
-                <span className="px-1.5 py-0.5 rounded bg-clinical-slate/20 text-clinical-zinc">
+                <span className="px-1.5 py-0.5 rounded bg-clinical-surface-elevated text-clinical-zinc">
                   {Math.round(
                     (item.macros.calories / preferences.calorieTarget) * 100,
                   )}
@@ -184,7 +184,7 @@ export default function MenuCard({
                 </span>
               )}
               {preferences.proteinTargetGrams && (
-                <span className="px-1.5 py-0.5 rounded bg-clinical-slate/20 text-clinical-zinc">
+                <span className="px-1.5 py-0.5 rounded bg-clinical-surface-elevated text-clinical-zinc">
                   {Math.round(
                     (item.macros.protein / preferences.proteinTargetGrams) *
                       100,
@@ -233,7 +233,7 @@ export default function MenuCard({
             <Button
               variant="outline"
               size="sm"
-              className="w-full h-10 border-clinical-slate/30 bg-transparent text-clinical-zinc hover:bg-clinical-surface hover:text-white hover:border-clinical-gold/40 text-[11px] uppercase tracking-[0.12em] font-semibold"
+              className="w-full h-10 border-clinical-border bg-transparent text-clinical-zinc hover:bg-clinical-surface hover:text-white hover:border-clinical-gold/40 text-[11px] uppercase tracking-[0.12em] font-semibold"
             >
               Details
             </Button>
@@ -308,7 +308,7 @@ function WhyThisMealRow({ rationale }: { rationale: DishRationale | undefined })
           </span>
           {open ? rationale.expanded : rationale.rationale}
         </span>
-        <span className="text-[10px] text-clinical-zinc/60 shrink-0">
+        <span className="text-[10px] text-clinical-zinc-muted shrink-0">
           {open ? "Less" : "More"}
         </span>
       </button>
@@ -327,7 +327,7 @@ function MacroChip({
 }) {
   return (
     <div
-      className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-clinical-surface border border-clinical-slate/20"
+      className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-clinical-surface border border-clinical-border"
       aria-label={ariaLabel ?? `${label} ${value}`}
       role="group"
     >

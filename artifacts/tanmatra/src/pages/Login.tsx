@@ -219,7 +219,7 @@ export default function Login() {
 
   return (
     <div className="min-h-[60vh] flex items-center justify-center px-4 py-12">
-      <Card className="w-full max-w-sm bg-clinical-surface border-clinical-slate/20">
+      <Card className="w-full max-w-sm bg-clinical-surface border-clinical-border">
         <CardHeader className="text-center space-y-3">
           <div className="w-12 h-12 mx-auto rounded-xl bg-clinical-gold/15 flex items-center justify-center border border-clinical-gold/25">
             <Flask className="w-6 h-6 text-clinical-gold" weight="bold" />
@@ -249,7 +249,7 @@ export default function Login() {
                     aria-label="Country code"
                     value={countryCode}
                     onChange={(e) => setCountryCode(e.target.value)}
-                    className="w-24 h-10 bg-clinical-bg border border-clinical-slate/30 rounded-md text-white text-sm px-2 focus:outline-none focus:ring-2 focus:ring-clinical-gold/40"
+                    className="w-24 h-10 bg-clinical-bg border border-clinical-border rounded-md text-white text-sm px-2 focus:outline-none focus:ring-2 focus:ring-clinical-gold/40"
                   >
                     <option value="+91">🇮🇳 +91</option>
                     <option value="+1">🇺🇸 +1</option>
@@ -266,7 +266,7 @@ export default function Login() {
                     placeholder="98765 43210"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="flex-1 bg-clinical-bg border-clinical-slate/30 text-white text-clinical-data"
+                    className="flex-1 bg-clinical-bg border-clinical-border text-white text-clinical-data"
                     onKeyDown={(e) => {
                       if (e.key === "Enter") void sendOtp();
                     }}
@@ -278,7 +278,7 @@ export default function Login() {
                   id="wa-consent"
                   checked={whatsAppConsent}
                   onCheckedChange={(c) => setWhatsAppConsent(c === true)}
-                  className="mt-0.5 border-clinical-slate/40 data-[state=checked]:bg-clinical-sage data-[state=checked]:border-clinical-sage"
+                  className="mt-0.5 border-clinical-border data-[state=checked]:bg-clinical-sage data-[state=checked]:border-clinical-sage"
                 />
                 <Label
                   htmlFor="wa-consent"
@@ -293,7 +293,7 @@ export default function Login() {
                   id="sms-consent"
                   checked={smsConsent}
                   onCheckedChange={(c) => setSmsConsent(c === true)}
-                  className="mt-0.5 border-clinical-slate/40 data-[state=checked]:bg-clinical-gold data-[state=checked]:border-clinical-gold"
+                  className="mt-0.5 border-clinical-border data-[state=checked]:bg-clinical-gold data-[state=checked]:border-clinical-gold"
                 />
                 <Label
                   htmlFor="sms-consent"
@@ -350,7 +350,7 @@ export default function Login() {
                   // Strip non-digits as the user types so paste-from-SMS
                   // text like "Your code is 123456" still works.
                   onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-                  className="bg-clinical-bg border-clinical-slate/30 text-white text-clinical-data tracking-[0.4em] text-center text-lg"
+                  className="bg-clinical-bg border-clinical-border text-white text-clinical-data tracking-[0.4em] text-center text-lg"
                   maxLength={6}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") void verifyOtp();
@@ -369,7 +369,7 @@ export default function Login() {
                 )}
               </div>
               <div className="flex items-center justify-between text-[11px]">
-                <span className="text-clinical-zinc/70">
+                <span className="text-clinical-zinc-muted">
                   Didn't get the code?
                 </span>
                 <Button
@@ -378,7 +378,7 @@ export default function Login() {
                   size="sm"
                   disabled={resendIn > 0 || isSending}
                   onClick={() => void sendOtp()}
-                  className="h-auto px-2 py-1 text-clinical-gold hover:text-clinical-gold/90 disabled:text-clinical-zinc/50 disabled:opacity-100"
+                  className="h-auto px-2 py-1 text-clinical-gold hover:text-clinical-gold/90 disabled:text-clinical-zinc-muted disabled:opacity-100"
                 >
                   {resendIn > 0
                     ? `Resend in ${resendIn}s`
@@ -399,7 +399,7 @@ export default function Login() {
                     // remainder of the previous number's window.
                     setResendIn(0);
                   }}
-                  className="border-clinical-slate/30 text-clinical-zinc hover:text-white"
+                  className="border-clinical-border text-clinical-zinc hover:text-white"
                 >
                   Change number
                 </Button>
@@ -421,11 +421,11 @@ export default function Login() {
 
           {adminShortcutVisible && (
             <>
-              <Separator className="bg-clinical-slate/20 my-2" />
+              <Separator className="bg-clinical-surface-elevated my-2" />
               <Button
                 variant="outline"
                 onClick={enterAdminMode}
-                className="w-full border-clinical-slate/30 text-clinical-zinc hover:text-clinical-gold hover:border-clinical-gold/40 gap-2 text-xs"
+                className="w-full border-clinical-border text-clinical-zinc hover:text-clinical-gold hover:border-clinical-gold/40 gap-2 text-xs"
               >
                 <Pulse className="w-3.5 h-3.5" />
                 Continue as Operations

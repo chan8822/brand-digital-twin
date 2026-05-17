@@ -146,7 +146,7 @@ export default function CheckoutAppointment() {
         </p>
       </header>
 
-      <Card className="bg-clinical-surface border-clinical-slate/30">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-5 space-y-4">
           <div className="space-y-1">
             <p className="text-[10px] uppercase tracking-widest text-clinical-zinc">
@@ -155,7 +155,7 @@ export default function CheckoutAppointment() {
             <p className="text-sm text-white">{meta.label}</p>
             <p className="text-xs text-clinical-zinc">{meta.description}</p>
           </div>
-          <Separator className="bg-clinical-slate/20" />
+          <Separator className="bg-clinical-surface-elevated" />
           <div className="space-y-1">
             <p className="text-[10px] uppercase tracking-widest text-clinical-zinc">
               With
@@ -164,7 +164,7 @@ export default function CheckoutAppointment() {
               {booking.rdName ?? booking.rdSlug}
             </p>
           </div>
-          <Separator className="bg-clinical-slate/20" />
+          <Separator className="bg-clinical-surface-elevated" />
           <div className="space-y-1">
             <p className="text-[10px] uppercase tracking-widest text-clinical-zinc">
               When
@@ -173,7 +173,7 @@ export default function CheckoutAppointment() {
           </div>
           {booking.userQuestion ? (
             <>
-              <Separator className="bg-clinical-slate/20" />
+              <Separator className="bg-clinical-surface-elevated" />
               <div className="space-y-1">
                 <p className="text-[10px] uppercase tracking-widest text-clinical-zinc">
                   Note for RD
@@ -187,7 +187,7 @@ export default function CheckoutAppointment() {
         </CardContent>
       </Card>
 
-      <Card className="bg-clinical-surface border-clinical-slate/30">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-5 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs text-clinical-zinc">Session fee</span>
@@ -196,7 +196,7 @@ export default function CheckoutAppointment() {
               {formatRupees(booking.pricePaise).replace("₹", "")}
             </span>
           </div>
-          <Separator className="bg-clinical-slate/20" />
+          <Separator className="bg-clinical-surface-elevated" />
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-white">
               Total to pay
@@ -243,7 +243,7 @@ export default function CheckoutAppointment() {
                 asChild
                 size="sm"
                 variant="outline"
-                className="border-clinical-slate/40 text-clinical-zinc hover:text-white text-xs h-8"
+                className="border-clinical-border text-clinical-zinc hover:text-white text-xs h-8"
               >
                 <a href="mailto:care@tanmatra.health?subject=RD%20appointment%20booking%20issue">
                   Contact support
@@ -255,7 +255,7 @@ export default function CheckoutAppointment() {
       )}
 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <DialogContent className="bg-clinical-surface border-clinical-slate/30">
+        <DialogContent className="bg-clinical-surface border-clinical-border">
           <DialogHeader>
             <DialogTitle className="text-white">Confirm payment</DialogTitle>
             <DialogDescription className="text-clinical-zinc text-xs">

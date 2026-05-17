@@ -95,7 +95,7 @@ export default function StatCancelDialog({
                 className={`flex items-center gap-2 rounded-md border px-3 py-2 text-xs cursor-pointer transition-colors ${
                   reason === r.value
                     ? "border-red-500/60 bg-red-500/10 text-white"
-                    : "border-clinical-slate/30 text-clinical-zinc hover:border-red-500/40"
+                    : "border-clinical-border text-clinical-zinc hover:border-red-500/40"
                 }`}
               >
                 <input
@@ -117,7 +117,7 @@ export default function StatCancelDialog({
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={submitting}
-            className="border-clinical-slate/30 text-clinical-zinc"
+            className="border-clinical-border text-clinical-zinc"
           >
             Keep order
           </Button>

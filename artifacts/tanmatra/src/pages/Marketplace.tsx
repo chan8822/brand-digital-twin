@@ -51,7 +51,7 @@ export default function Marketplace() {
             className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
               category === c.value
                 ? "bg-clinical-gold/15 text-clinical-gold border border-clinical-gold/30"
-                : "text-clinical-zinc hover:text-white border border-clinical-slate/30 hover:border-clinical-slate/60"
+                : "text-clinical-zinc hover:text-white border border-clinical-border hover:border-clinical-border"
             }`}
           >
             {c.label}
@@ -67,10 +67,10 @@ export default function Marketplace() {
         {items.map((item) => (
           <Card
             key={item.id}
-            className="bg-clinical-surface border-clinical-slate/20 overflow-hidden hover:border-clinical-gold/40 transition-colors"
+            className="bg-clinical-surface border-clinical-border overflow-hidden hover:border-clinical-gold/40 transition-colors"
           >
             <Link to={`/marketplace/${item.slug}`} className="block">
-              <div className="relative h-44 bg-clinical-slate/20">
+              <div className="relative h-44 bg-clinical-surface-elevated">
                 {item.image && (
                   <img
                     src={item.image}
@@ -116,7 +116,7 @@ export default function Marketplace() {
                     {item.badges.slice(0, 3).map((b) => (
                       <span
                         key={b}
-                        className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-clinical-slate/30 text-clinical-zinc"
+                        className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-clinical-surface-elevated text-clinical-zinc"
                       >
                         {b}
                       </span>
@@ -130,7 +130,7 @@ export default function Marketplace() {
       </div>
 
       {!q.isLoading && items.length === 0 && (
-        <Card className="bg-clinical-surface border-clinical-slate/20">
+        <Card className="bg-clinical-surface border-clinical-border">
           <CardContent className="p-10 text-center space-y-3">
             <Package className="w-6 h-6 mx-auto text-clinical-gold" />
             <p className="text-sm text-clinical-zinc">
@@ -147,14 +147,14 @@ export default function Marketplace() {
         </Card>
       )}
 
-      <Card className="bg-clinical-surface border-clinical-slate/20">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-5 flex items-center gap-3">
           <ShoppingBag className="w-5 h-5 text-clinical-gold" />
           <p className="text-xs text-clinical-zinc flex-1">
             Got a meal order coming? Bundle pantry items with your next delivery
             and skip the shipping fee.
           </p>
-          <Button asChild variant="outline" className="border-clinical-slate/40 text-clinical-gold">
+          <Button asChild variant="outline" className="border-clinical-border text-clinical-gold">
             <Link to="/orders">
               My orders <ChevronRight className="w-3 h-3 ml-1" />
             </Link>

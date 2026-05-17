@@ -37,7 +37,7 @@ export default function CommunityCohortPanel() {
           return (
             <Card
               key={card.cohort.id}
-              className="bg-clinical-surface border-clinical-slate/20"
+              className="bg-clinical-surface border-clinical-border"
             >
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
@@ -67,7 +67,7 @@ export default function CommunityCohortPanel() {
                       {card.challenge.rewardPoints} pts
                     </span>
                   </div>
-                  <div className="h-2 bg-clinical-slate/30 rounded-full overflow-hidden">
+                  <div className="h-2 bg-clinical-surface-elevated rounded-full overflow-hidden">
                     <div
                       className={`h-full transition-all ${
                         card.progress.completed

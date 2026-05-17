@@ -153,7 +153,7 @@ export default function VouchersPage() {
         </p>
       </div>
 
-      <Card className="bg-clinical-surface border-clinical-slate/20">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-5 space-y-3">
           <h2 className="text-sm font-semibold text-white">Buy a voucher</h2>
           <div className="flex flex-wrap gap-2">
@@ -165,7 +165,7 @@ export default function VouchersPage() {
                 className={
                   amountPaise === p
                     ? "bg-clinical-gold/20 border-clinical-gold/40 text-clinical-gold"
-                    : "border-clinical-slate/30"
+                    : "border-clinical-border"
                 }
                 onClick={() => setAmountPaise(p)}
               >
@@ -180,7 +180,7 @@ export default function VouchersPage() {
                 type="email"
                 value={recipientEmail}
                 onChange={(e) => setRecipientEmail(e.target.value)}
-                className="h-9 text-xs bg-clinical-dark border-clinical-slate/30"
+                className="h-9 text-xs bg-clinical-dark border-clinical-border"
               />
             </div>
             <div className="space-y-1">
@@ -188,7 +188,7 @@ export default function VouchersPage() {
               <Input
                 value={recipientName}
                 onChange={(e) => setRecipientName(e.target.value)}
-                className="h-9 text-xs bg-clinical-dark border-clinical-slate/30"
+                className="h-9 text-xs bg-clinical-dark border-clinical-border"
               />
             </div>
           </div>
@@ -199,7 +199,7 @@ export default function VouchersPage() {
               onChange={(e) => setMessage(e.target.value)}
               maxLength={512}
               rows={2}
-              className="text-xs bg-clinical-dark border-clinical-slate/30"
+              className="text-xs bg-clinical-dark border-clinical-border"
             />
           </div>
           <Button
@@ -212,7 +212,7 @@ export default function VouchersPage() {
         </CardContent>
       </Card>
 
-      <Card className="bg-clinical-surface border-clinical-slate/20">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-5 space-y-3">
           <h2 className="text-sm font-semibold text-white flex items-center gap-2">
             <Ticket className="w-4 h-4 text-clinical-gold" /> Redeem a voucher
@@ -222,7 +222,7 @@ export default function VouchersPage() {
               placeholder="TM-XXXXXXXXXX"
               value={redeemCode}
               onChange={(e) => setRedeemCode(e.target.value.toUpperCase())}
-              className="h-9 text-xs bg-clinical-dark border-clinical-slate/30 font-mono"
+              className="h-9 text-xs bg-clinical-dark border-clinical-border font-mono"
             />
             <Button
               onClick={handleRedeem}
@@ -236,14 +236,14 @@ export default function VouchersPage() {
       </Card>
 
       {purchased.length > 0 && (
-        <Card className="bg-clinical-surface border-clinical-slate/20">
+        <Card className="bg-clinical-surface border-clinical-border">
           <CardContent className="p-5 space-y-2">
             <h2 className="text-sm font-semibold text-white">Vouchers you bought</h2>
             <div className="space-y-2">
               {purchased.map((v) => (
                 <div
                   key={v.id}
-                  className="flex items-center justify-between p-2 rounded-md border border-clinical-slate/20 bg-clinical-dark"
+                  className="flex items-center justify-between p-2 rounded-md border border-clinical-border bg-clinical-dark"
                 >
                   <div>
                     <p className="text-xs font-mono text-white">{v.code}</p>
@@ -258,7 +258,7 @@ export default function VouchersPage() {
                       className={`text-[9px] capitalize ${
                         v.status === "active"
                           ? "border-clinical-sage/40 text-clinical-sage"
-                          : "border-clinical-slate/40 text-clinical-zinc"
+                          : "border-clinical-border text-clinical-zinc"
                       }`}
                     >
                       {v.status}
@@ -283,14 +283,14 @@ export default function VouchersPage() {
       )}
 
       {redeemed.length > 0 && (
-        <Card className="bg-clinical-surface border-clinical-slate/20">
+        <Card className="bg-clinical-surface border-clinical-border">
           <CardContent className="p-5 space-y-2">
             <h2 className="text-sm font-semibold text-white">Vouchers you redeemed</h2>
             <div className="space-y-2">
               {redeemed.map((v) => (
                 <div
                   key={v.id}
-                  className="flex items-center justify-between p-2 rounded-md border border-clinical-slate/20 bg-clinical-dark"
+                  className="flex items-center justify-between p-2 rounded-md border border-clinical-border bg-clinical-dark"
                 >
                   <p className="text-xs font-mono text-white">{v.code}</p>
                   <span className="text-[10px] tabular-nums text-clinical-gold">

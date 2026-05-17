@@ -26,9 +26,8 @@ import {
   findSmartSwap,
 } from "@/lib/preferencesMatch";
 import { getDishById, useMenuCatalog } from "@/lib/menuData";
-import { ShieldAlert, Sparkles, AlertCircle, Clock, UserCircle } from "lucide-react";
+import { ShieldAlert, Sparkles, AlertCircle, Clock } from "lucide-react";
 import { fulfillmentApi, type DeliverySlotOption } from "@/lib/fulfillmentApi";
-import { apiPath } from "@/lib/apiBase";
 import { useEffect } from "react";
 import {
   clinicalCategoryLabel,
@@ -50,23 +49,6 @@ export default function Cart() {
   // fulfillment commitment BEFORE checkout instead of discovering it at
   // payment time. Per UX audit Journey-B finding 1.
   const [nextSlot, setNextSlot] = useState<DeliverySlotOption | null>(null);
-  // Probe auth state so we can hint to anonymous users BEFORE they
-  // navigate to /checkout and discover the login wall mid-flow.
-  // Per UX audit P0 #15. Doesn't gate — just foreshadows.
-  const [isAuthed, setIsAuthed] = useState<boolean | null>(null);
-  useEffect(() => {
-    let alive = true;
-    void fetch(apiPath("/auth/me"), { credentials: "include" })
-      .then((r) => {
-        if (alive) setIsAuthed(r.ok);
-      })
-      .catch(() => {
-        if (alive) setIsAuthed(false);
-      });
-    return () => {
-      alive = false;
-    };
-  }, []);
   useEffect(() => {
     let alive = true;
     void fulfillmentApi
@@ -150,13 +132,21 @@ export default function Cart() {
   if (items.length === 0) {
     return (
       <div className="max-w-2xl mx-auto p-8 text-center space-y-6">
-        <div className="w-16 h-16 rounded-full bg-clinical-surface border border-clinical-slate/20 flex items-center justify-center mx-auto">
+        <div className="w-16 h-16 rounded-full bg-clinical-surface border border-clinical-border flex items-center justify-center mx-auto">
           <ShoppingBag className="w-7 h-7 text-clinical-zinc" />
         </div>
         <div className="space-y-2">
           <h1 className="text-clinical-h2 text-white">Your cart is empty</h1>
           <p className="text-sm text-clinical-zinc">
-            Browse today&apos;s RD-curated menu to start an instant order.
+            Browse the menu to start an instant order. Looking for a recurring
+            7-day meal plan instead? Try the{" "}
+            <Link
+              to="/meal-planner"
+              className="text-clinical-gold underline underline-offset-2"
+            >
+              Weekly Planner
+            </Link>
+            .
           </p>
         </div>
         <Link to="/menu">
@@ -249,7 +239,7 @@ export default function Cart() {
 
         <div className="space-y-3">
           {items.map((item) => (
-            <Card key={item.lineId} className="bg-clinical-surface border-clinical-slate/20 overflow-hidden">
+            <Card key={item.lineId} className="bg-clinical-surface border-clinical-border overflow-hidden">
               <CardContent className="p-0">
                 <div className="flex gap-4">
                   <Link to={`/dish/${item.slug}`} className="shrink-0 w-28 h-28 sm:w-32 sm:h-32 clinical-decorative">
@@ -326,7 +316,7 @@ export default function Cart() {
                           Premium
                         </span>
                         {item.customizations.map((c) => (
-                          <span key={c} className="text-[9px] px-1.5 py-0.5 rounded bg-clinical-slate/20 text-clinical-zinc">
+                          <span key={c} className="text-[9px] px-1.5 py-0.5 rounded bg-clinical-surface-elevated text-clinical-zinc">
                             {c}
                           </span>
                         ))}
@@ -336,7 +326,7 @@ export default function Cart() {
                     <div className="flex items-end justify-between gap-3">
                       <MacroOverlay macros={item.macros} rdVerified={item.rdVerified} compact />
 
-                      <div className="flex items-center gap-1 shrink-0 rounded-md border border-clinical-slate/30 bg-clinical-dark/40">
+                      <div className="flex items-center gap-1 shrink-0 rounded-md border border-clinical-border bg-clinical-dark/40">
                         <Button
                           size="icon"
                           variant="ghost"
@@ -442,7 +432,7 @@ export default function Cart() {
       </div>
 
       <div className="space-y-4 hidden lg:block">
-        <Card className="bg-clinical-surface border-clinical-slate/20 sticky top-20">
+        <Card className="bg-clinical-surface border-clinical-border sticky top-20">
           <CardContent className="p-5 space-y-4">
             <h2 className="text-sm font-semibold text-white flex items-center gap-2">
               <ClipboardList className="w-4 h-4 text-clinical-gold" />
@@ -464,11 +454,11 @@ export default function Cart() {
                 </span>
               </div>
               {deliveryFee === 0 && (
-                <p className="text-[10px] text-clinical-sage">Free delivery on orders above ₹500</p>
+                <p className="text-[10px] text-clinical-sage">Free delivery on orders above Rs.500</p>
               )}
             </div>
 
-            <Separator className="bg-clinical-slate/20" />
+            <Separator className="bg-clinical-surface-elevated" />
 
             <div className="flex justify-between">
               <span className="text-sm font-semibold text-white">Total</span>
@@ -476,7 +466,7 @@ export default function Cart() {
             </div>
 
             {nextSlot && (
-              <div className="flex items-center justify-between gap-2 rounded-md border border-clinical-slate/30 bg-clinical-surface-elevated/50 px-3 py-2 text-[11px]">
+              <div className="flex items-center justify-between gap-2 rounded-md border border-clinical-border bg-clinical-surface-elevated/50 px-3 py-2 text-[11px]">
                 <div className="flex items-center gap-1.5 text-clinical-zinc min-w-0">
                   <Clock className="w-3 h-3 text-clinical-gold shrink-0" aria-hidden="true" />
                   <span className="truncate">
@@ -492,31 +482,16 @@ export default function Cart() {
                     </span>
                   </span>
                 </div>
-                <span className="text-clinical-zinc/70 shrink-0">Change at checkout</span>
+                <span className="text-clinical-zinc-muted shrink-0">Change at checkout</span>
               </div>
-            )}
-
-            {isAuthed === false && (
-              <Link
-                to="/login?next=/checkout"
-                className="block rounded-md border border-clinical-gold/30 bg-clinical-gold/5 px-3 py-2 text-[11px] text-clinical-zinc hover:bg-clinical-gold/10"
-              >
-                <span className="flex items-center gap-2">
-                  <UserCircle className="w-3.5 h-3.5 text-clinical-gold shrink-0" />
-                  <span className="flex-1">
-                    <span className="text-white font-medium">Sign in</span> to save
-                    your address and reorder faster — or continue as guest below.
-                  </span>
-                </span>
-              </Link>
             )}
 
             <Button
               onClick={() => navigate("/checkout")}
               disabled={checkoutBlocked}
-              className="w-full bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold h-11 shadow-clinical gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-clinical-slate/40 disabled:text-clinical-zinc disabled:shadow-none"
+              className="w-full bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold h-11 shadow-clinical gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-clinical-surface-elevated disabled:text-clinical-zinc disabled:shadow-none"
             >
-              {isAuthed === false ? "Continue as guest" : "Proceed to Checkout"}
+              Proceed to Checkout
               <ArrowRight className="w-4 h-4" />
             </Button>
             {checkoutBlocked && blockReason && (
@@ -544,23 +519,12 @@ export default function Cart() {
         </Card>
       </div>
 
-      {/* Mobile sticky bottom action bar (sits above the bottom nav).
-          Offset matches BottomNav's `min-h-[56px]` = 3.5rem (was 4rem,
-          which left an 8px gap on Android Chrome). The reason copy is
-          rendered as a visible line — `title` tooltips don't surface on
-          touch devices, so a "Blocked" CTA with no inline reason was a
-          dead-end. */}
+      {/* Mobile sticky bottom action bar (sits above the bottom nav) */}
       <div
         className="lg:hidden fixed left-0 right-0 z-30 px-3 pb-2 pointer-events-none"
-        style={{ bottom: "calc(3.5rem + env(safe-area-inset-bottom))" }}
+        style={{ bottom: "calc(4rem + env(safe-area-inset-bottom))" }}
       >
-        {checkoutBlocked && blockReason && (
-          <div className="pointer-events-auto mb-1 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-[11px] text-red-200 flex items-start gap-1.5">
-            <ShieldAlert className="w-3 h-3 mt-0.5 shrink-0" />
-            <span className="leading-snug">{blockReason}</span>
-          </div>
-        )}
-        <div className="pointer-events-auto rounded-xl border border-clinical-slate/40 bg-clinical-surface/95 backdrop-blur-xl shadow-2xl p-3 flex items-center gap-3">
+        <div className="pointer-events-auto rounded-xl border border-clinical-border bg-clinical-surface/95 backdrop-blur-xl shadow-2xl p-3 flex items-center gap-3">
           <div className="min-w-0 flex-1">
             <p className="text-[10px] text-clinical-zinc leading-none">
               {totalQuantity} item{totalQuantity === 1 ? "" : "s"} · {deliveryFee === 0 ? "FREE delivery" : `+ ${formatPrice(deliveryFee)} delivery`}
@@ -572,8 +536,8 @@ export default function Cart() {
           <Button
             onClick={() => navigate("/checkout")}
             disabled={checkoutBlocked}
-            className="h-12 px-5 bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold gap-2 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-clinical-slate/40 disabled:text-clinical-zinc"
-            aria-label={checkoutBlocked && blockReason ? `Cannot checkout: ${blockReason}` : "Proceed to checkout"}
+            className="h-12 px-5 bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold gap-2 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-clinical-surface-elevated disabled:text-clinical-zinc"
+            title={checkoutBlocked ? blockReason ?? undefined : undefined}
           >
             {checkoutBlocked ? "Blocked" : "Checkout"}
             <ArrowRight className="w-4 h-4" />

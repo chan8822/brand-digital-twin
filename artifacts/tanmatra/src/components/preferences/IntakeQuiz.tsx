@@ -231,7 +231,7 @@ export default function IntakeQuiz({ open, onOpenChange }: IntakeQuizProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg w-[calc(100vw-1.5rem)] max-h-[92vh] overflow-y-auto bg-clinical-surface border-clinical-slate/30 sm:w-full">
+      <DialogContent className="max-w-lg w-[calc(100vw-1.5rem)] max-h-[92vh] overflow-y-auto bg-clinical-surface border-clinical-border sm:w-full">
         <DialogHeader>
           <DialogTitle className="text-white font-serif">
             {step === RESULTS_STEP
@@ -268,7 +268,7 @@ export default function IntakeQuiz({ open, onOpenChange }: IntakeQuizProps) {
                       className={`text-left text-xs px-3 py-2 rounded-md border flex items-center gap-2 ${
                         active
                           ? "border-clinical-gold/60 bg-clinical-gold/10 text-clinical-gold"
-                          : "border-clinical-slate/30 text-clinical-zinc hover:text-white"
+                          : "border-clinical-border text-clinical-zinc hover:text-white"
                       }`}
                     >
                       {active && (
@@ -308,7 +308,7 @@ export default function IntakeQuiz({ open, onOpenChange }: IntakeQuizProps) {
                         className={`text-xs px-3 py-2 rounded-md border inline-flex items-center justify-center gap-1.5 ${
                           active
                             ? "border-clinical-gold/60 bg-clinical-gold/10 text-clinical-gold"
-                            : "border-clinical-slate/30 text-clinical-zinc hover:text-white"
+                            : "border-clinical-border text-clinical-zinc hover:text-white"
                         }`}
                       >
                         {active && (
@@ -343,7 +343,7 @@ export default function IntakeQuiz({ open, onOpenChange }: IntakeQuizProps) {
                         className={`text-xs px-3 py-2 rounded-md border inline-flex items-center justify-center gap-1.5 ${
                           active
                             ? "border-clinical-gold/60 bg-clinical-gold/10 text-clinical-gold"
-                            : "border-clinical-slate/30 text-clinical-zinc hover:text-white"
+                            : "border-clinical-border text-clinical-zinc hover:text-white"
                         }`}
                       >
                         {active && (
@@ -380,7 +380,7 @@ export default function IntakeQuiz({ open, onOpenChange }: IntakeQuizProps) {
                         className={`text-xs px-3 py-1.5 rounded-full border capitalize inline-flex items-center gap-1.5 ${
                           active
                             ? "border-clinical-gold/60 bg-clinical-gold/10 text-clinical-gold"
-                            : "border-clinical-slate/30 text-clinical-zinc hover:text-white"
+                            : "border-clinical-border text-clinical-zinc hover:text-white"
                         }`}
                       >
                         {active && (
@@ -413,7 +413,7 @@ export default function IntakeQuiz({ open, onOpenChange }: IntakeQuizProps) {
                         className={`text-xs px-2 py-2 rounded-md border inline-flex items-center justify-center gap-1 ${
                           active
                             ? "border-clinical-gold/60 bg-clinical-gold/10 text-clinical-gold"
-                            : "border-clinical-slate/30 text-clinical-zinc hover:text-white"
+                            : "border-clinical-border text-clinical-zinc hover:text-white"
                         }`}
                       >
                         {active && (
@@ -455,7 +455,7 @@ export default function IntakeQuiz({ open, onOpenChange }: IntakeQuizProps) {
                         className={`text-xs px-3 py-1.5 rounded-full border capitalize inline-flex items-center gap-1.5 ${
                           active
                             ? "border-orange-500/60 bg-orange-500/10 text-orange-400"
-                            : "border-clinical-slate/30 text-clinical-zinc hover:text-white"
+                            : "border-clinical-border text-clinical-zinc hover:text-white"
                         }`}
                       >
                         {/* Icon makes the "blocked" state distinguishable
@@ -488,7 +488,7 @@ export default function IntakeQuiz({ open, onOpenChange }: IntakeQuizProps) {
                       dislikedIngredients: e.target.value,
                     }))
                   }
-                  className="bg-clinical-surface-elevated border-clinical-slate/30 text-sm"
+                  className="bg-clinical-surface-elevated border-clinical-border text-sm"
                 />
               </div>
             </div>
@@ -541,7 +541,7 @@ export default function IntakeQuiz({ open, onOpenChange }: IntakeQuizProps) {
                     ))}
                   </div>
                 )}
-                <p className="text-[10px] text-clinical-zinc/70 leading-snug">
+                <p className="text-[10px] text-clinical-zinc-muted leading-snug">
                   Estimated against an average 70 kg adult — refine in Preferences once you add weight, height &amp; age for a true Mifflin-St Jeor calculation.
                 </p>
               </div>
@@ -578,7 +578,7 @@ export default function IntakeQuiz({ open, onOpenChange }: IntakeQuizProps) {
                             carbsTargetGrams: e.target.value,
                           }))
                         }
-                        className="bg-clinical-surface-elevated border-clinical-slate/30 text-sm"
+                        className="bg-clinical-surface-elevated border-clinical-border text-sm"
                       />
                     </div>
                     <div className="space-y-2">
@@ -600,7 +600,7 @@ export default function IntakeQuiz({ open, onOpenChange }: IntakeQuizProps) {
                             fatTargetGrams: e.target.value,
                           }))
                         }
-                        className="bg-clinical-surface-elevated border-clinical-slate/30 text-sm"
+                        className="bg-clinical-surface-elevated border-clinical-border text-sm"
                       />
                     </div>
                   </div>
@@ -621,7 +621,7 @@ export default function IntakeQuiz({ open, onOpenChange }: IntakeQuizProps) {
                         onChange={(e) =>
                           setState((s) => ({ ...s, calorieTarget: e.target.value }))
                         }
-                        className="bg-clinical-surface-elevated border-clinical-slate/30 text-sm"
+                        className="bg-clinical-surface-elevated border-clinical-border text-sm"
                       />
                     </div>
                     <div className="space-y-2">
@@ -643,13 +643,13 @@ export default function IntakeQuiz({ open, onOpenChange }: IntakeQuizProps) {
                             proteinTargetGrams: e.target.value,
                           }))
                         }
-                        className="bg-clinical-surface-elevated border-clinical-slate/30 text-sm"
+                        className="bg-clinical-surface-elevated border-clinical-border text-sm"
                       />
                     </div>
                   </div>
                   <p
                     id={targetsHintId}
-                    className="text-[11px] text-clinical-zinc/70"
+                    className="text-[11px] text-clinical-zinc-muted"
                   >
                     Optional — leave blank if you're not tracking macros yet.
                     Out-of-range values are clamped on save (kcal 800-6000,
@@ -809,7 +809,7 @@ function ResultsStep({
           <Link
             to={recommendation.protocolHref}
             onClick={onClose}
-            className="min-h-11 inline-flex items-center justify-between gap-2 px-3 rounded-md border border-clinical-slate/40 text-xs text-white hover:bg-white/5"
+            className="min-h-11 inline-flex items-center justify-between gap-2 px-3 rounded-md border border-clinical-border text-xs text-white hover:bg-white/5"
           >
             <span>Read about the {recommendation.label.split(" ")[0]} protocol</span>
             <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />

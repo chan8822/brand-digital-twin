@@ -29,7 +29,7 @@ export default function AddOnRail({ cartTags, selected, onChange }: Props) {
 
   if (q.isLoading) {
     return (
-      <Card className="bg-clinical-surface border-clinical-slate/20">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-4 text-xs text-clinical-zinc">
           Loading add-ons…
         </CardContent>
@@ -45,7 +45,7 @@ export default function AddOnRail({ cartTags, selected, onChange }: Props) {
   }, 0);
 
   return (
-    <Card className="bg-clinical-surface border-clinical-slate/20">
+    <Card className="bg-clinical-surface border-clinical-border">
       <CardContent className="p-5 space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-white flex items-center gap-2">
@@ -86,8 +86,8 @@ function AddonTile({
   onQty: (qty: number) => void;
 }) {
   return (
-    <div className="w-44 shrink-0 rounded-lg border border-clinical-slate/30 bg-[#0b0b0b] overflow-hidden">
-      <div className="relative h-24 bg-clinical-slate/20">
+    <div className="w-44 shrink-0 rounded-lg border border-clinical-border bg-[#0b0b0b] overflow-hidden">
+      <div className="relative h-24 bg-clinical-surface-elevated">
         {addon.image && (
           <img
             src={addon.image}
@@ -134,7 +134,7 @@ function AddonTile({
                 type="button"
                 onClick={() => onQty(qty - 1)}
                 aria-label="Decrease"
-                className="w-5 h-5 rounded bg-clinical-slate/40 text-white flex items-center justify-center hover:bg-clinical-slate/60"
+                className="w-5 h-5 rounded bg-clinical-surface-elevated text-white flex items-center justify-center hover:bg-clinical-slate/60"
               >
                 <Minus className="w-3 h-3" />
               </button>

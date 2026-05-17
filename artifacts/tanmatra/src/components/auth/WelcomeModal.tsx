@@ -87,7 +87,7 @@ export function WelcomeModal({
         if (!o && !submitting) onSkip();
       }}
     >
-      <DialogContent className="bg-clinical-surface border-clinical-slate/30 sm:max-w-sm">
+      <DialogContent className="bg-clinical-surface border-clinical-border sm:max-w-sm">
         <DialogHeader className="space-y-2">
           <div className="w-10 h-10 rounded-xl bg-clinical-gold/15 flex items-center justify-center border border-clinical-gold/25">
             <Sparkle className="w-5 h-5 text-clinical-gold" weight="bold" />
@@ -111,7 +111,7 @@ export function WelcomeModal({
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
               placeholder="Priya"
-              className="bg-clinical-bg border-clinical-slate/30 text-white"
+              className="bg-clinical-bg border-clinical-border text-white"
               maxLength={64}
               autoComplete="given-name"
             />
@@ -121,7 +121,7 @@ export function WelcomeModal({
               htmlFor="welcome-email"
               className="text-xs text-clinical-zinc"
             >
-              Email <span className="text-clinical-zinc/60">(optional)</span>
+              Email <span className="text-clinical-zinc-muted">(optional)</span>
             </Label>
             <Input
               id="welcome-email"
@@ -129,7 +129,7 @@ export function WelcomeModal({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="priya@example.com"
-              className="bg-clinical-bg border-clinical-slate/30 text-white"
+              className="bg-clinical-bg border-clinical-border text-white"
               maxLength={254}
               autoComplete="email"
               inputMode="email"

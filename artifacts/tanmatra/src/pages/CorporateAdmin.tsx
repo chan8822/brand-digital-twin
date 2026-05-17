@@ -171,19 +171,19 @@ export default function CorporateAdmin() {
       </div>
 
       <div className="grid grid-cols-3 gap-3">
-        <Card className="bg-clinical-surface border-clinical-slate/20">
+        <Card className="bg-clinical-surface border-clinical-border">
           <CardContent className="p-4">
             <p className="text-[10px] text-clinical-zinc">Active members</p>
             <p className="text-xl font-bold text-white">{activeCount}</p>
           </CardContent>
         </Card>
-        <Card className="bg-clinical-surface border-clinical-slate/20">
+        <Card className="bg-clinical-surface border-clinical-border">
           <CardContent className="p-4">
             <p className="text-[10px] text-clinical-zinc">Spent this month</p>
             <p className="text-xl font-bold text-white">{formatPrice(totalSpent)}</p>
           </CardContent>
         </Card>
-        <Card className="bg-clinical-surface border-clinical-slate/20">
+        <Card className="bg-clinical-surface border-clinical-border">
           <CardContent className="p-4">
             <p className="text-[10px] text-clinical-zinc">Budget / employee</p>
             <p className="text-xl font-bold text-clinical-gold">
@@ -194,7 +194,7 @@ export default function CorporateAdmin() {
       </div>
 
       {isAdmin && (
-        <Card className="bg-clinical-surface border-clinical-slate/20">
+        <Card className="bg-clinical-surface border-clinical-border">
           <CardContent className="p-5 space-y-3">
             <h2 className="text-sm font-semibold text-white flex items-center gap-2">
               <Wallet className="w-4 h-4 text-clinical-gold" /> Per-employee monthly budget
@@ -204,7 +204,7 @@ export default function CorporateAdmin() {
                 type="number"
                 value={budgetRupees}
                 onChange={(e) => setBudgetRupees(e.target.value)}
-                className="h-9 text-xs bg-clinical-dark border-clinical-slate/30 max-w-[200px]"
+                className="h-9 text-xs bg-clinical-dark border-clinical-border max-w-[200px]"
               />
               <Button onClick={handleBudget} className="bg-clinical-gold text-[#050505]">
                 Update
@@ -214,7 +214,7 @@ export default function CorporateAdmin() {
         </Card>
       )}
 
-      <Card className="bg-clinical-surface border-clinical-slate/20">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-5 space-y-3">
           <h2 className="text-sm font-semibold text-white flex items-center gap-2">
             <Users className="w-4 h-4 text-clinical-gold" /> Members
@@ -225,7 +225,7 @@ export default function CorporateAdmin() {
                 placeholder="employee@company.com"
                 value={inviteEmail}
                 onChange={(e) => setInviteEmail(e.target.value)}
-                className="h-9 text-xs bg-clinical-dark border-clinical-slate/30"
+                className="h-9 text-xs bg-clinical-dark border-clinical-border"
               />
               <Button onClick={handleInvite} className="bg-clinical-gold text-[#050505]">
                 <Mail className="w-3.5 h-3.5 mr-1" /> Invite
@@ -236,7 +236,7 @@ export default function CorporateAdmin() {
             {data.members.map((m) => (
               <div
                 key={m.id}
-                className="flex items-center justify-between p-2 rounded-md border border-clinical-slate/20 bg-clinical-dark"
+                className="flex items-center justify-between p-2 rounded-md border border-clinical-border bg-clinical-dark"
               >
                 <div className="min-w-0">
                   <p className="text-xs text-white truncate">{m.email}</p>
@@ -251,7 +251,7 @@ export default function CorporateAdmin() {
                           ? "border-clinical-sage/40 text-clinical-sage"
                           : m.status === "invited"
                             ? "border-clinical-gold/40 text-clinical-gold"
-                            : "border-clinical-slate/40 text-clinical-zinc"
+                            : "border-clinical-border text-clinical-zinc"
                       }`}
                     >
                       {m.status}
@@ -295,7 +295,7 @@ export default function CorporateAdmin() {
         </CardContent>
       </Card>
 
-      <Card className="bg-clinical-surface border-clinical-slate/20">
+      <Card className="bg-clinical-surface border-clinical-border">
         <CardContent className="p-5 space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-white flex items-center gap-2">
@@ -316,18 +316,18 @@ export default function CorporateAdmin() {
                   <Input
                     value={ooTitle}
                     onChange={(e) => setOoTitle(e.target.value)}
-                    className="h-9 text-xs bg-clinical-dark border-clinical-slate/30"
+                    className="h-9 text-xs bg-clinical-dark border-clinical-border"
                   />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-[10px] text-clinical-zinc">
-                    Per-employee budget (₹)
+                    Per-employee budget (Rs.)
                   </Label>
                   <Input
                     type="number"
                     value={ooBudget}
                     onChange={(e) => setOoBudget(e.target.value)}
-                    className="h-9 text-xs bg-clinical-dark border-clinical-slate/30"
+                    className="h-9 text-xs bg-clinical-dark border-clinical-border"
                   />
                 </div>
               </div>
@@ -335,20 +335,20 @@ export default function CorporateAdmin() {
                 placeholder="Office address"
                 value={ooLine}
                 onChange={(e) => setOoLine(e.target.value)}
-                className="h-9 text-xs bg-clinical-dark border-clinical-slate/30"
+                className="h-9 text-xs bg-clinical-dark border-clinical-border"
               />
               <div className="grid grid-cols-2 gap-2">
                 <Input
                   placeholder="City"
                   value={ooCity}
                   onChange={(e) => setOoCity(e.target.value)}
-                  className="h-9 text-xs bg-clinical-dark border-clinical-slate/30"
+                  className="h-9 text-xs bg-clinical-dark border-clinical-border"
                 />
                 <Input
                   placeholder="Pincode"
                   value={ooPincode}
                   onChange={(e) => setOoPincode(e.target.value)}
-                  className="h-9 text-xs bg-clinical-dark border-clinical-slate/30"
+                  className="h-9 text-xs bg-clinical-dark border-clinical-border"
                 />
               </div>
               <Button
@@ -357,7 +357,7 @@ export default function CorporateAdmin() {
               >
                 Schedule for tomorrow 1pm
               </Button>
-              <Separator className="bg-clinical-slate/20" />
+              <Separator className="bg-clinical-surface-elevated" />
             </>
           )}
           {officeOrders.length === 0 ? (
@@ -368,12 +368,12 @@ export default function CorporateAdmin() {
                 <Link
                   key={o.id}
                   to={`/office-lunch/${o.id}`}
-                  className="flex items-center justify-between p-3 rounded-md border border-clinical-slate/20 bg-clinical-dark hover:border-clinical-gold/40"
+                  className="flex items-center justify-between p-3 rounded-md border border-clinical-border bg-clinical-dark hover:border-clinical-gold/40"
                 >
                   <div>
                     <p className="text-xs font-medium text-white">{o.title}</p>
                     <p className="text-[10px] text-clinical-zinc">
-                      {new Date(o.scheduledFor).toLocaleString("en-IN", {
+                      {new Date(o.scheduledFor).toLocaleString([], {
                         weekday: "short",
                         hour: "numeric",
                         minute: "2-digit",

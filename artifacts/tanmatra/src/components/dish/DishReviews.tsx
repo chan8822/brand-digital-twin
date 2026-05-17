@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { Star, MessageSquare, Sparkles, TrendingUp, TrendingDown, Minus, ShieldCheck } from "lucide-react";
+import { Star, MessageSquare, Sparkles, TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 import { API_BASE as API_BASE } from "@/lib/apiBase";
 
@@ -24,12 +24,6 @@ interface PublicReview {
   photoUrl?: string | null;
   createdAt: string;
   reviewer: PublicReviewer;
-  // Optional — populated by the API only when the reviewer's
-  // user-id has a delivered order containing this dish. Drives the
-  // "Verified Purchase" badge per ASCI 2022 endorsement guidelines.
-  // If the backend doesn't return this field yet, the badge is
-  // simply hidden (no breakage).
-  verifiedPurchase?: boolean;
 }
 
 function reviewerInitials(label: string): string {
@@ -112,7 +106,7 @@ function StarRow({
             className={
               n <= value
                 ? "fill-clinical-gold text-clinical-gold"
-                : "text-clinical-slate/40"
+                : "text-clinical-zinc-muted"
             }
           />
         </button>
@@ -198,7 +192,7 @@ export default function DishReviews({ slug }: DishReviewsProps) {
         {summary && (
           <Badge
             variant="outline"
-            className="border-clinical-slate/30 text-clinical-zinc text-[10px] gap-1 ml-auto tabular-nums"
+            className="border-clinical-border text-clinical-zinc text-[10px] gap-1 ml-auto tabular-nums"
           >
             <Star className="w-3 h-3 fill-clinical-gold text-clinical-gold" />
             {(summary.averageRating / 10).toFixed(1)} · {summary.sampleSize}
@@ -207,16 +201,16 @@ export default function DishReviews({ slug }: DishReviewsProps) {
       </div>
 
       {summary && (summary.mostLoved || summary.commonGripe) && (
-        <Card className="bg-clinical-surface border-clinical-slate/20">
+        <Card className="bg-clinical-surface border-clinical-border">
           <CardContent className="p-4 space-y-2">
             <div className="flex items-center gap-2">
               <Sparkles className="w-3.5 h-3.5 text-clinical-gold" />
-              <p className="text-[10px] uppercase tracking-[0.12em] text-clinical-zinc/70 font-semibold">
+              <p className="text-[10px] uppercase tracking-[0.12em] text-clinical-zinc-muted font-semibold">
                 What customers say
               </p>
               <Badge
                 variant="outline"
-                className="border-clinical-slate/30 text-clinical-zinc text-[10px] ml-auto gap-1 capitalize"
+                className="border-clinical-border text-clinical-zinc text-[10px] ml-auto gap-1 capitalize"
               >
                 {trendIcon}
                 {summary.trend}
@@ -239,7 +233,7 @@ export default function DishReviews({ slug }: DishReviewsProps) {
       )}
 
       {canReview && (
-        <Card className="bg-clinical-surface border-clinical-slate/20">
+        <Card className="bg-clinical-surface border-clinical-border">
           <CardContent className="p-4 space-y-3">
             <p className="text-xs font-medium text-white">Leave a review</p>
             <div className="flex items-center gap-3">
@@ -251,17 +245,17 @@ export default function DishReviews({ slug }: DishReviewsProps) {
               value={body}
               onChange={(e) => setBody(e.target.value.slice(0, 2000))}
               rows={3}
-              className="bg-clinical-dark border-clinical-slate/30 text-xs"
+              className="bg-clinical-dark border-clinical-border text-xs"
             />
             <input
               type="url"
               placeholder="Optional photo URL"
               value={photoUrl}
               onChange={(e) => setPhotoUrl(e.target.value.slice(0, 1024))}
-              className="w-full bg-clinical-dark border border-clinical-slate/30 rounded-md px-3 py-2 text-xs text-white placeholder:text-clinical-zinc/50 focus:outline-none focus:border-clinical-gold/40"
+              className="w-full bg-clinical-dark border border-clinical-border rounded-md px-3 py-2 text-xs text-white placeholder:text-clinical-zinc-muted focus:outline-none focus:border-clinical-gold/40"
             />
             <div className="flex items-center justify-between">
-              <span className="text-[10px] text-clinical-zinc/70">
+              <span className="text-[10px] text-clinical-zinc-muted">
                 {body.length}/2000
               </span>
               <Button
@@ -289,9 +283,9 @@ export default function DishReviews({ slug }: DishReviewsProps) {
         <div className="space-y-3">
           {reviews.slice(0, 5).map((r, idx) => (
             <div key={r.id}>
-              {idx > 0 && <Separator className="bg-clinical-slate/10 mb-3" />}
+              {idx > 0 && <Separator className="bg-clinical-surface-elevated mb-3" />}
               <div className="flex items-center gap-2.5">
-                <Avatar className="h-7 w-7 border border-clinical-slate/20">
+                <Avatar className="h-7 w-7 border border-clinical-border">
                   {r.reviewer.avatarUrl && (
                     <AvatarImage
                       src={r.reviewer.avatarUrl}
@@ -303,20 +297,9 @@ export default function DishReviews({ slug }: DishReviewsProps) {
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <p className="text-xs font-medium text-white truncate">
-                      {r.reviewer.label}
-                    </p>
-                    {r.verifiedPurchase && (
-                      <span
-                        className="shrink-0 inline-flex items-center gap-0.5 text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-clinical-sage/15 text-clinical-sage border border-clinical-sage/30 font-semibold leading-none"
-                        title="This reviewer bought and received this dish"
-                      >
-                        <ShieldCheck className="w-2.5 h-2.5" aria-hidden />
-                        Verified
-                      </span>
-                    )}
-                  </div>
+                  <p className="text-xs font-medium text-white truncate">
+                    {r.reviewer.label}
+                  </p>
                   <div className="flex items-center gap-2">
                     <StarRow value={r.rating} size={12} />
                     <span className="text-[10px] text-clinical-zinc tabular-nums">
@@ -335,7 +318,7 @@ export default function DishReviews({ slug }: DishReviewsProps) {
                   src={r.photoUrl}
                   alt="Reviewer photo"
                   loading="lazy"
-                  className="mt-2 rounded-md max-h-40 w-auto object-cover border border-clinical-slate/20"
+                  className="mt-2 rounded-md max-h-40 w-auto object-cover border border-clinical-border"
                 />
               )}
             </div>

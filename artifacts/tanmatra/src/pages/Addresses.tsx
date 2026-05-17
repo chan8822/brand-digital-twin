@@ -193,7 +193,7 @@ export default function Addresses() {
             return (
               <Card
                 key={addr.id}
-                className="bg-clinical-surface border-clinical-slate/30"
+                className="bg-clinical-surface border-clinical-border"
               >
                 <CardContent className="p-5">
                   <div className="flex items-start gap-4">
@@ -229,7 +229,7 @@ export default function Addresses() {
                         size="sm"
                         variant="outline"
                         onClick={() => openEdit(addr)}
-                        className="border-clinical-slate/40 text-clinical-zinc hover:text-white hover:border-clinical-gold/40 gap-1.5"
+                        className="border-clinical-border text-clinical-zinc hover:text-white hover:border-clinical-gold/40 gap-1.5"
                       >
                         <PencilSimple className="w-3.5 h-3.5" aria-hidden />
                         Edit
@@ -263,9 +263,9 @@ export default function Addresses() {
         </div>
       )}
 
-      <Card className="bg-clinical-surface border-clinical-slate/30 border-dashed">
+      <Card className="bg-clinical-surface border-clinical-border border-dashed">
         <CardContent className="p-5 flex items-center gap-4">
-          <div className="h-10 w-10 rounded-md bg-white/5 border border-clinical-slate/30 flex items-center justify-center shrink-0">
+          <div className="h-10 w-10 rounded-md bg-white/5 border border-clinical-border flex items-center justify-center shrink-0">
             <Plus className="w-4 h-4 text-clinical-zinc" aria-hidden />
           </div>
           <div className="flex-1">
@@ -289,7 +289,7 @@ export default function Addresses() {
         open={adding || editing !== null}
         onOpenChange={(open) => !open && close()}
       >
-        <DialogContent className="bg-clinical-surface border-clinical-slate/30 sm:max-w-md">
+        <DialogContent className="bg-clinical-surface border-clinical-border sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-white">
               {editing ? "Edit address" : "New address"}
@@ -305,7 +305,7 @@ export default function Addresses() {
                   onChange={(e) =>
                     setForm({ ...form, label: e.target.value })
                   }
-                  className="h-9 text-xs bg-clinical-dark border-clinical-slate/30"
+                  className="h-9 text-xs bg-clinical-dark border-clinical-border"
                 />
               </div>
               <div className="space-y-1">
@@ -318,7 +318,7 @@ export default function Addresses() {
                       type: e.target.value as UserAddress["type"],
                     })
                   }
-                  className="h-9 text-xs bg-clinical-dark border border-clinical-slate/30 rounded-md w-full px-2 text-white"
+                  className="h-9 text-xs bg-clinical-dark border border-clinical-border rounded-md w-full px-2 text-white"
                 >
                   <option value="home">Home</option>
                   <option value="work">Work</option>
@@ -336,7 +336,7 @@ export default function Addresses() {
                 onChange={(e) =>
                   setForm({ ...form, line1: e.target.value })
                 }
-                className="h-9 text-xs bg-clinical-dark border-clinical-slate/30"
+                className="h-9 text-xs bg-clinical-dark border-clinical-border"
               />
             </div>
             <div className="space-y-1">
@@ -349,7 +349,7 @@ export default function Addresses() {
                 onChange={(e) =>
                   setForm({ ...form, line2: e.target.value })
                 }
-                className="h-9 text-xs bg-clinical-dark border-clinical-slate/30"
+                className="h-9 text-xs bg-clinical-dark border-clinical-border"
               />
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -361,7 +361,7 @@ export default function Addresses() {
                   onChange={(e) =>
                     setForm({ ...form, city: e.target.value })
                   }
-                  className="h-9 text-xs bg-clinical-dark border-clinical-slate/30"
+                  className="h-9 text-xs bg-clinical-dark border-clinical-border"
                 />
               </div>
               <div className="space-y-1">
@@ -375,7 +375,7 @@ export default function Addresses() {
                   onChange={(e) =>
                     setForm({ ...form, pincode: e.target.value })
                   }
-                  className="h-9 text-xs bg-clinical-dark border-clinical-slate/30"
+                  className="h-9 text-xs bg-clinical-dark border-clinical-border"
                 />
               </div>
             </div>
@@ -390,7 +390,7 @@ export default function Addresses() {
                 onChange={(e) =>
                   setForm({ ...form, phone: e.target.value })
                 }
-                className="h-9 text-xs bg-clinical-dark border-clinical-slate/30"
+                className="h-9 text-xs bg-clinical-dark border-clinical-border"
               />
             </div>
             {error && (
@@ -404,7 +404,7 @@ export default function Addresses() {
               variant="outline"
               onClick={close}
               disabled={saving}
-              className="border-clinical-slate/40 text-clinical-zinc hover:text-white"
+              className="border-clinical-border text-clinical-zinc hover:text-white"
             >
               Cancel
             </Button>
