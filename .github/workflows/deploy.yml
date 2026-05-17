@@ -64,9 +64,27 @@ jobs:
 
       - name: Build image with Cloud Build
         run: |
-          gcloud builds submit \
+          # Submit async to avoid VPC-SC log-streaming errors from the
+          # GitHub runner. Poll build status directly instead.
+          BUILD_ID=$(gcloud builds submit \
             --tag gcr.io/${GCP_PROJECT}/${SERVICE}:${{ github.sha }} \
-            --project ${GCP_PROJECT}
+            --project ${GCP_PROJECT} \
+            --async \
+            --format='value(id)')
+          echo "Cloud Build ID: $BUILD_ID"
+          for i in $(seq 1 40); do
+            STATUS=$(gcloud builds describe "$BUILD_ID" \
+              --project ${GCP_PROJECT} \
+              --format='value(status)')
+            echo "[$i/40] Build status: $STATUS"
+            if [ "$STATUS" = "SUCCESS" ]; then exit 0; fi
+            if [ "$STATUS" = "FAILURE" ] || [ "$STATUS" = "CANCELLED" ] || [ "$STATUS" = "TIMEOUT" ]; then
+              echo "Build failed with status: $STATUS"
+              exit 1
+            fi
+            sleep 15
+          done
+          echo "Timed out waiting for Cloud Build"; exit 1
 
       - name: Deploy to Cloud Run
         run: |
