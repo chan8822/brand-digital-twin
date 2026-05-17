@@ -1,12 +1,7 @@
-import {
-  Links,
-  Meta,
-  Outlet,
-  Scripts,
-  ScrollRestoration,
-} from "react-router";
+import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "react-router";
 import type { LinksFunction } from "react-router";
 import "./index.css";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: "/src/index.css" },
@@ -35,6 +30,27 @@ export default function Root() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <Meta />
         <Links />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "FoodEstablishment",
+              "name": "Tanmatra",
+              "url": "https://tanmatra.food",
+              "logo": "https://tanmatra.food/og-image.jpg",
+              "sameAs": [
+                "TODO(founder): add social link"
+              ],
+              "contactPoint": {
+                "@type": "ContactPoint",
+                "telephone": "TODO(founder): add phone number",
+                "contactType": "customer service",
+                "email": "support@tanmatra.food"
+              }
+            })
+          }}
+        />
       </head>
       <body>
         <ErrorBoundary>

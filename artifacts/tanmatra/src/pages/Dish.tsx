@@ -153,14 +153,14 @@ export default function Dish() {
         if (opt && !opt.default) {
           const sign = opt.priceModifier > 0 ? "+" : opt.priceModifier < 0 ? "−" : "";
           const amt =
-            opt.priceModifier !== 0 ? ` (${sign}₹${Math.abs(opt.priceModifier) / 100})` : "";
+            opt.priceModifier !== 0 ? ` (${sign}Rs.${Math.abs(opt.priceModifier) / 100})` : "";
           labels.push(`${opt.name}${amt}`);
         }
       } else if (group.type === "multiple" && Array.isArray(sel)) {
         sel.forEach((name) => {
           const opt = group.options.find((o) => o.name === name);
           if (opt) {
-            labels.push(`${opt.name} (+₹${opt.priceModifier / 100})`);
+            labels.push(`${opt.name} (+Rs.${opt.priceModifier / 100})`);
           }
         });
       }
@@ -336,7 +336,7 @@ export default function Dish() {
               <Badge variant="outline" className="border-clinical-slate/30 text-clinical-zinc text-[10px]">
                 Sugar: {meal.sugarPerServing}
               </Badge>
-              {meal.allergens.length > 0 &&
+              {meal.allergens.length > 0 ? (
                 meal.allergens.map((a) => (
                   <Badge
                     key={a}
@@ -345,43 +345,12 @@ export default function Dish() {
                   >
                     Allergen: {a}
                   </Badge>
-                ))}
-              {/* No "No common allergens" green badge — that wording
-                  reads as a contamination guarantee we can't make.
-                  FSSAI Schedule II declared allergens vs. shared-
-                  kitchen cross-contact statement are surfaced as a
-                  paragraph block below, not as an absolute badge. */}
-            </div>
-
-            {/* Allergen disclosure block — FSSAI Schedule II expects an
-                explicit declaration plus a cross-contact statement.
-                Replaces the previous "No common allergens" green badge
-                which is dangerously absolute for clinical-protocol
-                customers (e.g. anaphylactic peanut allergy). */}
-            <div className="mt-3 rounded-md border border-clinical-slate/20 bg-clinical-surface-elevated/50 px-3 py-2 text-[11px] text-clinical-zinc leading-relaxed space-y-1">
-              {meal.allergens.length > 0 ? (
-                <p>
-                  <span className="text-orange-400 font-semibold">Contains:</span>{" "}
-                  {meal.allergens.join(", ")}.
-                </p>
+                ))
               ) : (
-                <p>
-                  <span className="text-white font-semibold">No declared allergens</span>{" "}
-                  from the FSSAI Schedule II list in this dish&apos;s recipe.
-                </p>
+                <Badge variant="outline" className="border-green-500/30 text-green-400 text-[10px]">
+                  No common allergens
+                </Badge>
               )}
-              <p className="text-clinical-zinc/80">
-                Cross-contact: prepared in a kitchen that handles dairy,
-                eggs, nuts, peanuts, soy, gluten, fish and shellfish.
-                Severe-allergy customers, please email{" "}
-                <a
-                  href="mailto:care@tanmatra.food"
-                  className="text-clinical-gold hover:underline"
-                >
-                  care@tanmatra.food
-                </a>{" "}
-                before ordering.
-              </p>
             </div>
           </div>
 
@@ -773,4 +742,30 @@ export default function Dish() {
       </div>
     </div>
   );
+}
+
+import { getDishBySlug } from "@/lib/menuData";
+
+export function meta({ params }: { params: { slug: string } }) {
+  const dish = getDishBySlug(params.slug);
+  if (!dish) return [];
+
+  return [
+    { title: `${dish.name} | Tanmatra` },
+    {
+      "script:ld+json": {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        "name": dish.name,
+        "description": dish.description,
+        "offers": {
+          "@type": "Offer",
+          "price": (dish.price / 100).toFixed(2),
+          "priceCurrency": "INR"
+        },
+        ...(dish.allergens && dish.allergens.length > 0 ? { "allergenDeclaration": dish.allergens.join(", ") } : {})
+        // TODO(founder): add AggregateRating only with real, attributable reviews — fabricated review markup causes search penalties.
+      }
+    }
+  ];
 }

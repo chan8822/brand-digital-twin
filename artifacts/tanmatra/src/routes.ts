@@ -30,6 +30,7 @@ export default [
     route("appointments", "pages/Appointments.tsx"),
     route("rd-console", "pages/RdConsoleGate.tsx"),
     route("checkout-appointment", "pages/CheckoutAppointment.tsx"),
+    route("faq", "pages/Faq.tsx"),
     route("admin", "pages/AdminIndexGate.tsx"),
     route("admin/ops", "pages/AdminOpsDashboardGate.tsx"),
     route("admin/ai-runs", "pages/AdminAiRunsGate.tsx"),

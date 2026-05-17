@@ -890,3 +890,31 @@ export default function Menu() {
 
 // Legacy inline card markup removed — moved to <MenuCard /> component.
 // Original implementation below intentionally stripped to avoid duplicate JSX.
+
+import { DISHES } from "@/lib/menuData";
+
+export function meta() {
+  const hasMenuItem = DISHES.filter(d => Boolean(d)).map(dish => ({
+    "@type": "MenuItem",
+    "name": dish.name,
+    "description": dish.description,
+    "offers": {
+      "@type": "Offer",
+      "price": (dish.price / 100).toFixed(2),
+      "priceCurrency": "INR"
+    },
+    ...(dish.allergens && dish.allergens.length > 0 ? { "allergenDeclaration": dish.allergens.join(", ") } : {})
+  }));
+
+  return [
+    { title: "Clinical Menu | Tanmatra" },
+    {
+      "script:ld+json": {
+        "@context": "https://schema.org",
+        "@type": "Menu",
+        "name": "Tanmatra Clinical Menu",
+        "hasMenuItem": hasMenuItem
+      }
+    }
+  ];
+}

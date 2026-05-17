@@ -22,12 +22,6 @@ const FOOTER_LINKS = {
     { label: "Cohort Challenges", href: "/challenges" },
     { label: "For Dietitians", href: "/rd-partners" },
   ],
-  legal: [
-    { label: "Privacy Policy", href: "/privacy" },
-    { label: "Terms of Service", href: "/terms" },
-    { label: "Refund & Cancellation", href: "/refunds" },
-    { label: "Contact & Grievance Officer", href: "/refunds#grievance" },
-  ],
 };
 
 export default function Footer() {
@@ -35,7 +29,7 @@ export default function Footer() {
     <footer className="hidden md:block border-t border-clinical-slate/20 bg-clinical-surface">
       {/* Main footer */}
       <div className="max-w-7xl mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8">
           {/* Brand column */}
           <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center gap-2.5">
@@ -54,12 +48,12 @@ export default function Footer() {
             <div className="flex items-center gap-3 pt-1">
               <div className="flex items-center gap-1.5 text-white">
                 <Mail className="w-3 h-3 text-clinical-gold" />
-                <a href="mailto:care@tanmatra.food" className="text-xs hover:text-clinical-gold">care@tanmatra.food</a>
+                <span className="text-xs">care@tanmatra.health</span>
               </div>
             </div>
             <div className="flex items-center gap-1.5 text-white">
               <Phone className="w-3 h-3 text-clinical-gold" />
-              <a href="tel:+918047019200" className="text-xs hover:text-clinical-gold">+91 80 4701 9200</a>
+              <span className="text-xs">+91 80 4701 9200</span>
             </div>
             <div className="flex items-center gap-1.5 text-white">
               <MapPin className="w-3 h-3 text-clinical-gold" />
@@ -100,21 +94,6 @@ export default function Footer() {
               ))}
             </div>
           </div>
-
-          {/* Legal column — required by DPDP Act 2023 §32 (grievance
-              officer reachable from every page) and Consumer Protection
-              (E-Commerce) Rules 2020 §5 (refund/cancellation policy
-              accessible before purchase). */}
-          <div className="space-y-3">
-            <p className="text-clinical-label text-white">Legal</p>
-            <div className="space-y-2">
-              {FOOTER_LINKS.legal.map((link) => (
-                <Link key={link.href} to={link.href} className="block text-xs text-white hover:text-clinical-gold transition-colors">
-                  {link.label}
-                </Link>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
 
@@ -125,10 +104,10 @@ export default function Footer() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-1.5">
             <ShieldCheck className="w-3 h-3 text-clinical-sage" />
-            <span className="text-[10px] text-white">ISO 22000 Certified Kitchens · FSSAI Lic. 22725926001018</span>
+            <span className="text-[10px] text-white">ISO 22000 Certified Kitchens &middot; FSSAI Lic. No.: TODO(founder): supply FSSAI licence number.</span>
           </div>
           <p className="text-[10px] text-white">
-            © {new Date().getFullYear()} Tanmatra Health Technologies Pvt. Ltd.
+            © 2024 Tanmatra Health Technologies Pvt. Ltd.
           </p>
         </div>
       </div>
