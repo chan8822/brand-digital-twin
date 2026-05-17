@@ -13,27 +13,14 @@
 
 name: Run Datadog Synthetic tests
 
-# Fenced behind a repo variable so the job skips cleanly until the
-# operator opts in. To enable:
-#   1. Settings → Secrets and variables → Actions → Variables tab
-#      → New variable: name `DATADOG_ENABLED`, value `1`
-#   2. Settings → Secrets and variables → Actions → Secrets tab
-#      → add `DD_API_KEY` and `DD_APP_KEY` (Datadog → API Keys)
-#   3. Make sure at least one Synthetic test in your Datadog org
-#      is tagged `e2e-tests` (or edit `test_search_query` below)
-# Until DATADOG_ENABLED is `1`, the run will show as skipped on
-# every push instead of failing red.
-
 on:
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
-  workflow_dispatch: {}
 
 jobs:
   build:
-    if: vars.DATADOG_ENABLED == '1'
     runs-on: ubuntu-latest
 
     steps:
