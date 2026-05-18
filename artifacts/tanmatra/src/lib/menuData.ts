@@ -79,6 +79,7 @@ export function useMenuCatalog(): {
   dishes: DishData[];
   isLoading: boolean;
   isError: boolean;
+  isLive: boolean;
 } {
   const q = useQuery<DishData[]>({
     queryKey: ["menu", "public"],
@@ -97,5 +98,6 @@ export function useMenuCatalog(): {
     dishes,
     isLoading: q.isLoading,
     isError: q.isError,
+    isLive: q.isSuccess && Boolean(q.data) && q.data.length > 0,
   };
 }

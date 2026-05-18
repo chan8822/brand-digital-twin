@@ -14,6 +14,7 @@ import { formatPrice } from "@/lib/api/adapter";
 import {
   CATEGORY_LABELS,
   type DishData,
+  useMenuCatalog,
 } from "@/lib/menuData";
 import { clinicalCategoryLabel, useClinicalMode } from "@/lib/clinicalDiet";
 import type { DishMatchResult } from "@/lib/preferencesMatch";
@@ -49,6 +50,7 @@ export default function MenuCard({
   const isPremiumOnly = premiumSlugs.has(item.slug);
   const showPremiumGate = isPremiumOnly && !isPremium;
   const { enabled: clinicalMode } = useClinicalMode();
+  const { isLive } = useMenuCatalog();
   // In clinical mode the body line under each card swaps the consumer
   // category label ("Power Bowls") for EHR vocabulary ("Composite plate")
   // and drops the kitchen brand entirely so the card reads like a tray.
@@ -128,9 +130,14 @@ export default function MenuCard({
           <h3 className="font-serif text-lg font-medium leading-tight text-white">
             {item.name}
           </h3>
-          <span className="font-serif text-lg font-medium text-clinical-gold tabular-nums shrink-0">
-            {formatPrice(item.price)}
-          </span>
+          <div className="flex flex-col items-end shrink-0">
+            <span className="font-serif text-lg font-medium text-clinical-gold tabular-nums">
+              {formatPrice(item.price)}
+            </span>
+            {!isLive && (
+              <span className="text-[9px] text-amber-400/70">Price may vary</span>
+            )}
+          </div>
         </div>
         <p className="text-xs text-clinical-zinc line-clamp-2 leading-relaxed">
           {item.description}
@@ -256,7 +263,8 @@ export default function MenuCard({
             <Button
               size="sm"
               onClick={(e) => onQuickAdd(e, item)}
-              disabled={!item.isAvailable}
+              disabled={!item.isAvailable || !isLive}
+              title={!isLive ? "Menu is updating — add to cart will be available shortly" : undefined}
               className="flex-1 h-10 bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 disabled:opacity-50 disabled:pointer-events-none text-[11px] uppercase tracking-[0.12em] font-bold gap-1 shadow-[0_0_15px_rgba(212,175,55,0.15)] hover:shadow-[0_0_20px_rgba(212,175,55,0.3)]"
             >
               <Plus className="w-3 h-3" />

@@ -40,6 +40,8 @@ import rdCopilotRouter from "./rdCopilot";
 import communityRouter from "./community";
 import b2bPlannerRouter from "./b2bPlanner";
 import ordersRouter from "./orders";
+import checkoutRouter from "./checkout";
+import paymentsRouter from "./payments";
 
 const router: IRouter = Router();
 
@@ -84,5 +86,7 @@ router.use(rdCopilotRouter);
 router.use(communityRouter);
 router.use(b2bPlannerRouter);
 router.use(ordersRouter);
+router.use(checkoutRouter);
+router.use(paymentsRouter);
 
 export default router;

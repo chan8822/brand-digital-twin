@@ -98,7 +98,7 @@ export default function Dish() {
   const { preferences } = usePreferences();
   const { isPremium } = usePremiumStatus();
   const premiumSlugs = usePremiumSlugs();
-  const { dishes: catalogDishes } = useMenuCatalog();
+  const { dishes: catalogDishes, isLive } = useMenuCatalog();
   const { enabled: clinicalMode } = useClinicalMode();
   const meal = useMemo(() => {
     if (!slug) return undefined;
@@ -786,14 +786,22 @@ export default function Dish() {
               Premium Only — See Membership
             </Button>
           ) : (
-            <Button
-              onClick={handleAddToPlan}
-              className="flex-1 sm:flex-initial bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 font-semibold h-11 px-6 shadow-clinical-lg text-sm gap-2"
-            >
-              <ShoppingCart className="w-4 h-4" />
-              Add to Order
-              <span className="tabular-nums">— {formatPrice(calculatedTotal)}</span>
-            </Button>
+            <div className="flex-1 sm:flex-initial flex flex-col items-stretch gap-1">
+              {!isLive && (
+                <p className="text-[11px] text-amber-400/70 text-center">
+                  Live menu unavailable — prices may differ
+                </p>
+              )}
+              <Button
+                onClick={handleAddToPlan}
+                disabled={!isLive}
+                className="w-full bg-clinical-gold text-[#050505] hover:bg-clinical-gold/90 disabled:opacity-50 disabled:pointer-events-none font-semibold h-11 px-6 shadow-clinical-lg text-sm gap-2"
+              >
+                <ShoppingCart className="w-4 h-4" />
+                Add to Order
+                <span className="tabular-nums">— {formatPrice(calculatedTotal)}</span>
+              </Button>
+            </div>
           )}
         </div>
       </div>
