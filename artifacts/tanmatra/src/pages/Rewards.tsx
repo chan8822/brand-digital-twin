@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router";
+import { Link, type MetaFunction } from "react-router";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,6 +66,11 @@ function formatRelative(iso: string): string {
   if (diff < 7 * day) return `${Math.floor(diff / day)}d ago`;
   return d.toLocaleDateString();
 }
+
+export const meta: MetaFunction = () => [
+  { title: "Rewards | Tanmatra" },
+  { name: "robots", content: "noindex, nofollow" },
+];
 
 export default function Rewards() {
   const [referral, setReferral] = useState<ReferralResponse | null>(null);

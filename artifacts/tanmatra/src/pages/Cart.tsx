@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, type MetaFunction } from "react-router";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -36,6 +36,11 @@ import {
 } from "@/lib/clinicalDiet";
 import PatientContextStrip from "@/components/clinical/PatientContextStrip";
 import ConflictsPanel from "@/components/clinical/ConflictsPanel";
+
+export const meta: MetaFunction = () => [
+  { title: "Cart | Tanmatra" },
+  { name: "robots", content: "noindex, nofollow" },
+];
 
 export default function Cart() {
   const navigate = useNavigate();

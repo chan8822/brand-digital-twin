@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type MetaFunction } from "react-router";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,11 @@ function fmtDateTime(iso: string) {
     minute: "2-digit",
   });
 }
+
+export const meta: MetaFunction = () => [
+  { title: "RD Console | Tanmatra" },
+  { name: "robots", content: "noindex, nofollow" },
+];
 
 export default function RdConsole() {
   const rds = listRds();

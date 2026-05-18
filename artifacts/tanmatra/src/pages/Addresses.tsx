@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router";
+import { Link, type MetaFunction } from "react-router";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -54,6 +54,11 @@ const EMPTY_FORM: FormState = {
   pincode: "",
   phone: "",
 };
+
+export const meta: MetaFunction = () => [
+  { title: "Addresses | Tanmatra" },
+  { name: "robots", content: "noindex, nofollow" },
+];
 
 export default function Addresses() {
   const [addresses, setAddresses] = useState<UserAddress[]>([]);

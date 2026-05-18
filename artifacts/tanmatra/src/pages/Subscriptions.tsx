@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Link } from "react-router";
+import { Link, type MetaFunction } from "react-router";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -108,6 +108,11 @@ const TIME_WINDOWS = [
   "13:00 - 14:00",
   "19:00 - 20:00",
   "20:00 - 21:00",
+];
+
+export const meta: MetaFunction = () => [
+  { title: "My Subscriptions | Tanmatra" },
+  { name: "robots", content: "noindex, nofollow" },
 ];
 
 export default function Subscriptions() {

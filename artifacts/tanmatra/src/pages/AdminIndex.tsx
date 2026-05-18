@@ -1,4 +1,4 @@
-import { Link } from "react-router";
+import { Link, type MetaFunction } from "react-router";
 import {
   Activity,
   BarChart3,
@@ -122,6 +122,11 @@ const ADMIN_LINKS: Array<{ section: string; items: AdminLink[] }> = [
       },
     ],
   },
+];
+
+export const meta: MetaFunction = () => [
+  { title: "Admin | Tanmatra" },
+  { name: "robots", content: "noindex, nofollow" },
 ];
 
 export default function AdminIndex() {

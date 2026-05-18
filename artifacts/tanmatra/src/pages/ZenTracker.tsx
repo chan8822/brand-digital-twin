@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Link, useParams, useNavigate } from "react-router";
+import { Link, useParams, useNavigate, type MetaFunction } from "react-router";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, Package, Plus, Check, X } from "lucide-react";
 import { ordersApi, type OrderStatus } from "@/lib/ordersApi";
@@ -196,6 +196,11 @@ function PostPurchaseUpsell() {
     </motion.div>
   );
 }
+
+export const meta: MetaFunction = () => [
+  { title: "Track Order | Tanmatra" },
+  { name: "robots", content: "noindex, nofollow" },
+];
 
 // ── Main component ────────────────────────────────────────────────────────────
 

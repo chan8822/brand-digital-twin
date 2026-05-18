@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { type MetaFunction } from "react-router";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -51,6 +52,11 @@ const SLOT_LABEL: Record<MealPlanSlot, string> = {
   lunch: "Lunch",
   dinner: "Dinner",
 };
+
+export const meta: MetaFunction = () => [
+  { title: "Meal Planner | Tanmatra" },
+  { name: "robots", content: "noindex, nofollow" },
+];
 
 export default function WeeklyPlanner() {
   const [plans, setPlans] = useState<MealPlan[]>([]);
