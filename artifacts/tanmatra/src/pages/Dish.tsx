@@ -100,6 +100,7 @@ import {
   ArrowRight,
   Crown,
 } from "lucide-react";
+import { unsplashSrcset } from "@/lib/imgSrcset";
 
 export default function Dish() {
   const { slug } = useParams<{ slug: string }>();
@@ -278,9 +279,12 @@ export default function Dish() {
           <div className="relative aspect-square rounded-2xl overflow-hidden border border-clinical-border">
             <img
               src={meal.image}
+              srcSet={unsplashSrcset(meal.image)}
+              sizes="(max-width: 1024px) 100vw, 50vw"
               alt={meal.name}
               className="w-full h-full object-cover"
               loading="eager"
+              fetchPriority="high"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-[#050505]/60 via-transparent to-transparent" />
 

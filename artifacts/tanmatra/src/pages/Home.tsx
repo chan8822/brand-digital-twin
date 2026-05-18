@@ -150,6 +150,8 @@ function DaypartGrid({
             <div className="relative aspect-square overflow-hidden">
               <img
                 src={d.image}
+                srcSet={unsplashSrcset(d.image)}
+                sizes="(max-width: 640px) calc(33vw - 1rem), 120px"
                 alt={d.name}
                 loading="lazy"
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
@@ -434,6 +436,8 @@ export default function Home() {
                     <div className="relative aspect-[16/9] md:aspect-auto md:h-full overflow-hidden">
                       <img
                         src={featuredChallenge.image}
+                        srcSet={unsplashSrcset(featuredChallenge.image)}
+                        sizes="(max-width: 768px) 100vw, 33vw"
                         alt={featuredChallenge.title}
                         loading="lazy"
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
@@ -536,6 +540,8 @@ export default function Home() {
                         <img
                           key={it.lineId}
                           src={it.image}
+                          srcSet={unsplashSrcset(it.image)}
+                          sizes="48px"
                           alt={it.name}
                           className="w-12 h-12 rounded object-cover border border-clinical-border shrink-0"
                           loading="lazy"

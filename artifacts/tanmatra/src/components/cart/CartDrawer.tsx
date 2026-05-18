@@ -110,6 +110,10 @@ export default function CartDrawer() {
   const handleExpressUPI = useCallback(async () => {
     const rpKey = import.meta.env.VITE_RAZORPAY_KEY_ID as string | undefined;
     if (!rpKey) { navigate("/checkout"); return; }
+    // Cancel any previous in-flight request before starting a new one.
+    expressAbortRef.current?.abort();
+    expressAbortRef.current = new AbortController();
+    const { signal } = expressAbortRef.current;
     setExpressLoading(true);
     try {
       // 1. Resolve default address
@@ -123,6 +127,7 @@ export default function CartDrawer() {
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ amountPaise: totals.total }),
+        signal,
       });
       if (!rpRes.ok) { navigate("/checkout"); return; }
       const { razorpayOrderId } = (await rpRes.json()) as { razorpayOrderId: string };
@@ -226,6 +231,10 @@ export default function CartDrawer() {
   // Focus trap refs
   const panelRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  // Abort any in-flight express-checkout fetch when the component unmounts
+  // (e.g., user navigates away while the order-creation request is pending).
+  const expressAbortRef = useRef<AbortController | null>(null);
+  useEffect(() => () => { expressAbortRef.current?.abort(); }, []);
 
   // Focus the close button when drawer opens
   useEffect(() => {
@@ -299,7 +308,7 @@ export default function CartDrawer() {
               <EmptyState onClose={close} />
             ) : (
               <>
-                <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-4 space-y-3">
+                <div className="flex-1 overflow-y-auto overscroll-contain touch-pan-y px-5 py-4 space-y-3">
                   {/* FreeDeliveryBar inside scroll so it stays visible on long carts */}
                   <FreeDeliveryBar
                     subtotal={subtotal}

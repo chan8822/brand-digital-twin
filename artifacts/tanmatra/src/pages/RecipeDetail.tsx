@@ -12,6 +12,7 @@ import {
   Utensils,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { unsplashSrcset } from "@/lib/imgSrcset";
 
 export const meta: MetaFunction = ({ params }) => {
   const slug = params.slug ?? "";
@@ -98,7 +99,15 @@ export default function RecipeDetail() {
 
       {recipe.image && (
         <div className="relative aspect-[16/9] rounded-2xl overflow-hidden border border-clinical-border">
-          <img src={recipe.image} alt={recipe.title} className="w-full h-full object-cover" />
+          <img
+            src={recipe.image}
+            srcSet={unsplashSrcset(recipe.image)}
+            sizes="(max-width: 768px) 100vw, 896px"
+            alt={recipe.title}
+            loading="eager"
+            fetchPriority="high"
+            className="w-full h-full object-cover"
+          />
           <div className="absolute inset-0 bg-gradient-to-t from-[#050505]/70 to-transparent" />
         </div>
       )}
