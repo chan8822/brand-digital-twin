@@ -232,4 +232,88 @@ router.post("/payments/upi/intent", async (req: Request, res: Response) => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// POST /payments/razorpay/webhook
+// ---------------------------------------------------------------------------
+// Razorpay server-to-server event delivery. The body is received as a raw
+// Buffer (mounted in app.ts before the JSON parser) so we can compute the
+// HMAC before deserialising — this prevents processing forged events.
+// Required env: RAZORPAY_WEBHOOK_SECRET
+
+router.post("/payments/razorpay/webhook", async (req: Request, res: Response) => {
+  const webhookSecret = process.env["RAZORPAY_WEBHOOK_SECRET"];
+  if (!webhookSecret) {
+    req.log.error("RAZORPAY_WEBHOOK_SECRET not configured");
+    res.status(500).json({ error: "webhook not configured" });
+    return;
+  }
+
+  // req.body is a Buffer when mounted with express.raw() — verify before parse.
+  const rawBody = req.body as Buffer;
+  if (!Buffer.isBuffer(rawBody)) {
+    res.status(400).json({ error: "unexpected content type" });
+    return;
+  }
+
+  const receivedSig = req.headers["x-razorpay-signature"];
+  if (!receivedSig || typeof receivedSig !== "string") {
+    res.status(400).json({ error: "missing signature" });
+    return;
+  }
+
+  const expectedSig = crypto
+    .createHmac("sha256", webhookSecret)
+    .update(rawBody)
+    .digest("hex");
+
+  let sigValid = false;
+  try {
+    sigValid = crypto.timingSafeEqual(
+      Buffer.from(expectedSig, "hex"),
+      Buffer.from(receivedSig, "hex"),
+    );
+  } catch {
+    sigValid = false;
+  }
+
+  if (!sigValid) {
+    req.log.warn({ receivedSig }, "invalid Razorpay webhook signature");
+    res.status(400).json({ error: "invalid signature" });
+    return;
+  }
+
+  let event: { event?: string; payload?: { payment?: { entity?: { order_id?: string; id?: string } } } };
+  try {
+    event = JSON.parse(rawBody.toString("utf8"));
+  } catch {
+    res.status(400).json({ error: "invalid json" });
+    return;
+  }
+
+  // Handle known event types. Razorpay expects a fast 200 ACK — defer
+  // heavy processing to a background job queue.
+  const eventType = event.event ?? "";
+  const paymentEntity = event.payload?.payment?.entity;
+
+  if (eventType === "payment.captured") {
+    const razorpayOrderId = paymentEntity?.order_id ?? "";
+    const razorpayPaymentId = paymentEntity?.id ?? "";
+    if (razorpayOrderId) {
+      try {
+        await db
+          .update(ordersTable)
+          .set({ status: "preparing" })
+          .where(eq(ordersTable.externalOrderId, razorpayOrderId));
+      } catch (err) {
+        req.log.error({ err, razorpayOrderId, razorpayPaymentId }, "webhook: order status update failed");
+      }
+    }
+  } else if (eventType === "payment.failed") {
+    req.log.warn({ razorpayOrderId: paymentEntity?.order_id }, "webhook: payment failed");
+  }
+
+  // Always ACK quickly — Razorpay retries on non-2xx.
+  res.json({ ok: true });
+});
+
 export default router;

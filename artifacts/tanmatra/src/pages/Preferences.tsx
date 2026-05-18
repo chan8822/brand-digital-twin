@@ -1,4 +1,10 @@
+import type { MetaFunction } from "react-router";
 import { useEffect, useState } from "react";
+
+export const meta: MetaFunction = () => [
+  { title: "Preferences | Tanmatra" },
+  { name: "robots", content: "noindex, nofollow" },
+];
 import { Link } from "react-router";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

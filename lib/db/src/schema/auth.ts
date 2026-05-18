@@ -11,6 +11,9 @@ export const sessionsTable = pgTable(
     // `withTimezone: true` to match every other timestamp column in
     // the codebase. Drizzle emits `timestamp with time zone`.
     expire: timestamp("expire", { withTimezone: true }).notNull(),
+    // Null means active. Set by POST /admin/sessions/:sid/revoke to
+    // immediately invalidate a session without waiting for natural expiry.
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
   },
   (table) => [index("IDX_session_expire").on(table.expire)],
 );

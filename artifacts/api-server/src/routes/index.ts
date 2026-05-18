@@ -42,6 +42,7 @@ import b2bPlannerRouter from "./b2bPlanner";
 import ordersRouter from "./orders";
 import checkoutRouter from "./checkout";
 import paymentsRouter from "./payments";
+import vitalsRouter from "./vitals";
 
 const router: IRouter = Router();
 
@@ -88,5 +89,6 @@ router.use(b2bPlannerRouter);
 router.use(ordersRouter);
 router.use(checkoutRouter);
 router.use(paymentsRouter);
+router.use(vitalsRouter);
 
 export default router;

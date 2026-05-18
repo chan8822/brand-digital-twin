@@ -1,4 +1,10 @@
+import type { MetaFunction } from "react-router";
 import { Link, useNavigate } from "react-router";
+
+export const meta: MetaFunction = () => [
+  { title: "My Orders | Tanmatra" },
+  { name: "robots", content: "noindex, nofollow" },
+];
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

@@ -13,6 +13,8 @@ import {
   listPostsForModeration,
   setPostHidden,
 } from "../lib/challenges";
+import { audit } from "../lib/audit";
+import { adminModerationRateLimit } from "../middlewares/rateLimitMiddleware";
 
 const router: IRouter = Router();
 
@@ -146,14 +148,20 @@ function requireAdmin(req: Request, res: Response): boolean {
   return true;
 }
 
-router.get("/challenge-posts-mod", async (req: Request, res: Response) => {
+function adminActorId(req: Request): string {
+  return req.isAuthenticated() ? (req.user.id ?? "admin") : "admin";
+}
+
+router.get("/challenge-posts-mod", adminModerationRateLimit, async (req: Request, res: Response) => {
   if (!requireAdmin(req, res)) return;
   const posts = await listPostsForModeration(200);
+  void audit(req, { actorId: adminActorId(req), actorRole: "admin", action: "admin.posts_mod_list", resourceType: "challenge_post" });
   res.json({ posts });
 });
 
 router.post(
   "/challenge-posts/:id/hide",
+  adminModerationRateLimit,
   async (req: Request, res: Response) => {
     if (!requireAdmin(req, res)) return;
     const id = Number(req.params["id"]);
@@ -166,12 +174,14 @@ router.post(
       res.status(404).json({ error: "not found" });
       return;
     }
+    void audit(req, { actorId: adminActorId(req), actorRole: "admin", action: "admin.post_hide", resourceType: "challenge_post", resourceId: String(id) });
     res.json({ post: row });
   },
 );
 
 router.post(
   "/challenge-posts/:id/unhide",
+  adminModerationRateLimit,
   async (req: Request, res: Response) => {
     if (!requireAdmin(req, res)) return;
     const id = Number(req.params["id"]);
@@ -184,6 +194,7 @@ router.post(
       res.status(404).json({ error: "not found" });
       return;
     }
+    void audit(req, { actorId: adminActorId(req), actorRole: "admin", action: "admin.post_unhide", resourceType: "challenge_post", resourceId: String(id) });
     res.json({ post: row });
   },
 );

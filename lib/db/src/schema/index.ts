@@ -46,3 +46,4 @@ export * from "./mealPlans";
 export * from "./rdCopilot";
 export * from "./communityCohorts";
 export * from "./b2bPlanner";
+export * from "./auditLog";

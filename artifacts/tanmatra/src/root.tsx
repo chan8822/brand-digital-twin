@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Links, Meta, Outlet, Scripts, ScrollRestoration, useMatches } from "react-router";
 import type { LinksFunction, MetaFunction } from "react-router";
+import { API_BASE } from "@/lib/apiBase";
 import { Toaster } from "sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -39,6 +40,30 @@ export const meta: MetaFunction = () => [
 ];
 
 const queryClient = new QueryClient();
+
+// Report a single Core Web Vital to the API for server-side aggregation.
+// keepalive: true ensures the beacon fires even on page unload/navigation.
+function sendVital(name: string, value: number, id: string): void {
+  try {
+    navigator.sendBeacon(
+      `${API_BASE}/vitals`,
+      JSON.stringify({ name, value, id, url: location.pathname, ts: Date.now() }),
+    );
+  } catch {
+    // Non-critical — never throw from a perf observer callback.
+  }
+}
+
+// Lazy-import web-vitals so it never blocks the critical render path.
+if (typeof window !== "undefined") {
+  import("web-vitals").then(({ onCLS, onFCP, onINP, onLCP, onTTFB }) => {
+    onCLS((m) => sendVital(m.name, m.value, m.id));
+    onFCP((m) => sendVital(m.name, m.value, m.id));
+    onINP((m) => sendVital(m.name, m.value, m.id));
+    onLCP((m) => sendVital(m.name, m.value, m.id));
+    onTTFB((m) => sendVital(m.name, m.value, m.id));
+  }).catch(() => { /* web-vitals unavailable — silently ignore */ });
+}
 
 const LOADER_STYLE = `
   #__tanmatra-loader {

@@ -9,6 +9,7 @@ import {
   verifyPassword,
 } from "../lib/adminAuth";
 import { rateLimit } from "../lib/rateLimit";
+import { revokeSession } from "../lib/auth";
 
 const router: IRouter = Router();
 
@@ -107,6 +108,24 @@ router.post("/admin/_hash", (req: Request, res: Response) => {
     return;
   }
   res.json({ hash: hashPassword(pw) });
+});
+
+// Admin-initiated session revocation — immediately invalidates the target
+// session so the user is logged out on their next request, without waiting
+// for natural expiry. Useful after a support incident or account takeover.
+router.post("/admin/sessions/:sid/revoke", async (req: Request, res: Response) => {
+  const p = readAdminCookie(req);
+  if (!p) {
+    res.status(401).json({ ok: false, error: "admin auth required" });
+    return;
+  }
+  const { sid } = req.params as { sid: string };
+  if (!sid) {
+    res.status(400).json({ ok: false, error: "sid required" });
+    return;
+  }
+  await revokeSession(sid);
+  res.json({ ok: true });
 });
 
 // Re-export for ops debugging / sanity checks.

@@ -44,7 +44,7 @@ export async function getSession(
     .from(sessionsTable)
     .where(eq(sessionsTable.sid, sid));
 
-  if (!row || row.expire < new Date()) {
+  if (!row || row.expire < new Date() || row.revokedAt != null) {
     // Use the same pool the read came in on so we don't leak the
     // override critical path back onto the main pool just to clean
     // up an expired session row.
@@ -73,6 +73,16 @@ export async function deleteSession(
   dbInstance: DrizzleDb = db,
 ): Promise<void> {
   await dbInstance.delete(sessionsTable).where(eq(sessionsTable.sid, sid));
+}
+
+export async function revokeSession(
+  sid: string,
+  dbInstance: DrizzleDb = db,
+): Promise<void> {
+  await dbInstance
+    .update(sessionsTable)
+    .set({ revokedAt: new Date() })
+    .where(eq(sessionsTable.sid, sid));
 }
 
 export async function clearSession(

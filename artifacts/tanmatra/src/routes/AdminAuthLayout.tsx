@@ -2,8 +2,6 @@ import { Navigate, Outlet, useLocation } from "react-router";
 import { useEffect, useState } from "react";
 import { apiPath } from "@/lib/apiBase";
 
-const ADMIN_KEY = "tanmatra:admin:v1";
-
 type AdminAuthState = "checking" | "authed" | "anon";
 
 function useAdminAuth(): AdminAuthState {
@@ -16,18 +14,9 @@ function useAdminAuth(): AdminAuthState {
           credentials: "include",
         });
         if (cancelled) return;
-        if (res.ok) {
-          try {
-            window.localStorage.setItem(ADMIN_KEY, "1");
-          } catch {}
-          setState("authed");
-        } else {
-          try {
-            window.localStorage.removeItem(ADMIN_KEY);
-          } catch {}
-          setState("anon");
-        }
+        setState(res.ok ? "authed" : "anon");
       } catch {
+        // Network error → redirect to login, never trust local state.
         if (!cancelled) setState("anon");
       }
     })();

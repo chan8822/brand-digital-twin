@@ -8,6 +8,14 @@ import overrideRouter from "./routes/manualOverride";
 import { logger } from "./lib/logger";
 import { authMiddleware } from "./middlewares/authMiddleware";
 import { adminSessionShim } from "./lib/adminSessionShim";
+import {
+  publicMenuRateLimit,
+  orderRateLimit,
+  aiRateLimit,
+  rationaleRateLimit,
+  paymentRateLimit,
+  addressRateLimit,
+} from "./middlewares/rateLimitMiddleware";
 
 const app: Express = express();
 
@@ -85,11 +93,21 @@ app.use(cookieParser());
 // the global default tight (100kb) while still allowing larger payloads
 // for image-upload / agent endpoints, we mount the higher-limit parsers
 // FIRST against their specific path prefixes, then a 100kb catch-all.
+//
+// Razorpay webhook requires the raw Buffer body for HMAC verification,
+// so we mount express.raw() for that path BEFORE the JSON parsers so
+// the JSON parser never consumes it.
 
 const jsonLarge = express.json({ limit: "15mb" });
 const jsonAgent = express.json({ limit: "2mb" });
 const jsonDefault = express.json({ limit: "100kb" });
 const urlEncodedDefault = express.urlencoded({ extended: true, limit: "100kb" });
+
+// Razorpay server-to-server webhook — raw body needed for HMAC.
+app.use("/api/payments/razorpay/webhook", express.raw({ type: "application/json" }));
+
+// Web Vitals beacons arrive as text/plain from navigator.sendBeacon.
+app.use("/api/vitals", express.text({ type: "text/plain", limit: "4kb" }));
 
 // Image / asset upload endpoints — base64 dataURL payloads can hit several MB.
 app.use("/api/menu/uploads", jsonLarge);
@@ -102,6 +120,23 @@ app.use("/api/support-agent", jsonAgent);
 
 app.use(jsonDefault);
 app.use(urlEncodedDefault);
+
+// --- Per-category rate limiting -------------------------------------------
+// Mounted before authMiddleware so unauthenticated scraping is also limited.
+// Each limiter is keyed on client IP so authenticated + anonymous requests
+// share the same counter per IP.
+
+app.use("/api/menu", publicMenuRateLimit);
+app.use("/api/dish", publicMenuRateLimit);
+app.use("/api/orders", orderRateLimit);
+app.use("/api/checkout", orderRateLimit);
+app.use("/api/cms-agent", aiRateLimit);
+app.use("/api/coach-agent", aiRateLimit);
+app.use("/api/ops-agent", aiRateLimit);
+app.use("/api/support-agent", aiRateLimit);
+app.use("/api/dish-rationales", rationaleRateLimit);
+app.use("/api/payments", paymentRateLimit);
+app.use("/api/user-addresses", addressRateLimit);
 
 // Surface body-parser failures as a clean 413 / 400 instead of a 500.
 app.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {

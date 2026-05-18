@@ -11,6 +11,8 @@ import {
   runMenuEngineering,
 } from "../lib/menuEngineering";
 import { recordOpsAction } from "../lib/opsAudit";
+import { audit } from "../lib/audit";
+import { adminModerationRateLimit } from "../middlewares/rateLimitMiddleware";
 import {
   createReview,
   getSummariesForActiveMenu,
@@ -305,14 +307,16 @@ router.post(
 
 // ---- Review moderation (catalog scope) --------------------------------------
 
-router.get("/dish-reviews-mod", async (req: Request, res: Response) => {
+router.get("/dish-reviews-mod", adminModerationRateLimit, async (req: Request, res: Response) => {
   if (!requireCatalog(req, res)) return;
   const reviews = await listReviewsForModeration(200);
+  void audit(req, { actorId: userId(req) ?? "admin", actorRole: "admin", action: "admin.reviews_mod_list", resourceType: "dish_review" });
   res.json({ reviews });
 });
 
 router.post(
   "/dish-reviews/:id/hide",
+  adminModerationRateLimit,
   async (req: Request, res: Response) => {
     if (!requireCatalog(req, res)) return;
     const id = Number(req.params["id"]);
@@ -325,19 +329,15 @@ router.post(
       res.status(404).json({ error: "not found" });
       return;
     }
-    await recordOpsAction({
-      action: "review.hide",
-      agent: "catalog-admin",
-      operatorId: userId(req),
-      params: { id },
-      status: "ok",
-    });
+    await recordOpsAction({ action: "review.hide", agent: "catalog-admin", operatorId: userId(req), params: { id }, status: "ok" });
+    void audit(req, { actorId: userId(req) ?? "admin", actorRole: "admin", action: "admin.review_hide", resourceType: "dish_review", resourceId: String(id) });
     res.json({ review: row });
   },
 );
 
 router.post(
   "/dish-reviews/:id/unhide",
+  adminModerationRateLimit,
   async (req: Request, res: Response) => {
     if (!requireCatalog(req, res)) return;
     const id = Number(req.params["id"]);
@@ -350,13 +350,8 @@ router.post(
       res.status(404).json({ error: "not found" });
       return;
     }
-    await recordOpsAction({
-      action: "review.unhide",
-      agent: "catalog-admin",
-      operatorId: userId(req),
-      params: { id },
-      status: "ok",
-    });
+    await recordOpsAction({ action: "review.unhide", agent: "catalog-admin", operatorId: userId(req), params: { id }, status: "ok" });
+    void audit(req, { actorId: userId(req) ?? "admin", actorRole: "admin", action: "admin.review_unhide", resourceType: "dish_review", resourceId: String(id) });
     res.json({ review: row });
   },
 );

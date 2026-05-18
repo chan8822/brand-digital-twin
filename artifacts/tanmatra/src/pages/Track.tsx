@@ -1,4 +1,10 @@
+import type { MetaFunction } from "react-router";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+
+export const meta: MetaFunction = () => [
+  { title: "Track Order | Tanmatra" },
+  { name: "robots", content: "noindex, nofollow" },
+];
 import { Link, useSearchParams } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useDeliveryTimeline, useRecordDeliveryEvent } from "@/lib/queries";

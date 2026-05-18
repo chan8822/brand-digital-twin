@@ -1,4 +1,10 @@
+import type { MetaFunction } from "react-router";
 import { useQuery } from "@tanstack/react-query";
+
+export const meta: MetaFunction = () => [
+  { title: "Account | Tanmatra" },
+  { name: "robots", content: "noindex, nofollow" },
+];
 import { Link } from "react-router";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

@@ -1,6 +1,8 @@
 import { type RouteConfig, index, route, layout } from "@react-router/dev/routes";
 
 export default [
+    // Dynamic sitemap — reflects live dish catalog without a rebuild.
+    route("sitemap.xml", "routes/sitemap[.xml].ts"),
     index("pages/Home.tsx"),
     route("menu", "pages/Menu.tsx"),
     route("dish/:slug", "pages/Dish.tsx"),
