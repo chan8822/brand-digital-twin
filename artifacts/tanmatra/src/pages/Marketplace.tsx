@@ -1,6 +1,14 @@
 import { useState } from "react";
-import { Link } from "react-router";
+import { Link, type MetaFunction } from "react-router";
 import { useQuery } from "@tanstack/react-query";
+
+export const meta: MetaFunction = () => [
+  { title: "Marketplace | Tanmatra" },
+  { name: "description", content: "Shop dietitian-approved health foods, supplements, and pantry staples — curated to complement your Tanmatra meal plan." },
+  { property: "og:title", content: "Marketplace | Tanmatra" },
+  { property: "og:description", content: "Shop dietitian-approved health foods and supplements curated to complement your meal plan." },
+  { property: "og:image", content: "https://tanmatra.food/opengraph.jpg" },
+];
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

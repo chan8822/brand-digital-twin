@@ -1,5 +1,13 @@
-import { Link } from "react-router";
+import { Link, type MetaFunction } from "react-router";
 import { Card, CardContent } from "@/components/ui/card";
+
+export const meta: MetaFunction = () => [
+  { title: "Our Team | Tanmatra" },
+  { name: "description", content: "Meet Tanmatra's registered dietitians, clinical nutritionists, and food scientists who design every meal to clinical standards." },
+  { property: "og:title", content: "Our Team | Tanmatra" },
+  { property: "og:description", content: "Meet the registered dietitians and clinical nutritionists behind every Tanmatra meal." },
+  { property: "og:image", content: "https://tanmatra.food/opengraph.jpg" },
+];
 import { Badge } from "@/components/ui/badge";
 import { ChefHat, Stethoscope, ShieldCheck, ArrowRight } from "lucide-react";
 import { TEAM, ACCENT_CLASSES } from "@/lib/teamData";

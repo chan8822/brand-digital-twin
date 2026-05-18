@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, type MetaFunction } from "react-router";
+
+export const meta: MetaFunction = () => [
+  { title: "Corporate Wellness | Tanmatra" },
+  { name: "description", content: "Bring clinical-grade nutrition to your workplace. Tanmatra's corporate wellness programme delivers dietitian-designed meals and team nutrition plans." },
+  { property: "og:title", content: "Corporate Wellness | Tanmatra" },
+  { property: "og:description", content: "Bring clinical-grade nutrition to your workplace with dietitian-designed meals and team nutrition plans." },
+  { property: "og:image", content: "https://tanmatra.food/opengraph.jpg" },
+];
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router";
+import { Link, type MetaFunction } from "react-router";
+
+export const meta: MetaFunction = () => [
+  { title: "Wellness Protocol | Tanmatra" },
+  { name: "description", content: "Dietitian-designed meals and plans for everyday wellness, immune support, gut health, and sustainable healthy habits." },
+  { property: "og:title", content: "Wellness Protocol | Tanmatra" },
+  { property: "og:description", content: "Dietitian-designed meals for everyday wellness, immune support, and sustainable healthy habits." },
+  { property: "og:image", content: "https://tanmatra.food/opengraph.jpg" },
+];
 import { ArrowLeft } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";

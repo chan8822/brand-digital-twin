@@ -1,5 +1,13 @@
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, type MetaFunction } from "react-router";
+
+export const meta: MetaFunction = () => [
+  { title: "Tanmatra Premium" },
+  { name: "description", content: "Unlock exclusive dishes, priority delivery, advanced meal planning, and direct access to your personal registered dietitian with Tanmatra Premium." },
+  { property: "og:title", content: "Tanmatra Premium" },
+  { property: "og:description", content: "Unlock exclusive dishes, priority delivery, and direct access to your personal registered dietitian." },
+  { property: "og:image", content: "https://tanmatra.food/opengraph.jpg" },
+];
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

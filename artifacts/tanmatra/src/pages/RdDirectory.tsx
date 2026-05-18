@@ -1,5 +1,13 @@
 import { useMemo } from "react";
-import { Link, useSearchParams } from "react-router";
+import { Link, useSearchParams, type MetaFunction } from "react-router";
+
+export const meta: MetaFunction = () => [
+  { title: "Find a Registered Dietitian | Tanmatra" },
+  { name: "description", content: "Browse and book consultations with Tanmatra's registered dietitians. Expert nutrition guidance for wellness, performance, and clinical goals." },
+  { property: "og:title", content: "Find a Registered Dietitian | Tanmatra" },
+  { property: "og:description", content: "Browse and book consultations with Tanmatra's registered dietitians." },
+  { property: "og:image", content: "https://tanmatra.food/opengraph.jpg" },
+];
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

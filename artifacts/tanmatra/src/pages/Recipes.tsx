@@ -1,5 +1,13 @@
 import { useState } from "react";
-import { Link } from "react-router";
+import { Link, type MetaFunction } from "react-router";
+
+export const meta: MetaFunction = () => [
+  { title: "Healthy Recipes | Tanmatra" },
+  { name: "description", content: "Explore dietitian-curated recipes built around whole ingredients, balanced macros, and real flavour. Filter by goal, diet, and prep time." },
+  { property: "og:title", content: "Healthy Recipes | Tanmatra" },
+  { property: "og:description", content: "Dietitian-curated recipes with balanced macros. Filter by goal, diet, and prep time." },
+  { property: "og:image", content: "https://tanmatra.food/opengraph.jpg" },
+];
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";

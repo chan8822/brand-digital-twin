@@ -1,16 +1,8 @@
 import { useMemo } from "react";
-import {
-  DIET_ORDERS,
-  clinicalModeStore,
-  useClinicalMode,
-  useEnableClinicalMode,
-} from "@/lib/clinicalDiet";
+import { Link, type MetaFunction } from "react-router";
+import { ArrowLeft } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import MacroOverlay from "@/components/dish/MacroOverlay";
-import SegmentToggle from "@/components/layout/SegmentToggle";
-import { Link } from "react-router";
-import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dna,
@@ -25,12 +17,28 @@ import {
   Stethoscope,
   ClipboardList,
 } from "lucide-react";
+import {
+  DIET_ORDERS,
+  clinicalModeStore,
+  useClinicalMode,
+  useEnableClinicalMode,
+} from "@/lib/clinicalDiet";
 import { useMenuCatalog, type DishData } from "@/lib/menuData";
 import { formatPrice } from "@/lib/api/adapter";
 import { dishesForProtocol, plansForProtocol, rdsForProtocol } from "@/lib/protocols";
 import { RD_PLANS } from "@/lib/rdPlans";
 import { RD_BOOKING } from "@/lib/rdBookingData";
 import { TEAM } from "@/lib/teamData";
+import MacroOverlay from "@/components/dish/MacroOverlay";
+import SegmentToggle from "@/components/layout/SegmentToggle";
+
+export const meta: MetaFunction = () => [
+  { title: "Clinical Nutrition Protocol | Tanmatra" },
+  { name: "description", content: "Evidence-based therapeutic meal plans for diabetes, hypertension, PCOS, thyroid disorders, and post-surgical recovery — supervised by registered dietitians." },
+  { property: "og:title", content: "Clinical Nutrition Protocol | Tanmatra" },
+  { property: "og:description", content: "Evidence-based therapeutic meal plans for diabetes, PCOS, and other clinical conditions — supervised by registered dietitians." },
+  { property: "og:image", content: "https://tanmatra.food/opengraph.jpg" },
+];
 
 const PILLARS = [
   { icon: Syringe, title: "Condition-Specific", desc: "Formulated for diabetes, cardiovascular, renal, and post-surgical recovery protocols with precise nutrient restrictions." },
