@@ -1,0 +1,133 @@
+# Cloud Build CI/CD pipeline
+# Builds and deploys both services on every push to main.
+#
+# ONE-TIME SETUP (run in Cloud Shell before first trigger):
+#   gcloud artifacts repositories create wellness \
+#     --repository-format=docker \
+#     --location=asia-south2 \
+#     --project=omnismtp
+#
+#   # Grant Cloud Build SA permissions
+#   PROJECT_NUMBER=$(gcloud projects describe omnismtp --format='value(projectNumber)')
+#   SA="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
+#   gcloud projects add-iam-policy-binding omnismtp \
+#     --member="serviceAccount:${SA}" --role="roles/run.admin"
+#   gcloud projects add-iam-policy-binding omnismtp \
+#     --member="serviceAccount:${SA}" --role="roles/iam.serviceAccountUser"
+#   gcloud projects add-iam-policy-binding omnismtp \
+#     --member="serviceAccount:${SA}" --role="roles/artifactregistry.writer"
+#
+# Then create the trigger:
+#   gcloud builds triggers create github \
+#     --repo-name=Wellness-Foods \
+#     --repo-owner=chan8822 \
+#     --branch-pattern="^main$" \
+#     --build-config=cloudbuild.yaml \
+#     --project=omnismtp
+
+substitutions:
+  _REGION: asia-south2
+  _PROJECT: omnismtp
+  _REGISTRY: asia-south2-docker.pkg.dev
+  _REPO: wellness
+  _API_SERVICE: wellness-foods
+  _FRONTEND_SERVICE: tanmatra
+
+options:
+  machineType: E2_HIGHCPU_8
+  logging: CLOUD_LOGGING_ONLY
+
+steps:
+  # ── Build both images in parallel ────────────────────────────────────────────
+
+  - id: build-api
+    name: gcr.io/cloud-builders/docker
+    waitFor: ["-"]
+    args:
+      - build
+      - --tag
+      - $_REGISTRY/$_PROJECT/$_REPO/api:$COMMIT_SHA
+      - --tag
+      - $_REGISTRY/$_PROJECT/$_REPO/api:latest
+      - --cache-from
+      - $_REGISTRY/$_PROJECT/$_REPO/api:latest
+      - --file
+      - Dockerfile
+      - .
+
+  - id: build-frontend
+    name: gcr.io/cloud-builders/docker
+    waitFor: ["-"]
+    args:
+      - build
+      - --tag
+      - $_REGISTRY/$_PROJECT/$_REPO/tanmatra:$COMMIT_SHA
+      - --tag
+      - $_REGISTRY/$_PROJECT/$_REPO/tanmatra:latest
+      - --cache-from
+      - $_REGISTRY/$_PROJECT/$_REPO/tanmatra:latest
+      - --file
+      - artifacts/tanmatra/Dockerfile
+      - .
+
+  # ── Push both images in parallel ─────────────────────────────────────────────
+
+  - id: push-api
+    name: gcr.io/cloud-builders/docker
+    waitFor: [build-api]
+    args:
+      - push
+      - --all-tags
+      - $_REGISTRY/$_PROJECT/$_REPO/api
+
+  - id: push-frontend
+    name: gcr.io/cloud-builders/docker
+    waitFor: [build-frontend]
+    args:
+      - push
+      - --all-tags
+      - $_REGISTRY/$_PROJECT/$_REPO/tanmatra
+
+  # ── Deploy both services in parallel ─────────────────────────────────────────
+
+  - id: deploy-api
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    waitFor: [push-api]
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - $_API_SERVICE
+      - --image
+      - $_REGISTRY/$_PROJECT/$_REPO/api:$COMMIT_SHA
+      - --region
+      - $_REGION
+      - --project
+      - $_PROJECT
+      - --platform
+      - managed
+      - --quiet
+
+  - id: deploy-frontend
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    waitFor: [push-frontend]
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - $_FRONTEND_SERVICE
+      - --image
+      - $_REGISTRY/$_PROJECT/$_REPO/tanmatra:$COMMIT_SHA
+      - --region
+      - $_REGION
+      - --project
+      - $_PROJECT
+      - --platform
+      - managed
+      - --quiet
+
+images:
+  - $_REGISTRY/$_PROJECT/$_REPO/api:$COMMIT_SHA
+  - $_REGISTRY/$_PROJECT/$_REPO/api:latest
+  - $_REGISTRY/$_PROJECT/$_REPO/tanmatra:$COMMIT_SHA
+  - $_REGISTRY/$_PROJECT/$_REPO/tanmatra:latest
