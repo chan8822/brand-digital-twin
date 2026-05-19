@@ -8,7 +8,7 @@ import {
 } from "react";
 import { Link, useNavigate } from "react-router";
 import { AnimatePresence, motion } from "framer-motion";
-import { Minus, Plus, ShoppingBag, Trash2, X, Leaf, ShieldCheck, Loader2, Check, Zap } from "lucide-react";
+import { Minus, Plus, ShoppingBag, Trash2, X, Leaf, ShieldCheck, Loader2, Check, Zap, Crown } from "lucide-react";
 import { toast } from "sonner";
 import {
   useCart,
@@ -27,6 +27,7 @@ import { track } from "@/lib/analytics";
 import { PANEL_SLIDE, BACKDROP, PULSE_OPACITY } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { unsplashSrcset } from "@/lib/imgSrcset";
+import { usePremiumStatus } from "@/lib/usePremium";
 
 // Suppress unused-import warning — DELIVERY_FEE is used in the comment context only,
 // the actual constant is pulled from cartContext which re-exports it.
@@ -45,6 +46,7 @@ export default function CartDrawer() {
   const totals = useCartTotals();
   const { dishes } = useMenuCatalog();
   const navigate = useNavigate();
+  const { isPremium } = usePremiumStatus();
   const [expressLoading, setExpressLoading] = useState(false);
 
   // Ghost-math state
@@ -332,6 +334,25 @@ export default function CartDrawer() {
                       onGhost={setGhost}
                       onAdd={addUpsell}
                     />
+                  )}
+
+                  {!isPremium && (
+                    <button
+                      type="button"
+                      onClick={() => { close(); navigate("/premium"); }}
+                      className="w-full text-left rounded-xl border border-clinical-gold/25 bg-clinical-gold/[0.06] hover:bg-clinical-gold/10 transition-colors p-3.5 flex items-center gap-3"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-clinical-gold/15 flex items-center justify-center shrink-0">
+                        <Crown className="w-4 h-4 text-clinical-gold" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[11px] font-semibold text-white">Unlock Tanmatra Premium</p>
+                        <p className="text-[10px] text-clinical-zinc leading-snug mt-0.5">
+                          Priority delivery · free RD consult · exclusive dishes
+                        </p>
+                      </div>
+                      <span className="text-[10px] font-bold text-clinical-gold shrink-0">₹999/mo →</span>
+                    </button>
                   )}
                 </div>
 

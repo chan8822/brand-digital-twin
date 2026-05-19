@@ -45,6 +45,9 @@ import {
   Utensils,
   CalendarClock,
   HeartHandshake,
+  ClipboardList,
+  Bike,
+  BadgeCheck,
 } from "lucide-react";
 
 /* ── Featured meals (each with unique image) ──────────────────────── */
@@ -421,6 +424,59 @@ export default function Home() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════ HOW TANMATRA WORKS ═══════════════ */}
+      <section className="py-10 border-b border-clinical-border">
+        <div className="max-w-7xl mx-auto px-4 space-y-6">
+          <div className="text-center space-y-1">
+            <p className="text-[10px] uppercase tracking-widest text-clinical-zinc">Clinical nutrition, delivered</p>
+            <h2 className="text-xl font-serif text-white">Not just a meal — a protocol on a plate</h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {[
+              {
+                icon: ClipboardList,
+                step: "01",
+                title: "RDs design every dish",
+                desc: "Our registered dietitians formulate each recipe around a therapeutic goal — blood sugar, protein synthesis, anti-inflammation. Not taste-first.",
+              },
+              {
+                icon: BadgeCheck,
+                step: "02",
+                title: "Your profile shapes the menu",
+                desc: "Take the 60-second metabolic assessment and the menu re-ranks around your goal, restrictions, and macros — like a clinical intake form.",
+              },
+              {
+                icon: Bike,
+                step: "03",
+                title: "Delivered fresh in 25–40 min",
+                desc: "Prepared to order in ISO 22000 kitchens and dispatched the moment your order is confirmed. Same-day, across Bengaluru.",
+              },
+            ].map((s) => (
+              <div key={s.step} className="flex gap-4 p-4 rounded-xl border border-clinical-border bg-clinical-surface">
+                <div className="shrink-0">
+                  <div className="w-10 h-10 rounded-lg bg-clinical-gold/10 border border-clinical-gold/20 flex items-center justify-center">
+                    <s.icon className="w-5 h-5 text-clinical-gold" />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[9px] uppercase tracking-widest text-clinical-zinc">{s.step}</p>
+                  <h3 className="text-sm font-semibold text-white">{s.title}</h3>
+                  <p className="text-[11px] text-clinical-zinc leading-relaxed">{s.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="text-center">
+            <Link
+              to="/clinical"
+              className="inline-flex items-center gap-1 text-xs text-clinical-gold hover:underline underline-offset-4"
+            >
+              See our clinical protocols <ArrowRight className="w-3 h-3" />
+            </Link>
           </div>
         </div>
       </section>

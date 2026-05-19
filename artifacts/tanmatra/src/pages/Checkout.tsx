@@ -63,6 +63,7 @@ import {
   Building2 as Building2Icon,
   Gift,
   Ticket,
+  Timer,
 } from "lucide-react";
 
 import { addressesApi, type UserAddress } from "@/lib/userAddressesApi";
@@ -207,6 +208,7 @@ export default function Checkout() {
   const [creditBalance, setCreditBalance] = useState(0);
   const [applyCredits, setApplyCredits] = useState(true);
   const [preorderTomorrow, setPreorderTomorrow] = useState(false);
+  const [etaMinutes, setEtaMinutes] = useState<number | null>(null);
   const [subsidy, setSubsidy] = useState<CompanySubsidy | null>(null);
   const [applySubsidy, setApplySubsidy] = useState(true);
   const [voucherCode, setVoucherCode] = useState("");
@@ -408,6 +410,35 @@ export default function Checkout() {
   };
 
   const activeAddr = savedAddresses.find((a) => a.id === selectedAddress);
+
+  useEffect(() => {
+    if (!activeAddr || items.length === 0 || fulfillmentType !== "delivery") {
+      setEtaMinutes(null);
+      return;
+    }
+    let cancelled = false;
+    fetch(`${API_BASE}/delivery/eta/estimate`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        items: items.map((it) => ({ id: it.dishId, qty: it.quantity })),
+        address: {
+          line: [activeAddr.line1, activeAddr.line2].filter(Boolean).join(", "),
+          city: activeAddr.city,
+          pincode: activeAddr.pincode,
+        },
+      }),
+    })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data: { etaAt?: string } | null) => {
+        if (cancelled || !data?.etaAt) return;
+        const mins = Math.round((new Date(data.etaAt).getTime() - Date.now()) / 60000);
+        if (mins > 0) setEtaMinutes(mins);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [activeAddr?.id, items.length, fulfillmentType]);
 
   const handleSaveNewAddress = async () => {
     setAddressErrors({});
@@ -1481,9 +1512,17 @@ export default function Checkout() {
 
         <Card className="bg-clinical-surface border-clinical-border">
           <CardContent className="p-5 space-y-3">
-            <div className="flex items-center gap-2">
-              <CalendarClock className="w-4 h-4 text-clinical-gold" />
-              <h2 className="text-sm font-semibold text-white">Delivery Time</h2>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <CalendarClock className="w-4 h-4 text-clinical-gold" />
+                <h2 className="text-sm font-semibold text-white">Delivery Time</h2>
+              </div>
+              {etaMinutes != null && fulfillmentType === "delivery" && !preorderTomorrow && (
+                <span className="flex items-center gap-1 text-[11px] font-semibold text-clinical-sage bg-clinical-sage/10 border border-clinical-sage/25 px-2 py-0.5 rounded-full">
+                  <Timer className="w-3 h-3" />
+                  ~{etaMinutes} min
+                </span>
+              )}
             </div>
             <div className="flex items-center justify-between gap-3 p-3 rounded-lg border border-clinical-gold/30 bg-clinical-gold/5">
               <div className="min-w-0">

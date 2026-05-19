@@ -35,7 +35,7 @@ substitutions:
 
 options:
   machineType: E2_HIGHCPU_8
-  logging: CLOUD_LOGGING_ONLY
+  logging: LEGACY
 
 steps:
   # ── Build both images in parallel ────────────────────────────────────────────
@@ -124,6 +124,9 @@ steps:
       - $_PROJECT
       - --platform
       - managed
+      - --allow-unauthenticated
+      - --port
+      - "8080"
       - --quiet
 
 images:

@@ -142,6 +142,14 @@ export default function MenuCard({
             )}
           </div>
         </div>
+        {item.averageRating != null && (item.reviewCount ?? 0) >= 5 && (
+          <div className="flex items-center gap-1.5">
+            <StarRating value={item.averageRating} />
+            <span className="text-[10px] text-clinical-zinc">
+              {item.averageRating.toFixed(1)} · {item.reviewCount} reviews
+            </span>
+          </div>
+        )}
         <p className="text-xs text-clinical-zinc line-clamp-2 leading-relaxed">
           {item.description}
         </p>
@@ -323,6 +331,29 @@ function WhyThisMealRow({ rationale }: { rationale: DishRationale | undefined })
           {open ? "Less" : "More"}
         </span>
       </button>
+    </div>
+  );
+}
+
+function StarRating({ value }: { value: number }) {
+  const full = Math.floor(value);
+  const half = value - full >= 0.4;
+  return (
+    <div className="flex items-center gap-0.5" aria-label={`${value.toFixed(1)} out of 5 stars`}>
+      {[1, 2, 3, 4, 5].map((i) => (
+        <svg key={i} className="w-3 h-3" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+          {i <= full ? (
+            <path d="M6 1l1.4 2.9 3.2.5-2.3 2.2.5 3.2L6 8.3 3.2 9.8l.5-3.2L1.4 4.4l3.2-.5z" fill="#D4AF37" />
+          ) : i === full + 1 && half ? (
+            <>
+              <path d="M6 1l1.4 2.9 3.2.5-2.3 2.2.5 3.2L6 8.3V1z" fill="#D4AF37" />
+              <path d="M6 1v7.3L3.2 9.8l.5-3.2L1.4 4.4l3.2-.5z" fill="#3a3a3a" />
+            </>
+          ) : (
+            <path d="M6 1l1.4 2.9 3.2.5-2.3 2.2.5 3.2L6 8.3 3.2 9.8l.5-3.2L1.4 4.4l3.2-.5z" fill="#3a3a3a" />
+          )}
+        </svg>
+      ))}
     </div>
   );
 }
