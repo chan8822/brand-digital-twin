@@ -111,7 +111,7 @@ steps:
       - --platform
       - managed
       - --allow-unauthenticated
-      - --set-env-vars
+      - --update-env-vars
       - ALLOWED_ORIGINS=$_FRONTEND_ORIGIN
       - --quiet
 
