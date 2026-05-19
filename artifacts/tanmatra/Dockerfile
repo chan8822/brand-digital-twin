@@ -13,11 +13,16 @@ WORKDIR /app
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc ./
 COPY tsconfig.base.json tsconfig.json ./
 
-# tanmatra depends on lib/* workspace packages — copy manifests only for the
-# install layer, then overwrite with full source for the build layer.
-COPY artifacts/tanmatra/package.json artifacts/tanmatra/
-COPY lib/db/package.json           lib/db/
-COPY lib/api-zod/package.json      lib/api-zod/
+# tanmatra depends on lib/* workspace packages — copy all manifests before
+# pnpm install so workspace resolution works, then overwrite with full source.
+COPY artifacts/tanmatra/package.json    artifacts/tanmatra/
+COPY lib/db/package.json                lib/db/
+COPY lib/api-zod/package.json           lib/api-zod/
+COPY lib/api-client-react/package.json  lib/api-client-react/
+COPY lib/menu-catalog/package.json      lib/menu-catalog/
+COPY lib/preferences-match/package.json lib/preferences-match/
+COPY lib/integrations-gemini-ai/package.json lib/integrations-gemini-ai/
+COPY lib/agency-agents/package.json     lib/agency-agents/
 
 RUN pnpm install --frozen-lockfile --ignore-scripts
 
@@ -26,8 +31,11 @@ COPY lib lib
 # Full source for tanmatra (includes src/, public/, vite.config.ts, etc.).
 COPY artifacts/tanmatra artifacts/tanmatra
 
+# VITE_API_BASE is baked into the JS bundle at build time. Pass it as a build
+# arg so CI can set the correct wellness-foods Cloud Run URL.
+ARG VITE_API_BASE
 # Build → build/client/ (static assets) + build/server/ (SSR bundle).
-RUN pnpm --filter @workspace/tanmatra run build
+RUN VITE_API_BASE="${VITE_API_BASE}" pnpm --filter @workspace/tanmatra run build
 
 # Isolated production deployment: only prod deps, no workspace symlinks.
 RUN pnpm deploy --filter @workspace/tanmatra --prod /app/isolated --ignore-scripts
