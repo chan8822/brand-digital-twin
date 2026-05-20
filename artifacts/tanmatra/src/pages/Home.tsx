@@ -384,12 +384,9 @@ export default function Home() {
           </p>
           <div className="grid grid-cols-4 gap-2">
             {[
-              // Assessment is the highest-leverage first-time CTA.
-              // Orders is reachable from the bottom nav, so we drop it
-              // here in favour of the assessment tile.
-              { to: "/preferences", label: "Assess", icon: SparklesIcon },
               { to: "/menu", label: "Menu", icon: Utensils },
               { to: "/meal-planner", label: "Plan", icon: CalendarClock },
+              { to: "/wellness", label: "Track", icon: Activity },
               { to: "/rd", label: "Book RD", icon: HeartHandshake },
             ].map((a) => (
               <Link
@@ -721,14 +718,13 @@ export default function Home() {
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#050505]/80 via-transparent to-transparent" />
-                    <div className="absolute top-3 left-3 flex gap-1.5">
-                      {meal.rdVerified && (
-                        <Badge className="bg-clinical-sage/80 text-white border-0 text-[9px] h-5 gap-0.5 backdrop-blur-sm">
-                          <ShieldCheck className="w-2.5 h-2.5" />RD
+                    {meal.rdVerified && (
+                      <div className="absolute top-3 left-3">
+                        <Badge aria-label="RD Verified" className="bg-clinical-sage/80 text-white border-0 text-[9px] h-5 gap-0.5 backdrop-blur-sm">
+                          <ShieldCheck className="w-2.5 h-2.5" aria-hidden="true" />RD
                         </Badge>
-                      )}
-                      <Badge className="bg-[#050505]/60 text-clinical-zinc border-clinical-border text-[9px] h-5 backdrop-blur-sm capitalize">{meal.category}</Badge>
-                    </div>
+                      </div>
+                    )}
                     <div className="absolute top-3 right-3">
                       <Badge className="bg-clinical-gold/90 text-[#050505] border-0 text-xs font-bold tabular-nums backdrop-blur-sm">{formatPrice(meal.price)}</Badge>
                     </div>
@@ -737,7 +733,10 @@ export default function Home() {
                     </div>
                   </div>
                   <CardContent className="p-4 space-y-2">
-                    <h3 className="text-sm font-semibold text-white group-hover:text-clinical-gold transition-colors">{meal.name}</h3>
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="text-sm font-semibold text-white group-hover:text-clinical-gold transition-colors">{meal.name}</h3>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-clinical-surface-elevated text-clinical-zinc capitalize shrink-0">{meal.category}</span>
+                    </div>
                     <p className="text-xs text-clinical-zinc line-clamp-2 leading-relaxed">{meal.description}</p>
                     <div className="flex flex-wrap gap-1 pt-0.5">
                       {meal.tags.map((tag) => (

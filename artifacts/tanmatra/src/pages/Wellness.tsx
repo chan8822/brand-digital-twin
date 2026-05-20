@@ -1317,7 +1317,7 @@ export function WeeklySummaryCard() {
     return { totals, proteinHits, days: week.days.length };
   }, [week]);
 
-  if (!week || !summary) return null;
+  if (!week || !summary || summary.totals.calories === 0) return null;
 
   return (
     <Card className="bg-clinical-surface-elevated border border-clinical-border">
