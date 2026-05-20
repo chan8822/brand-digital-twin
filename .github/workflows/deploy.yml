@@ -92,6 +92,7 @@ jobs:
             --image gcr.io/${GCP_PROJECT}/${SERVICE}:${{ github.sha }} \
             --region ${GCP_REGION} \
             --project ${GCP_PROJECT} \
+            --update-env-vars "ADMIN_USERNAME=${{ secrets.ADMIN_USERNAME }},ADMIN_PASSWORD_HASH=${{ secrets.ADMIN_PASSWORD_HASH }},ADMIN_SESSION_SECRET=${{ secrets.ADMIN_SESSION_SECRET }}" \
             --quiet
 
       - name: Smoke-test /api/healthz
