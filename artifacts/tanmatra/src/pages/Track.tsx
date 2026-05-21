@@ -42,6 +42,7 @@ import {
   CalendarClock,
   ArrowLeft,
   LifeBuoy,
+  Timer,
 } from "lucide-react";
 import { fulfillmentApi, type PackagingReturnRow } from "@/lib/fulfillmentApi";
 import SupportTicketDialog from "@/components/track/SupportTicketDialog";
@@ -168,7 +169,7 @@ export default function Track() {
         const totals = order.items.reduce(
           (acc, it) => {
             const qty = it.quantity ?? 1;
-            const m = it.macros ?? { protein: 0, carbs: 0, fat: 0, fiber: 0, calories: 0 };
+            const m = (it.macros ?? { protein: 0, carbs: 0, fat: 0, fiber: 0, calories: 0 }) as Record<string, any>;
             return {
               calories: acc.calories + (m.calories ?? 0) * qty,
               proteinGrams: acc.proteinGrams + (m.protein ?? 0) * qty,
@@ -200,6 +201,37 @@ export default function Track() {
 
     void logOrderMacros();
   }, [order, hasAutologged, navigate]);
+
+  // STAT SLA Countdown Ticker state
+  const [timeLeftMs, setTimeLeftMs] = useState<number | null>(null);
+  useEffect(() => {
+    if (!order || (order as any).priority !== "stat" || order.status === "delivered" || order.status === "cancelled") {
+      setTimeLeftMs(null);
+      return;
+    }
+
+    const slaWindowMs = 5 * 60 * 1000; // 5 minutes
+    const placedTime = new Date(order.placedAt).getTime();
+    const deadline = placedTime + slaWindowMs;
+
+    const interval = setInterval(() => {
+      const diff = deadline - Date.now();
+      setTimeLeftMs(diff);
+    }, 33); // Update 30 times per second for smooth centisecond ticking!
+
+    return () => clearInterval(interval);
+  }, [order]);
+
+  const formatTimeLeft = (ms: number) => {
+    if (ms <= 0) return "⚠️ SLA BREACHED";
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    const centiseconds = Math.floor((ms % 1000) / 10);
+    
+    const pad = (num: number, len = 2) => String(num).padStart(len, "0");
+    return `${pad(minutes)}:${pad(seconds)}.${pad(centiseconds)}`;
+  };
 
   const numericOrderId = useMemo(() => {
     if (!order) return 0;
@@ -371,9 +403,23 @@ export default function Track() {
           Back to orders
         </Link>
         <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-white">Track Order</h1>
-            <p className="font-mono text-xs text-clinical-gold mt-1">{order.orderId}</p>
+          <div className="flex items-center gap-4">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-white">Track Order</h1>
+              <p className="font-mono text-xs text-clinical-gold mt-1">{order.orderId}</p>
+            </div>
+            {/* STAT SLA Ticker */}
+            {timeLeftMs !== null && (
+              <div className="px-3 py-1.5 rounded-xl border border-red-500/35 bg-red-500/10 flex items-center gap-2 shrink-0 shadow-clinical animate-pulse">
+                <Timer className="w-4 h-4 text-red-500" />
+                <div className="flex flex-col text-left">
+                  <span className="text-[8px] uppercase tracking-widest text-red-400 leading-none font-bold">STAT Delivery SLA</span>
+                  <span className="text-xs font-mono font-bold text-red-500 leading-tight tabular-nums mt-0.5">
+                    {formatTimeLeft(timeLeftMs)}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             {isCancellable(order.status) && (

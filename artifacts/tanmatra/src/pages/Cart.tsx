@@ -335,11 +335,11 @@ export default function Cart() {
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-9 w-9 sm:h-8 sm:w-8 text-clinical-zinc rounded-r-none"
+                          className="h-11 w-11 sm:h-9 sm:w-9 text-clinical-zinc rounded-r-none"
                           onClick={() => updateQty(item.lineId, -1)}
                           aria-label="Decrease quantity"
                         >
-                          <Minus className="w-4 h-4 sm:w-3 sm:h-3" />
+                          <Minus className="w-4.5 h-4.5 sm:w-3.5 sm:h-3.5" />
                         </Button>
                         <span className="tabular-nums text-sm font-semibold text-white w-6 text-center">
                           {item.quantity}
@@ -347,11 +347,11 @@ export default function Cart() {
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-9 w-9 sm:h-8 sm:w-8 text-clinical-zinc rounded-l-none"
+                          className="h-11 w-11 sm:h-9 sm:w-9 text-clinical-zinc rounded-l-none"
                           onClick={() => updateQty(item.lineId, 1)}
                           aria-label="Increase quantity"
                         >
-                          <Plus className="w-4 h-4 sm:w-3 sm:h-3" />
+                          <Plus className="w-4.5 h-4.5 sm:w-3.5 sm:h-3.5" />
                         </Button>
                       </div>
                     </div>
