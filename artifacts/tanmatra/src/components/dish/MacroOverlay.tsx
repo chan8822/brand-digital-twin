@@ -19,58 +19,124 @@ interface MacroOverlayProps {
 
 export default function MacroOverlay({ macros, rdVerified = false, compact = false, sodiumMg }: MacroOverlayProps) {
   const total = macros.protein + macros.carbs + macros.fat;
-  const proteinPct = Math.round((macros.protein / total) * 100);
-  const carbsPct = Math.round((macros.carbs / total) * 100);
-  const fatPct = Math.round((macros.fat / total) * 100);
+  const proteinPct = total > 0 ? Math.round((macros.protein / total) * 100) : 0;
+  const carbsPct = total > 0 ? Math.round((macros.carbs / total) * 100) : 0;
+  const fatPct = total > 0 ? Math.round((macros.fat / total) * 100) : 0;
 
   if (compact) {
-    // Each chip gets its own dark backdrop so contrast is preserved when this
-    // row is layered over a bright dish photo (e.g. quinoa salad). Each chip
-    // also carries an aria-label expanding the single-letter code so screen
-    // readers announce "12 grams of protein" instead of "P 12g".
-    const chip =
-      "text-clinical-data text-[10px] flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#050505]/70 backdrop-blur-sm";
+    // Circumference of circle with r = 16 is 2 * pi * 16 = 100.53
+    const r = 16;
+    const C = 2 * Math.PI * r;
+    
+    const lenP = (proteinPct / 100) * C;
+    const lenC = (carbsPct / 100) * C;
+    const lenF = (fatPct / 100) * C;
+
     return (
       <div
-        className="flex items-center gap-1.5 flex-wrap"
+        className="flex items-center gap-2.5 p-1.5 rounded-xl bg-[#050505]/85 border border-clinical-border/40 backdrop-blur-md shadow-clinical-lg"
         role="group"
-        aria-label="Macro nutrients"
+        aria-label="Macro nutrient distribution ratios"
       >
+        {/* SVG Macro Progress Ring */}
+        <div className="relative w-10 h-10 shrink-0 group/ring">
+          <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+            {/* Background circle */}
+            <circle
+              cx="18"
+              cy="18"
+              r={r}
+              fill="transparent"
+              stroke="rgba(255,255,255,0.05)"
+              strokeWidth="3"
+            />
+            {/* Protein segment */}
+            {lenP > 0 && (
+              <circle
+                cx="18"
+                cy="18"
+                r={r}
+                fill="transparent"
+                stroke="#6BA3C8"
+                strokeWidth="3.5"
+                strokeDasharray={`${lenP} ${C}`}
+                strokeDashoffset="0"
+                strokeLinecap="round"
+                className="transition-all duration-500"
+              />
+            )}
+            {/* Carbs segment */}
+            {lenC > 0 && (
+              <circle
+                cx="18"
+                cy="18"
+                r={r}
+                fill="transparent"
+                stroke="#D4AF37"
+                strokeWidth="3.5"
+                strokeDasharray={`${lenC} ${C}`}
+                strokeDashoffset={`-${lenP}`}
+                strokeLinecap="round"
+                className="transition-all duration-500"
+              />
+            )}
+            {/* Fat segment */}
+            {lenF > 0 && (
+              <circle
+                cx="18"
+                cy="18"
+                r={r}
+                fill="transparent"
+                stroke="#7D9E7E"
+                strokeWidth="3.5"
+                strokeDasharray={`${lenF} ${C}`}
+                strokeDashoffset={`-${lenP + lenC}`}
+                strokeLinecap="round"
+                className="transition-all duration-500"
+              />
+            )}
+          </svg>
+          {/* Center Calorie Display */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-[#050505] dark:text-white">
+            <span className="text-[9px] font-bold leading-none tabular-nums">{macros.calories}</span>
+            <span className="text-[6px] opacity-60 font-medium uppercase tracking-tight">kcal</span>
+          </div>
+        </div>
+
+        {/* Precise Nutrient Breakdown Column */}
+        <div className="flex flex-col gap-0.5 justify-center">
+          <div className="flex items-center gap-1.5 text-[9px] leading-none font-semibold text-white">
+            <span className="w-1.5 h-1.5 rounded-full bg-clinical-blue" />
+            <span className="text-clinical-blue-muted">P</span>
+            <span className="tabular-nums">{macros.protein}g</span>
+            <span className="opacity-40 text-[8px]">({proteinPct}%)</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-[9px] leading-none font-semibold text-white">
+            <span className="w-1.5 h-1.5 rounded-full bg-clinical-gold" />
+            <span className="text-clinical-gold-muted">C</span>
+            <span className="tabular-nums">{macros.carbs}g</span>
+            <span className="opacity-40 text-[8px]">({carbsPct}%)</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-[9px] leading-none font-semibold text-white">
+            <span className="w-1.5 h-1.5 rounded-full bg-clinical-sage" />
+            <span className="text-clinical-sage-muted">F</span>
+            <span className="tabular-nums">{macros.fat}g</span>
+            <span className="opacity-40 text-[8px]">({fatPct}%)</span>
+          </div>
+        </div>
+
         {rdVerified && (
-          <Badge
-            variant="outline"
-            className="h-5 px-1.5 text-[9px] border-clinical-sage/40 text-clinical-sage gap-0.5 bg-clinical-sage/10"
-            aria-label="Verified by Tanmatra Registered Dietitian advisory board"
-          >
-            <ShieldCheck className="w-2.5 h-2.5" aria-hidden="true" />
-            RD
-          </Badge>
+          <div className="ml-auto pl-1 border-l border-clinical-border/20 flex items-center shrink-0">
+            <Badge
+              variant="outline"
+              className="h-6 px-1 text-[8px] border-clinical-sage/30 text-clinical-sage gap-0.5 bg-clinical-sage/15 rounded-md font-bold"
+              aria-label="Verified by Tanmatra Registered Dietitian advisory board"
+            >
+              <ShieldCheck className="w-2.5 h-2.5" aria-hidden="true" />
+              RD
+            </Badge>
+          </div>
         )}
-        <span
-          className={`${chip} text-clinical-zinc`}
-          aria-label={`${macros.calories} kilocalories`}
-        >
-          <Flame className="w-2.5 h-2.5 text-orange-400" aria-hidden="true" />
-          <span aria-hidden="true">{macros.calories} kcal</span>
-        </span>
-        <span
-          className={`${chip} text-clinical-blue`}
-          aria-label={`${macros.protein} grams of protein`}
-        >
-          <span aria-hidden="true">P {macros.protein}g</span>
-        </span>
-        <span
-          className={`${chip} text-clinical-gold`}
-          aria-label={`${macros.carbs} grams of carbohydrates`}
-        >
-          <span aria-hidden="true">C {macros.carbs}g</span>
-        </span>
-        <span
-          className={`${chip} text-clinical-sage`}
-          aria-label={`${macros.fat} grams of fat`}
-        >
-          <span aria-hidden="true">F {macros.fat}g</span>
-        </span>
       </div>
     );
   }
