@@ -42,10 +42,7 @@ export default function Header() {
       <header className="sticky top-0 z-50 border-b border-clinical-border bg-[#050505]/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
           <Link to="/" className="flex items-center gap-2 shrink-0" aria-label="Tanmatra">
-            <Logo className="h-7 w-auto text-clinical-gold" aria-hidden="true" />
-            <span className="md:hidden font-serif text-base text-white tracking-tight leading-none">
-              Tanmatra
-            </span>
+            <Logo className="h-10 w-auto" aria-hidden="true" />
           </Link>
 
           <nav className="hidden md:flex items-center gap-1" aria-label="Primary">
