@@ -5,7 +5,7 @@ export const meta: MetaFunction = () => [
   { title: "Track Order | Tanmatra" },
   { name: "robots", content: "noindex, nofollow" },
 ];
-import { Link, useSearchParams } from "react-router";
+import { Link, useSearchParams, useNavigate } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useDeliveryTimeline, useRecordDeliveryEvent } from "@/lib/queries";
 import { useOrders } from "@/lib/ordersContext";
@@ -14,6 +14,7 @@ import { API_BASE } from "@/lib/apiBase";
 import { ClinicalLifecycleStepper } from "@/components/track/ClinicalLifecycleStepper";
 import { StatCancelButton } from "@/components/track/StatCancelButton";
 import { useSocketStatus } from "@/lib/useSocketStatus";
+import { wellnessApi } from "@/lib/wellnessApi";
 import { isCancellable } from "@/lib/clinicalLifecycle";
 // RiderMap pulls in leaflet + react-leaflet (~150kB gzip). Only the live
 // tracking screen needs it, so split it out of the customer entry chunk.
@@ -146,6 +147,7 @@ function PackagingReturnCard({
 }
 
 export default function Track() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const orderIdParam = searchParams.get("orderId") ?? undefined;
   const showDevPanel = searchParams.get("dev") === "1";
@@ -153,6 +155,51 @@ export default function Track() {
   const { orders, latest, getOrder, updateStatus } = useOrders();
   const order = orderIdParam ? getOrder(orderIdParam) : latest();
   const { connected: socketConnected } = useSocketStatus();
+
+  const [hasAutologged, setHasAutologged] = useState(false);
+
+  // Zero-Friction Autologging hook: automatically log macros when order status transitions to delivered
+  useEffect(() => {
+    if (!order || order.status !== "delivered" || hasAutologged) return;
+    
+    const logOrderMacros = async () => {
+      try {
+        // Sum up macros across all items in the order
+        const totals = order.items.reduce(
+          (acc, it) => {
+            const qty = it.quantity ?? 1;
+            const m = it.macros ?? { protein: 0, carbs: 0, fat: 0, fiber: 0, calories: 0 };
+            return {
+              calories: acc.calories + (m.calories ?? 0) * qty,
+              proteinGrams: acc.proteinGrams + (m.protein ?? 0) * qty,
+              carbsGrams: acc.carbsGrams + (m.carbs ?? 0) * qty,
+              fatGrams: acc.fatGrams + (m.fat ?? 0) * qty,
+              fiberGrams: acc.fiberGrams + (m.fiber ?? 0) * qty,
+              vegServings: acc.vegServings + (m.vegServings ?? 0) * qty,
+            };
+          },
+          { calories: 0, proteinGrams: 0, carbsGrams: 0, fatGrams: 0, fiberGrams: 0, vegServings: 0 }
+        );
+
+        if (totals.calories === 0) return; // No macros to log
+
+        await wellnessApi.log({
+          label: `Tanmatra Order: ${order.orderId}`,
+          ...totals,
+        });
+
+        setHasAutologged(true);
+        toast.success("🎉 Order delivered & automatically logged!", {
+          description: `Added +${Math.round(totals.proteinGrams)}g Protein & +${Math.round(totals.calories)} kcal to your Wellness tracker!`,
+          action: { label: "View Dashboard", onClick: () => navigate("/wellness") },
+        });
+      } catch {
+        // Quietly fail — don't block UI
+      }
+    };
+
+    void logOrderMacros();
+  }, [order, hasAutologged, navigate]);
 
   const numericOrderId = useMemo(() => {
     if (!order) return 0;
