@@ -424,4 +424,22 @@ export class SupabaseClient {
       else this.mockStakeholderAssociations.push(association);
     }
   }
+
+  // --- TRANSACTION SIMULATION ---
+  private transactionActive = false;
+
+  async beginTransaction(): Promise<void> {
+    this.transactionActive = true;
+    console.log("[db] Transaction boundary started.");
+  }
+
+  async commitTransaction(): Promise<void> {
+    this.transactionActive = false;
+    console.log("[db] Transaction boundary committed.");
+  }
+
+  async rollbackTransaction(): Promise<void> {
+    this.transactionActive = false;
+    console.log("[db] Transaction boundary rolled back.");
+  }
 }

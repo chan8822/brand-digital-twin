@@ -12,6 +12,8 @@ import {
 import { MetricsTracker, Span, PinoLogger } from "./observability";
 import { OpaPolicyEngine } from "./opa_policy";
 import { SupabaseClient } from "./supabase_client";
+import { AdapterError } from "./errors";
+import { eventBus } from "./event_bus";
 
 import {
   TenantPolicy,
@@ -189,6 +191,7 @@ export class GovernanceEngine {
     const span = this.metrics.startSpan("govern", adapter.platform);
     const now = new Date().toISOString();
     const plan = await adapter.plan(req);
+    eventBus.emitPhaseUpdate(ctx.tenant.tenantId, req.idempotencyKey, "PLAN", "COMPLETE", { cost: plan.projectedCost });
 
     this.logger.info("Planned action evaluation started", {
       actionId: req.idempotencyKey,
@@ -227,6 +230,7 @@ export class GovernanceEngine {
     const earned = await this.getTrustTier(ctx.tenant.tenantId, req.op);
 
     const disp = await this.decide(req, plan, ctx, adapter, earned);
+    eventBus.emitPhaseUpdate(ctx.tenant.tenantId, req.idempotencyKey, "DECIDE", disp.kind, { reason: disp.reason });
 
     this.logger.info("Decision resolved", {
       actionId: req.idempotencyKey,
@@ -270,6 +274,7 @@ export class GovernanceEngine {
     }
 
     // 3. Execute Phase (AUTO_EXECUTE)
+    eventBus.emitPhaseUpdate(ctx.tenant.tenantId, req.idempotencyKey, "EXECUTE", "IN_PROGRESS");
     const nowMs = Date.now();
     const isShadow = ctx.tenant.shadowMode === true ||
       (ctx.tenant.onboardingStartMs !== undefined && nowMs - ctx.tenant.onboardingStartMs < 48 * 60 * 60 * 1000);
@@ -304,7 +309,45 @@ export class GovernanceEngine {
         actionId: req.idempotencyKey,
         tenantId: ctx.tenant.tenantId,
       });
-      result = await adapter.execute(plan);
+      try {
+        result = await adapter.execute(plan);
+        eventBus.emitPhaseUpdate(ctx.tenant.tenantId, req.idempotencyKey, "EXECUTE", "COMPLETE");
+      } catch (err: any) {
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        eventBus.emitPhaseUpdate(ctx.tenant.tenantId, req.idempotencyKey, "EXECUTE", "FAILED", { error: errorMsg });
+        this.logger.error("Execution threw exception", {
+          actionId: req.idempotencyKey,
+          tenantId: ctx.tenant.tenantId,
+          error: errorMsg,
+        });
+        await this.audit.record({
+          action_id: req.idempotencyKey,
+          tenant_id: ctx.tenant.tenantId,
+          actor: "agent:media_buyer",
+          action_type: req.op,
+          target_entity: req.entity,
+          status: "execution_failed",
+          reason: `Exception: ${errorMsg}`,
+          created_at: new Date().toISOString(),
+        });
+        const previousTier = earned;
+        this.trustLedger.recordOutcome(
+          ctx.tenant.tenantId,
+          req.op,
+          false,
+          plan.projectedCost,
+          ctx.tenant.policy.maxDailyDollarsRisk,
+          ctx.role.name
+        );
+        const newTier = this.trustLedger.getTier(ctx.tenant.tenantId, req.op);
+        await this.supabase.saveTrustTier(ctx.tenant.tenantId, req.op, newTier);
+
+        if (newTier < previousTier) {
+          this.metrics.raiseAlert(`Trust tier degraded from ${previousTier} to ${newTier} for action ${req.op}`);
+        }
+        this.metrics.endSpan(span.spanId, "failure", errorMsg);
+        throw new AdapterError(adapter.platform, errorMsg);
+      }
     }
 
     if (!result.ok) {
@@ -359,6 +402,7 @@ export class GovernanceEngine {
       triggerAnomaly: (req.payload as any)?.triggerAnomaly === true,
     };
     const verificationOk = await this.verify(req, verifyMetrics);
+    eventBus.emitPhaseUpdate(ctx.tenant.tenantId, req.idempotencyKey, "VERIFY", verificationOk ? "COMPLETE" : "FAILED");
 
     if (!verificationOk && result.rollback) {
       // 5. Rollback Phase on anomaly detection
@@ -366,7 +410,9 @@ export class GovernanceEngine {
         actionId: req.idempotencyKey,
         tenantId: ctx.tenant.tenantId,
       });
+      eventBus.emitPhaseUpdate(ctx.tenant.tenantId, req.idempotencyKey, "ROLLBACK", "IN_PROGRESS");
       const rollbackResult = await this.executeGradualRollback(adapter, result.rollback);
+      eventBus.emitPhaseUpdate(ctx.tenant.tenantId, req.idempotencyKey, "ROLLBACK", "COMPLETE");
       await this.audit.record({
         action_id: req.idempotencyKey,
         tenant_id: ctx.tenant.tenantId,
@@ -419,6 +465,7 @@ export class GovernanceEngine {
     });
 
     this.metrics.endSpan(span.spanId, "success");
+    eventBus.emitPhaseUpdate(ctx.tenant.tenantId, req.idempotencyKey, "AUDIT", "COMPLETE");
     return { status: "executed", result };
   }
 

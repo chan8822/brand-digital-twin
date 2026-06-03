@@ -60,6 +60,8 @@ export class Orchestrator {
     const rollbackStack: { nodeId: string; adapter: PlatformAdapter; handle: RollbackHandle }[] = [];
     const executedNodeIds: string[] = [];
 
+    await this.governance.supabase.beginTransaction();
+
     for (const node of bundle.nodes) {
       nodeStatus.set(node.id, "pending");
     }
@@ -155,6 +157,7 @@ export class Orchestrator {
 
     // Rollback phase on failure
     if (failedNodeId) {
+      await this.governance.supabase.rollbackTransaction();
       const rolledBack = rollbackStack.length > 0;
       // Reverse order rollback
       while (rollbackStack.length > 0) {
@@ -176,6 +179,7 @@ export class Orchestrator {
       };
     }
 
+    await this.governance.supabase.commitTransaction();
     return {
       ok: true,
       executedNodeIds,

@@ -1,0 +1,30 @@
+# CI/CD pipeline spec for Brand Digital Twin OS
+name: brand-digital-twin-ci
+
+trigger:
+  branches:
+    include:
+      - main
+      - releases/*
+
+jobs:
+  - job: lint_and_test
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+      - task: NodeTool@0
+        inputs:
+          versionSpec: '20.x'
+        displayName: 'Install Node.js'
+      
+      - script: |
+          npm ci
+        displayName: 'Install Dependencies'
+
+      - script: |
+          npm run lint
+        displayName: 'Run Linter'
+
+      - script: |
+          blaze test //experimental/brand_twin:all
+        displayName: 'Run Blaze Test Suites'
