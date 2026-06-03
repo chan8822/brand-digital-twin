@@ -2,8 +2,8 @@
  * @fileoverview Onboarding and configuration wizard.
  */
 
-import { SupabaseClient } from "./supabase_client";
-import { ClientProfile, TeamMember, IntegrationState } from "./agency_os_types";
+import {ClientProfile, IntegrationState, TeamMember} from './agency_os_types';
+import {SupabaseClient} from './supabase_client';
 
 export interface OnboardingParams {
   tenantId: string;
@@ -13,7 +13,7 @@ export interface OnboardingParams {
   marginTarget: number;
   teamMembers: Array<{
     memberId: string;
-    roleName: "media_buyer" | "account_mgr" | "cmo" | "cfo" | "admin";
+    roleName: 'media_buyer' | 'account_mgr' | 'cmo' | 'cfo' | 'admin';
     permissions: string[];
     capacityPct: number;
   }>;
@@ -26,7 +26,13 @@ export class OnboardingWizard {
   /**
    * Run the setup routine, writing all seed records.
    */
-  async runSetup(params: OnboardingParams): Promise<{ success: boolean; client: ClientProfile; initializedIntegrationsCount: number }> {
+  async runSetup(
+    params: OnboardingParams,
+  ): Promise<{
+    success: boolean;
+    client: ClientProfile;
+    initializedIntegrationsCount: number;
+  }> {
     // 1. Create client profile
     const client: ClientProfile = {
       clientId: `client-${Date.now()}`,
@@ -61,8 +67,8 @@ export class OnboardingWizard {
       const integration: IntegrationState = {
         integrationId: `state-${platform}-${params.tenantId}`,
         tenantId: params.tenantId,
-        provider: platform as IntegrationState["provider"],
-        status: "active",
+        provider: platform as IntegrationState['provider'],
+        status: 'active',
         settings: {
           accessToken: `token-initial-${platform}`,
           lastRotated: Date.now(),
@@ -77,9 +83,9 @@ export class OnboardingWizard {
     await this.db.logActivity({
       eventId: `act-onboard-${Date.now()}`,
       orgId: `org-${params.tenantId}`,
-      actorId: "onboarding-wizard",
-      actionType: "onboarding_completed",
-      entityType: "tenant",
+      actorId: 'onboarding-wizard',
+      actionType: 'onboarding_completed',
+      entityType: 'tenant',
       entityId: params.tenantId,
       summary: `Onboarding completed for tenant ${params.tenantId}. Client profile '${params.clientName}' and ${count} integrations initialized.`,
       isRead: false,

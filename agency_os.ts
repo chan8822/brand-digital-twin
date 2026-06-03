@@ -2,18 +2,18 @@
  * @fileoverview Main orchestration and logic modules for Agency OS.
  */
 
-import { SupabaseClient } from "./supabase_client";
-import { GovernanceEngine } from "./governance_engine";
-import { ActionRequest } from "./platform_adapter";
-import { Context } from "./governance_types";
 import {
-  TeamMember,
-  ClientProfile,
-  CampaignBrief,
-  ApprovalRequest,
   ActivityFeedItem,
-  ClientPortalToken
-} from "./agency_os_types";
+  ApprovalRequest,
+  CampaignBrief,
+  ClientPortalToken,
+  ClientProfile,
+  TeamMember,
+} from './agency_os_types';
+import {GovernanceEngine} from './governance_engine';
+import {Context} from './governance_types';
+import {ActionRequest} from './platform_adapter';
+import {SupabaseClient} from './supabase_client';
 
 /**
  * CollaborationHub coordinates client profiles, team assignments, and client health metrics.
@@ -24,15 +24,18 @@ export class CollaborationHub {
   /**
    * Calculates the client health score dynamically based on audit logs, success rates, and active risk metrics.
    */
-  async calculateClientHealth(tenantId: string, clientId: string): Promise<number> {
+  async calculateClientHealth(
+    tenantId: string,
+    clientId: string,
+  ): Promise<number> {
     const clients = await this.db.getClients(tenantId);
-    const client = clients.find(c => c.clientId === clientId);
+    const client = clients.find((c) => c.clientId === clientId);
     if (!client) return 0;
 
     const auditLogs = await this.db.getAuditLogs(tenantId);
     // Find audit logs matching this client (where the target target_id contains client ID or the reason contains client name)
     const clientAudits = auditLogs.filter(
-      l => l.target_id.includes(clientId) || l.reason.includes(client.name)
+      (l) => l.target_id.includes(clientId) || l.reason.includes(client.name),
     );
 
     if (clientAudits.length === 0) {
@@ -43,7 +46,7 @@ export class CollaborationHub {
     }
 
     const successCount = clientAudits.filter(
-      l => l.decision === "executed" || l.decision === "auto_executed"
+      (l) => l.decision === 'executed' || l.decision === 'auto_executed',
     ).length;
     const successRatio = successCount / clientAudits.length;
 
@@ -60,7 +63,7 @@ export class CollaborationHub {
 export class ApprovalWorkflowManager {
   constructor(
     private readonly db: SupabaseClient,
-    private readonly governance: GovernanceEngine
+    private readonly governance: GovernanceEngine,
   ) {}
 
   /**
@@ -70,16 +73,16 @@ export class ApprovalWorkflowManager {
     req: ActionRequest,
     ctx: Context,
     reason: string,
-    assignedRole: string
+    assignedRole: string,
   ): Promise<ApprovalRequest> {
     const approval: ApprovalRequest = {
       approvalId: `appr-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-      orgId: "org-1",
+      orgId: 'org-1',
       entityType: req.entity,
       entityId: req.targetId,
-      requestedBy: ctx.role.name || "agent",
+      requestedBy: ctx.role.name || 'agent',
       assignedTo: assignedRole,
-      status: "pending",
+      status: 'pending',
       reason: reason,
       tenantId: ctx.tenant.tenantId,
       createdAt: Date.now(),
@@ -89,15 +92,15 @@ export class ApprovalWorkflowManager {
     // Notify activity feed
     await this.db.logActivity({
       eventId: `evt-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-      orgId: "org-1",
-      actorId: "system",
-      actionType: "approval_requested",
+      orgId: 'org-1',
+      actorId: 'system',
+      actionType: 'approval_requested',
       entityType: req.entity,
       entityId: req.targetId,
       summary: `Action '${req.op}' on ${req.entity} (${req.targetId}) requires manual approval from role ${assignedRole}`,
       isRead: false,
       tenantId: ctx.tenant.tenantId,
-      createdAt: Date.now()
+      createdAt: Date.now(),
     });
 
     return approval;
@@ -110,21 +113,28 @@ export class ApprovalWorkflowManager {
     approvalId: string,
     approverMember: TeamMember,
     approved: boolean,
-    comments?: string
+    comments?: string,
   ): Promise<boolean> {
     const approvals = await this.db.getApprovals(approverMember.tenantId);
-    const request = approvals.find(a => a.approvalId === approvalId);
-    if (!request || request.status !== "pending") return false;
+    const request = approvals.find((a) => a.approvalId === approvalId);
+    if (!request || request.status !== 'pending') return false;
 
     // Check permissions of the approver
-    if (request.assignedTo !== approverMember.roleName && approverMember.roleName !== "admin") {
+    if (
+      request.assignedTo !== approverMember.roleName &&
+      approverMember.roleName !== 'admin'
+    ) {
       throw new Error(
-        `Permission Denied: Approver role '${approverMember.roleName}' is not authorized to sign off for role '${request.assignedTo}'`
+        `Permission Denied: Approver role '${approverMember.roleName}' is not authorized to sign off for role '${request.assignedTo}'`,
       );
     }
 
-    request.status = approved ? "approved" : "rejected";
-    request.reason = comments || (approved ? "Approved via Agency OS portal" : "Rejected via Agency OS portal");
+    request.status = approved ? 'approved' : 'rejected';
+    request.reason =
+      comments ||
+      (approved
+        ? 'Approved via Agency OS portal'
+        : 'Rejected via Agency OS portal');
     request.completedAt = Date.now();
 
     await this.db.saveApproval(request);
@@ -134,13 +144,13 @@ export class ApprovalWorkflowManager {
       eventId: `evt-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
       orgId: request.orgId,
       actorId: approverMember.memberId,
-      actionType: approved ? "approval_signed_off" : "approval_rejected",
+      actionType: approved ? 'approval_signed_off' : 'approval_rejected',
       entityType: request.entityType,
       entityId: request.entityId,
       summary: `Approval request ${approvalId} was ${request.status} by ${approverMember.roleName}`,
       isRead: false,
       tenantId: request.tenantId,
-      createdAt: Date.now()
+      createdAt: Date.now(),
     });
 
     return true;
@@ -173,7 +183,7 @@ export class CSuiteFinancialEngine {
     return {
       totalRevenue,
       totalMargin,
-      avgProfitMarginPct: totalRevenue > 0 ? (totalMargin / totalRevenue) : 0
+      avgProfitMarginPct: totalRevenue > 0 ? totalMargin / totalRevenue : 0,
     };
   }
 
@@ -184,8 +194,8 @@ export class CSuiteFinancialEngine {
     currentMargin: number,
     spendDelta: number,
     projectedRoi: number,
-    headcountCost: number
-  ): { netProfitDelta: number; newMarginPct: number } {
+    headcountCost: number,
+  ): {netProfitDelta: number; newMarginPct: number} {
     const revenueDelta = spendDelta * projectedRoi;
     const additionalMargin = revenueDelta - spendDelta;
     const netProfitDelta = additionalMargin - headcountCost;
@@ -193,7 +203,7 @@ export class CSuiteFinancialEngine {
     return {
       netProfitDelta,
       // Note: newMarginPct represents the absolute margin value after scenario updates
-      newMarginPct: currentMargin + netProfitDelta
+      newMarginPct: currentMargin + netProfitDelta,
     };
   }
 }

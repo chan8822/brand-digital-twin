@@ -8,9 +8,13 @@ export class SpendForecaster {
   /**
    * Forecasts the next 24-hour spend based on current spend speed (hourly gradients).
    */
-  forecast24hSpend(currentDailySpend: number, hourlyGradients: number[]): number {
+  forecast24hSpend(
+    currentDailySpend: number,
+    hourlyGradients: number[],
+  ): number {
     if (hourlyGradients.length === 0) return currentDailySpend;
-    const avgGradient = hourlyGradients.reduce((a, b) => a + b, 0) / hourlyGradients.length;
+    const avgGradient =
+      hourlyGradients.reduce((a, b) => a + b, 0) / hourlyGradients.length;
     // Projected spend is base current daily spend plus pacing acceleration
     return Math.max(0, currentDailySpend + avgGradient * 24);
   }

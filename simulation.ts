@@ -1,14 +1,14 @@
+import {GovernanceEngine} from './governance_engine';
+import {Context} from './governance_types';
 import {
-  PlatformAdapter,
+  ActionPlan,
+  ActionRequest,
+  ActionResult,
   Capability,
   HealthReport,
-  ActionRequest,
-  ActionPlan,
-  ActionResult,
+  PlatformAdapter,
   RollbackHandle,
-} from "./platform_adapter";
-import { GovernanceEngine } from "./governance_engine";
-import { Context } from "./governance_types";
+} from './platform_adapter';
 
 // --- Chaos Adapter Wrapper ---
 export class ChaosAdapterWrapper implements PlatformAdapter {
@@ -44,17 +44,22 @@ export class ChaosAdapterWrapper implements PlatformAdapter {
 
     // Simulate latency
     if (this.latencyMaxMs > this.latencyMinMs) {
-      const delay = Math.floor(Math.random() * (this.latencyMaxMs - this.latencyMinMs) + this.latencyMinMs);
+      const delay = Math.floor(
+        Math.random() * (this.latencyMaxMs - this.latencyMinMs) +
+          this.latencyMinMs,
+      );
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
 
     if (this.rateLimitTrip) {
-      throw new Error("Rate Limit Exceeded (Status 429)");
+      throw new Error('Rate Limit Exceeded (Status 429)');
     }
 
     // Simulate random failures
     if (Math.random() < this.failureRate) {
-      throw new Error("Network timeout: failed to connect to advertising API service");
+      throw new Error(
+        'Network timeout: failed to connect to advertising API service',
+      );
     }
   }
 
@@ -71,7 +76,11 @@ export class ChaosAdapterWrapper implements PlatformAdapter {
   async execute(plan: ActionPlan): Promise<ActionResult> {
     await this.injectChaos();
     if (this.chaosEnabled && Math.random() < this.failureRate) {
-      return { ok: false, auditRef: "chaos_fail", error: "Simulated partial write failure" };
+      return {
+        ok: false,
+        auditRef: 'chaos_fail',
+        error: 'Simulated partial write failure',
+      };
     }
     return this.delegate.execute(plan);
   }
@@ -83,7 +92,12 @@ export class ChaosAdapterWrapper implements PlatformAdapter {
 
   async healthCheck(): Promise<HealthReport> {
     if (this.rateLimitTrip) {
-      return { ok: false, latencyMs: 0, schemaDriftDetected: false, deprecationWarnings: ["Rate limited"] };
+      return {
+        ok: false,
+        latencyMs: 0,
+        schemaDriftDetected: false,
+        deprecationWarnings: ['Rate limited'],
+      };
     }
     return this.delegate.healthCheck();
   }
@@ -97,22 +111,36 @@ export class ForensicReplayer {
    * Replays historical requests through governance engine policies.
    * Useful for testing policy changes against real audit trails.
    */
-  async replay(auditLogs: any[], ctx: Context, adapter: PlatformAdapter): Promise<string[]> {
+  async replay(
+    auditLogs: any[],
+    ctx: Context,
+    adapter: PlatformAdapter,
+  ): Promise<string[]> {
     const decisions: string[] = [];
 
     for (const log of auditLogs) {
       const req: ActionRequest = {
-        idempotencyKey: log.action_id || log.idempotencyKey || `replay_${Math.random()}`,
-        op: log.action_type || log.op || "update_budget",
-        entity: log.target_entity || log.entity || "campaign",
-        targetId: log.target_id || log.targetId || "c1",
+        idempotencyKey:
+          log.action_id || log.idempotencyKey || `replay_${Math.random()}`,
+        op: log.action_type || log.op || 'update_budget',
+        entity: log.target_entity || log.entity || 'campaign',
+        targetId: log.target_id || log.targetId || 'c1',
         payload: log.proposed_payload || log.payload || {},
         confidence: log.confidence ?? 1.0,
       };
 
       const plan = await adapter.plan(req);
-      const earned = await this.governance.getTrustTier(ctx.tenant.tenantId, req.op);
-      const disp = await this.governance.decide(req, plan, ctx, adapter, earned);
+      const earned = await this.governance.getTrustTier(
+        ctx.tenant.tenantId,
+        req.op,
+      );
+      const disp = await this.governance.decide(
+        req,
+        plan,
+        ctx,
+        adapter,
+        earned,
+      );
       decisions.push(`${req.idempotencyKey}:${disp.kind}`);
     }
 

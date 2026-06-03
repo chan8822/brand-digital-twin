@@ -1,12 +1,19 @@
-import { GovernanceEngine, Context, Tenant, Role } from "./governance_engine";
-import { MetricsTracker } from "./observability";
-import { SpendForecaster, StockoutPredictor } from "./forecasting";
-import { PlatformAdapter, ActionRequest, ActionPlan, ActionResult, RollbackHandle } from "./platform_adapter";
-import { Orchestrator, ActionBundle } from "./orchestrator";
-import { RiskRadar, VariantInventory } from "./risk_radar";
-import { GoogleAdsAdapter } from "./google_ads_adapter";
-import { ChaosAdapterWrapper, ForensicReplayer } from "./simulation";
-import { TokenBucket, RateLimitingAdapterWrapper } from "./rate_limiter";
+import {SpendForecaster, StockoutPredictor} from './forecasting';
+import {GoogleAdsAdapter} from './google_ads_adapter';
+import {Context, GovernanceEngine, Role, Tenant} from './governance_engine';
+import {MetricsTracker} from './observability';
+import {ActionBundle, Orchestrator} from './orchestrator';
+import {
+  ActionPlan,
+  ActionRequest,
+  ActionResult,
+  PlatformAdapter,
+  RollbackHandle,
+} from './platform_adapter';
+import {RateLimitingAdapterWrapper, TokenBucket} from './rate_limiter';
+import {RiskRadar, VariantInventory} from './risk_radar';
+import {ChaosAdapterWrapper, ForensicReplayer} from './simulation';
+import {OpaPolicyEngine} from './opa_policy';
 
 class DummyAuditSink {
   records: any[] = [];
@@ -42,10 +49,19 @@ class DummyCircuitBreaker {
 }
 
 class DummyAdapter implements PlatformAdapter {
-  platform = "google_ads";
-  schemaVersion = "v1";
+  platform = 'google_ads';
+  schemaVersion = 'v1';
   capabilities = [
-    { entity: "campaign", ops: ["update_budget" as const, "scale_budget" as const, "update_feed" as const, "pause" as const], reversible: true }
+    {
+      entity: 'campaign',
+      ops: [
+        'update_budget' as const,
+        'scale_budget' as const,
+        'update_feed' as const,
+        'pause' as const,
+      ],
+      reversible: true,
+    },
   ];
   rolledBackCount = 0;
   lastScaleFactor: number | undefined;
@@ -68,9 +84,9 @@ class DummyAdapter implements PlatformAdapter {
     this.execCount++;
     return {
       ok: true,
-      auditRef: "abc-123",
+      auditRef: 'abc-123',
       rollback: {
-        rollbackId: "rb-123",
+        rollbackId: 'rb-123',
         platform: this.platform,
         originalState: {},
       },
@@ -80,15 +96,20 @@ class DummyAdapter implements PlatformAdapter {
   async rollback(h: RollbackHandle): Promise<ActionResult> {
     this.rolledBackCount++;
     this.lastScaleFactor = h.scaleFactor;
-    return { ok: true, auditRef: "rb-executed" };
+    return {ok: true, auditRef: 'rb-executed'};
   }
 
   async healthCheck() {
-    return { ok: true, latencyMs: 10, schemaDriftDetected: false, deprecationWarnings: [] };
+    return {
+      ok: true,
+      latencyMs: 10,
+      schemaDriftDetected: false,
+      deprecationWarnings: [],
+    };
   }
 }
 
-describe("Advanced Risk & Observability Features", () => {
+describe('Advanced Risk & Observability Features', () => {
   let auditSink: DummyAuditSink;
   let trustLedger: DummyTrustLedger;
   let circuitBreaker: DummyCircuitBreaker;
@@ -111,12 +132,12 @@ describe("Advanced Risk & Observability Features", () => {
     adapter = new DummyAdapter();
     ctx = {
       tenant: {
-        tenantId: "tenant-1",
+        tenantId: 'tenant-1',
         policy: {
           maxDailyDollarsRisk: 1000,
           maxBudgetMovePct: 0.2,
           minConfidence: 0.8,
-          escalationRole: "cmo",
+          escalationRole: 'cmo',
         },
       },
       role: {
@@ -126,36 +147,36 @@ describe("Advanced Risk & Observability Features", () => {
     };
   });
 
-  describe("Observability & Distributed Tracing", () => {
-    it("should start and end spans during govern() execution", async () => {
+  describe('Observability & Distributed Tracing', () => {
+    it('should start and end spans during govern() execution', async () => {
       const req: ActionRequest = {
-        idempotencyKey: "key-1",
-        op: "update_budget",
-        entity: "campaign",
-        targetId: "camp-123",
+        idempotencyKey: 'key-1',
+        op: 'update_budget',
+        entity: 'campaign',
+        targetId: 'camp-123',
         payload: {},
         confidence: 0.9,
       };
 
       const res = await engine.govern(adapter, req, ctx);
-      expect(res.status).toBe("executed");
+      expect(res.status).toBe('executed');
 
       const spans = metricsTracker.getSpans();
       expect(spans.length).toBe(1);
-      expect(spans[0].operationName).toBe("govern");
-      expect(spans[0].platform).toBe("google_ads");
+      expect(spans[0].operationName).toBe('govern');
+      expect(spans[0].platform).toBe('google_ads');
       expect(spans[0].durationMs).toBeDefined();
-      expect(spans[0].status).toBe("success");
+      expect(spans[0].status).toBe('success');
     });
   });
 
-  describe("Statistical Anomaly & Gradual Rollbacks", () => {
-    it("should trigger gradual rollback on >15% ROAS drop", async () => {
+  describe('Statistical Anomaly & Gradual Rollbacks', () => {
+    it('should trigger gradual rollback on >15% ROAS drop', async () => {
       const req: ActionRequest = {
-        idempotencyKey: "key-anomaly",
-        op: "update_budget",
-        entity: "campaign",
-        targetId: "camp-123",
+        idempotencyKey: 'key-anomaly',
+        op: 'update_budget',
+        entity: 'campaign',
+        targetId: 'camp-123',
         payload: {
           verifyMetrics: {
             preExecutionROAS: 3.0,
@@ -166,28 +187,30 @@ describe("Advanced Risk & Observability Features", () => {
       };
 
       const res = await engine.govern(adapter, req, ctx);
-      expect(res.status).toBe("rolled_back");
+      expect(res.status).toBe('rolled_back');
       expect(adapter.rolledBackCount).toBe(2); // Step 1 (50%) & Step 2 (100%)
       expect(adapter.lastScaleFactor).toBe(1.0);
 
       // Verify circuit breaker tripped and alerts raised
-      expect(circuitBreaker.tripped["google_ads"]).toBe(true);
+      expect(circuitBreaker.tripped['google_ads']).toBe(true);
       const alerts = metricsTracker.getAlerts();
-      expect(alerts.some(a => a.includes("Circuit breaker tripped"))).toBe(true);
+      expect(alerts.some((a) => a.includes('Circuit breaker tripped'))).toBe(
+        true,
+      );
     });
   });
 
-  describe("Spend & Stockout Forecasting", () => {
-    it("should forecast 24h spend accurately", () => {
+  describe('Spend & Stockout Forecasting', () => {
+    it('should forecast 24h spend accurately', () => {
       const forecaster = new SpendForecaster();
       const result = forecaster.forecast24hSpend(100, [5, 5, 5]);
       expect(result).toBe(220); // 100 + 5 * 24
     });
 
-    it("should predict stockout time based on velocity", () => {
+    it('should predict stockout time based on velocity', () => {
       const predictor = new StockoutPredictor();
       const status = {
-        variantId: "var-123",
+        variantId: 'var-123',
         stockCount: 50,
         salesLast7Days: 35, // Velocity is 5 per day
       };
@@ -196,87 +219,92 @@ describe("Advanced Risk & Observability Features", () => {
     });
   });
 
-  describe("Governance Exceptions & Whitelist Overrides", () => {
-    it("should bypass standard limits if matching whitelist rule exists", async () => {
+  describe('Governance Exceptions & Whitelist Overrides', () => {
+    it('should bypass standard limits if matching whitelist rule exists', async () => {
       // Confidence is 0.5 (below 0.8), but whitelist matches op/entity
       const req: ActionRequest = {
-        idempotencyKey: "key-whitelist-bypass",
-        op: "update_budget",
-        entity: "campaign",
-        targetId: "camp-whitelist-123",
+        idempotencyKey: 'key-whitelist-bypass',
+        op: 'update_budget',
+        entity: 'campaign',
+        targetId: 'camp-whitelist-123',
         payload: {},
         confidence: 0.5,
       };
 
-      engine.registerWhitelist("tenant-1", {
-        op: "update_budget",
-        entity: "campaign",
+      engine.registerWhitelist('tenant-1', {
+        op: 'update_budget',
+        entity: 'campaign',
         maxCost: 100,
       });
 
       const res = await engine.govern(adapter, req, ctx);
-      expect(res.status).toBe("executed");
+      expect(res.status).toBe('executed');
     });
 
-    it("should bypass approval level if valid active waiver exists", async () => {
+    it('should bypass approval level if valid active waiver exists', async () => {
       // CFO approval required (high risk), but waiver is active
       const req: ActionRequest = {
-        idempotencyKey: "key-waiver-bypass",
-        op: "update_budget",
-        entity: "campaign",
-        targetId: "camp-waiver-123",
+        idempotencyKey: 'key-waiver-bypass',
+        op: 'update_budget',
+        entity: 'campaign',
+        targetId: 'camp-waiver-123',
         payload: {},
         confidence: 0.9,
       };
 
       // Set low role that doesn't permit CMO level normally, or low confidence
       ctx.role = {
-        name: "cmo",
+        name: 'cmo',
         permits: () => false, // rejects everything normally
       };
 
-      engine.registerWaiver("tenant-1", {
-        overrideRole: "cmo",
-        reason: "Critical seasonal promo adjustments waiver",
+      engine.registerWaiver('tenant-1', {
+        overrideRole: 'cmo',
+        reason: 'Critical seasonal promo adjustments waiver',
         expiresAtMs: Date.now() + 10000,
-        allowedOps: ["update_budget"],
+        allowedOps: ['update_budget'],
       });
 
       const res = await engine.govern(adapter, req, ctx);
-      expect(res.status).toBe("executed");
+      expect(res.status).toBe('executed');
     });
   });
 
-  describe("Multi-Action Bundles & Conflict Locking", () => {
-    it("should resolve dependencies topologically and execute actions atomicly", async () => {
+  describe('Multi-Action Bundles & Conflict Locking', () => {
+    it('should resolve dependencies topologically and execute actions atomicly', async () => {
       const orchestrator = new Orchestrator(engine);
-      const googleAds = new GoogleAdsAdapter("888-888-8888", "dev_token", "mock_auth_token", "tenant-1");
+      const googleAds = new GoogleAdsAdapter(
+        '888-888-8888',
+        'dev_token',
+        'mock_auth_token',
+        'tenant-1',
+      );
 
       const bundle: ActionBundle = {
-        bundleId: "bundle-1",
+        bundleId: 'bundle-1',
         nodes: [
           {
-            id: "act-2",
-            dependsOn: ["act-1"],
+            id: 'act-2',
+            dependsOn: ['act-1'],
             request: {
-              idempotencyKey: "act-2-key",
-              op: "update_budget",
-              entity: "campaign",
-              targetId: "888",
-              payload: { budget: 520 },
+              idempotencyKey: 'act-2-key',
+              op: 'update_budget',
+              entity: 'campaign',
+              targetId: '888',
+              payload: {budget: 520},
               confidence: 0.95,
             },
             adapter: googleAds,
           },
           {
-            id: "act-1",
+            id: 'act-1',
             dependsOn: [],
             request: {
-              idempotencyKey: "act-1-key",
-              op: "update_budget",
-              entity: "campaign",
-              targetId: "c1",
-              payload: { budget: 1010 },
+              idempotencyKey: 'act-1-key',
+              op: 'update_budget',
+              entity: 'campaign',
+              targetId: 'c1',
+              payload: {budget: 1010},
               confidence: 0.9,
             },
             adapter: googleAds,
@@ -287,30 +315,37 @@ describe("Advanced Risk & Observability Features", () => {
       const result = await orchestrator.governBundle(bundle, ctx);
       expect(result.ok).toBe(true);
       expect(result.executedNodeIds.length).toBe(2);
-      expect(result.executedNodeIds[0]).toBe("act-1"); // act-1 runs first because act-2 depends on it
-      expect(result.executedNodeIds[1]).toBe("act-2");
+      expect(result.executedNodeIds[0]).toBe('act-1'); // act-1 runs first because act-2 depends on it
+      expect(result.executedNodeIds[1]).toBe('act-2');
     });
 
-    it("should block concurrent executions targeting the same entity ID", async () => {
+    it('should block concurrent executions targeting the same entity ID', async () => {
       const orchestrator = new Orchestrator(engine);
-      const googleAds = new GoogleAdsAdapter("888-888-8888", "dev_token", "mock_auth_token", "tenant-1");
+      const googleAds = new GoogleAdsAdapter(
+        '888-888-8888',
+        'dev_token',
+        'mock_auth_token',
+        'tenant-1',
+      );
 
       // Lock campaign c1
-      const lockAcquired = orchestrator.getConflictRegistry().acquireLock("campaign", "c1");
+      const lockAcquired = orchestrator
+        .getConflictRegistry()
+        .acquireLock('campaign', 'c1');
       expect(lockAcquired).toBe(true);
 
       const bundle: ActionBundle = {
-        bundleId: "bundle-conflict",
+        bundleId: 'bundle-conflict',
         nodes: [
           {
-            id: "act-3",
+            id: 'act-3',
             dependsOn: [],
             request: {
-              idempotencyKey: "act-3-key",
-              op: "update_budget",
-              entity: "campaign",
-              targetId: "c1",
-              payload: { budget: 1010 },
+              idempotencyKey: 'act-3-key',
+              op: 'update_budget',
+              entity: 'campaign',
+              targetId: 'c1',
+              payload: {budget: 1010},
               confidence: 0.95,
             },
             adapter: googleAds,
@@ -320,177 +355,270 @@ describe("Advanced Risk & Observability Features", () => {
 
       const result = await orchestrator.governBundle(bundle, ctx);
       expect(result.ok).toBe(false);
-      expect(result.error).toContain("Conflict lock acquisition failed");
+      expect(result.error).toContain('Conflict lock acquisition failed');
 
       // Release lock and try again
-      orchestrator.getConflictRegistry().releaseLock("campaign", "c1");
+      orchestrator.getConflictRegistry().releaseLock('campaign', 'c1');
       const retryResult = await orchestrator.governBundle(bundle, ctx);
       expect(retryResult.ok).toBe(true);
     });
   });
 
-  describe("Inventory-Ad Alignment (Risk Radar)", () => {
+  describe('Inventory-Ad Alignment (Risk Radar)', () => {
     let googleAds: GoogleAdsAdapter;
     let radar: RiskRadar;
 
     beforeEach(() => {
-      googleAds = new GoogleAdsAdapter("888-888-8888", "dev_token", "mock_auth_token", "tenant-1");
+      googleAds = new GoogleAdsAdapter(
+        '888-888-8888',
+        'dev_token',
+        'mock_auth_token',
+        'tenant-1',
+      );
       radar = new RiskRadar(engine, googleAds);
       // Pre-seed trust ledger for risk radar executions
-      trustLedger.tiers["tenant-1:scale_budget"] = 3;
-      trustLedger.tiers["tenant-1:update_feed"] = 3;
-      trustLedger.tiers["tenant-1:pause"] = 3;
+      trustLedger.tiers['tenant-1:scale_budget'] = 3;
+      trustLedger.tiers['tenant-1:update_feed'] = 3;
+      trustLedger.tiers['tenant-1:pause'] = 3;
     });
 
-    it("should scale budget by 50% for low-stock warning threshold", async () => {
+    it('should scale budget by 50% for low-stock warning threshold', async () => {
       radar.seedInventory({
-        variantId: "v1",
-        sku: "BLUE-SHIRT-M",
+        variantId: 'v1',
+        sku: 'BLUE-SHIRT-M',
         qty: 8,
         lowStockThreshold: 10,
-        promotedCampaignIds: ["c1"],
+        promotedCampaignIds: ['c1'],
       });
 
       const actions = await radar.scanStockouts(ctx);
-      expect(actions).toContain("scaled_down_campaign_c1_for_BLUE-SHIRT-M");
+      expect(actions).toContain('scaled_down_campaign_c1_for_BLUE-SHIRT-M');
 
-      const campState = googleAds.getSimulatedCampaign("c1");
+      const campState = googleAds.getSimulatedCampaign('c1');
       expect(campState?.budget).toBe(500); // 1000 * 0.5
     });
 
-    it("should switch feed variant if out of stock but sibling variant is available in bundle", async () => {
+    it('should switch feed variant if out of stock but sibling variant is available in bundle', async () => {
       // v1 is out of stock, but v2 (sibling in bundle) is in stock
       radar.seedInventory({
-        variantId: "v1",
-        sku: "BLUE-SHIRT-M",
+        variantId: 'v1',
+        sku: 'BLUE-SHIRT-M',
         qty: 0,
-        bundleId: "bundle-shirt",
-        promotedCampaignIds: ["c1"],
+        bundleId: 'bundle-shirt',
+        promotedCampaignIds: ['c1'],
       });
       radar.seedInventory({
-        variantId: "v2",
-        sku: "BLUE-SHIRT-L",
+        variantId: 'v2',
+        sku: 'BLUE-SHIRT-L',
         qty: 15,
         lowStockThreshold: 5,
-        bundleId: "bundle-shirt",
+        bundleId: 'bundle-shirt',
         promotedCampaignIds: [],
       });
 
       const actions = await radar.scanStockouts(ctx);
-      expect(actions).toContain("reallocated_campaign_c1_to_BLUE-SHIRT-L");
+      expect(actions).toContain('reallocated_campaign_c1_to_BLUE-SHIRT-L');
 
-      const campState = googleAds.getSimulatedCampaign("c1");
-      expect(campState?.activeVariantId).toBe("v2");
+      const campState = googleAds.getSimulatedCampaign('c1');
+      expect(campState?.activeVariantId).toBe('v2');
     });
 
-    it("should pause campaign if out of stock with no alternative variants in bundle", async () => {
+    it('should pause campaign if out of stock with no alternative variants in bundle', async () => {
       radar.seedInventory({
-        variantId: "v1",
-        sku: "BLUE-SHIRT-M",
+        variantId: 'v1',
+        sku: 'BLUE-SHIRT-M',
         qty: 0,
-        promotedCampaignIds: ["c1"],
+        promotedCampaignIds: ['c1'],
       });
 
       const actions = await radar.scanStockouts(ctx);
-      expect(actions).toContain("paused_campaign_c1_for_BLUE-SHIRT-M");
+      expect(actions).toContain('paused_campaign_c1_for_BLUE-SHIRT-M');
 
-      const campState = googleAds.getSimulatedCampaign("c1");
-      expect(campState?.status).toBe("PAUSED");
+      const campState = googleAds.getSimulatedCampaign('c1');
+      expect(campState?.status).toBe('PAUSED');
     });
 
-    it("should adjust budget up/down based on ROI efficiency threshold", async () => {
+    it('should adjust budget up/down based on ROI efficiency threshold', async () => {
       radar.seedInventory({
-        variantId: "v1",
-        sku: "HIGH-ROI-SKU",
+        variantId: 'v1',
+        sku: 'HIGH-ROI-SKU',
         qty: 100,
         roi: 3.5, // High ROI (> 3.0) -> scale up by 20%
-        promotedCampaignIds: ["c1"],
+        promotedCampaignIds: ['c1'],
       });
 
       radar.seedInventory({
-        variantId: "v2",
-        sku: "LOW-ROI-SKU",
+        variantId: 'v2',
+        sku: 'LOW-ROI-SKU',
         qty: 100,
         roi: 1.2, // Low ROI (< 1.5) -> scale down by 30%
-        promotedCampaignIds: ["888"],
+        promotedCampaignIds: ['888'],
       });
 
       const actions = await radar.scanROIEfficiency(ctx);
-      expect(actions).toContain("scaled_up_campaign_c1_for_high_roi_HIGH-ROI-SKU");
-      expect(actions).toContain("scaled_down_campaign_888_for_low_roi_LOW-ROI-SKU");
+      expect(actions).toContain(
+        'scaled_up_campaign_c1_for_high_roi_HIGH-ROI-SKU',
+      );
+      expect(actions).toContain(
+        'scaled_down_campaign_888_for_low_roi_LOW-ROI-SKU',
+      );
 
-      expect(googleAds.getSimulatedCampaign("c1")?.budget).toBe(1200); // 1000 * 1.2
-      expect(googleAds.getSimulatedCampaign("888")?.budget).toBe(350); // 500 * 0.7
+      expect(googleAds.getSimulatedCampaign('c1')?.budget).toBe(1200); // 1000 * 1.2
+      expect(googleAds.getSimulatedCampaign('888')?.budget).toBe(350); // 500 * 0.7
     });
   });
 
-  describe("Testing, Shadow Simulation & Chaos Injection", () => {
-    it("should log simulated execution in shadow onboarding mode without performing actual execute", async () => {
+  describe('Testing, Shadow Simulation & Chaos Injection', () => {
+    it('should log simulated execution in shadow onboarding mode without performing actual execute', async () => {
       ctx.tenant.shadowMode = true; // force shadow onboarding mode
       const req: ActionRequest = {
-        idempotencyKey: "key-shadow-onboarding",
-        op: "update_budget",
-        entity: "campaign",
-        targetId: "camp-123",
+        idempotencyKey: 'key-shadow-onboarding',
+        op: 'update_budget',
+        entity: 'campaign',
+        targetId: 'camp-123',
         payload: {},
         confidence: 0.95,
       };
 
       const res = await engine.govern(adapter, req, ctx);
-      expect(res.status).toBe("executed"); // returns success to caller
+      expect(res.status).toBe('executed'); // returns success to caller
       expect(adapter.execCount).toBe(0); // actual adapter execution bypassed!
 
       // Verify audit trail logged shadow status
-      const shadowRecord = auditSink.records.find(r => r.status === "shadow_executed");
+      const shadowRecord = auditSink.records.find(
+        (r) => r.status === 'shadow_executed',
+      );
       expect(shadowRecord).toBeDefined();
-      expect(shadowRecord.reason).toContain("shadow onboarding mode");
+      expect(shadowRecord.reason).toContain('shadow onboarding mode');
     });
 
-    it("should handle chaos failure injection and report rate limit warnings properly", async () => {
+    it('should handle chaos failure injection and report rate limit warnings properly', async () => {
       const chaosAdapter = new ChaosAdapterWrapper(adapter);
       chaosAdapter.setChaos(true, 1.0, 0, 0); // 100% failure rate
       chaosAdapter.setRateLimitTrip(true);
 
       const health = await chaosAdapter.healthCheck();
       expect(health.ok).toBe(false);
-      expect(health.deprecationWarnings).toContain("Rate limited");
+      expect(health.deprecationWarnings).toContain('Rate limited');
 
       const req: ActionRequest = {
-        idempotencyKey: "key-chaos-run",
-        op: "update_budget",
-        entity: "campaign",
-        targetId: "camp-123",
+        idempotencyKey: 'key-chaos-run',
+        op: 'update_budget',
+        entity: 'campaign',
+        targetId: 'camp-123',
         payload: {},
         confidence: 0.95,
       };
 
-      await expectAsync(chaosAdapter.plan(req)).toBeRejectedWithError(/Rate Limit Exceeded/);
+      await expectAsync(chaosAdapter.plan(req)).toBeRejectedWithError(
+        /Rate Limit Exceeded/,
+      );
     });
 
-    it("should replay historical actions accurately using ForensicReplayer", async () => {
+    it('should replay historical actions accurately using ForensicReplayer', async () => {
       const replayer = new ForensicReplayer(engine);
       const logs = [
-        { action_id: "rep-1", action_type: "update_budget", target_entity: "campaign", target_id: "c1", confidence: 0.9 },
-        { action_id: "rep-2", action_type: "update_budget", target_entity: "campaign", target_id: "c1", confidence: 0.4 }, // Low confidence (0.4) gets blocked
+        {
+          action_id: 'rep-1',
+          action_type: 'update_budget',
+          target_entity: 'campaign',
+          target_id: 'c1',
+          confidence: 0.9,
+        },
+        {
+          action_id: 'rep-2',
+          action_type: 'update_budget',
+          target_entity: 'campaign',
+          target_id: 'c1',
+          confidence: 0.4,
+        }, // Low confidence (0.4) gets blocked
       ];
 
       const decisions = await replayer.replay(logs, ctx, adapter);
-      expect(decisions).toContain("rep-1:AUTO_EXECUTE");
+      expect(decisions).toContain('rep-1:AUTO_EXECUTE');
     });
   });
 
-  describe("Rate Limiting & Backoff Retry", () => {
-    it("should delay requests when token bucket capacity is exceeded", async () => {
+  describe('Governance Cost & Policy Validation', () => {
+    it('should reject negative projected cost from adapter plan', async () => {
+      const negativeCostAdapter = {
+        ...adapter,
+        plan: async (req: ActionRequest) => ({
+          request: req,
+          valid: true,
+          projectedCost: -50, // Negative!
+          warnings: [],
+        }),
+      };
+
+      await expectAsync(
+        engine.govern(
+          negativeCostAdapter as any,
+          {
+            idempotencyKey: 'neg-1',
+            op: 'update_budget',
+            entity: 'campaign',
+            targetId: 'c1',
+            payload: {},
+            confidence: 0.9,
+          },
+          ctx,
+        ),
+      ).toBeRejectedWithError(/Projected cost must be non-negative/);
+    });
+
+    it('should throw ValidationError if OPA returns invalid payload', async () => {
+      // Set useFallback to false to force HTTP fetch
+      const engineWithOpaFetch = new GovernanceEngine(
+        auditSink as any,
+        trustLedger as any,
+        circuitBreaker as any,
+        metricsTracker,
+        new OpaPolicyEngine('http://mock-opa-url', false), // useFallback = false
+      );
+
+      // Spy on global fetch to return invalid OPA payload
+      spyOn(globalThis, 'fetch').and.returnValue(
+        Promise.resolve({
+          ok: true,
+          json: async () => ({invalid_key: 'not-boolean'}),
+        } as any),
+      );
+
+      await expectAsync(
+        engineWithOpaFetch.govern(
+          adapter,
+          {
+            idempotencyKey: 'opa-val-1',
+            op: 'update_budget',
+            entity: 'campaign',
+            targetId: 'c1',
+            payload: {},
+            confidence: 0.9,
+          },
+          ctx,
+        ),
+      ).toBeRejectedWithError(/Invalid OPA decision response payload/);
+    });
+  });
+
+  describe('Rate Limiting & Backoff Retry', () => {
+    it('should delay requests when token bucket capacity is exceeded', async () => {
       // 2 tokens capacity, refills 1 token per second
       const bucket = new TokenBucket(2, 1);
-      const rateLimitingAdapter = new RateLimitingAdapterWrapper(adapter, bucket, 3, 10);
+      const rateLimitingAdapter = new RateLimitingAdapterWrapper(
+        adapter,
+        bucket,
+        3,
+        10,
+      );
 
       const req: ActionRequest = {
-        idempotencyKey: "rate-1",
-        op: "update_budget",
-        entity: "campaign",
-        targetId: "c1",
-        payload: { budget: 1010 },
+        idempotencyKey: 'rate-1',
+        op: 'update_budget',
+        entity: 'campaign',
+        targetId: 'c1',
+        payload: {budget: 1010},
         confidence: 0.95,
       };
 
@@ -500,7 +628,7 @@ describe("Advanced Risk & Observability Features", () => {
       const t0 = Date.now();
       await rateLimitingAdapter.execute(plan);
       await rateLimitingAdapter.execute(plan);
-      
+
       // Third execution must exhaust tokens and trigger delay
       await rateLimitingAdapter.execute(plan);
       const elapsed = Date.now() - t0;
@@ -511,42 +639,58 @@ describe("Advanced Risk & Observability Features", () => {
       expect(elapsed).toBeGreaterThanOrEqual(900);
     });
 
-    it("should retry rate-limited calls with exponential backoff and succeed", async () => {
+    it('should retry rate-limited calls with exponential backoff and succeed', async () => {
       let attempts = 0;
       const failingAdapter: PlatformAdapter = {
-        platform: "mock",
-        schemaVersion: "1.0",
+        platform: 'mock',
+        schemaVersion: '1.0',
         capabilities: [],
-        read: async () => { return {}; },
+        read: async () => {
+          return {};
+        },
         plan: async (req) => {
-          return { request: req, valid: true, projectedCost: 0, warnings: [] };
+          return {request: req, valid: true, projectedCost: 0, warnings: []};
         },
         execute: async (plan) => {
           attempts++;
           if (attempts < 3) {
-            throw new Error("Rate Limit Exceeded (Status 429)");
+            throw new Error('Rate Limit Exceeded (Status 429)');
           }
-          return { ok: true, auditRef: "success-after-retry" };
+          return {ok: true, auditRef: 'success-after-retry'};
         },
-        rollback: async () => { return { ok: true, auditRef: "" }; },
-        healthCheck: async () => { return { ok: true, latencyMs: 0, schemaDriftDetected: false, deprecationWarnings: [] }; },
+        rollback: async () => {
+          return {ok: true, auditRef: ''};
+        },
+        healthCheck: async () => {
+          return {
+            ok: true,
+            latencyMs: 0,
+            schemaDriftDetected: false,
+            deprecationWarnings: [],
+          };
+        },
       };
 
       const bucket = new TokenBucket(10, 10);
-      const rateLimitingAdapter = new RateLimitingAdapterWrapper(failingAdapter, bucket, 3, 20);
+      const rateLimitingAdapter = new RateLimitingAdapterWrapper(
+        failingAdapter,
+        bucket,
+        3,
+        20,
+      );
 
       const plan = await rateLimitingAdapter.plan({
-        idempotencyKey: "retry-1",
-        op: "update_budget",
-        entity: "campaign",
-        targetId: "c1",
+        idempotencyKey: 'retry-1',
+        op: 'update_budget',
+        entity: 'campaign',
+        targetId: 'c1',
         payload: {},
         confidence: 0.95,
       });
 
       const res = await rateLimitingAdapter.execute(plan);
       expect(res.ok).toBe(true);
-      expect(res.auditRef).toBe("success-after-retry");
+      expect(res.auditRef).toBe('success-after-retry');
       expect(attempts).toBe(3);
       expect(rateLimitingAdapter.retriedCalls).toBe(2);
     });

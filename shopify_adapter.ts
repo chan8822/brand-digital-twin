@@ -3,11 +3,15 @@
 // Declares NO write capabilities: plan/execute/rollback are absent by design in Phase 0.
 // Everything downstream sees canonical rows, never the Shopify API shape (the adapter dependency rule).
 
-import { createHash } from "node:crypto";
+import {createHash} from 'node:crypto';
 
 // --- Minimal slice of the adapter contract used in Phase 0 ---
-export type Op = "read";
-export interface Capability { entity: string; ops: Op[]; reversible: boolean; }
+export type Op = 'read';
+export interface Capability {
+  entity: string;
+  ops: Op[];
+  reversible: boolean;
+}
 export interface HealthReport {
   ok: boolean;
   latencyMs: number;
@@ -15,26 +19,28 @@ export interface HealthReport {
   schemaDriftDetected: boolean;
   deprecations: string[];
 }
-export interface CanonicalRows {           // one normalized order fans out into these table rows
+export interface CanonicalRows {
+  // one normalized order fans out into these table rows
   order: Record<string, unknown>;
   order_lines: Record<string, unknown>[];
   customer?: Record<string, unknown>;
   identity_links: Record<string, unknown>[];
 }
 
-const API_VERSION = "2025-10";
-const sha256 = (s: string) => createHash("sha256").update(s.trim().toLowerCase()).digest("hex");
+const API_VERSION = '2025-10';
+const sha256 = (s: string) =>
+  createHash('sha256').update(s.trim().toLowerCase()).digest('hex');
 
 export class ShopifyAdapter {
-  readonly platform = "shopify";
-  readonly schemaVersion = "shopify@2025-10";
+  readonly platform = 'shopify';
+  readonly schemaVersion = 'shopify@2025-10';
   readonly capabilities: Capability[] = [
-    { entity: "order", ops: ["read"], reversible: true },   // read-only; no write ops declared
+    {entity: 'order', ops: ['read'], reversible: true}, // read-only; no write ops declared
   ];
 
   constructor(
-    private shop: string,            // e.g. "ableys.myshopify.com"
-    private token: string,           // Admin API access token (read scopes only)
+    private shop: string, // e.g. "ableys.myshopify.com"
+    private token: string, // Admin API access token (read scopes only)
     private tenantId: string,
   ) {}
 
@@ -43,20 +49,23 @@ export class ShopifyAdapter {
   }
 
   // GraphQL with cost-based throttle handling (Shopify returns a cost budget per call).
-  private async gql<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
+  private async gql<T>(
+    query: string,
+    variables: Record<string, unknown> = {},
+  ): Promise<T> {
     for (let attempt = 0; ; attempt++) {
       const res = await fetch(this.endpoint(), {
-        method: "POST",
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
-          "X-Shopify-Access-Token": this.token,
+          'Content-Type': 'application/json',
+          'X-Shopify-Access-Token': this.token,
         },
-        body: JSON.stringify({ query, variables }),
+        body: JSON.stringify({query, variables}),
       });
 
       if (res.status === 429) {
         // Rate limited. Shopify returns retry-after header.
-        const retryAfter = parseFloat(res.headers.get("Retry-After") || "2");
+        const retryAfter = parseFloat(res.headers.get('Retry-After') || '2');
         await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
         continue;
       }
@@ -65,9 +74,11 @@ export class ShopifyAdapter {
         throw new Error(`Shopify API error: ${res.statusText}`);
       }
 
-      const json = await res.json() as any;
+      const json = (await res.json()) as any;
       if (json.errors) {
-        throw new Error(`Shopify GraphQL error: ${JSON.stringify(json.errors)}`);
+        throw new Error(
+          `Shopify GraphQL error: ${JSON.stringify(json.errors)}`,
+        );
       }
 
       // Cost throttling logic
@@ -76,7 +87,9 @@ export class ShopifyAdapter {
         const remaining = cost.throttleStatus.currentlyAvailable;
         if (remaining < cost.requestedQueryCost) {
           const restoreRate = cost.throttleStatus.restoreRate;
-          const sleepMs = Math.ceil(((cost.requestedQueryCost - remaining) / restoreRate) * 1000);
+          const sleepMs = Math.ceil(
+            ((cost.requestedQueryCost - remaining) / restoreRate) * 1000,
+          );
           await new Promise((resolve) => setTimeout(resolve, sleepMs));
         }
       }
@@ -132,7 +145,7 @@ export class ShopifyAdapter {
     `;
 
     while (hasNextPage) {
-      const data: any = await this.gql<{ orders: any }>(query, {
+      const data: any = await this.gql<{orders: any}>(query, {
         since: since.toISOString(),
         cursor,
       });
@@ -160,20 +173,22 @@ export class ShopifyAdapter {
     const num = (val: any) => (val ? parseFloat(val) : 0);
     const customerId = o.customer?.id ? sha256(o.customer.id) : null;
 
-    const customer = customerId ? {
-      customer_id: customerId,
-      type: "b2c",
-      first_seen: o.processedAt,
-      consent_status: null,
-      source_id: customerId,
-      ...common,
-    } : undefined;
+    const customer = customerId
+      ? {
+          customer_id: customerId,
+          type: 'b2c',
+          first_seen: o.processedAt,
+          consent_status: null,
+          source_id: customerId,
+          ...common,
+        }
+      : undefined;
 
     const identity_links: Record<string, unknown>[] = [];
     if (customerId && o.customer?.email) {
       identity_links.push({
         customer_id: customerId,
-        identifier_type: "email",
+        identifier_type: 'email',
         identifier_hash: sha256(o.customer.email),
         confidence: 1.0,
         ...common,
@@ -182,7 +197,7 @@ export class ShopifyAdapter {
     if (customerId && o.customer?.phone) {
       identity_links.push({
         customer_id: customerId,
-        identifier_type: "phone",
+        identifier_type: 'phone',
         identifier_hash: sha256(o.customer.phone),
         confidence: 1.0,
         ...common,
@@ -193,7 +208,7 @@ export class ShopifyAdapter {
       order_id: o.id,
       customer_id: customerId,
       account_id: null,
-      channel: "b2c_web",
+      channel: 'b2c_web',
       surface: this.shop,
       placed_at: o.processedAt,
       currency: o.currencyCode,
@@ -214,12 +229,12 @@ export class ShopifyAdapter {
       qty: li.quantity,
       unit_price: num(li.discountedUnitPriceSet?.shopMoney?.amount),
       line_discount: 0,
-      unit_cost: num(li.variant?.inventoryItem?.unitCost?.amount),  // COGS straight from source
+      unit_cost: num(li.variant?.inventoryItem?.unitCost?.amount), // COGS straight from source
       source_id: li.id,
       ...common,
     }));
 
-    return { order, order_lines, customer, identity_links };
+    return {order, order_lines, customer, identity_links};
   }
 
   // --- HEALTH: the sensor the self-healing loop reads ---
@@ -227,9 +242,19 @@ export class ShopifyAdapter {
     const t0 = Date.now();
     try {
       const data = await this.gql<any>(`query { shop { name } }`);
-      return { ok: !!data?.shop?.name, latencyMs: Date.now() - t0, schemaDriftDetected: false, deprecations: [] };
+      return {
+        ok: !!data?.shop?.name,
+        latencyMs: Date.now() - t0,
+        schemaDriftDetected: false,
+        deprecations: [],
+      };
     } catch {
-      return { ok: false, latencyMs: Date.now() - t0, schemaDriftDetected: true, deprecations: [] };
+      return {
+        ok: false,
+        latencyMs: Date.now() - t0,
+        schemaDriftDetected: true,
+        deprecations: [],
+      };
     }
   }
 }

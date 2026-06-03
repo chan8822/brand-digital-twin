@@ -19,10 +19,14 @@ export class IsolationContext {
    */
   public static create(identity: TenantIdentity): IsolationContext {
     if (!identity.orgId || identity.orgId.trim() === '') {
-      throw new Error('Security Violation: Access denied. Missing mandatory org_id.');
+      throw new Error(
+        'Security Violation: Access denied. Missing mandatory org_id.',
+      );
     }
     if (!identity.spaceId || identity.spaceId.trim() === '') {
-      throw new Error('Security Violation: Access denied. Missing mandatory space_id.');
+      throw new Error(
+        'Security Violation: Access denied. Missing mandatory space_id.',
+      );
     }
     return new IsolationContext(identity);
   }
@@ -51,7 +55,7 @@ export class IsolationContext {
     const sanitizedOrg = this.identity.orgId.replace(/[^a-zA-Z0-9-_]/g, '');
     const sanitizedSpace = this.identity.spaceId.replace(/[^a-zA-Z0-9-_]/g, '');
     const sanitizedFile = filename.replace(/[^a-zA-Z0-9.-_]/g, '');
-    
+
     return `${baseDirectory}/tenants/${sanitizedOrg}/${sanitizedSpace}/${sanitizedFile}`;
   }
 }

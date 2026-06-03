@@ -3,7 +3,7 @@
  * Exposes downstream adapters as standardized JSON-RPC tools for the agentic workforce.
  */
 
-import { IsolationContext } from './isolation_context';
+import {IsolationContext} from './isolation_context';
 
 export interface McpToolDefinition {
   name: string;
@@ -23,10 +23,13 @@ export interface McpResponse {
 }
 
 export abstract class OneMcpServer {
-  private readonly toolRegistry = new Map<string, {
-    definition: McpToolDefinition;
-    handler: (context: IsolationContext, args: any) => Promise<any>;
-  }>();
+  private readonly toolRegistry = new Map<
+    string,
+    {
+      definition: McpToolDefinition;
+      handler: (context: IsolationContext, args: any) => Promise<any>;
+    }
+  >();
 
   constructor(protected readonly serverName: string) {}
 
@@ -35,21 +38,27 @@ export abstract class OneMcpServer {
    */
   protected registerTool(
     definition: McpToolDefinition,
-    handler: (context: IsolationContext, args: any) => Promise<any>
+    handler: (context: IsolationContext, args: any) => Promise<any>,
   ): void {
     if (this.toolRegistry.has(definition.name)) {
-      throw new Error(`Conflict: Tool with name ${definition.name} is already registered on ${this.serverName}.`);
+      throw new Error(
+        `Conflict: Tool with name ${definition.name} is already registered on ${this.serverName}.`,
+      );
     }
-    this.toolRegistry.set(definition.name, { definition, handler });
+    this.toolRegistry.set(definition.name, {definition, handler});
   }
 
   /**
    * Standard tools/list JSON-RPC handler for discovery.
    */
-  public async listTools(context: IsolationContext): Promise<McpToolDefinition[]> {
+  public async listTools(
+    context: IsolationContext,
+  ): Promise<McpToolDefinition[]> {
     // Audit discovery action
-    console.info(`[OneMCP Server: ${this.serverName}] Listing tools for Org: ${context.orgId}`);
-    return Array.from(this.toolRegistry.values()).map(t => t.definition);
+    console.info(
+      `[OneMCP Server: ${this.serverName}] Listing tools for Org: ${context.orgId}`,
+    );
+    return Array.from(this.toolRegistry.values()).map((t) => t.definition);
   }
 
   /**
@@ -59,7 +68,7 @@ export abstract class OneMcpServer {
     context: IsolationContext,
     toolName: string,
     args: any,
-    rpcId: string | number
+    rpcId: string | number,
   ): Promise<McpResponse> {
     const tool = this.toolRegistry.get(toolName);
     if (!tool) {
@@ -68,8 +77,8 @@ export abstract class OneMcpServer {
         id: rpcId,
         error: {
           code: -32601,
-          message: `Method not found: Tool '${toolName}' is not registered on MCP Server '${this.serverName}'.`
-        }
+          message: `Method not found: Tool '${toolName}' is not registered on MCP Server '${this.serverName}'.`,
+        },
       };
     }
 
@@ -81,7 +90,7 @@ export abstract class OneMcpServer {
       return {
         jsonrpc: '2.0',
         id: rpcId,
-        result
+        result,
       };
     } catch (error: any) {
       return {
@@ -90,20 +99,24 @@ export abstract class OneMcpServer {
         error: {
           code: -32000,
           message: error.message || 'Internal execution failure.',
-          data: { orgId: context.orgId, spaceId: context.spaceId }
-        }
+          data: {orgId: context.orgId, spaceId: context.spaceId},
+        },
       };
     }
   }
 
   private validateSchema(schema: Record<string, any>, args: any): void {
     if (!args) {
-      throw new Error('Validation Error: Input arguments cannot be null or undefined.');
+      throw new Error(
+        'Validation Error: Input arguments cannot be null or undefined.',
+      );
     }
     const requiredKeys = schema['required'] || [];
     for (const key of requiredKeys) {
       if (!(key in args)) {
-        throw new Error(`Validation Error: Missing required parameter '${key}'.`);
+        throw new Error(
+          `Validation Error: Missing required parameter '${key}'.`,
+        );
       }
     }
   }

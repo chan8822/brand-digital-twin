@@ -7,66 +7,337 @@ load("//javascript/typescript:build_defs.bzl", "ts_library")
 package(default_visibility = ["//visibility:public"])
 
 ts_library(
-    name = "isolation_context",
-    srcs = ["core/isolation_context.ts"],
+    name = "platform_adapter",
+    srcs = ["platform_adapter.ts"],
     deps = [],
 )
 
 ts_library(
-    name = "onemcp_server",
-    srcs = ["core/onemcp_server.ts"],
+    name = "observability",
+    srcs = ["observability.ts"],
+    deps = [],
+)
+
+ts_library(
+    name = "forecasting",
+    srcs = ["forecasting.ts"],
+    deps = [],
+)
+
+ts_library(
+    name = "orchestrator",
+    srcs = ["orchestrator.ts"],
     deps = [
-        ":isolation_context",
+        ":governance_engine",
+        ":platform_adapter",
+        "//third_party/javascript/typings/node",
     ],
 )
 
 ts_library(
-    name = "ceo_agent",
-    srcs = [
-        "account_health.ts",
-        "agency_os.ts",
-        "agency_os_types.ts",
-        "agents/ceo_agent.ts",
-        "analyst_agent.ts",
-        "attribution_engine.ts",
-        "easysaas_orchestration.ts",
-        "forecasting.ts",
-        "google_ads_adapter.ts",
-        "google_express.ts",
-        "governance_engine.ts",
-        "governance_shadow.ts",
-        "governance_types.ts",
-        "identity_resolver.ts",
-        "incident_response.ts",
-        "meta_ads_adapter.ts",
-        "multi_agent_governance.ts",
-        "observability.ts",
-        "onboarding_simulator.ts",
-        "onboarding_wizard.ts",
-        "opa_policy.ts",
-        "operational_hubs.ts",
-        "orchestrator.ts",
-        "platform_adapter.ts",
-        "rate_limiter.ts",
-        "rbi_aa_adapter.ts",
-        "risk_radar.ts",
-        "shopify_adapter.ts",
-        "simulation.ts",
-        "stakeholder_portal_manager.ts",
-        "supabase_client.ts",
-        "tally_adapter.ts",
-        "unified_brain.ts",
-        "whatsapp_adapter.ts",
-        "workspace_connectors.ts",
-    ],
+    name = "governance_shadow",
+    srcs = ["governance_shadow.ts"],
+    deps = ["//third_party/javascript/typings/node"],
+)
+
+ts_library(
+    name = "shopify_adapter",
+    srcs = ["shopify_adapter.ts"],
+    deps = ["//third_party/javascript/typings/node"],
+)
+
+ts_library(
+    name = "google_ads_adapter",
+    srcs = ["google_ads_adapter.ts"],
     deps = [
-        ":isolation_context",
-        ":onemcp_server",
+        ":observability",
+        ":platform_adapter",
+        "//third_party/javascript/typings/node",
     ],
 )
 
 ts_library(
-    name = "enterprise_os_tests",
+    name = "meta_ads_adapter",
+    srcs = ["meta_ads_adapter.ts"],
+    deps = [
+        ":observability",
+        ":platform_adapter",
+        "//third_party/javascript/typings/node",
+    ],
+)
+
+ts_library(
+    name = "identity_resolver",
+    srcs = ["identity_resolver.ts"],
+    deps = ["//third_party/javascript/typings/node"],
+)
+
+ts_library(
+    name = "analyst_agent",
+    srcs = ["analyst_agent.ts"],
+    deps = [],
+)
+
+ts_library(
+    name = "governance_types",
+    srcs = ["governance_types.ts"],
+    deps = [],
+)
+
+ts_library(
+    name = "opa_policy",
+    srcs = ["opa_policy.ts"],
+    deps = [
+        ":errors",
+        ":governance_types",
+        ":platform_adapter",
+    ],
+)
+
+ts_library(
+    name = "agency_os_types",
+    srcs = ["agency_os_types.ts"],
+    deps = [],
+)
+
+ts_library(
+    name = "supabase_client",
+    srcs = ["supabase_client.ts"],
+    deps = [
+        ":agency_os_types",
+        ":errors",
+        ":observability",
+    ],
+)
+
+ts_library(
+    name = "agency_os",
+    srcs = ["agency_os.ts"],
+    deps = [
+        ":agency_os_types",
+        ":governance_engine",
+        ":governance_types",
+        ":platform_adapter",
+        ":supabase_client",
+    ],
+)
+
+ts_library(
+    name = "governance_engine",
+    srcs = ["governance_engine.ts"],
+    deps = [
+        ":errors",
+        ":event_bus",
+        ":governance_types",
+        ":observability",
+        ":opa_policy",
+        ":platform_adapter",
+        ":supabase_client",
+    ],
+)
+
+ts_library(
+    name = "tally_adapter",
+    srcs = ["tally_adapter.ts"],
+    deps = [],
+)
+
+ts_library(
+    name = "rbi_aa_adapter",
+    srcs = ["rbi_aa_adapter.ts"],
+    deps = [],
+)
+
+ts_library(
+    name = "whatsapp_adapter",
+    srcs = ["whatsapp_adapter.ts"],
+    deps = [
+        ":platform_adapter",
+    ],
+)
+
+ts_library(
+    name = "risk_radar",
+    srcs = ["risk_radar.ts"],
+    deps = [
+        ":google_ads_adapter",
+        ":governance_engine",
+        ":platform_adapter",
+    ],
+)
+
+ts_library(
+    name = "simulation",
+    srcs = ["simulation.ts"],
+    deps = [
+        ":governance_engine",
+        ":governance_types",
+        ":platform_adapter",
+        "//third_party/javascript/typings/node",
+    ],
+)
+
+ts_library(
+    name = "rate_limiter",
+    srcs = ["rate_limiter.ts"],
+    deps = [
+        ":platform_adapter",
+    ],
+)
+
+ts_library(
+    name = "google_express",
+    srcs = ["google_express.ts"],
+    deps = [],
+)
+
+ts_library(
+    name = "onboarding_simulator",
+    srcs = ["onboarding_simulator.ts"],
+    deps = ["//third_party/javascript/typings/node"],
+)
+
+ts_library(
+    name = "workspace_connectors",
+    srcs = ["workspace_connectors.ts"],
+    deps = [
+        ":agency_os_types",
+        ":supabase_client",
+    ],
+)
+
+ts_library(
+    name = "operational_hubs",
+    srcs = ["operational_hubs.ts"],
+    deps = [
+        ":agency_os_types",
+        ":supabase_client",
+    ],
+)
+
+ts_library(
+    name = "unified_brain",
+    srcs = ["unified_brain.ts"],
+    deps = [
+        ":agency_os_types",
+        ":forecasting",
+        ":supabase_client",
+    ],
+)
+
+ts_library(
+    name = "account_health",
+    srcs = ["account_health.ts"],
+    deps = [
+        ":forecasting",
+        ":supabase_client",
+        ":unified_brain",
+    ],
+)
+
+ts_library(
+    name = "multi_agent_governance",
+    srcs = ["multi_agent_governance.ts"],
+    deps = [
+        ":supabase_client",
+    ],
+)
+
+ts_library(
+    name = "attribution_engine",
+    srcs = ["attribution_engine.ts"],
+    deps = [],
+)
+
+ts_library(
+    name = "incident_response",
+    srcs = ["incident_response.ts"],
+    deps = [
+        ":supabase_client",
+    ],
+)
+
+ts_library(
+    name = "onboarding_wizard",
+    srcs = ["onboarding_wizard.ts"],
+    deps = [
+        ":agency_os_types",
+        ":supabase_client",
+    ],
+)
+
+ts_library(
+    name = "stakeholder_portal_manager",
+    srcs = ["stakeholder_portal_manager.ts"],
+    deps = [
+        ":agency_os_types",
+        ":supabase_client",
+    ],
+)
+
+ts_library(
+    name = "easysaas_orchestration",
+    srcs = ["easysaas_orchestration.ts"],
+    deps = [],
+)
+
+ts_library(
+    name = "config",
+    srcs = ["config.ts"],
+    deps = ["//third_party/javascript/typings/node"],
+)
+
+ts_library(
+    name = "errors",
+    srcs = ["errors.ts"],
+    deps = ["//third_party/javascript/typings/node"],
+)
+
+ts_library(
+    name = "event_bus",
+    srcs = ["event_bus.ts"],
+    deps = ["//third_party/javascript/typings/node"],
+)
+
+ts_library(
+    name = "auth",
+    srcs = ["auth.ts"],
+    deps = [
+        ":errors",
+        "//third_party/javascript/typings/node",
+    ],
+)
+
+ts_library(
+    name = "validation",
+    srcs = ["validation.ts"],
+    deps = [
+        ":errors",
+        ":governance_types",
+        ":platform_adapter",
+    ],
+)
+
+ts_library(
+    name = "server",
+    srcs = ["server.ts"],
+    deps = [
+        ":auth",
+        ":config",
+        ":errors",
+        ":event_bus",
+        ":google_ads_adapter",
+        ":governance_engine",
+        ":rate_limiter",
+        ":supabase_client",
+        ":unified_brain",
+        ":validation",
+        "//third_party/javascript/typings/node",
+    ],
+)
+
+ts_library(
+    name = "brand_twin_tests",
     testonly = True,
     srcs = [
         "advanced_features_test.ts",
@@ -74,25 +345,127 @@ ts_library(
         "agency_ops_test.ts",
         "agency_os_test.ts",
         "easysaas_test.ts",
-        "enterprise_os_test.ts",
         "integrations_test.ts",
         "onboarding_simulator_test.ts",
         "phase1_test.ts",
         "phase2_test.ts",
         "phase3_test.ts",
         "phase4_test.ts",
+        "server_test.ts",
         "shopify_adapter_test.ts",
         "stakeholder_portal_test.ts",
+        "supabase_client_test.ts",
     ],
     deps = [
-        ":ceo_agent",
-        ":isolation_context",
-        ":onemcp_server",
+        ":account_health",
+        ":auth",
+        ":config",
+        ":errors",
+        ":agency_os",
+        ":agency_os_types",
+        ":analyst_agent",
+        ":attribution_engine",
+        ":easysaas_orchestration",
+        ":forecasting",
+        ":google_ads_adapter",
+        ":google_express",
+        ":governance_engine",
+        ":governance_types",
+        ":identity_resolver",
+        ":incident_response",
+        ":meta_ads_adapter",
+        ":multi_agent_governance",
+        ":observability",
+        ":onboarding_simulator",
+        ":onboarding_wizard",
+        ":opa_policy",
+        ":operational_hubs",
+        ":orchestrator",
+        ":platform_adapter",
+        ":rate_limiter",
+        ":rbi_aa_adapter",
+        ":risk_radar",
+        ":server",
+        ":shopify_adapter",
+        ":simulation",
+        ":stakeholder_portal_manager",
+        ":supabase_client",
+        ":tally_adapter",
+        ":unified_brain",
+        ":validation",
+        ":whatsapp_adapter",
+        ":workspace_connectors",
         "//third_party/javascript/typings/jasmine",
+        "//third_party/javascript/typings/node",
     ],
 )
 
 jasmine_node_test(
-    name = "enterprise_os_test",
-    srcs = [":enterprise_os_tests"],
+    name = "shopify_adapter_test",
+    srcs = [":brand_twin_tests"],
+)
+
+jasmine_node_test(
+    name = "phase1_test",
+    srcs = [":brand_twin_tests"],
+)
+
+jasmine_node_test(
+    name = "phase2_test",
+    srcs = [":brand_twin_tests"],
+)
+
+jasmine_node_test(
+    name = "phase3_test",
+    srcs = [":brand_twin_tests"],
+)
+
+jasmine_node_test(
+    name = "phase4_test",
+    srcs = [":brand_twin_tests"],
+)
+
+jasmine_node_test(
+    name = "advanced_features_test",
+    srcs = [":brand_twin_tests"],
+)
+
+jasmine_node_test(
+    name = "onboarding_simulator_test",
+    srcs = [":brand_twin_tests"],
+)
+
+jasmine_node_test(
+    name = "integrations_test",
+    srcs = [":brand_twin_tests"],
+)
+
+jasmine_node_test(
+    name = "agency_os_test",
+    srcs = [":brand_twin_tests"],
+)
+
+jasmine_node_test(
+    name = "advanced_operations_test",
+    srcs = [":brand_twin_tests"],
+)
+
+jasmine_node_test(
+    name = "stakeholder_portal_test",
+    srcs = [":brand_twin_tests"],
+)
+
+jasmine_node_test(
+    name = "easysaas_test",
+    srcs = [":brand_twin_tests"],
+)
+
+jasmine_node_test(
+    name = "server_test",
+    srcs = [":brand_twin_tests"],
+)
+
+jasmine_node_test(
+    name = "supabase_client_test",
+    srcs = [":brand_twin_tests"],
 )

@@ -2,9 +2,9 @@
  * @fileoverview Account Health Monitor and Unified Dashboard Engine.
  */
 
-import { SupabaseClient } from "./supabase_client";
-import { UnifiedIntelligenceBrain } from "./unified_brain";
-import { InventoryStatus } from "./forecasting";
+import {InventoryStatus} from './forecasting';
+import {SupabaseClient} from './supabase_client';
+import {UnifiedIntelligenceBrain} from './unified_brain';
 
 export interface AccountHealthDashboard {
   clientId: string;
@@ -37,10 +37,10 @@ export class AccountHealthMonitor {
     inventory: InventoryStatus[],
     currentDailySpend: number,
     hourlyGradients: number[],
-    metricHistory: Record<string, number[]>
+    metricHistory: Record<string, number[]>,
   ): Promise<AccountHealthDashboard | null> {
     const clients = await this.db.getClients(tenantId);
-    const client = clients.find(c => c.clientId === clientId);
+    const client = clients.find((c) => c.clientId === clientId);
     if (!client) return null;
 
     // 1. Brand Health score
@@ -48,12 +48,22 @@ export class AccountHealthMonitor {
     const brandScore = brandStatus.sentimentScore;
 
     // 2. Financial score
-    const forecast = await this.brain.generateForecasts(tenantId, currentDailySpend, hourlyGradients);
-    const financialScore = Math.max(0, Math.min(100, Math.round(forecast.conservativeMarginPct * 100 * 2))); // normalized
+    const forecast = await this.brain.generateForecasts(
+      tenantId,
+      currentDailySpend,
+      hourlyGradients,
+    );
+    const financialScore = Math.max(
+      0,
+      Math.min(100, Math.round(forecast.conservativeMarginPct * 100 * 2)),
+    ); // normalized
 
     // 3. Team workload score
     const capacityStatus = await this.brain.analyzeTeamCapacity(tenantId);
-    const teamScore = Math.max(0, 100 - Math.round(capacityStatus.avgCapacityPct));
+    const teamScore = Math.max(
+      0,
+      100 - Math.round(capacityStatus.avgCapacityPct),
+    );
 
     // 4. Client profile score
     const clientScore = client.healthScore;
@@ -63,11 +73,20 @@ export class AccountHealthMonitor {
     const operationalScore = Math.max(0, 100 - operationalRisks.length * 15);
 
     // 6. Performance score (base client success or ROIs)
-    const performanceScore = Math.max(0, Math.min(100, Math.round(client.healthScore * 1.1)));
+    const performanceScore = Math.max(
+      0,
+      Math.min(100, Math.round(client.healthScore * 1.1)),
+    );
 
     // Calculate overall health score as simple average of dimensions
     const overallScore = Math.round(
-      (brandScore + financialScore + teamScore + clientScore + operationalScore + performanceScore) / 6
+      (brandScore +
+        financialScore +
+        teamScore +
+        clientScore +
+        operationalScore +
+        performanceScore) /
+        6,
     );
 
     // Anomaly detection
@@ -76,16 +95,24 @@ export class AccountHealthMonitor {
     // 7-day predictive alerts
     const predictiveAlerts: string[] = [];
     if (forecast.runwayMonths < 3) {
-      predictiveAlerts.push(`7-Day Warning: Cash runway is critically short at ${forecast.runwayMonths} months.`);
+      predictiveAlerts.push(
+        `7-Day Warning: Cash runway is critically short at ${forecast.runwayMonths} months.`,
+      );
     }
     if (client.churnRisk > 0.6) {
-      predictiveAlerts.push(`7-Day Warning: High churn risk detected for client ${client.name}. Probability: ${client.churnRisk}`);
+      predictiveAlerts.push(
+        `7-Day Warning: High churn risk detected for client ${client.name}. Probability: ${client.churnRisk}`,
+      );
     }
     if (capacityStatus.avgCapacityPct > 80) {
-      predictiveAlerts.push(`7-Day Warning: Extreme team capacity overload predicted (avg utilization at ${Math.round(capacityStatus.avgCapacityPct)}%).`);
+      predictiveAlerts.push(
+        `7-Day Warning: Extreme team capacity overload predicted (avg utilization at ${Math.round(capacityStatus.avgCapacityPct)}%).`,
+      );
     }
     if (forecast.conservativeMarginPct < client.marginTarget) {
-      predictiveAlerts.push(`7-Day Warning: Conservative margin forecast ($${Math.round(forecast.conservativeMarginPct * 100)}%) is pacing below margin target ($${Math.round(client.marginTarget * 100)}%).`);
+      predictiveAlerts.push(
+        `7-Day Warning: Conservative margin forecast ($${Math.round(forecast.conservativeMarginPct * 100)}%) is pacing below margin target ($${Math.round(client.marginTarget * 100)}%).`,
+      );
     }
 
     // Include operational risks into predictive alerts
@@ -122,9 +149,9 @@ export class AccountHealthMonitor {
       if (prev === 0) continue;
 
       const pctShift = Math.abs((last - prev) / prev);
-      if (pctShift > 0.20) {
+      if (pctShift > 0.2) {
         anomalies.push(
-          `Anomaly detected: metric '${metricName}' shifted by ${Math.round(pctShift * 100)}% (from ${prev} to ${last})`
+          `Anomaly detected: metric '${metricName}' shifted by ${Math.round(pctShift * 100)}% (from ${prev} to ${last})`,
         );
       }
     }

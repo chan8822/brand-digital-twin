@@ -1,10 +1,10 @@
+import {Context, GovernanceEngine} from './governance_engine';
 import {
-  PlatformAdapter,
   ActionRequest,
   ActionResult,
+  PlatformAdapter,
   RollbackHandle,
-} from "./platform_adapter";
-import { GovernanceEngine, Context } from "./governance_engine";
+} from './platform_adapter';
 
 export interface BundleNode {
   id: string;
@@ -55,15 +55,25 @@ export class Orchestrator {
     return this.conflictRegistry;
   }
 
-  async governBundle(bundle: ActionBundle, ctx: Context): Promise<BundleResult> {
-    const nodeStatus: Map<string, "pending" | "success" | "failed" | "skipped"> = new Map();
-    const rollbackStack: { nodeId: string; adapter: PlatformAdapter; handle: RollbackHandle }[] = [];
+  async governBundle(
+    bundle: ActionBundle,
+    ctx: Context,
+  ): Promise<BundleResult> {
+    const nodeStatus: Map<
+      string,
+      'pending' | 'success' | 'failed' | 'skipped'
+    > = new Map();
+    const rollbackStack: {
+      nodeId: string;
+      adapter: PlatformAdapter;
+      handle: RollbackHandle;
+    }[] = [];
     const executedNodeIds: string[] = [];
 
     await this.governance.supabase.beginTransaction();
 
     for (const node of bundle.nodes) {
-      nodeStatus.set(node.id, "pending");
+      nodeStatus.set(node.id, 'pending');
     }
 
     let processedAny = true;
@@ -74,7 +84,7 @@ export class Orchestrator {
       processedAny = false;
 
       for (const node of bundle.nodes) {
-        if (nodeStatus.get(node.id) !== "pending") {
+        if (nodeStatus.get(node.id) !== 'pending') {
           continue;
         }
 
@@ -85,16 +95,16 @@ export class Orchestrator {
 
         for (const depId of deps) {
           const status = nodeStatus.get(depId);
-          if (status !== "success") {
+          if (status !== 'success') {
             depsMet = false;
           }
-          if (status === "failed" || status === "skipped") {
+          if (status === 'failed' || status === 'skipped') {
             depFailed = true;
           }
         }
 
         if (depFailed) {
-          nodeStatus.set(node.id, "skipped");
+          nodeStatus.set(node.id, 'skipped');
           processedAny = true;
           continue;
         }
@@ -104,9 +114,12 @@ export class Orchestrator {
         }
 
         // Try to acquire lock
-        const locked = this.conflictRegistry.acquireLock(node.request.entity, node.request.targetId);
+        const locked = this.conflictRegistry.acquireLock(
+          node.request.entity,
+          node.request.targetId,
+        );
         if (!locked) {
-          nodeStatus.set(node.id, "failed");
+          nodeStatus.set(node.id, 'failed');
           failedNodeId = node.id;
           failureError = `Conflict lock acquisition failed for target ${node.request.targetId}`;
           processedAny = true;
@@ -115,11 +128,18 @@ export class Orchestrator {
 
         // Execute via governance
         try {
-          const outcome = await this.governance.govern(node.adapter, node.request, ctx);
-          this.conflictRegistry.releaseLock(node.request.entity, node.request.targetId);
+          const outcome = await this.governance.govern(
+            node.adapter,
+            node.request,
+            ctx,
+          );
+          this.conflictRegistry.releaseLock(
+            node.request.entity,
+            node.request.targetId,
+          );
 
-          if (outcome.status === "executed" && outcome.result?.ok) {
-            nodeStatus.set(node.id, "success");
+          if (outcome.status === 'executed' && outcome.result?.ok) {
+            nodeStatus.set(node.id, 'success');
             executedNodeIds.push(node.id);
             if (outcome.result.rollback) {
               rollbackStack.push({
@@ -129,15 +149,21 @@ export class Orchestrator {
               });
             }
           } else {
-            nodeStatus.set(node.id, "failed");
+            nodeStatus.set(node.id, 'failed');
             failedNodeId = node.id;
-            failureError = outcome.status === "blocked" ? "Action was blocked by governance" : "Action execution failed";
+            failureError =
+              outcome.status === 'blocked'
+                ? 'Action was blocked by governance'
+                : 'Action execution failed';
           }
         } catch (err: any) {
-          this.conflictRegistry.releaseLock(node.request.entity, node.request.targetId);
-          nodeStatus.set(node.id, "failed");
+          this.conflictRegistry.releaseLock(
+            node.request.entity,
+            node.request.targetId,
+          );
+          nodeStatus.set(node.id, 'failed');
           failedNodeId = node.id;
-          failureError = err.message ?? "Unknown execution error";
+          failureError = err.message ?? 'Unknown execution error';
         }
 
         processedAny = true;
@@ -147,9 +173,9 @@ export class Orchestrator {
     // Check if there are any remaining pending nodes that couldn't be run
     if (!failedNodeId) {
       for (const node of bundle.nodes) {
-        if (nodeStatus.get(node.id) === "pending") {
+        if (nodeStatus.get(node.id) === 'pending') {
           failedNodeId = node.id;
-          failureError = "Cyclic dependency or unresolvable node path";
+          failureError = 'Cyclic dependency or unresolvable node path';
           break;
         }
       }

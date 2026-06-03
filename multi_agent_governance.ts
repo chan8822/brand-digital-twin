@@ -2,7 +2,7 @@
  * @fileoverview Multi-agent collaborative governance engine.
  */
 
-import { SupabaseClient } from "./supabase_client";
+import {SupabaseClient} from './supabase_client';
 
 export interface Proposal {
   proposalId: string;
@@ -12,7 +12,7 @@ export interface Proposal {
   targetChannel: string; // e.g. 'google'
   amount: number;
   rationale: string;
-  status: "pending" | "approved" | "rejected" | "escalated";
+  status: 'pending' | 'approved' | 'rejected' | 'escalated';
 }
 
 export interface Vote {
@@ -34,7 +34,7 @@ export class MediaBuyerAgent {
     sourceChannel: string,
     targetChannel: string,
     amount: number,
-    poasDifference: number
+    poasDifference: number,
   ): Proposal {
     return {
       proposalId: `prop-${Date.now()}-${Math.random().toString(36).substring(7)}`,
@@ -44,7 +44,7 @@ export class MediaBuyerAgent {
       targetChannel,
       amount,
       rationale: `POAS in ${targetChannel} exceeds ${sourceChannel} by ${Math.round(poasDifference * 100)}%. Reallocating budget to maximize efficiency.`,
-      status: "pending",
+      status: 'pending',
     };
   }
 }
@@ -57,15 +57,17 @@ export class CreativeDirectorAgent {
    */
   async voteOnProposal(db: SupabaseClient, proposal: Proposal): Promise<Vote> {
     const assets = await db.getCreativeAssets(proposal.tenantId);
-    
+
     // Check if there's any active non-compliant asset for this campaign
-    const campaignAssets = assets.filter(a => a.campaign === proposal.campaignId);
-    const hasViolation = campaignAssets.some(a => !a.complianceOk);
+    const campaignAssets = assets.filter(
+      (a) => a.campaign === proposal.campaignId,
+    );
+    const hasViolation = campaignAssets.some((a) => !a.complianceOk);
 
     if (hasViolation) {
       return {
         agentId: this.agentId,
-        role: "creative_director",
+        role: 'creative_director',
         approved: false,
         reason: `Rejection: Campaign ${proposal.campaignId} contains non-compliant creative assets. Resolve safety issues first.`,
       };
@@ -73,9 +75,9 @@ export class CreativeDirectorAgent {
 
     return {
       agentId: this.agentId,
-      role: "creative_director",
+      role: 'creative_director',
       approved: true,
-      reason: "Approved: Visual assets comply with current safety guidelines.",
+      reason: 'Approved: Visual assets comply with current safety guidelines.',
     };
   }
 }
@@ -91,9 +93,9 @@ export class CFOAgent {
     if (clients.length === 0) {
       return {
         agentId: this.agentId,
-        role: "cfo",
+        role: 'cfo',
         approved: true,
-        reason: "Approved: No client margin limits defined.",
+        reason: 'Approved: No client margin limits defined.',
       };
     }
 
@@ -102,7 +104,7 @@ export class CFOAgent {
     if (proposal.amount > 50000 && client.healthScore < 70) {
       return {
         agentId: this.agentId,
-        role: "cfo",
+        role: 'cfo',
         approved: false,
         reason: `Rejection: Reallocation amount $${proposal.amount} exceeds limit ($50,000) for a client with health score < 70 (Current: ${client.healthScore}).`,
       };
@@ -110,28 +112,34 @@ export class CFOAgent {
 
     return {
       agentId: this.agentId,
-      role: "cfo",
+      role: 'cfo',
       approved: true,
-      reason: "Approved: Proposed spend conforms to cash limits and margin metrics.",
+      reason:
+        'Approved: Proposed spend conforms to cash limits and margin metrics.',
     };
   }
 }
 
 export class AgentOrchestrator {
-  private readonly mediaBuyer = new MediaBuyerAgent("buyer-bot");
-  private readonly creativeDirector = new CreativeDirectorAgent("creative-bot");
-  private readonly cfo = new CFOAgent("cfo-bot");
+  private readonly mediaBuyer = new MediaBuyerAgent('buyer-bot');
+  private readonly creativeDirector = new CreativeDirectorAgent('creative-bot');
+  private readonly cfo = new CFOAgent('cfo-bot');
 
   constructor(private readonly db: SupabaseClient) {}
 
   /**
    * Runs the consensus process for a budget proposal.
    */
-  async processConsensus(proposal: Proposal): Promise<{ consensusReached: boolean; votes: Vote[]; finalStatus: string }> {
+  async processConsensus(
+    proposal: Proposal,
+  ): Promise<{consensusReached: boolean; votes: Vote[]; finalStatus: string}> {
     const votes: Vote[] = [];
 
     // Creative Director Agent votes
-    const cdVote = await this.creativeDirector.voteOnProposal(this.db, proposal);
+    const cdVote = await this.creativeDirector.voteOnProposal(
+      this.db,
+      proposal,
+    );
     votes.push(cdVote);
 
     // CFO Agent votes
@@ -139,16 +147,16 @@ export class AgentOrchestrator {
     votes.push(cfoVote);
 
     // Evaluate votes
-    const allApproved = votes.every(v => v.approved);
-    let finalStatus: "approved" | "rejected" | "escalated" = "approved";
+    const allApproved = votes.every((v) => v.approved);
+    let finalStatus: 'approved' | 'rejected' | 'escalated' = 'approved';
 
     if (!allApproved) {
       // If one approves but another rejects, we escalate to human administrator
-      const anyApproved = votes.some(v => v.approved);
+      const anyApproved = votes.some((v) => v.approved);
       if (anyApproved) {
-        finalStatus = "escalated";
+        finalStatus = 'escalated';
       } else {
-        finalStatus = "rejected";
+        finalStatus = 'rejected';
       }
     }
 
@@ -158,9 +166,9 @@ export class AgentOrchestrator {
     await this.db.logActivity({
       eventId: `act-${proposal.proposalId}`,
       orgId: `org-${proposal.tenantId}`,
-      actorId: "agent-orchestrator",
-      actionType: "consensus_reached",
-      entityType: "budget_proposal",
+      actorId: 'agent-orchestrator',
+      actionType: 'consensus_reached',
+      entityType: 'budget_proposal',
       entityId: proposal.proposalId,
       summary: `Multi-agent consensus for budget shift of $${proposal.amount}: ${finalStatus.toUpperCase()}`,
       isRead: false,
@@ -169,7 +177,7 @@ export class AgentOrchestrator {
     });
 
     return {
-      consensusReached: finalStatus === "approved",
+      consensusReached: finalStatus === 'approved',
       votes,
       finalStatus,
     };

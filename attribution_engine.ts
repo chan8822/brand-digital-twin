@@ -17,7 +17,10 @@ export class AttributionEngine {
   /**
    * Distributes conversion value equally across all touchpoints (Linear).
    */
-  calculateLinearAttribution(touchpoints: Touchpoint[], conversionValue: number): ChannelCredit[] {
+  calculateLinearAttribution(
+    touchpoints: Touchpoint[],
+    conversionValue: number,
+  ): ChannelCredit[] {
     if (touchpoints.length === 0) return [];
     const equalShare = conversionValue / touchpoints.length;
 
@@ -39,26 +42,28 @@ export class AttributionEngine {
     touchpoints: Touchpoint[],
     conversionValue: number,
     purchaseTimestamp: number,
-    halfLifeDays: number = 7
+    halfLifeDays: number = 7,
   ): ChannelCredit[] {
     if (touchpoints.length === 0) return [];
 
     const halfLifeMs = halfLifeDays * 24 * 60 * 60 * 1000;
     let totalWeight = 0;
-    const weights = touchpoints.map(tp => {
+    const weights = touchpoints.map((tp) => {
       const diffMs = Math.max(0, purchaseTimestamp - tp.timestamp);
       // Exponential decay: weight = 2^(-t / halfLife)
       const weight = Math.pow(2, -diffMs / halfLifeMs);
       totalWeight += weight;
-      return { tp, weight };
+      return {tp, weight};
     });
 
-    if (totalWeight === 0) return this.calculateLinearAttribution(touchpoints, conversionValue);
+    if (totalWeight === 0)
+      return this.calculateLinearAttribution(touchpoints, conversionValue);
 
     const aggregate: Record<string, number> = {};
     for (const entry of weights) {
       const share = conversionValue * (entry.weight / totalWeight);
-      aggregate[entry.tp.platform] = (aggregate[entry.tp.platform] || 0) + share;
+      aggregate[entry.tp.platform] =
+        (aggregate[entry.tp.platform] || 0) + share;
     }
 
     return Object.entries(aggregate).map(([platform, value]) => ({
@@ -70,17 +75,24 @@ export class AttributionEngine {
   /**
    * Allocates 40% to first, 40% to last, and 20% divided among middle (Position-Based / U-Shape).
    */
-  calculatePositionBasedAttribution(touchpoints: Touchpoint[], conversionValue: number): ChannelCredit[] {
+  calculatePositionBasedAttribution(
+    touchpoints: Touchpoint[],
+    conversionValue: number,
+  ): ChannelCredit[] {
     if (touchpoints.length === 0) return [];
     if (touchpoints.length === 1) {
-      return [{ platform: touchpoints[0].platform, allocatedValue: conversionValue }];
+      return [
+        {platform: touchpoints[0].platform, allocatedValue: conversionValue},
+      ];
     }
     if (touchpoints.length === 2) {
       // 50% first, 50% last
       const share = conversionValue / 2;
       const aggregate: Record<string, number> = {};
-      aggregate[touchpoints[0].platform] = (aggregate[touchpoints[0].platform] || 0) + share;
-      aggregate[touchpoints[1].platform] = (aggregate[touchpoints[1].platform] || 0) + share;
+      aggregate[touchpoints[0].platform] =
+        (aggregate[touchpoints[0].platform] || 0) + share;
+      aggregate[touchpoints[1].platform] =
+        (aggregate[touchpoints[1].platform] || 0) + share;
       return Object.entries(aggregate).map(([platform, value]) => ({
         platform,
         allocatedValue: Math.round(value * 100) / 100,

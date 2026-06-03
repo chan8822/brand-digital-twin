@@ -1,6 +1,6 @@
-import { GovernanceEngine, Context } from "./governance_engine";
-import { GoogleAdsAdapter } from "./google_ads_adapter";
-import { ActionRequest } from "./platform_adapter";
+import {GoogleAdsAdapter} from './google_ads_adapter';
+import {Context, GovernanceEngine} from './governance_engine';
+import {ActionRequest} from './platform_adapter';
 
 export interface VariantInventory {
   variantId: string;
@@ -40,7 +40,10 @@ export class RiskRadar {
         let alternativeFound = false;
         if (item.bundleId) {
           const siblings = this.inventories.filter(
-            (v) => v.bundleId === item.bundleId && v.variantId !== item.variantId && v.qty > (v.lowStockThreshold ?? 0)
+            (v) =>
+              v.bundleId === item.bundleId &&
+              v.variantId !== item.variantId &&
+              v.qty > (v.lowStockThreshold ?? 0),
           );
           if (siblings.length > 0) {
             alternativeFound = true;
@@ -48,8 +51,8 @@ export class RiskRadar {
             for (const campaignId of item.promotedCampaignIds) {
               const req: ActionRequest = {
                 idempotencyKey: `radar_reallocate_${item.variantId}_to_${sibling.variantId}_${campaignId}`,
-                op: "update_feed",
-                entity: "campaign",
+                op: 'update_feed',
+                entity: 'campaign',
                 targetId: campaignId,
                 payload: {
                   reason: `reallocate budget from out-of-stock SKU ${item.sku} to sibling ${sibling.sku}`,
@@ -57,11 +60,15 @@ export class RiskRadar {
                 },
                 confidence: 1.0,
               };
-              const outcome = await this.governance.govern(this.googleAdapter, req, ctx);
+              const outcome = await this.governance.govern(
+                this.googleAdapter,
+                req,
+                ctx,
+              );
               actionsTaken.push(
-                outcome.status === "executed"
+                outcome.status === 'executed'
                   ? `reallocated_campaign_${campaignId}_to_${sibling.sku}`
-                  : `queued_reallocation_campaign_${campaignId}_to_${sibling.sku}`
+                  : `queued_reallocation_campaign_${campaignId}_to_${sibling.sku}`,
               );
             }
           }
@@ -72,28 +79,41 @@ export class RiskRadar {
           for (const campaignId of item.promotedCampaignIds) {
             const req: ActionRequest = {
               idempotencyKey: `radar_stockout_${item.variantId}_${campaignId}`,
-              op: "pause",
-              entity: "campaign",
+              op: 'pause',
+              entity: 'campaign',
               targetId: campaignId,
-              payload: { reason: `automated safety trigger: out of stock variant ${item.sku}` },
+              payload: {
+                reason: `automated safety trigger: out of stock variant ${item.sku}`,
+              },
               confidence: 1.0,
             };
 
-            const outcome = await this.governance.govern(this.googleAdapter, req, ctx);
-            if (outcome.status === "executed") {
-              actionsTaken.push(`paused_campaign_${campaignId}_for_${item.sku}`);
+            const outcome = await this.governance.govern(
+              this.googleAdapter,
+              req,
+              ctx,
+            );
+            if (outcome.status === 'executed') {
+              actionsTaken.push(
+                `paused_campaign_${campaignId}_for_${item.sku}`,
+              );
             } else {
-              actionsTaken.push(`queued_pause_campaign_${campaignId}_for_${item.sku}`);
+              actionsTaken.push(
+                `queued_pause_campaign_${campaignId}_for_${item.sku}`,
+              );
             }
           }
         }
-      } else if (item.lowStockThreshold !== undefined && item.qty <= item.lowStockThreshold) {
+      } else if (
+        item.lowStockThreshold !== undefined &&
+        item.qty <= item.lowStockThreshold
+      ) {
         // 2. Low-stock: scale down budget by 50%
         for (const campaignId of item.promotedCampaignIds) {
           const req: ActionRequest = {
             idempotencyKey: `radar_lowstock_${item.variantId}_${campaignId}`,
-            op: "scale_budget",
-            entity: "campaign",
+            op: 'scale_budget',
+            entity: 'campaign',
             targetId: campaignId,
             payload: {
               scaleFactor: 0.5,
@@ -101,11 +121,19 @@ export class RiskRadar {
             },
             confidence: 1.0,
           };
-          const outcome = await this.governance.govern(this.googleAdapter, req, ctx);
-          if (outcome.status === "executed") {
-            actionsTaken.push(`scaled_down_campaign_${campaignId}_for_${item.sku}`);
+          const outcome = await this.governance.govern(
+            this.googleAdapter,
+            req,
+            ctx,
+          );
+          if (outcome.status === 'executed') {
+            actionsTaken.push(
+              `scaled_down_campaign_${campaignId}_for_${item.sku}`,
+            );
           } else {
-            actionsTaken.push(`queued_scale_down_campaign_${campaignId}_for_${item.sku}`);
+            actionsTaken.push(
+              `queued_scale_down_campaign_${campaignId}_for_${item.sku}`,
+            );
           }
         }
       }
@@ -128,8 +156,8 @@ export class RiskRadar {
         for (const campaignId of item.promotedCampaignIds) {
           const req: ActionRequest = {
             idempotencyKey: `radar_high_roi_${item.variantId}_${campaignId}`,
-            op: "scale_budget",
-            entity: "campaign",
+            op: 'scale_budget',
+            entity: 'campaign',
             targetId: campaignId,
             payload: {
               scaleFactor: 1.2,
@@ -137,9 +165,15 @@ export class RiskRadar {
             },
             confidence: 1.0,
           };
-          const outcome = await this.governance.govern(this.googleAdapter, req, ctx);
-          if (outcome.status === "executed") {
-            actionsTaken.push(`scaled_up_campaign_${campaignId}_for_high_roi_${item.sku}`);
+          const outcome = await this.governance.govern(
+            this.googleAdapter,
+            req,
+            ctx,
+          );
+          if (outcome.status === 'executed') {
+            actionsTaken.push(
+              `scaled_up_campaign_${campaignId}_for_high_roi_${item.sku}`,
+            );
           }
         }
       } else if (item.roi <= 1.5) {
@@ -147,8 +181,8 @@ export class RiskRadar {
         for (const campaignId of item.promotedCampaignIds) {
           const req: ActionRequest = {
             idempotencyKey: `radar_low_roi_${item.variantId}_${campaignId}`,
-            op: "scale_budget",
-            entity: "campaign",
+            op: 'scale_budget',
+            entity: 'campaign',
             targetId: campaignId,
             payload: {
               scaleFactor: 0.7,
@@ -156,9 +190,15 @@ export class RiskRadar {
             },
             confidence: 1.0,
           };
-          const outcome = await this.governance.govern(this.googleAdapter, req, ctx);
-          if (outcome.status === "executed") {
-            actionsTaken.push(`scaled_down_campaign_${campaignId}_for_low_roi_${item.sku}`);
+          const outcome = await this.governance.govern(
+            this.googleAdapter,
+            req,
+            ctx,
+          );
+          if (outcome.status === 'executed') {
+            actionsTaken.push(
+              `scaled_down_campaign_${campaignId}_for_low_roi_${item.sku}`,
+            );
           }
         }
       }

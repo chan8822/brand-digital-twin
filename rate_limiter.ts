@@ -3,14 +3,14 @@
  */
 
 import {
-  PlatformAdapter,
+  ActionPlan,
+  ActionRequest,
+  ActionResult,
   Capability,
   HealthReport,
-  ActionRequest,
-  ActionPlan,
-  ActionResult,
+  PlatformAdapter,
   RollbackHandle,
-} from "./platform_adapter";
+} from './platform_adapter';
 
 /**
  * Token Bucket implementation for rate limiting requests.
@@ -34,7 +34,10 @@ export class TokenBucket {
     const now = Date.now();
     const elapsedSec = (now - this.lastRefillMs) / 1000;
     this.lastRefillMs = now;
-    this.tokens = Math.min(this.maxTokens, this.tokens + elapsedSec * this.refillRatePerSec);
+    this.tokens = Math.min(
+      this.maxTokens,
+      this.tokens + elapsedSec * this.refillRatePerSec,
+    );
   }
 
   /**
@@ -57,6 +60,18 @@ export class TokenBucket {
         resolve();
       }, waitMs);
     });
+  }
+
+  /**
+   * Tries to acquire 1 token. Returns true if acquired, false otherwise (without blocking).
+   */
+  tryAcquire(): boolean {
+    this.refill();
+    if (this.tokens >= 1) {
+      this.tokens -= 1;
+      return true;
+    }
+    return false;
   }
 
   /**
@@ -108,7 +123,8 @@ export class RateLimitingAdapterWrapper implements PlatformAdapter {
       } catch (err: unknown) {
         attempts++;
         const errMsg = err instanceof Error ? err.message : String(err);
-        const isRateLimit = errMsg.includes("Rate Limit") || errMsg.includes("429");
+        const isRateLimit =
+          errMsg.includes('Rate Limit') || errMsg.includes('429');
 
         if (isRateLimit && attempts <= this.maxRetries) {
           this.retriedCalls++;
@@ -122,7 +138,9 @@ export class RateLimitingAdapterWrapper implements PlatformAdapter {
   }
 
   read(since: Date): Promise<any> {
-    return this.callWithLimiterAndRetry(() => this.delegate.read(since) as Promise<any>);
+    return this.callWithLimiterAndRetry(
+      () => this.delegate.read(since) as Promise<any>,
+    );
   }
 
   plan(req: ActionRequest): Promise<ActionPlan> {

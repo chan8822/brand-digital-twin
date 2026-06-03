@@ -6,7 +6,7 @@ export interface TeamMember {
   memberId: string;
   orgId: string;
   userId: string;
-  roleName: "media_buyer" | "account_mgr" | "cmo" | "cfo" | "admin";
+  roleName: 'media_buyer' | 'account_mgr' | 'cmo' | 'cfo' | 'admin';
   permissions: string[];
   capacityPct: number; // utilization metric (0-100)
   tenantId: string;
@@ -28,7 +28,7 @@ export interface CampaignBrief {
   briefId: string;
   campaignId?: string;
   clientId: string;
-  status: "draft" | "pending_approval" | "approved" | "live";
+  status: 'draft' | 'pending_approval' | 'approved' | 'live';
   projectedRoi: number;
   budget: number;
   createdBy: string; // memberId
@@ -45,7 +45,7 @@ export interface ApprovalRequest {
   entityId: string;
   requestedBy: string; // memberId or client_id or agent
   assignedTo: string; // role name (e.g. 'cmo') or memberId
-  status: "pending" | "approved" | "rejected";
+  status: 'pending' | 'approved' | 'rejected';
   reason?: string;
   tenantId: string;
   createdAt: number;
@@ -79,7 +79,15 @@ export interface ClientPortalToken {
 export interface BrandSignal {
   signalId: string;
   tenantId: string;
-  source: 'social' | 'pr' | 'sentiment' | 'ads' | 'content' | 'inventory' | 'team' | 'client';
+  source:
+    | 'social'
+    | 'pr'
+    | 'sentiment'
+    | 'ads'
+    | 'content'
+    | 'inventory'
+    | 'team'
+    | 'client';
   type: string;
   severity: 'critical' | 'high' | 'medium' | 'low' | 'info';
   message: string;
@@ -90,7 +98,18 @@ export interface BrandSignal {
 export interface IntegrationState {
   integrationId: string;
   tenantId: string;
-  provider: 'gmail' | 'brandwatch' | 'asana' | 'hubspot' | 'quickbooks' | 'figma' | 'google_ads' | 'meta_ads' | 'meta_ads_api' | 'slack' | 'shopify';
+  provider:
+    | 'gmail'
+    | 'brandwatch'
+    | 'asana'
+    | 'hubspot'
+    | 'quickbooks'
+    | 'figma'
+    | 'google_ads'
+    | 'meta_ads'
+    | 'meta_ads_api'
+    | 'slack'
+    | 'shopify';
   status: 'active' | 'suspended' | 'expired';
   settings: Record<string, any>;
   updatedAt: number;
@@ -143,33 +162,33 @@ export enum EcosystemRole {
   // TIER 1: PRIMARY OPERATORS
   AGENCY_OWNER = 'agency_owner',
   AGENCY_EXECUTIVE = 'agency_executive',
-  
+
   // TIER 2: TEAM OPERATORS
   MEDIA_BUYER = 'media_buyer',
   ACCOUNT_MANAGER = 'account_manager',
   CREATIVE_DIRECTOR = 'creative_director',
   ANALYST = 'analyst',
-  
+
   // TIER 3: CLIENT STAKEHOLDERS
   CLIENT_EXECUTIVE = 'client_executive',
   CLIENT_MANAGER = 'client_manager',
   CLIENT_FINANCE = 'client_finance',
   CLIENT_STAKEHOLDER = 'client_stakeholder',
-  
+
   // TIER 4: PARTNER ECOSYSTEM
   PARTNER_VENDOR = 'partner_vendor',
   PARTNER_AGENCY = 'partner_agency',
-  
+
   // TIER 5: FINANCIAL STAKEHOLDERS
   INVESTOR = 'investor',
   LENDER = 'lender',
   AUDITOR = 'auditor',
-  
+
   // TIER 6: SUPPLIER ECOSYSTEM
   ADVERTISING_PARTNER = 'advertising_partner',
   INVENTORY_SUPPLIER = 'inventory_supplier',
   CONTRACTOR = 'contractor',
-  
+
   // TIER 7: ADMIN ROLES
   PLATFORM_ADMIN = 'platform_admin',
   TENANT_ADMIN = 'tenant_admin',
@@ -177,9 +196,25 @@ export enum EcosystemRole {
 
 export interface DataScope {
   canView: {
-    campaigns: boolean | 'own' | 'team' | 'all' | 'own_campaigns' | 'readonly' | 'assigned_projects' | 'campaigns_on_my_platform';
+    campaigns:
+      | boolean
+      | 'own'
+      | 'team'
+      | 'all'
+      | 'own_campaigns'
+      | 'readonly'
+      | 'assigned_projects'
+      | 'campaigns_on_my_platform';
     clients: boolean | 'assigned' | 'all' | 'own_client' | 'assigned_projects';
-    financials: 'none' | 'own_projects' | 'client_level' | 'agency_level' | 'campaign_level' | 'readonly' | 'invoice_only' | 'all_transactions';
+    financials:
+      | 'none'
+      | 'own_projects'
+      | 'client_level'
+      | 'agency_level'
+      | 'campaign_level'
+      | 'readonly'
+      | 'invoice_only'
+      | 'all_transactions';
     team: 'own_profile' | 'own_team' | 'all' | 'headcount_only';
     brandMetrics?: boolean;
     sentiment?: boolean;
@@ -199,7 +234,14 @@ export interface DataScope {
 }
 
 export interface ApprovalLevel {
-  type: 'campaign' | 'budget' | 'creative' | 'vendor_contract' | 'team_hire' | 'invoice' | 'campaign_optimization';
+  type:
+    | 'campaign'
+    | 'budget'
+    | 'creative'
+    | 'vendor_contract'
+    | 'team_hire'
+    | 'invoice'
+    | 'campaign_optimization';
   maxValue: number; // Dollar threshold
 }
 
@@ -217,7 +259,13 @@ export interface RolePermissions {
 export interface StakeholderAssociation {
   associationId: string;
   tenantId: string;
-  type: 'vendor' | 'partner' | 'investor' | 'advertiser' | 'stakeholder' | 'supplier';
+  type:
+    | 'vendor'
+    | 'partner'
+    | 'investor'
+    | 'advertiser'
+    | 'stakeholder'
+    | 'supplier';
   companyName: string;
   contactEmail: string;
   status: 'pending_onboarding' | 'active' | 'suspended';
@@ -230,5 +278,3 @@ export interface StakeholderAssociation {
   };
   createdAt: number;
 }
-
-

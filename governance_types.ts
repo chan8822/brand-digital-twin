@@ -4,9 +4,9 @@
 
 export interface TenantPolicy {
   maxDailyDollarsRisk: number; // e.g., $1000
-  maxBudgetMovePct: number;    // e.g., 20% (0.20)
-  minConfidence: number;       // e.g., 0.85
-  escalationRole: string;      // e.g., 'cmo'
+  maxBudgetMovePct: number; // e.g., 20% (0.20)
+  minConfidence: number; // e.g., 0.85
+  escalationRole: string; // e.g., 'cmo'
 }
 
 export interface Tenant {
@@ -42,7 +42,7 @@ export interface Context {
   activeWaivers?: Waiver[];
 }
 
-export type DispositionKind = "AUTO_EXECUTE" | "QUEUE" | "BLOCK";
+export type DispositionKind = 'AUTO_EXECUTE' | 'QUEUE' | 'BLOCK';
 
 export interface Disposition {
   kind: DispositionKind;

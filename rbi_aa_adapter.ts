@@ -11,8 +11,8 @@ export interface BankAccountSummary {
 }
 
 export class RbiAaAdapter {
-  readonly platform = "rbi_account_aggregator";
-  readonly schemaVersion = "aa_flow@v1.2";
+  readonly platform = 'rbi_account_aggregator';
+  readonly schemaVersion = 'aa_flow@v1.2';
 
   private simulatedAccounts: Map<string, BankAccountSummary> = new Map();
 
@@ -20,12 +20,12 @@ export class RbiAaAdapter {
     private consentToken: string,
     private tenantId: string,
   ) {
-    this.simulatedAccounts.set("HDFC_CURRENT", {
-      bankName: "HDFC Bank",
-      accountNumber: "XXXXXX12345",
-      availableBalance: 4250000.00, // INR 42.5 Lakhs
-      currency: "INR",
-      consentId: "consent_token_abc123",
+    this.simulatedAccounts.set('HDFC_CURRENT', {
+      bankName: 'HDFC Bank',
+      accountNumber: 'XXXXXX12345',
+      availableBalance: 4250000.0, // INR 42.5 Lakhs
+      currency: 'INR',
+      consentId: 'consent_token_abc123',
       lastUpdated: new Date().toISOString(),
     });
   }
@@ -44,7 +44,10 @@ export class RbiAaAdapter {
    */
   async calculateRunwayMonths(monthlyBurnInr: number): Promise<number> {
     const accounts = await this.getConsentedBalances();
-    const totalBalance = accounts.reduce((acc, account) => acc + account.availableBalance, 0);
+    const totalBalance = accounts.reduce(
+      (acc, account) => acc + account.availableBalance,
+      0,
+    );
     if (monthlyBurnInr <= 0) return 999; // Unlimited runway
     return totalBalance / monthlyBurnInr;
   }

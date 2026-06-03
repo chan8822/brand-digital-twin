@@ -2,15 +2,15 @@
  * @fileoverview Complete integration hubs linking external SaaS APIs into Agency OS.
  */
 
-import { SupabaseClient } from "./supabase_client";
 import {
   BrandSignal,
-  SocialMention,
+  ClientProfile,
   CompetitorSignal,
-  FinancialTransaction,
   CreativeAsset,
-  ClientProfile
-} from "./agency_os_types";
+  FinancialTransaction,
+  SocialMention,
+} from './agency_os_types';
+import {SupabaseClient} from './supabase_client';
 
 /**
  * BrandMonitoringHub aggregates mentions, news articles, and competitor intelligence.
@@ -24,15 +24,19 @@ export class BrandMonitoringHub {
   async ingestMention(mention: SocialMention): Promise<BrandSignal | null> {
     await this.db.saveSocialMention(mention);
 
-    if (mention.sentiment === "negative" && mention.influencer) {
+    if (mention.sentiment === 'negative' && mention.influencer) {
       const signal: BrandSignal = {
         signalId: `sig-brand-${Date.now()}-${Math.random().toString(36).substring(7)}`,
         tenantId: mention.tenantId,
-        source: "social",
-        type: "negative_sentiment_crisis",
-        severity: "critical",
+        source: 'social',
+        type: 'negative_sentiment_crisis',
+        severity: 'critical',
         message: `Crisis alert: Negative influencer post on ${mention.platform}. Reach: ${mention.reach}`,
-        payload: { mentionId: mention.mentionId, url: mention.url, reach: mention.reach },
+        payload: {
+          mentionId: mention.mentionId,
+          url: mention.url,
+          reach: mention.reach,
+        },
         timestamp: Date.now(),
       };
       await this.db.saveBrandSignal(signal);
@@ -50,9 +54,9 @@ export class BrandMonitoringHub {
     const bSignal: BrandSignal = {
       signalId: `sig-comp-${Date.now()}`,
       tenantId: signal.tenantId,
-      source: "social",
-      type: "competitor_intel",
-      severity: "medium",
+      source: 'social',
+      type: 'competitor_intel',
+      severity: 'medium',
       message: `Competitor ${signal.competitorName} launched activity: ${signal.signalType}`,
       payload: signal.details,
       timestamp: Date.now(),
@@ -71,16 +75,20 @@ export class ProjectManagementHub {
   /**
    * Evaluates task backlogs to flag bottleneck risks.
    */
-  async analyzeTaskBottlenecks(tenantId: string, memberId: string, backlogCount: number): Promise<BrandSignal | null> {
+  async analyzeTaskBottlenecks(
+    tenantId: string,
+    memberId: string,
+    backlogCount: number,
+  ): Promise<BrandSignal | null> {
     if (backlogCount > 15) {
       const signal: BrandSignal = {
         signalId: `sig-pm-${Date.now()}`,
         tenantId,
-        source: "team",
-        type: "backlog_overload",
-        severity: "high",
+        source: 'team',
+        type: 'backlog_overload',
+        severity: 'high',
         message: `Task bottleneck: Member ${memberId} has ${backlogCount} pending tasks in queue.`,
-        payload: { memberId, backlogCount },
+        payload: {memberId, backlogCount},
         timestamp: Date.now(),
       };
       await this.db.saveBrandSignal(signal);
@@ -99,18 +107,21 @@ export class CRMHub {
   /**
    * Updates customer lifetime values and triggers client profile upsell flags.
    */
-  async syncClientProfile(tenantId: string, profile: ClientProfile): Promise<BrandSignal | null> {
+  async syncClientProfile(
+    tenantId: string,
+    profile: ClientProfile,
+  ): Promise<BrandSignal | null> {
     await this.db.saveClient(profile);
 
     if (profile.mrr > 25000 && profile.healthScore > 90) {
       const signal: BrandSignal = {
         signalId: `sig-crm-${Date.now()}`,
         tenantId,
-        source: "client",
-        type: "upsell_opportunity",
-        severity: "info",
+        source: 'client',
+        type: 'upsell_opportunity',
+        severity: 'info',
         message: `High-value client ${profile.name} (MRR=$${profile.mrr}) is in excellent health. Recommended for upsell.`,
-        payload: { clientId: profile.clientId, healthScore: profile.healthScore },
+        payload: {clientId: profile.clientId, healthScore: profile.healthScore},
         timestamp: Date.now(),
       };
       await this.db.saveBrandSignal(signal);
@@ -129,18 +140,20 @@ export class FinanceHub {
   /**
    * Ingests bank transactions and flags massive expense anomalies.
    */
-  async ingestTransaction(transaction: FinancialTransaction): Promise<BrandSignal | null> {
+  async ingestTransaction(
+    transaction: FinancialTransaction,
+  ): Promise<BrandSignal | null> {
     await this.db.saveFinancialTransaction(transaction);
 
-    if (transaction.type === "expense" && transaction.amount > 10000) {
+    if (transaction.type === 'expense' && transaction.amount > 10000) {
       const signal: BrandSignal = {
         signalId: `sig-fin-${Date.now()}`,
         tenantId: transaction.tenantId,
-        source: "client", // categorized under financial client operations
-        type: "large_expense_alert",
-        severity: "high",
+        source: 'client', // categorized under financial client operations
+        type: 'large_expense_alert',
+        severity: 'high',
         message: `Large expense flagged: $${transaction.amount} on '${transaction.description}'`,
-        payload: { amount: transaction.amount, category: transaction.category },
+        payload: {amount: transaction.amount, category: transaction.category},
         timestamp: Date.now(),
       };
       await this.db.saveBrandSignal(signal);
@@ -166,11 +179,11 @@ export class CreativeHub {
       const signal: BrandSignal = {
         signalId: `sig-cr-${Date.now()}`,
         tenantId: asset.tenantId,
-        source: "content",
-        type: "compliance_violation",
-        severity: "high",
+        source: 'content',
+        type: 'compliance_violation',
+        severity: 'high',
         message: `Compliance warning: Asset ${asset.title} failed safety guidelines.`,
-        payload: { assetId: asset.assetId, campaign: asset.campaign },
+        payload: {assetId: asset.assetId, campaign: asset.campaign},
         timestamp: Date.now(),
       };
       await this.db.saveBrandSignal(signal);

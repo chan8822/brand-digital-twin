@@ -1,15 +1,15 @@
-import { OnboardingSimulator } from "./onboarding_simulator";
+import {OnboardingSimulator} from './onboarding_simulator';
 
-describe("OnboardingSimulator", () => {
+describe('OnboardingSimulator', () => {
   let simulator: OnboardingSimulator;
 
   beforeEach(() => {
     simulator = new OnboardingSimulator();
   });
 
-  it("should initialize with default onboarding state values", () => {
+  it('should initialize with default onboarding state values', () => {
     const state = (simulator as any).state;
-    expect(state.storefrontUrl).toBe("");
+    expect(state.storefrontUrl).toBe('');
     expect(state.connectedSurfaces).toEqual([]);
     expect(state.dailyRiskCap).toBe(300);
     expect(state.maxBudgetDrift).toBe(30);

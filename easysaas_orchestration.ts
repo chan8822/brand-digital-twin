@@ -63,7 +63,7 @@ export interface FeatureFlag {
   variants: FlagVariant[];
   targetingRules: FlagTargetingRule[];
   defaultVariantId: string;
-  weightedAllocations?: Array<{ variantId: string; weight: number }>; // e.g. [ {variantId: 'v1', weight: 0.1} ]
+  weightedAllocations?: Array<{variantId: string; weight: number}>; // e.g. [ {variantId: 'v1', weight: 0.1} ]
 }
 
 // Maintenance Policies
@@ -78,7 +78,7 @@ export interface MaintenancePolicy {
   policyId: string;
   tenantId: string;
   weeklyWindows: MaintenanceWindow[];
-  exclusionWindows: Array<{ startTimestamp: number; endTimestamp: number }>;
+  exclusionWindows: Array<{startTimestamp: number; endTimestamp: number}>;
 }
 
 // Wipeout Cascades
@@ -115,7 +115,7 @@ export class EasySaasOrchestrator {
   }
 
   getUnit(unitId: string): Unit | undefined {
-    return this.units.find(u => u.unitId === unitId);
+    return this.units.find((u) => u.unitId === unitId);
   }
 
   registerFeatureFlag(flag: FeatureFlag): void {
@@ -133,15 +133,17 @@ export class EasySaasOrchestrator {
   // Feature Flag CEL Evaluator (mock evaluator)
   evaluateFeatureFlag(
     flagId: string,
-    context: { user: { role: string }; tenant: Tenant; randomBucketValue?: number }
+    context: {user: {role: string}; tenant: Tenant; randomBucketValue?: number},
   ): any {
-    const flag = this.flags.find(f => f.flagId === flagId);
+    const flag = this.flags.find((f) => f.flagId === flagId);
     if (!flag) throw new Error(`Flag ${flagId} not found`);
 
     // 1. Evaluate Targeting Rules (CEL Mock interpreter)
     for (const rule of flag.targetingRules) {
       if (this.evaluateCelExpression(rule.celExpression, context)) {
-        const variant = flag.variants.find(v => v.variantId === rule.variantId);
+        const variant = flag.variants.find(
+          (v) => v.variantId === rule.variantId,
+        );
         return variant ? variant.value : null;
       }
     }
@@ -153,14 +155,18 @@ export class EasySaasOrchestrator {
       for (const alloc of flag.weightedAllocations) {
         cumulative += alloc.weight;
         if (bucket <= cumulative) {
-          const variant = flag.variants.find(v => v.variantId === alloc.variantId);
+          const variant = flag.variants.find(
+            (v) => v.variantId === alloc.variantId,
+          );
           return variant ? variant.value : null;
         }
       }
     }
 
     // 3. Fallback to default variant
-    const defaultVariant = flag.variants.find(v => v.variantId === flag.defaultVariantId);
+    const defaultVariant = flag.variants.find(
+      (v) => v.variantId === flag.defaultVariantId,
+    );
     return defaultVariant ? defaultVariant.value : null;
   }
 
@@ -179,17 +185,25 @@ export class EasySaasOrchestrator {
   }
 
   // Dependency Management & Lifecycle Provisioning
-  async deployUnit(tenantId: string, kindName: string, spec: Record<string, any>): Promise<Unit> {
+  async deployUnit(
+    tenantId: string,
+    kindName: string,
+    spec: Record<string, any>,
+  ): Promise<Unit> {
     const kind = this.unitKinds.get(kindName);
     if (!kind) throw new Error(`UnitKind ${kindName} not found`);
 
     // 1. Check parent dependencies
     for (const depKindName of kind.dependencies) {
       // Find if tenant already has parent unit deployed
-      let parentUnit = this.units.find(u => u.tenantId === tenantId && u.kindName === depKindName);
+      let parentUnit = this.units.find(
+        (u) => u.tenantId === tenantId && u.kindName === depKindName,
+      );
       if (!parentUnit) {
         // Automatic Provisioning: parent was not found, deploy it first automatically!
-        parentUnit = await this.deployUnit(tenantId, depKindName, { autoProvisioned: true });
+        parentUnit = await this.deployUnit(tenantId, depKindName, {
+          autoProvisioned: true,
+        });
       }
 
       // Automatic Variable Mapping: map parent outputs to child spec
@@ -208,8 +222,8 @@ export class EasySaasOrchestrator {
       spec,
       status: {
         state: 'provisioning',
-        outputs: {}
-      }
+        outputs: {},
+      },
     };
     this.units.push(unit);
     return unit;
@@ -217,7 +231,9 @@ export class EasySaasOrchestrator {
 
   // Maintenance policy enforcement
   isUpgradePermitted(tenantId: string, timestamp: number): boolean {
-    const policy = this.maintenancePolicies.find(p => p.tenantId === tenantId);
+    const policy = this.maintenancePolicies.find(
+      (p) => p.tenantId === tenantId,
+    );
     if (!policy) return true; // No policy -> always permitted
 
     // 1. Check exclusion windows (upgrades forbidden)
@@ -247,7 +263,9 @@ export class EasySaasOrchestrator {
 
   // Calculate next upgrade window
   getNextPermittedWindow(tenantId: string, currentTimestamp: number): number {
-    const policy = this.maintenancePolicies.find(p => p.tenantId === tenantId);
+    const policy = this.maintenancePolicies.find(
+      (p) => p.tenantId === tenantId,
+    );
     if (!policy || policy.weeklyWindows.length === 0) return currentTimestamp;
 
     let testTime = currentTimestamp;
@@ -266,7 +284,7 @@ export class EasySaasOrchestrator {
 
   // Wipeout Cascading Deletion
   async executeWipeout(tenantId: string): Promise<string[]> {
-    const policy = this.wipeoutPolicies.find(p => p.tenantId === tenantId);
+    const policy = this.wipeoutPolicies.find((p) => p.tenantId === tenantId);
     if (!policy) return [];
 
     // Cascade deletion of resources
@@ -276,7 +294,7 @@ export class EasySaasOrchestrator {
     }
 
     // Delete all deployed units for tenant
-    this.units = this.units.filter(u => {
+    this.units = this.units.filter((u) => {
       if (u.tenantId === tenantId) {
         deletedResources.push(`unit_deleted:${u.unitId}`);
         return false;
@@ -290,9 +308,14 @@ export class EasySaasOrchestrator {
   // Safe Reconciliation Loop Controller
   async reconcile(
     unitId: string,
-    reconcilerFn: (unit: Unit) => Promise<{ statusOutputs: Record<string, any>; specChanges?: Record<string, any> }>
+    reconcilerFn: (
+      unit: Unit,
+    ) => Promise<{
+      statusOutputs: Record<string, any>;
+      specChanges?: Record<string, any>;
+    }>,
   ): Promise<void> {
-    const unit = this.units.find(u => u.unitId === unitId);
+    const unit = this.units.find((u) => u.unitId === unitId);
     if (!unit) return;
 
     // Snapshot of spec to verify controller hasn't modified spec fields
@@ -309,7 +332,7 @@ export class EasySaasOrchestrator {
       unit.status.state = 'error';
       unit.status.errorCount = (unit.status.errorCount ?? 0) + 1;
       throw new Error(
-        `INFINITE RECONCILIATION LOOP DETECTED: Controller attempted to modify spec fields of unit ${unitId}. Updates to spec must be triggered via client/API operations only.`
+        `INFINITE RECONCILIATION LOOP DETECTED: Controller attempted to modify spec fields of unit ${unitId}. Updates to spec must be triggered via client/API operations only.`,
       );
     }
 
@@ -318,7 +341,7 @@ export class EasySaasOrchestrator {
       unit.status.state = 'error';
       unit.status.errorCount = (unit.status.errorCount ?? 0) + 1;
       throw new Error(
-        `INFINITE RECONCILIATION LOOP DETECTED: Spec modified internally in reconciler memory for unit ${unitId}.`
+        `INFINITE RECONCILIATION LOOP DETECTED: Spec modified internally in reconciler memory for unit ${unitId}.`,
       );
     }
 

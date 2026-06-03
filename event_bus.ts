@@ -4,12 +4,18 @@
 
 // taze: EventEmitter, events from //third_party/javascript/typings/node
 
-import { EventEmitter } from "events";
+import {EventEmitter} from 'events';
 
 export class RealtimeEventBus extends EventEmitter {
-  emitPhaseUpdate(tenantId: string, actionId: string, phase: string, status: string, details?: any) {
-    this.emit("event", {
-      type: "phase_update",
+  emitPhaseUpdate(
+    tenantId: string,
+    actionId: string,
+    phase: string,
+    status: string,
+    details?: any,
+  ) {
+    this.emit('event', {
+      type: 'phase_update',
       tenantId,
       actionId,
       phase,
@@ -19,9 +25,14 @@ export class RealtimeEventBus extends EventEmitter {
     });
   }
 
-  emitRiskAlert(tenantId: string, alertId: string, severity: string, message: string) {
-    this.emit("event", {
-      type: "risk_alert",
+  emitRiskAlert(
+    tenantId: string,
+    alertId: string,
+    severity: string,
+    message: string,
+  ) {
+    this.emit('event', {
+      type: 'risk_alert',
       tenantId,
       alertId,
       severity,
@@ -30,9 +41,14 @@ export class RealtimeEventBus extends EventEmitter {
     });
   }
 
-  emitRecommendation(tenantId: string, recommendationId: string, category: string, costImpact: number) {
-    this.emit("event", {
-      type: "recommendation",
+  emitRecommendation(
+    tenantId: string,
+    recommendationId: string,
+    category: string,
+    costImpact: number,
+  ) {
+    this.emit('event', {
+      type: 'recommendation',
       tenantId,
       recommendationId,
       category,

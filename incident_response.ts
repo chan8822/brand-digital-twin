@@ -2,7 +2,7 @@
  * @fileoverview Incident response and self-healing engine.
  */
 
-import { SupabaseClient } from "./supabase_client";
+import {SupabaseClient} from './supabase_client';
 
 export interface Incident {
   incidentId: string;
@@ -21,14 +21,16 @@ export class IncidentResponseManager {
   /**
    * Logs an incident and evaluates automated self-healing actions.
    */
-  async handleIncident(incident: Incident): Promise<{ selfHealed: boolean; actionTaken: string }> {
+  async handleIncident(
+    incident: Incident,
+  ): Promise<{selfHealed: boolean; actionTaken: string}> {
     // Save to activity feed
     await this.db.logActivity({
       eventId: `act-inc-${incident.incidentId}`,
       orgId: `org-${incident.tenantId}`,
-      actorId: "incident-manager",
-      actionType: "incident_flagged",
-      entityType: "incident",
+      actorId: 'incident-manager',
+      actionType: 'incident_flagged',
+      entityType: 'incident',
       entityId: incident.incidentId,
       summary: `Incident flagged: ${incident.type} on ${incident.source} - ${incident.message}`,
       isRead: false,
@@ -36,8 +38,11 @@ export class IncidentResponseManager {
       createdAt: Date.now(),
     });
 
-    if (incident.type === "auth_failure") {
-      const rotated = await this.rotateApiCredentials(incident.tenantId, incident.source);
+    if (incident.type === 'auth_failure') {
+      const rotated = await this.rotateApiCredentials(
+        incident.tenantId,
+        incident.source,
+      );
       return {
         selfHealed: rotated,
         actionTaken: rotated
@@ -46,13 +51,16 @@ export class IncidentResponseManager {
       };
     }
 
-    if (incident.type === "high_error_rate") {
+    if (incident.type === 'high_error_rate') {
       const key = `${incident.tenantId}-${incident.source}`;
       this.apiFailuresCount[key] = (this.apiFailuresCount[key] || 0) + 1;
 
       // If failure count exceeds threshold (e.g. 3), trigger self-healing spend re-routing
       if (this.apiFailuresCount[key] >= 3) {
-        const reRouted = await this.reRouteBudget(incident.tenantId, incident.source);
+        const reRouted = await this.reRouteBudget(
+          incident.tenantId,
+          incident.source,
+        );
         return {
           selfHealed: reRouted,
           actionTaken: reRouted
@@ -64,16 +72,20 @@ export class IncidentResponseManager {
 
     return {
       selfHealed: false,
-      actionTaken: "Logged. No automated recovery rules match this incident type.",
+      actionTaken:
+        'Logged. No automated recovery rules match this incident type.',
     };
   }
 
   /**
    * Self-healing: rotates API key by fetching a backup key.
    */
-  private async rotateApiCredentials(tenantId: string, source: string): Promise<boolean> {
+  private async rotateApiCredentials(
+    tenantId: string,
+    source: string,
+  ): Promise<boolean> {
     const states = await this.db.getIntegrationStates(tenantId);
-    const targetState = states.find(s => s.provider === source);
+    const targetState = states.find((s) => s.provider === source);
     if (!targetState) return false;
 
     // Simulate updating token from a backup secret vault
@@ -82,7 +94,7 @@ export class IncidentResponseManager {
       accessToken: `token-backup-${Date.now()}-${Math.random().toString(36).substring(7)}`,
       lastRotated: Date.now(),
     };
-    targetState.status = "active";
+    targetState.status = 'active';
 
     await this.db.saveIntegrationState(targetState);
     return true;
@@ -91,7 +103,10 @@ export class IncidentResponseManager {
   /**
    * Self-healing: re-routes spend from a failing ad platform to a safe one.
    */
-  private async reRouteBudget(tenantId: string, failingSource: string): Promise<boolean> {
+  private async reRouteBudget(
+    tenantId: string,
+    failingSource: string,
+  ): Promise<boolean> {
     const clients = await this.db.getClients(tenantId);
     if (clients.length === 0) return false;
 
@@ -99,9 +114,9 @@ export class IncidentResponseManager {
     await this.db.logActivity({
       eventId: `act-reroute-${Date.now()}`,
       orgId: `org-${tenantId}`,
-      actorId: "incident-manager",
-      actionType: "budget_rerouted",
-      entityType: "tenant",
+      actorId: 'incident-manager',
+      actionType: 'budget_rerouted',
+      entityType: 'tenant',
       entityId: tenantId,
       summary: `System safety override: Re-routing spend from failing channel ${failingSource} to alternate channel.`,
       isRead: false,

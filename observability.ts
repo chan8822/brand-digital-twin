@@ -7,7 +7,7 @@ export interface Span {
   startTimeMs: number;
   endTimeMs?: number;
   durationMs?: number;
-  status: "success" | "failure";
+  status: 'success' | 'failure';
   error?: string;
 }
 
@@ -31,14 +31,14 @@ export class MetricsTracker {
       operationName,
       platform,
       startTimeMs: Date.now(),
-      status: "success",
+      status: 'success',
     };
     this.spans.push(span);
     return span;
   }
 
-  endSpan(spanId: string, status: "success" | "failure", error?: string) {
-    const span = this.spans.find(s => s.spanId === spanId);
+  endSpan(spanId: string, status: 'success' | 'failure', error?: string) {
+    const span = this.spans.find((s) => s.spanId === spanId);
     if (span) {
       span.endTimeMs = Date.now();
       span.durationMs = span.endTimeMs - span.startTimeMs;
@@ -76,7 +76,12 @@ export class MetricsTracker {
   }
 
   getAverageLatency(platform: string, operation: string): number {
-    const related = this.spans.filter(s => s.platform === platform && s.operationName === operation && s.durationMs !== undefined);
+    const related = this.spans.filter(
+      (s) =>
+        s.platform === platform &&
+        s.operationName === operation &&
+        s.durationMs !== undefined,
+    );
     if (related.length === 0) return 0;
     const sum = related.reduce((acc, s) => acc + (s.durationMs ?? 0), 0);
     return sum / related.length;
@@ -95,7 +100,11 @@ export class PinoLogger {
     private readonly mockConsole = true,
   ) {}
 
-  private log(level: number, msg: string, context: Record<string, unknown> = {}) {
+  private log(
+    level: number,
+    msg: string,
+    context: Record<string, unknown> = {},
+  ) {
     if (level < this.minLevel) return;
 
     const entry = JSON.stringify({
@@ -132,4 +141,3 @@ export class PinoLogger {
     this.log(50, msg, context);
   }
 }
-

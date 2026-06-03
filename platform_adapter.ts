@@ -1,6 +1,12 @@
 // PlatformAdapter interface and canonical contract definitions.
 
-export type Op = "read" | "update_budget" | "pause" | "activate" | "scale_budget" | "update_feed";
+export type Op =
+  | 'read'
+  | 'update_budget'
+  | 'pause'
+  | 'activate'
+  | 'scale_budget'
+  | 'update_feed';
 
 export interface Capability {
   entity: string; // 'campaign' | 'order' | 'audience' | etc.

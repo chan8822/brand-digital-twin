@@ -3,24 +3,26 @@
  */
 
 import {
-  EcosystemRole,
-  StakeholderAssociation,
-  CampaignBrief,
-  ApprovalRequest,
   ActivityFeedItem,
-  CreativeAsset,
+  ApprovalRequest,
+  CampaignBrief,
   ClientProfile,
+  CreativeAsset,
+  EcosystemRole,
   FinancialTransaction,
-  IntegrationState
-} from "./agency_os_types";
-import { SupabaseClient } from "./supabase_client";
+  IntegrationState,
+  StakeholderAssociation,
+} from './agency_os_types';
+import {SupabaseClient} from './supabase_client';
 
 export interface OnboardingStep {
   step: number;
   title: string;
   description: string;
   actions?: string[];
-  integrations?: Array<{ type: string; required?: boolean; label?: string } | string>;
+  integrations?: Array<
+    {type: string; required?: boolean; label?: string} | string
+  >;
   roleSelection?: boolean;
   permissionsPreview?: boolean;
   dashboardPresets?: string[];
@@ -64,7 +66,7 @@ export interface DashboardCard {
   actions?: string[];
   alert?: boolean;
   type?: string;
-  segments?: Array<{ status: string; count: number; mrr: string }>;
+  segments?: Array<{status: string; count: number; mrr: string}>;
   breakdown?: string[];
   capacityForecast?: string;
   severity?: 'critical' | 'high' | 'medium' | 'low' | 'info';
@@ -122,11 +124,15 @@ export class EcosystemOnboardingOrchestrator {
       case 'supplier':
         return this.onboardSupplier(user);
       default:
-        throw new Error(`Unsupported organization type: ${user.organizationType}`);
+        throw new Error(
+          `Unsupported organization type: ${user.organizationType}`,
+        );
     }
   }
 
-  private async onboardAgencyUser(user: { email: string }): Promise<OnboardingFlow> {
+  private async onboardAgencyUser(user: {
+    email: string;
+  }): Promise<OnboardingFlow> {
     return {
       steps: [
         {
@@ -138,11 +144,12 @@ export class EcosystemOnboardingOrchestrator {
         {
           step: 2,
           title: 'Connect Your Workspace',
-          description: 'Link Gmail, Google Drive, Slack for seamless collaboration',
+          description:
+            'Link Gmail, Google Drive, Slack for seamless collaboration',
           integrations: [
-            { type: 'google_workspace', required: true },
-            { type: 'slack', required: true },
-            { type: 'asana', required: false },
+            {type: 'google_workspace', required: true},
+            {type: 'slack', required: true},
+            {type: 'asana', required: false},
           ],
           automation: 'auto_detect_workspace',
         },
@@ -158,9 +165,9 @@ export class EcosystemOnboardingOrchestrator {
           title: 'Connect Ad Platforms',
           description: 'Link Google Ads, Meta, Shopify',
           integrations: [
-            { type: 'google_ads', required: true },
-            { type: 'meta_ads', required: false },
-            { type: 'shopify', required: false },
+            {type: 'google_ads', required: true},
+            {type: 'meta_ads', required: false},
+            {type: 'shopify', required: false},
           ],
         },
         {
@@ -169,18 +176,21 @@ export class EcosystemOnboardingOrchestrator {
           description: 'Customize your home view',
           dashboardPresets: ['operator', 'manager', 'executive'],
           customization: true,
-        }
+        },
       ],
       estimatedTime: '15 minutes',
       skipOption: false,
     };
   }
 
-  private async onboardClientUser(user: { email: string; clientId?: string }): Promise<OnboardingFlow> {
+  private async onboardClientUser(user: {
+    email: string;
+    clientId?: string;
+  }): Promise<OnboardingFlow> {
     let campaignCount = 0;
     if (user.clientId) {
       const briefs = await this.db.getCampaignBriefs('default-tenant');
-      campaignCount = briefs.filter(b => b.clientId === user.clientId).length;
+      campaignCount = briefs.filter((b) => b.clientId === user.clientId).length;
     }
     return {
       steps: [
@@ -207,13 +217,22 @@ export class EcosystemOnboardingOrchestrator {
           step: 4,
           title: 'Approve & Collaborate',
           description: 'Review briefs, approve campaigns, and provide feedback',
-          features: ['approval_workflow', 'comments', 'real_time_notifications'],
+          features: [
+            'approval_workflow',
+            'comments',
+            'real_time_notifications',
+          ],
         },
         {
           step: 5,
           title: 'Communication Preferences',
           description: 'How often you want updates',
-          preferences: ['daily_digest', 'weekly_summary', 'alerts_only', 'custom'],
+          preferences: [
+            'daily_digest',
+            'weekly_summary',
+            'alerts_only',
+            'custom',
+          ],
         },
       ],
       estimatedTime: '5 minutes',
@@ -221,7 +240,9 @@ export class EcosystemOnboardingOrchestrator {
     };
   }
 
-  private async onboardPartnerUser(user: { email: string }): Promise<OnboardingFlow> {
+  private async onboardPartnerUser(user: {
+    email: string;
+  }): Promise<OnboardingFlow> {
     return {
       steps: [
         {
@@ -262,7 +283,9 @@ export class EcosystemOnboardingOrchestrator {
     };
   }
 
-  private async onboardInvestor(user: { email: string }): Promise<OnboardingFlow> {
+  private async onboardInvestor(user: {
+    email: string;
+  }): Promise<OnboardingFlow> {
     return {
       steps: [
         {
@@ -276,7 +299,13 @@ export class EcosystemOnboardingOrchestrator {
           step: 2,
           title: 'Board Dashboard',
           description: 'Real-time financial performance and KPIs',
-          metrics: ['revenue', 'profitability', 'cash_runway', 'growth_rate', 'team_health'],
+          metrics: [
+            'revenue',
+            'profitability',
+            'cash_runway',
+            'growth_rate',
+            'team_health',
+          ],
         },
         {
           step: 3,
@@ -288,7 +317,12 @@ export class EcosystemOnboardingOrchestrator {
           step: 4,
           title: 'Alert Configuration',
           description: 'Be alerted on critical metrics',
-          alerts: ['cash_runway_below_threshold', 'revenue_miss', 'churn_alert', 'margin_decline'],
+          alerts: [
+            'cash_runway_below_threshold',
+            'revenue_miss',
+            'churn_alert',
+            'margin_decline',
+          ],
         },
         {
           step: 5,
@@ -304,7 +338,9 @@ export class EcosystemOnboardingOrchestrator {
     };
   }
 
-  private async onboardSupplier(user: { email: string }): Promise<OnboardingFlow> {
+  private async onboardSupplier(user: {
+    email: string;
+  }): Promise<OnboardingFlow> {
     return {
       steps: [
         {
@@ -326,9 +362,9 @@ export class EcosystemOnboardingOrchestrator {
           title: 'Inventory System Integration',
           description: 'Connect your inventory management system',
           integrations: [
-            { type: 'shopify', label: 'Shopify' },
-            { type: 'erp', label: 'ERP System' },
-            { type: 'api', label: 'Custom API' },
+            {type: 'shopify', label: 'Shopify'},
+            {type: 'erp', label: 'ERP System'},
+            {type: 'api', label: 'Custom API'},
           ],
           complexity: 'technical',
         },
@@ -360,29 +396,42 @@ export class UnifiedDashboardEngine {
   async getDashboardDefinition(
     role: EcosystemRole,
     tenantId: string,
-    associationId?: string
+    associationId?: string,
   ): Promise<DashboardDefinition> {
     switch (role) {
       case EcosystemRole.AGENCY_OWNER:
         return this.getAgencyOwnerDashboard(tenantId);
       case EcosystemRole.CLIENT_EXECUTIVE:
-        return this.getClientExecutiveDashboard(tenantId, associationId || "default-client");
+        return this.getClientExecutiveDashboard(
+          tenantId,
+          associationId || 'default-client',
+        );
       case EcosystemRole.PARTNER_VENDOR:
-        return this.getPartnerVendorDashboard(tenantId, associationId || "default-partner");
+        return this.getPartnerVendorDashboard(
+          tenantId,
+          associationId || 'default-partner',
+        );
       case EcosystemRole.INVESTOR:
         return this.getInvestorDashboard(tenantId);
       case EcosystemRole.INVENTORY_SUPPLIER:
-        return this.getSupplierDashboard(tenantId, associationId || "default-supplier");
+        return this.getSupplierDashboard(
+          tenantId,
+          associationId || 'default-supplier',
+        );
       default:
         throw new Error(`Dashboard not implemented for role: ${role}`);
     }
   }
 
-  private async getAgencyOwnerDashboard(tenantId: string): Promise<DashboardDefinition> {
+  private async getAgencyOwnerDashboard(
+    tenantId: string,
+  ): Promise<DashboardDefinition> {
     const clients = await this.db.getClients(tenantId);
-    const thriving = clients.filter(c => c.healthScore > 75).length;
-    const stable = clients.filter(c => c.healthScore >= 50 && c.healthScore <= 75).length;
-    const atRisk = clients.filter(c => c.healthScore < 50).length;
+    const thriving = clients.filter((c) => c.healthScore > 75).length;
+    const stable = clients.filter(
+      (c) => c.healthScore >= 50 && c.healthScore <= 75,
+    ).length;
+    const atRisk = clients.filter((c) => c.healthScore < 50).length;
 
     return {
       id: 'agency_owner_v1',
@@ -392,10 +441,26 @@ export class UnifiedDashboardEngine {
         {
           name: 'Financial Snapshot',
           cards: [
-            { metric: 'Total Revenue', value: '$2.3M', trend: '+12% YoY', source: 'accounting_system' },
-            { metric: 'Agency Margin', value: '38%', trend: '-2% vs month', alert: true, source: 'profitability_engine' },
-            { metric: 'Cash Runway', value: '180 days', trend: 'Healthy', source: 'bank_sync' }
-          ]
+            {
+              metric: 'Total Revenue',
+              value: '$2.3M',
+              trend: '+12% YoY',
+              source: 'accounting_system',
+            },
+            {
+              metric: 'Agency Margin',
+              value: '38%',
+              trend: '-2% vs month',
+              alert: true,
+              source: 'profitability_engine',
+            },
+            {
+              metric: 'Cash Runway',
+              value: '180 days',
+              trend: 'Healthy',
+              source: 'bank_sync',
+            },
+          ],
         },
         {
           name: 'Client Portfolio Health',
@@ -404,32 +469,40 @@ export class UnifiedDashboardEngine {
               type: 'matrix',
               title: 'Clients by Health',
               segments: [
-                { status: 'Thriving', count: thriving, mrr: '$850K' },
-                { status: 'Stable', count: stable, mrr: '$420K' },
-                { status: 'At Risk', count: atRisk, mrr: '$50K' }
-              ]
-            }
-          ]
+                {status: 'Thriving', count: thriving, mrr: '$850K'},
+                {status: 'Stable', count: stable, mrr: '$420K'},
+                {status: 'At Risk', count: atRisk, mrr: '$50K'},
+              ],
+            },
+          ],
         },
         {
           name: 'Team & Capacity',
           cards: [
-            { metric: 'Team Utilization', value: '89%', breakdown: ['billable: 70%', 'ops: 19%'], capacityForecast: 'At max 7 days' }
-          ]
-        }
-      ]
+            {
+              metric: 'Team Utilization',
+              value: '89%',
+              breakdown: ['billable: 70%', 'ops: 19%'],
+              capacityForecast: 'At max 7 days',
+            },
+          ],
+        },
+      ],
     };
   }
 
-  private async getClientExecutiveDashboard(tenantId: string, clientId: string): Promise<DashboardDefinition> {
+  private async getClientExecutiveDashboard(
+    tenantId: string,
+    clientId: string,
+  ): Promise<DashboardDefinition> {
     const briefs = await this.db.getCampaignBriefs(tenantId);
-    const clientBriefs = briefs.filter(b => b.clientId === clientId);
-    const campaignItems = clientBriefs.map(b => ({
+    const clientBriefs = briefs.filter((b) => b.clientId === clientId);
+    const campaignItems = clientBriefs.map((b) => ({
       name: `Campaign ${b.briefId.substring(0, 5)}`,
       status: b.status === 'live' ? '🟢 Live' : '🟠 Draft',
       spend: `$${b.budget.toLocaleString()}`,
       roi: `${b.projectedRoi}x`,
-      needsApproval: b.status === 'pending_approval'
+      needsApproval: b.status === 'pending_approval',
     }));
 
     return {
@@ -440,28 +513,39 @@ export class UnifiedDashboardEngine {
         {
           name: 'This Month Performance',
           cards: [
-            { metric: 'Ad Spend', value: '$85K', comparison: 'vs budget: $100K (85%)', visualization: 'progress_bar' },
-            { metric: 'Revenue Generated', value: '$340K', comparison: 'vs target: 4x (on track)', color: 'green' }
-          ]
+            {
+              metric: 'Ad Spend',
+              value: '$85K',
+              comparison: 'vs budget: $100K (85%)',
+              visualization: 'progress_bar',
+            },
+            {
+              metric: 'Revenue Generated',
+              value: '$340K',
+              comparison: 'vs target: 4x (on track)',
+              color: 'green',
+            },
+          ],
         },
         {
           name: 'Active Campaigns',
-          cards: [
-            { type: 'campaign_list', items: campaignItems }
-          ]
-        }
-      ]
+          cards: [{type: 'campaign_list', items: campaignItems}],
+        },
+      ],
     };
   }
 
-  private async getPartnerVendorDashboard(tenantId: string, partnerId: string): Promise<DashboardDefinition> {
+  private async getPartnerVendorDashboard(
+    tenantId: string,
+    partnerId: string,
+  ): Promise<DashboardDefinition> {
     const assets = await this.db.getCreativeAssets(tenantId);
-    const partnerProjects = assets.map(a => ({
+    const partnerProjects = assets.map((a) => ({
       name: a.title,
       type: a.type,
       status: a.complianceOk ? '🟢 Completed' : '🟡 In Review',
       approved: a.complianceOk,
-      amount: '$12,000'
+      amount: '$12,000',
     }));
 
     return {
@@ -471,25 +555,37 @@ export class UnifiedDashboardEngine {
       sections: [
         {
           name: 'Active Projects',
-          cards: [
-            { type: 'project_board', projects: partnerProjects }
-          ]
+          cards: [{type: 'project_board', projects: partnerProjects}],
         },
         {
           name: 'Financial',
           cards: [
-            { metric: 'Earned This Month', value: '$18,500', details: 'From completed projects' },
-            { metric: 'Pending Invoice', value: '$12,000', details: 'Ready to bill' }
-          ]
-        }
-      ]
+            {
+              metric: 'Earned This Month',
+              value: '$18,500',
+              details: 'From completed projects',
+            },
+            {
+              metric: 'Pending Invoice',
+              value: '$12,000',
+              details: 'Ready to bill',
+            },
+          ],
+        },
+      ],
     };
   }
 
-  private async getInvestorDashboard(tenantId: string): Promise<DashboardDefinition> {
+  private async getInvestorDashboard(
+    tenantId: string,
+  ): Promise<DashboardDefinition> {
     const txns = await this.db.getFinancialTransactions(tenantId);
-    const totalIncome = txns.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
-    const totalExpense = txns.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
+    const totalIncome = txns
+      .filter((t) => t.type === 'income')
+      .reduce((acc, t) => acc + t.amount, 0);
+    const totalExpense = txns
+      .filter((t) => t.type === 'expense')
+      .reduce((acc, t) => acc + t.amount, 0);
     const profit = totalIncome - totalExpense;
 
     return {
@@ -500,25 +596,39 @@ export class UnifiedDashboardEngine {
         {
           name: 'Financial Summary',
           cards: [
-            { metric: 'Total Revenue', value: `$${totalIncome.toLocaleString()}`, period: 'YTD' },
-            { metric: 'Net Profit', value: `$${profit.toLocaleString()}` },
-            { metric: 'Cash Position', value: `$${(2100000).toLocaleString()}`, runway: '12 months', status: 'Healthy' }
-          ]
+            {
+              metric: 'Total Revenue',
+              value: `$${totalIncome.toLocaleString()}`,
+              period: 'YTD',
+            },
+            {metric: 'Net Profit', value: `$${profit.toLocaleString()}`},
+            {
+              metric: 'Cash Position',
+              value: `$${(2100000).toLocaleString()}`,
+              runway: '12 months',
+              status: 'Healthy',
+            },
+          ],
         },
         {
           name: 'Risk Dashboard',
           cards: [
-            { risk: 'Client Churn Risk', score: '8%', status: 'Low' },
-            { risk: 'Team Burnout', score: '35%', status: 'Medium' }
-          ]
-        }
-      ]
+            {risk: 'Client Churn Risk', score: '8%', status: 'Low'},
+            {risk: 'Team Burnout', score: '35%', status: 'Medium'},
+          ],
+        },
+      ],
     };
   }
 
-  private async getSupplierDashboard(tenantId: string, supplierId: string): Promise<DashboardDefinition> {
+  private async getSupplierDashboard(
+    tenantId: string,
+    supplierId: string,
+  ): Promise<DashboardDefinition> {
     const states = await this.db.getIntegrationStates(tenantId);
-    const hasShopify = states.some(s => s.provider === 'shopify' && s.status === 'active');
+    const hasShopify = states.some(
+      (s) => s.provider === 'shopify' && s.status === 'active',
+    );
 
     return {
       id: `supplier_${supplierId}`,
@@ -531,18 +641,28 @@ export class UnifiedDashboardEngine {
             {
               title: 'Products Being Advertised',
               products: [
-                { sku: 'PROD-001', name: 'Premium Widget', adSpend: '$85K this month', stockLevel: 245, daysOfStock: 8 }
-              ]
-            }
-          ]
+                {
+                  sku: 'PROD-001',
+                  name: 'Premium Widget',
+                  adSpend: '$85K this month',
+                  stockLevel: 245,
+                  daysOfStock: 8,
+                },
+              ],
+            },
+          ],
         },
         {
           name: 'System Status',
           cards: [
-            { metric: 'Shopify Integration', value: hasShopify ? 'Connected' : 'Disconnected', status: hasShopify ? 'Healthy' : 'Action Required' }
-          ]
-        }
-      ]
+            {
+              metric: 'Shopify Integration',
+              value: hasShopify ? 'Connected' : 'Disconnected',
+              status: hasShopify ? 'Healthy' : 'Action Required',
+            },
+          ],
+        },
+      ],
     };
   }
 }
@@ -570,7 +690,7 @@ export class EcosystemAutomationEngine {
       summary: `New campaign brief ${campaign.briefId} approved. Vendor task generated.`,
       isRead: false,
       tenantId: campaign.tenantId,
-      createdAt: Date.now()
+      createdAt: Date.now(),
     };
     await this.db.logActivity(notification);
 
@@ -585,7 +705,7 @@ export class EcosystemAutomationEngine {
       summary: `Google Meet kickoff scheduled for campaign ${campaign.briefId}`,
       isRead: false,
       tenantId: campaign.tenantId,
-      createdAt: Date.now()
+      createdAt: Date.now(),
     };
     await this.db.logActivity(meetingNotification);
   }
@@ -595,7 +715,7 @@ export class EcosystemAutomationEngine {
    */
   async automatePerformanceNotifications(
     brief: CampaignBrief,
-    metrics: { roi: number; targetRoi: number }
+    metrics: {roi: number; targetRoi: number},
   ): Promise<void> {
     const deviation = (metrics.targetRoi - metrics.roi) / metrics.targetRoi;
 
@@ -611,7 +731,7 @@ export class EcosystemAutomationEngine {
         summary: `CRITICAL ROI DEVIATION: Campaign ${brief.briefId} ROI is ${metrics.roi}x (Target: ${metrics.targetRoi}x). Consider PAUSE.`,
         isRead: false,
         tenantId: brief.tenantId,
-        createdAt: Date.now()
+        createdAt: Date.now(),
       };
       await this.db.logActivity(alert);
 
@@ -626,7 +746,7 @@ export class EcosystemAutomationEngine {
         assignedTo: 'client_executive',
         status: 'pending',
         tenantId: brief.tenantId,
-        createdAt: Date.now()
+        createdAt: Date.now(),
       };
       await this.db.saveApproval(approval);
     } else if (deviation > 0.1) {
@@ -641,7 +761,7 @@ export class EcosystemAutomationEngine {
         summary: `Performance Warning: ROI is ${metrics.roi}x (Target: ${metrics.targetRoi}x).`,
         isRead: false,
         tenantId: brief.tenantId,
-        createdAt: Date.now()
+        createdAt: Date.now(),
       };
       await this.db.logActivity(warning);
     }
@@ -654,7 +774,7 @@ export class EcosystemAutomationEngine {
     tenantId: string,
     asset: CreativeAsset,
     amount: number,
-    paymentMethod: string
+    paymentMethod: string,
   ): Promise<void> {
     if (!asset.complianceOk) return;
 
@@ -667,7 +787,7 @@ export class EcosystemAutomationEngine {
       type: 'expense',
       category: 'vendor_payment',
       description: `Invoice auto-generated for creative asset ${asset.assetId}`,
-      createdAt: Date.now()
+      createdAt: Date.now(),
     };
     await this.db.saveFinancialTransaction(invoiceTxn);
 
@@ -684,7 +804,7 @@ export class EcosystemAutomationEngine {
         reason: 'Auto-approved (below $5,000 threshold)',
         tenantId,
         createdAt: Date.now(),
-        completedAt: Date.now()
+        completedAt: Date.now(),
       };
       await this.db.saveApproval(approval);
 
@@ -699,7 +819,7 @@ export class EcosystemAutomationEngine {
         summary: `Payment of $${amount} via ${paymentMethod} scheduled for invoice ${transactionId}`,
         isRead: false,
         tenantId,
-        createdAt: Date.now()
+        createdAt: Date.now(),
       };
       await this.db.logActivity(notification);
     } else {
@@ -713,7 +833,7 @@ export class EcosystemAutomationEngine {
         assignedTo: 'cfo',
         status: 'pending',
         tenantId,
-        createdAt: Date.now()
+        createdAt: Date.now(),
       };
       await this.db.saveApproval(approval);
     }
@@ -722,7 +842,10 @@ export class EcosystemAutomationEngine {
   /**
    * Churn risk escalation triggers retention interventions
    */
-  async automateChurnRiskIntervention(tenantId: string, client: ClientProfile): Promise<void> {
+  async automateChurnRiskIntervention(
+    tenantId: string,
+    client: ClientProfile,
+  ): Promise<void> {
     if (client.churnRisk > 0.8) {
       // Immediate playbook: Pause lower performing campaigns, launch client review
       const actionItem: ActivityFeedItem = {
@@ -735,7 +858,7 @@ export class EcosystemAutomationEngine {
         summary: `CRITICAL CHURN RISK (${(client.churnRisk * 100).toFixed(0)}%): Executing retention playbook. CMO check-in scheduled.`,
         isRead: false,
         tenantId,
-        createdAt: Date.now()
+        createdAt: Date.now(),
       };
       await this.db.logActivity(actionItem);
 
@@ -749,7 +872,7 @@ export class EcosystemAutomationEngine {
         assignedTo: 'cmo',
         status: 'pending',
         tenantId,
-        createdAt: Date.now()
+        createdAt: Date.now(),
       };
       await this.db.saveApproval(approval);
     } else if (client.churnRisk > 0.6) {
@@ -764,7 +887,7 @@ export class EcosystemAutomationEngine {
         summary: `Elevated Churn Risk (${(client.churnRisk * 100).toFixed(0)}%). Account Manager check-in recommended.`,
         isRead: false,
         tenantId,
-        createdAt: Date.now()
+        createdAt: Date.now(),
       };
       await this.db.logActivity(warning);
     }
@@ -778,7 +901,7 @@ export class EcosystemAutomationEngine {
     campaignId: string,
     sku: string,
     daysOfStock: number,
-    autoPauseEnabled = true
+    autoPauseEnabled = true,
   ): Promise<void> {
     if (daysOfStock < 3) {
       // Alert supplier and brand campaign team immediately
@@ -792,7 +915,7 @@ export class EcosystemAutomationEngine {
         summary: `CRITICAL: SKU ${sku} has less than ${daysOfStock} days of stock remaining.`,
         isRead: false,
         tenantId,
-        createdAt: Date.now()
+        createdAt: Date.now(),
       };
       await this.db.logActivity(alert);
 
@@ -808,7 +931,7 @@ export class EcosystemAutomationEngine {
           status: 'pending',
           reason: `Auto-pause suggested: low stock protection for SKU ${sku}`,
           tenantId,
-          createdAt: Date.now()
+          createdAt: Date.now(),
         };
         await this.db.saveApproval(pauseRequest);
       }
@@ -824,7 +947,7 @@ export class EcosystemAutomationEngine {
         summary: `SKU ${sku} stock level is low (${daysOfStock} days left). Restock recommended.`,
         isRead: false,
         tenantId,
-        createdAt: Date.now()
+        createdAt: Date.now(),
       };
       await this.db.logActivity(restockAlert);
     }
@@ -843,9 +966,24 @@ export class EcosystemDataIsolation {
   async verifyAccess(
     role: EcosystemRole,
     action: 'read' | 'write' | 'approve',
-    entityType: 'campaign' | 'financials' | 'client_profile' | 'creative_asset' | 'supplier_data',
-    userContext: { tenantId: string; clientId?: string; partnerId?: string; supplierSkus?: string[] },
-    entity: { tenantId: string; clientId?: string; partnerId?: string; sku?: string }
+    entityType:
+      | 'campaign'
+      | 'financials'
+      | 'client_profile'
+      | 'creative_asset'
+      | 'supplier_data',
+    userContext: {
+      tenantId: string;
+      clientId?: string;
+      partnerId?: string;
+      supplierSkus?: string[];
+    },
+    entity: {
+      tenantId: string;
+      clientId?: string;
+      partnerId?: string;
+      sku?: string;
+    },
   ): Promise<boolean> {
     // 1. Tenant Isolation
     if (userContext.tenantId !== entity.tenantId) {
@@ -877,7 +1015,11 @@ export class EcosystemDataIsolation {
         if (role === EcosystemRole.CLIENT_STAKEHOLDER && action !== 'read') {
           return false; // Read-only role
         }
-        if (role === EcosystemRole.CLIENT_FINANCE && entityType !== 'financials' && entityType !== 'campaign') {
+        if (
+          role === EcosystemRole.CLIENT_FINANCE &&
+          entityType !== 'financials' &&
+          entityType !== 'campaign'
+        ) {
           return false; // Finance can only access campaigns/financials
         }
         return true;

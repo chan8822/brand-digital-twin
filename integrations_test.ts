@@ -2,121 +2,168 @@
  * @fileoverview Unit tests for OPA policy evaluation, Supabase client, and Pino-like logger.
  */
 
-import { ActionRequest, ActionPlan, PlatformAdapter } from "./platform_adapter";
-import { Context, Waiver, Role, AuditSink } from "./governance_types";
-import { GovernanceEngine, TrustLedger, CircuitBreaker } from "./governance_engine";
-import { PinoLogger } from "./observability";
-import { OpaPolicyEngine } from "./opa_policy";
-import { SupabaseClient } from "./supabase_client";
+import {
+  CircuitBreaker,
+  GovernanceEngine,
+  TrustLedger,
+} from './governance_engine';
+import {AuditSink, Context, Role, Waiver} from './governance_types';
+import {PinoLogger} from './observability';
+import {OpaPolicyEngine} from './opa_policy';
+import {ActionPlan, ActionRequest, PlatformAdapter} from './platform_adapter';
+import {SupabaseClient} from './supabase_client';
 
-describe("Integrations (OPA, Supabase, Pino)", () => {
+describe('Integrations (OPA, Supabase, Pino)', () => {
   let mockAuditSink: AuditSink;
   let mockTrustLedger: TrustLedger;
   let mockCircuitBreaker: CircuitBreaker;
   let mockAdapter: PlatformAdapter;
 
   beforeEach(() => {
-    mockAuditSink = { record: async () => {} };
+    mockAuditSink = {record: async () => {}};
     mockTrustLedger = new TrustLedger();
     mockCircuitBreaker = new CircuitBreaker();
     mockAdapter = {
-      platform: "meta",
-      schemaVersion: "1.0",
-      capabilities: [{ entity: "campaign", ops: ["update_budget"], reversible: true }],
+      platform: 'meta',
+      schemaVersion: '1.0',
+      capabilities: [
+        {entity: 'campaign', ops: ['update_budget'], reversible: true},
+      ],
       plan: async (req: ActionRequest) => ({
         request: req,
         valid: true,
-        projectedCost: (req.payload as { cost?: number })?.cost ?? 200,
+        projectedCost: (req.payload as {cost?: number})?.cost ?? 200,
         warnings: [],
       }),
-      execute: async () => ({ ok: true, auditRef: "exec-1" }),
-      rollback: async () => ({ ok: true, auditRef: "rb-1" }),
+      execute: async () => ({ok: true, auditRef: 'exec-1'}),
+      rollback: async () => ({ok: true, auditRef: 'rb-1'}),
       read: async () => [],
-      healthCheck: async () => ({ ok: true, latencyMs: 5, schemaDriftDetected: false, deprecationWarnings: [] }),
+      healthCheck: async () => ({
+        ok: true,
+        latencyMs: 5,
+        schemaDriftDetected: false,
+        deprecationWarnings: [],
+      }),
     };
   });
 
-  describe("PinoLogger", () => {
-    it("should format logs in structured JSON and obey minLevel", () => {
+  describe('PinoLogger', () => {
+    it('should format logs in structured JSON and obey minLevel', () => {
       const logger = new PinoLogger(30, true); // Info level minimum
 
-      logger.debug("hidden trace");
-      logger.info("visible message", { userId: "user-123" });
-      logger.error("error happened", { errCode: 500 });
+      logger.debug('hidden trace');
+      logger.info('visible message', {userId: 'user-123'});
+      logger.error('error happened', {errCode: 500});
 
       expect(logger.loggedEntries.length).toBe(2);
 
-      const parsedInfo = JSON.parse(logger.loggedEntries[0]) as { level: number; msg: string; userId: string };
+      const parsedInfo = JSON.parse(logger.loggedEntries[0]) as {
+        level: number;
+        msg: string;
+        userId: string;
+      };
       expect(parsedInfo.level).toBe(30);
-      expect(parsedInfo.msg).toBe("visible message");
-      expect(parsedInfo.userId).toBe("user-123");
+      expect(parsedInfo.msg).toBe('visible message');
+      expect(parsedInfo.userId).toBe('user-123');
 
-      const parsedErr = JSON.parse(logger.loggedEntries[1]) as { level: number; msg: string; errCode: number };
+      const parsedErr = JSON.parse(logger.loggedEntries[1]) as {
+        level: number;
+        msg: string;
+        errCode: number;
+      };
       expect(parsedErr.level).toBe(50);
       expect(parsedErr.errCode).toBe(500);
     });
   });
 
-  describe("SupabaseClient", () => {
-    it("should persist and retrieve trust tiers and audit logs", async () => {
-      const supabase = new SupabaseClient("https://mock.supabase.co", "key", true);
+  describe('SupabaseClient', () => {
+    it('should persist and retrieve trust tiers and audit logs', async () => {
+      const supabase = new SupabaseClient(
+        'https://mock.supabase.co',
+        'key',
+        true,
+      );
 
       // Verify initial state
-      const initial = await supabase.getTrustTier("tenant-1", "update_budget");
+      const initial = await supabase.getTrustTier('tenant-1', 'update_budget');
       expect(initial).toBeNull();
 
       // Save and retrieve
-      await supabase.saveTrustTier("tenant-1", "update_budget", 2);
-      const updated = await supabase.getTrustTier("tenant-1", "update_budget");
+      await supabase.saveTrustTier('tenant-1', 'update_budget', 2);
+      const updated = await supabase.getTrustTier('tenant-1', 'update_budget');
       expect(updated).toBe(2);
 
       // Audit logs
       await supabase.logAudit({
-        tenant: "tenant-1",
+        tenant: 'tenant-1',
         timestamp: new Date().toISOString(),
-        action_id: "act-01",
-        op: "update_budget",
-        entity: "campaign",
-        target_id: "c-123",
+        action_id: 'act-01',
+        op: 'update_budget',
+        entity: 'campaign',
+        target_id: 'c-123',
         cost: 500,
-        decision: "AUTO_EXECUTE",
-        reason: "Success",
+        decision: 'AUTO_EXECUTE',
+        reason: 'Success',
       });
 
-      const logs = await supabase.getAuditLogs("tenant-1");
+      const logs = await supabase.getAuditLogs('tenant-1');
       expect(logs.length).toBe(1);
-      expect(logs[0].action_id).toBe("act-01");
-      expect(logs[0].decision).toBe("AUTO_EXECUTE");
+      expect(logs[0].action_id).toBe('act-01');
+      expect(logs[0].decision).toBe('AUTO_EXECUTE');
     });
 
-    it("should acquire and release distributed lease locks", async () => {
-      const supabase = new SupabaseClient("https://mock.supabase.co", "key", true);
+    it('should acquire and release distributed lease locks', async () => {
+      const supabase = new SupabaseClient(
+        'https://mock.supabase.co',
+        'key',
+        true,
+      );
 
       // Acquire lock successfully
-      const acquired = await supabase.acquireLock("c-123", "agent-1", 1000);
+      const acquired = await supabase.acquireLock('c-123', 'agent-1', 1000);
       expect(acquired).toBe(true);
 
       // Fail to acquire held lock
-      const reAcquired = await supabase.acquireLock("c-123", "agent-2", 1000);
+      const reAcquired = await supabase.acquireLock('c-123', 'agent-2', 1000);
       expect(reAcquired).toBe(false);
 
       // Release lock
-      await supabase.releaseLock("c-123", "agent-1");
+      await supabase.releaseLock('c-123', 'agent-1');
 
       // Now agent-2 should acquire it
-      const acquiredBy2 = await supabase.acquireLock("c-123", "agent-2", 1000);
+      const acquiredBy2 = await supabase.acquireLock('c-123', 'agent-2', 1000);
       expect(acquiredBy2).toBe(true);
     });
   });
 
-  describe("OPA Policy Engine", () => {
-    it("should evaluate low-risk operations for trusted tenants", async () => {
-      const opa = new OpaPolicyEngine("http://mock-url", true);
-      const req: ActionRequest = { idempotencyKey: "key-1", op: "update_budget", entity: "campaign", targetId: "c-1", confidence: 0.9, payload: { cost: 200 } };
-      const plan: ActionPlan = { request: req, valid: true, projectedCost: 200, warnings: [] };
+  describe('OPA Policy Engine', () => {
+    it('should evaluate low-risk operations for trusted tenants', async () => {
+      const opa = new OpaPolicyEngine('http://mock-url', true);
+      const req: ActionRequest = {
+        idempotencyKey: 'key-1',
+        op: 'update_budget',
+        entity: 'campaign',
+        targetId: 'c-1',
+        confidence: 0.9,
+        payload: {cost: 200},
+      };
+      const plan: ActionPlan = {
+        request: req,
+        valid: true,
+        projectedCost: 200,
+        warnings: [],
+      };
       const ctx: Context = {
-        tenant: { tenantId: "tenant-1", policy: { maxDailyDollarsRisk: 2000, maxBudgetMovePct: 0.2, minConfidence: 0.8, escalationRole: "cfo" } },
-        role: { name: "Media Buyer", permits: () => true } as unknown as Role,
+        tenant: {
+          tenantId: 'tenant-1',
+          policy: {
+            maxDailyDollarsRisk: 2000,
+            maxBudgetMovePct: 0.2,
+            minConfidence: 0.8,
+            escalationRole: 'cfo',
+          },
+        },
+        role: {name: 'Media Buyer', permits: () => true} as unknown as Role,
         verifyWindowMs: 5000,
       };
 
@@ -129,23 +176,40 @@ describe("Integrations (OPA, Supabase, Pino)", () => {
       expect(blocked).toBe(false);
     });
 
-    it("should enforce CFO waiver rules for high-risk operations", async () => {
-      const opa = new OpaPolicyEngine("http://mock-url", true);
-      const req: ActionRequest = { idempotencyKey: "key-1", op: "update_budget", entity: "campaign", targetId: "c-1", confidence: 0.9, payload: { cost: 1500 } };
-      const plan: ActionPlan = { request: req, valid: true, projectedCost: 1500, warnings: [] };
+    it('should enforce CFO waiver rules for high-risk operations', async () => {
+      const opa = new OpaPolicyEngine('http://mock-url', true);
+      const req: ActionRequest = {
+        idempotencyKey: 'key-1',
+        op: 'update_budget',
+        entity: 'campaign',
+        targetId: 'c-1',
+        confidence: 0.9,
+        payload: {cost: 1500},
+      };
+      const plan: ActionPlan = {
+        request: req,
+        valid: true,
+        projectedCost: 1500,
+        warnings: [],
+      };
       const ctx: Context = {
         tenant: {
-          tenantId: "tenant-1",
-          policy: { maxDailyDollarsRisk: 2000, maxBudgetMovePct: 0.2, minConfidence: 0.8, escalationRole: "cfo" },
+          tenantId: 'tenant-1',
+          policy: {
+            maxDailyDollarsRisk: 2000,
+            maxBudgetMovePct: 0.2,
+            minConfidence: 0.8,
+            escalationRole: 'cfo',
+          },
         },
-        role: { name: "Media Buyer", permits: () => true } as unknown as Role,
+        role: {name: 'Media Buyer', permits: () => true} as unknown as Role,
         verifyWindowMs: 5000,
         activeWaivers: [
           {
-            overrideRole: "CFO",
+            overrideRole: 'CFO',
             expiresAtMs: Date.now() + 60000,
-            allowedOps: ["update_budget"],
-            reason: "Q3 scale up approved",
+            allowedOps: ['update_budget'],
+            reason: 'Q3 scale up approved',
           },
         ],
       };
@@ -156,10 +220,10 @@ describe("Integrations (OPA, Supabase, Pino)", () => {
 
       // Blocked if waiver expired
       const expiredWaiver: Waiver = {
-        overrideRole: "CFO",
+        overrideRole: 'CFO',
         expiresAtMs: Date.now() - 1000,
-        allowedOps: ["update_budget"],
-        reason: "Past campaign",
+        allowedOps: ['update_budget'],
+        reason: 'Past campaign',
       };
       ctx.activeWaivers = [expiredWaiver];
       const blocked = await opa.evaluate(req, plan, ctx, 3);
@@ -167,32 +231,65 @@ describe("Integrations (OPA, Supabase, Pino)", () => {
     });
   });
 
-  describe("GovernanceEngine Integration Loop", () => {
-    it("should persist decisions to Supabase and log via Pino", async () => {
-      const supabase = new SupabaseClient("https://mock-url", "key", true);
-      const opa = new OpaPolicyEngine("http://mock-url", true);
-      const engine = new GovernanceEngine(mockAuditSink, mockTrustLedger, mockCircuitBreaker, undefined, opa, supabase);
+  describe('GovernanceEngine Integration Loop', () => {
+    it('should persist decisions to Supabase and log via Pino', async () => {
+      const supabase = new SupabaseClient('https://mock-url', 'key', true);
+      const opa = new OpaPolicyEngine('http://mock-url', true);
+      const engine = new GovernanceEngine(
+        mockAuditSink,
+        mockTrustLedger,
+        mockCircuitBreaker,
+        undefined,
+        opa,
+        supabase,
+      );
 
-      const req: ActionRequest = { idempotencyKey: "key-1", op: "update_budget", entity: "campaign", targetId: "c-1", confidence: 0.9, payload: { cost: 200 } };
+      const req: ActionRequest = {
+        idempotencyKey: 'key-1',
+        op: 'update_budget',
+        entity: 'campaign',
+        targetId: 'c-1',
+        confidence: 0.9,
+        payload: {cost: 200},
+      };
       const ctx: Context = {
-        tenant: { tenantId: "tenant-1", policy: { maxDailyDollarsRisk: 2000, maxBudgetMovePct: 0.2, minConfidence: 0.8, escalationRole: "cfo" } },
-        role: { name: "Media Buyer", permits: (op: string) => op === "update_budget" } as unknown as Role,
+        tenant: {
+          tenantId: 'tenant-1',
+          policy: {
+            maxDailyDollarsRisk: 2000,
+            maxBudgetMovePct: 0.2,
+            minConfidence: 0.8,
+            escalationRole: 'cfo',
+          },
+        },
+        role: {
+          name: 'Media Buyer',
+          permits: (op: string) => op === 'update_budget',
+        } as unknown as Role,
         verifyWindowMs: 5000,
       };
 
       // Seed trust tier in Supabase
-      await supabase.saveTrustTier("tenant-1", "update_budget", 2);
+      await supabase.saveTrustTier('tenant-1', 'update_budget', 2);
 
       const response = await engine.govern(mockAdapter, req, ctx);
-      expect(response.status).toBe("executed");
+      expect(response.status).toBe('executed');
 
       // Verify audit logs in Supabase
-      const dbLogs = await supabase.getAuditLogs("tenant-1");
-      expect(dbLogs.some(l => l.decision === "AUTO_EXECUTE")).toBe(true);
+      const dbLogs = await supabase.getAuditLogs('tenant-1');
+      expect(dbLogs.some((l) => l.decision === 'AUTO_EXECUTE')).toBe(true);
 
       // Verify pino logging outputs
-      expect(engine.logger.loggedEntries.some(l => l.includes("Planned action evaluation started"))).toBe(true);
-      expect(engine.logger.loggedEntries.some(l => l.includes("Decision resolved"))).toBe(true);
+      expect(
+        engine.logger.loggedEntries.some((l) =>
+          l.includes('Planned action evaluation started'),
+        ),
+      ).toBe(true);
+      expect(
+        engine.logger.loggedEntries.some((l) =>
+          l.includes('Decision resolved'),
+        ),
+      ).toBe(true);
     });
   });
 });

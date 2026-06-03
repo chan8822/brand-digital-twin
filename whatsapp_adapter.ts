@@ -2,20 +2,20 @@
 // Implements the PlatformAdapter contract for irreversible messaging sends.
 
 import {
-  PlatformAdapter,
+  ActionPlan,
+  ActionRequest,
+  ActionResult,
   Capability,
   HealthReport,
-  ActionRequest,
-  ActionPlan,
-  ActionResult,
+  PlatformAdapter,
   RollbackHandle,
-} from "./platform_adapter";
+} from './platform_adapter';
 
 export class WhatsAppAdapter implements PlatformAdapter {
-  readonly platform = "whatsapp";
-  readonly schemaVersion = "whatsapp_cloud_api@v17.0";
+  readonly platform = 'whatsapp';
+  readonly schemaVersion = 'whatsapp_cloud_api@v17.0';
   readonly capabilities: Capability[] = [
-    { entity: "whatsapp_broadcast", ops: ["activate"], reversible: false }, // IRREVERSIBLE BY DESIGN
+    {entity: 'whatsapp_broadcast', ops: ['activate'], reversible: false}, // IRREVERSIBLE BY DESIGN
   ];
 
   // Simulator trackers
@@ -29,15 +29,22 @@ export class WhatsAppAdapter implements PlatformAdapter {
 
   async read(since: Date): Promise<any[]> {
     // In production, syncs sent messages, delivery receipts, and template configurations.
-    return [{ id: "tpl_winter_sale_1", status: "APPROVED", category: "MARKETING" }];
+    return [
+      {id: 'tpl_winter_sale_1', status: 'APPROVED', category: 'MARKETING'},
+    ];
   }
 
   async plan(req: ActionRequest): Promise<ActionPlan> {
     const warnings: string[] = [];
-    const payload = req.payload as { templateId: string; recipientCount: number };
+    const payload = req.payload as {templateId: string; recipientCount: number};
 
-    if (!payload || typeof payload.recipientCount !== "number") {
-      return { request: req, valid: false, projectedCost: 0, warnings: ["Missing or invalid recipientCount."] };
+    if (!payload || typeof payload.recipientCount !== 'number') {
+      return {
+        request: req,
+        valid: false,
+        projectedCost: 0,
+        warnings: ['Missing or invalid recipientCount.'],
+      };
     }
 
     // Safeguard: hard limit of 5,000 users per autonomous blast
@@ -46,7 +53,9 @@ export class WhatsAppAdapter implements PlatformAdapter {
         request: req,
         valid: false,
         projectedCost: payload.recipientCount * 0.02, // Estimate $0.02 per message
-        warnings: [`Recipient count ${payload.recipientCount} exceeds safety ceiling of 5,000.`],
+        warnings: [
+          `Recipient count ${payload.recipientCount} exceeds safety ceiling of 5,000.`,
+        ],
       };
     }
 
@@ -60,10 +69,17 @@ export class WhatsAppAdapter implements PlatformAdapter {
 
   async execute(plan: ActionPlan): Promise<ActionResult> {
     if (!plan.valid) {
-      return { ok: false, auditRef: "invalid_plan", error: "WhatsApp plan is invalid." };
+      return {
+        ok: false,
+        auditRef: 'invalid_plan',
+        error: 'WhatsApp plan is invalid.',
+      };
     }
 
-    const payload = plan.request.payload as { templateId: string; recipientCount: number };
+    const payload = plan.request.payload as {
+      templateId: string;
+      recipientCount: number;
+    };
     this.sentMessagesCount += payload.recipientCount;
 
     return {
@@ -78,12 +94,18 @@ export class WhatsAppAdapter implements PlatformAdapter {
     return {
       ok: false,
       auditRef: `rollback_${h.rollbackId}`,
-      error: "WhatsApp broadcast template is irreversible and cannot be rolled back.",
+      error:
+        'WhatsApp broadcast template is irreversible and cannot be rolled back.',
     };
   }
 
   async healthCheck(): Promise<HealthReport> {
-    return { ok: true, latencyMs: 5, schemaDriftDetected: false, deprecationWarnings: [] };
+    return {
+      ok: true,
+      latencyMs: 5,
+      schemaDriftDetected: false,
+      deprecationWarnings: [],
+    };
   }
 
   getSentMessagesCount() {
