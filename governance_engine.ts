@@ -9,64 +9,35 @@ import {
   ActionResult,
   RollbackHandle,
 } from "./platform_adapter";
-import { MetricsTracker, Span } from "./observability";
+import { MetricsTracker, Span, PinoLogger } from "./observability";
+import { OpaPolicyEngine } from "./opa_policy";
+import { SupabaseClient } from "./supabase_client";
 
-export interface TenantPolicy {
-  maxDailyDollarsRisk: number; // e.g., $1000
-  maxBudgetMovePct: number;    // e.g., 20% (0.20)
-  minConfidence: number;       // e.g., 0.85
-  escalationRole: string;      // e.g., 'cmo'
-}
+import {
+  TenantPolicy,
+  Tenant,
+  Role,
+  Waiver,
+  WhitelistRule,
+  Context,
+  DispositionKind,
+  Disposition,
+  AuditSink,
+  TrustOutcome,
+} from "./governance_types";
 
-export interface Tenant {
-  tenantId: string;
-  policy: TenantPolicy;
-  shadowMode?: boolean;
-  onboardingStartMs?: number;
-}
-
-export interface Role {
-  name?: string;
-  permits(op: string, entity: string): boolean;
-}
-
-export interface Waiver {
-  overrideRole: string;
-  reason: string;
-  expiresAtMs: number;
-  allowedOps: string[];
-}
-
-export interface WhitelistRule {
-  op: string;
-  entity: string;
-  maxCost: number;
-}
-
-export interface Context {
-  tenant: Tenant;
-  role: Role;
-  verifyWindowMs: number;
-}
-
-export type DispositionKind = "AUTO_EXECUTE" | "QUEUE" | "BLOCK";
-export interface Disposition {
-  kind: DispositionKind;
-  reason: string;
-  approver?: string;
-}
-
-// Immutable action log audit sink
-export interface AuditSink {
-  record(row: Record<string, unknown>): Promise<void>;
-}
-
-export interface TrustOutcome {
-  success: boolean;
-  cost: number;
-  timestampMs: number;
-  approvedByRole?: string;
-}
+export type {
+  TenantPolicy,
+  Tenant,
+  Role,
+  Waiver,
+  WhitelistRule,
+  Context,
+  DispositionKind,
+  Disposition,
+  AuditSink,
+  TrustOutcome,
+};
 
 // --- Trust Ledger System ---
 export class TrustLedger {
@@ -184,12 +155,24 @@ export class GovernanceEngine {
     this.whitelists.set(tenantId, list);
   }
 
+  public readonly logger = new PinoLogger();
+
   constructor(
     private audit: AuditSink,
     private trustLedger: TrustLedger,
     private circuitBreaker: CircuitBreaker,
     private metrics: MetricsTracker = new MetricsTracker(),
+    public readonly opa = new OpaPolicyEngine(),
+    public readonly supabase = new SupabaseClient(),
   ) {}
+
+  async getTrustTier(tenantId: string, op: string): Promise<number> {
+    let earned = await this.supabase.getTrustTier(tenantId, op);
+    if (earned === null) {
+      earned = this.trustLedger.getTier(tenantId, op);
+    }
+    return earned;
+  }
 
   setKillSwitch(active: boolean) {
     this.killSwitchActive = active;
@@ -207,8 +190,17 @@ export class GovernanceEngine {
     const now = new Date().toISOString();
     const plan = await adapter.plan(req);
 
+    this.logger.info("Planned action evaluation started", {
+      actionId: req.idempotencyKey,
+      tenantId: ctx.tenant.tenantId,
+      op: req.op,
+      entity: req.entity,
+      cost: plan.projectedCost,
+      platform: adapter.platform,
+    });
+
     // 1. Audit Phase: Planned
-    await this.audit.record({
+    const plannedLog = {
       action_id: req.idempotencyKey,
       tenant_id: ctx.tenant.tenantId,
       actor: "agent:media_buyer",
@@ -217,10 +209,32 @@ export class GovernanceEngine {
       proposed_payload: req.payload,
       status: "planned",
       created_at: now,
+    };
+    await this.audit.record(plannedLog);
+    await this.supabase.logAudit({
+      tenant: ctx.tenant.tenantId,
+      timestamp: now,
+      action_id: req.idempotencyKey,
+      op: req.op,
+      entity: req.entity,
+      target_id: req.targetId || "",
+      cost: plan.projectedCost,
+      decision: "PLANNED",
+      reason: "Action execution plan constructed",
     });
 
     // 2. Decide Phase
-    const disp = this.decide(req, plan, ctx, adapter);
+    const earned = await this.getTrustTier(ctx.tenant.tenantId, req.op);
+
+    const disp = await this.decide(req, plan, ctx, adapter, earned);
+
+    this.logger.info("Decision resolved", {
+      actionId: req.idempotencyKey,
+      tenantId: ctx.tenant.tenantId,
+      op: req.op,
+      decision: disp.kind,
+      reason: disp.reason,
+    });
 
     await this.audit.record({
       action_id: req.idempotencyKey,
@@ -231,6 +245,18 @@ export class GovernanceEngine {
       status: disp.kind.toLowerCase(),
       reason: disp.reason,
       created_at: new Date().toISOString(),
+    });
+
+    await this.supabase.logAudit({
+      tenant: ctx.tenant.tenantId,
+      timestamp: new Date().toISOString(),
+      action_id: req.idempotencyKey,
+      op: req.op,
+      entity: req.entity,
+      target_id: req.targetId || "",
+      cost: plan.projectedCost,
+      decision: disp.kind,
+      reason: disp.reason,
     });
 
     if (disp.kind === "BLOCK") {
@@ -259,6 +285,10 @@ export class GovernanceEngine {
           originalState: {},
         },
       };
+      this.logger.info("Executing in shadow onboarding mode", {
+        actionId: req.idempotencyKey,
+        tenantId: ctx.tenant.tenantId,
+      });
       await this.audit.record({
         action_id: req.idempotencyKey,
         tenant_id: ctx.tenant.tenantId,
@@ -270,9 +300,19 @@ export class GovernanceEngine {
         created_at: new Date().toISOString(),
       });
     } else {
+      this.logger.info("Executing live request", {
+        actionId: req.idempotencyKey,
+        tenantId: ctx.tenant.tenantId,
+      });
       result = await adapter.execute(plan);
     }
+
     if (!result.ok) {
+      this.logger.error("Execution failed", {
+        actionId: req.idempotencyKey,
+        tenantId: ctx.tenant.tenantId,
+        error: result.error,
+      });
       await this.audit.record({
         action_id: req.idempotencyKey,
         tenant_id: ctx.tenant.tenantId,
@@ -283,7 +323,7 @@ export class GovernanceEngine {
         reason: result.error,
         created_at: new Date().toISOString(),
       });
-      const previousTier = this.trustLedger.getTier(ctx.tenant.tenantId, req.op);
+      const previousTier = earned;
       this.trustLedger.recordOutcome(
         ctx.tenant.tenantId,
         req.op,
@@ -293,6 +333,8 @@ export class GovernanceEngine {
         ctx.role.name
       );
       const newTier = this.trustLedger.getTier(ctx.tenant.tenantId, req.op);
+      await this.supabase.saveTrustTier(ctx.tenant.tenantId, req.op, newTier);
+
       if (newTier < previousTier) {
         this.metrics.raiseAlert(`Trust tier degraded from ${previousTier} to ${newTier} for action ${req.op}`);
       }
@@ -320,6 +362,10 @@ export class GovernanceEngine {
 
     if (!verificationOk && result.rollback) {
       // 5. Rollback Phase on anomaly detection
+      this.logger.warn("Verification anomaly detected, initiating rollback", {
+        actionId: req.idempotencyKey,
+        tenantId: ctx.tenant.tenantId,
+      });
       const rollbackResult = await this.executeGradualRollback(adapter, result.rollback);
       await this.audit.record({
         action_id: req.idempotencyKey,
@@ -332,7 +378,7 @@ export class GovernanceEngine {
         created_at: new Date().toISOString(),
       });
 
-      const previousTier = this.trustLedger.getTier(ctx.tenant.tenantId, req.op);
+      const previousTier = earned;
       this.trustLedger.recordOutcome(
         ctx.tenant.tenantId,
         req.op,
@@ -342,6 +388,8 @@ export class GovernanceEngine {
         ctx.role.name
       );
       const newTier = this.trustLedger.getTier(ctx.tenant.tenantId, req.op);
+      await this.supabase.saveTrustTier(ctx.tenant.tenantId, req.op, newTier);
+
       if (newTier < previousTier) {
         this.metrics.raiseAlert(`Trust tier degraded from ${previousTier} to ${newTier} for action ${req.op}`);
       }
@@ -361,6 +409,15 @@ export class GovernanceEngine {
       ctx.tenant.policy.maxDailyDollarsRisk,
       ctx.role.name
     );
+    const finalTier = this.trustLedger.getTier(ctx.tenant.tenantId, req.op);
+    await this.supabase.saveTrustTier(ctx.tenant.tenantId, req.op, finalTier);
+
+    this.logger.info("Action successfully verified", {
+      actionId: req.idempotencyKey,
+      tenantId: ctx.tenant.tenantId,
+      newTrustTier: finalTier,
+    });
+
     this.metrics.endSpan(span.spanId, "success");
     return { status: "executed", result };
   }
@@ -368,7 +425,13 @@ export class GovernanceEngine {
   /**
    * The core decision engine mapping trust tier constraints and limits.
    */
-  decide(req: ActionRequest, plan: ActionPlan, ctx: Context, adapter: PlatformAdapter): Disposition {
+  async decide(
+    req: ActionRequest,
+    plan: ActionPlan,
+    ctx: Context,
+    adapter: PlatformAdapter,
+    earned: number,
+  ): Promise<Disposition> {
     const platform = adapter.platform;
     if (this.killSwitchActive) {
       return { kind: "BLOCK", reason: "global kill switch engaged" };
@@ -404,6 +467,20 @@ export class GovernanceEngine {
       }
     }
 
+    // Evaluate OPA Policy Engine
+    const opaAllow = await this.opa.evaluate(req, plan, ctx, earned);
+    if (!opaAllow) {
+      // If OPA denounces auto-execution, we determine if it is a block or a queue
+      if (!hasWaiver && !ctx.role.permits(req.op, req.entity)) {
+        return { kind: "BLOCK", reason: "role permissions do not authorize action (rejection verified by OPA)" };
+      }
+      const required = this.riskToTier(plan.projectedCost);
+      if (earned < required && !hasWaiver) {
+        return { kind: "QUEUE", reason: `earned trust tier (${earned}) is less than required risk tier (${required}) (rejection verified by OPA)`, approver: ctx.tenant.policy.escalationRole };
+      }
+      return { kind: "QUEUE", reason: "Blocked from automatic execution by OPA policy evaluation", approver: ctx.tenant.policy.escalationRole };
+    }
+
     if (!hasWaiver && !ctx.role.permits(req.op, req.entity)) {
       return { kind: "BLOCK", reason: "role permissions do not authorize action" };
     }
@@ -429,7 +506,6 @@ export class GovernanceEngine {
     }
 
     // Check earned vs required trust, unless waiver is active
-    const earned = this.trustLedger.getTier(ctx.tenant.tenantId, req.op);
     const required = this.riskToTier(plan.projectedCost);
 
     if (earned < required && !hasWaiver) {
@@ -438,7 +514,7 @@ export class GovernanceEngine {
 
     return {
       kind: "AUTO_EXECUTE",
-      reason: hasWaiver ? `all checks bypassed by active waiver: ${waiverReason}` : "all checks passed, earned trust satisfies risk limits"
+      reason: hasWaiver ? `all checks bypassed by active waiver: ${waiverReason}` : "all checks passed, earned trust satisfies risk limits (approved by OPA)"
     };
   }
 

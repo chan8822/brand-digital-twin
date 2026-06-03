@@ -82,3 +82,54 @@ export class MetricsTracker {
     return sum / related.length;
   }
 }
+
+/**
+ * Pino-compatible structured JSON logger for NDJSON analysis.
+ */
+export class PinoLogger {
+  // Store logged entries in-memory for unit testing
+  public readonly loggedEntries: string[] = [];
+
+  constructor(
+    private readonly minLevel: 10 | 20 | 30 | 40 | 50 = 30,
+    private readonly mockConsole = true,
+  ) {}
+
+  private log(level: number, msg: string, context: Record<string, unknown> = {}) {
+    if (level < this.minLevel) return;
+
+    const entry = JSON.stringify({
+      level,
+      time: Date.now(),
+      msg,
+      ...context,
+    });
+
+    this.loggedEntries.push(entry);
+
+    if (!this.mockConsole) {
+      console.log(entry);
+    }
+  }
+
+  trace(msg: string, context?: Record<string, unknown>) {
+    this.log(10, msg, context);
+  }
+
+  debug(msg: string, context?: Record<string, unknown>) {
+    this.log(20, msg, context);
+  }
+
+  info(msg: string, context?: Record<string, unknown>) {
+    this.log(30, msg, context);
+  }
+
+  warn(msg: string, context?: Record<string, unknown>) {
+    this.log(40, msg, context);
+  }
+
+  error(msg: string, context?: Record<string, unknown>) {
+    this.log(50, msg, context);
+  }
+}
+

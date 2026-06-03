@@ -7,7 +7,8 @@ import {
   ActionResult,
   RollbackHandle,
 } from "./platform_adapter";
-import { GovernanceEngine, Context } from "./governance_engine";
+import { GovernanceEngine } from "./governance_engine";
+import { Context } from "./governance_types";
 
 // --- Chaos Adapter Wrapper ---
 export class ChaosAdapterWrapper implements PlatformAdapter {
@@ -110,7 +111,8 @@ export class ForensicReplayer {
       };
 
       const plan = await adapter.plan(req);
-      const disp = this.governance.decide(req, plan, ctx, adapter);
+      const earned = await this.governance.getTrustTier(ctx.tenant.tenantId, req.op);
+      const disp = await this.governance.decide(req, plan, ctx, adapter, earned);
       decisions.push(`${req.idempotencyKey}:${disp.kind}`);
     }
 

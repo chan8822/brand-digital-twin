@@ -1,216 +1,49 @@
+load("//javascript/typescript:build_defs.bzl", "ts_library")
 load(
     "//javascript/angular/tools/node/jasmine/builddefs:jasmine_node.bzl",
     "jasmine_node_test",
 )
-load("//javascript/typescript:build_defs.bzl", "ts_library")
 
 package(default_visibility = ["//visibility:public"])
 
 ts_library(
-    name = "platform_adapter",
-    srcs = ["platform_adapter.ts"],
+    name = "isolation_context",
+    srcs = ["core/isolation_context.ts"],
     deps = [],
 )
 
 ts_library(
-    name = "observability",
-    srcs = ["observability.ts"],
-    deps = [],
-)
-
-ts_library(
-    name = "forecasting",
-    srcs = ["forecasting.ts"],
-    deps = [],
-)
-
-ts_library(
-    name = "orchestrator",
-    srcs = ["orchestrator.ts"],
+    name = "onemcp_server",
+    srcs = ["core/onemcp_server.ts"],
     deps = [
-        ":governance_engine",
-        ":platform_adapter",
-        "//third_party/javascript/typings/node",
+        ":isolation_context",
     ],
 )
 
 ts_library(
-    name = "governance_shadow",
-    srcs = ["governance_shadow.ts"],
-    deps = ["//third_party/javascript/typings/node"],
-)
-
-ts_library(
-    name = "shopify_adapter",
-    srcs = ["shopify_adapter.ts"],
-    deps = ["//third_party/javascript/typings/node"],
-)
-
-ts_library(
-    name = "google_ads_adapter",
-    srcs = ["google_ads_adapter.ts"],
+    name = "ceo_agent",
+    srcs = ["agents/ceo_agent.ts"],
     deps = [
-        ":platform_adapter",
-        "//third_party/javascript/typings/node",
+        ":isolation_context",
+        ":onemcp_server",
     ],
 )
 
 ts_library(
-    name = "meta_ads_adapter",
-    srcs = ["meta_ads_adapter.ts"],
-    deps = [
-        ":platform_adapter",
-        "//third_party/javascript/typings/node",
-    ],
-)
-
-ts_library(
-    name = "identity_resolver",
-    srcs = ["identity_resolver.ts"],
-    deps = ["//third_party/javascript/typings/node"],
-)
-
-ts_library(
-    name = "analyst_agent",
-    srcs = ["analyst_agent.ts"],
-    deps = [],
-)
-
-ts_library(
-    name = "governance_engine",
-    srcs = ["governance_engine.ts"],
-    deps = [
-        ":observability",
-        ":platform_adapter",
-    ],
-)
-
-ts_library(
-    name = "tally_adapter",
-    srcs = ["tally_adapter.ts"],
-    deps = [],
-)
-
-ts_library(
-    name = "rbi_aa_adapter",
-    srcs = ["rbi_aa_adapter.ts"],
-    deps = [],
-)
-
-ts_library(
-    name = "whatsapp_adapter",
-    srcs = ["whatsapp_adapter.ts"],
-    deps = [
-        ":platform_adapter",
-    ],
-)
-
-ts_library(
-    name = "risk_radar",
-    srcs = ["risk_radar.ts"],
-    deps = [
-        ":google_ads_adapter",
-        ":governance_engine",
-        ":platform_adapter",
-    ],
-)
-
-ts_library(
-    name = "simulation",
-    srcs = ["simulation.ts"],
-    deps = [
-        ":governance_engine",
-        ":platform_adapter",
-        "//third_party/javascript/typings/node",
-    ],
-)
-
-ts_library(
-    name = "rate_limiter",
-    srcs = ["rate_limiter.ts"],
-    deps = [
-        ":platform_adapter",
-    ],
-)
-
-ts_library(
-    name = "google_express",
-    srcs = ["google_express.ts"],
-    deps = [],
-)
-
-ts_library(
-    name = "onboarding_simulator",
-    srcs = ["onboarding_simulator.ts"],
-    deps = ["//third_party/javascript/typings/node"],
-)
-
-ts_library(
-    name = "brand_twin_tests",
+    name = "enterprise_os_tests",
     testonly = True,
     srcs = [
-        "advanced_features_test.ts",
-        "onboarding_simulator_test.ts",
-        "phase1_test.ts",
-        "phase2_test.ts",
-        "phase3_test.ts",
-        "phase4_test.ts",
-        "shopify_adapter_test.ts",
+        "enterprise_os_test.ts",
     ],
     deps = [
-        ":analyst_agent",
-        ":forecasting",
-        ":google_ads_adapter",
-        ":google_express",
-        ":governance_engine",
-        ":identity_resolver",
-        ":meta_ads_adapter",
-        ":observability",
-        ":onboarding_simulator",
-        ":orchestrator",
-        ":platform_adapter",
-        ":rbi_aa_adapter",
-        ":rate_limiter",
-        ":risk_radar",
-        ":simulation",
-        ":shopify_adapter",
-        ":tally_adapter",
-        ":whatsapp_adapter",
+        ":isolation_context",
+        ":onemcp_server",
+        ":ceo_agent",
         "//third_party/javascript/typings/jasmine",
     ],
 )
 
 jasmine_node_test(
-    name = "shopify_adapter_test",
-    srcs = [":brand_twin_tests"],
-)
-
-jasmine_node_test(
-    name = "phase1_test",
-    srcs = [":brand_twin_tests"],
-)
-
-jasmine_node_test(
-    name = "phase2_test",
-    srcs = [":brand_twin_tests"],
-)
-
-jasmine_node_test(
-    name = "phase3_test",
-    srcs = [":brand_twin_tests"],
-)
-
-jasmine_node_test(
-    name = "phase4_test",
-    srcs = [":brand_twin_tests"],
-)
-
-jasmine_node_test(
-    name = "advanced_features_test",
-    srcs = [":brand_twin_tests"],
-)
-
-jasmine_node_test(
-    name = "onboarding_simulator_test",
-    srcs = [":brand_twin_tests"],
+    name = "enterprise_os_test",
+    srcs = [":enterprise_os_tests"],
 )

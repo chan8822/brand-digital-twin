@@ -18,11 +18,11 @@ class DummyAuditSink {
 class DummyTrustLedger {
   tiers: Record<string, number> = {};
   getTier(tenant: string, op: string): number {
-    return this.tiers[`${tenant}:${op}`] ?? 1;
+    return this.tiers[`${tenant}:${op}`] ?? 2;
   }
   recordOutcome(tenant: string, op: string, success: boolean) {
     const key = `${tenant}:${op}`;
-    const current = this.tiers[key] ?? 1;
+    const current = this.tiers[key] ?? 2;
     if (success) {
       this.tiers[key] = Math.min(3, current + 1);
     } else {
