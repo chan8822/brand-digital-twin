@@ -9,7 +9,7 @@ import {
 } from './agency_os';
 import {ClientProfile, TeamMember} from './agency_os_types';
 import {GovernanceEngine} from './governance_engine';
-import {ActionRequest} from './platform_adapter';
+import {ActionRequest, PlatformAdapter} from './platform_adapter';
 import {SupabaseClient} from './supabase_client';
 
 describe('Agency OS Collaboration & Strategy Suite', () => {
@@ -17,13 +17,22 @@ describe('Agency OS Collaboration & Strategy Suite', () => {
   let hub: CollaborationHub;
   let approvalsMgr: ApprovalWorkflowManager;
   let financialEngine: CSuiteFinancialEngine;
+  let mockEngine: any;
 
   beforeEach(() => {
     db = new SupabaseClient('https://mock.supabase.co', 'mock-key', true);
     hub = new CollaborationHub(db);
-    // Construct dummy GovernanceEngine wrapper
-    const mockEngine = {} as GovernanceEngine;
-    approvalsMgr = new ApprovalWorkflowManager(db, mockEngine);
+    // Construct dummy GovernanceEngine wrapper using Jasmine spies
+    mockEngine = {
+      registerWaiver: jasmine.createSpy('registerWaiver'),
+      govern: jasmine
+        .createSpy('govern')
+        .and.returnValue(Promise.resolve({status: 'executed'})),
+    };
+    approvalsMgr = new ApprovalWorkflowManager(
+      db,
+      mockEngine as unknown as GovernanceEngine,
+    );
     financialEngine = new CSuiteFinancialEngine(db);
   });
 
@@ -116,13 +125,34 @@ describe('Agency OS Collaboration & Strategy Suite', () => {
         tenantId: 'tenant-1',
       };
 
+      const adapter: PlatformAdapter = {
+        platform: 'google_ads',
+        schemaVersion: 'v1',
+        capabilities: [],
+        read: async () => ({}),
+        plan: async () => ({} as any),
+        execute: async () => ({} as any),
+        rollback: async () => ({} as any),
+        healthCheck: async () => ({} as any),
+      };
+
       const success = await approvalsMgr.processApproval(
         approval.approvalId,
         cmoUser,
         true,
         'Looks good to me',
+        adapter,
       );
       expect(success).toBe(true);
+
+      expect(mockEngine.govern).toHaveBeenCalledWith(
+        adapter,
+        req,
+        jasmine.objectContaining({
+          tenant: ctx.tenant,
+          role: jasmine.objectContaining({name: 'cmo'}),
+        }),
+      );
 
       const updated = (await db.getApprovals('tenant-1'))[0];
       expect(updated.status).toBe('approved');

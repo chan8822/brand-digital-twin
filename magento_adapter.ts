@@ -209,30 +209,4 @@ export class MagentoAdapter implements PlatformAdapter {
     }
   }
 
-  // --- WRITE PATH STUBS ---
-
-  async plan(req: ActionRequest): Promise<ActionPlan> {
-    return {
-      request: req,
-      valid: false,
-      projectedCost: 0,
-      warnings: ['Magento storefront adapter is read-only.'],
-    };
-  }
-
-  async execute(plan: ActionPlan): Promise<ActionResult> {
-    return {
-      ok: false,
-      auditRef: 'unsupported',
-      error: 'Magento storefront adapter does not support executions.',
-    };
-  }
-
-  async rollback(h: RollbackHandle): Promise<ActionResult> {
-    return {
-      ok: false,
-      auditRef: 'unsupported',
-      error: 'Magento storefront adapter does not support rollbacks.',
-    };
-  }
 }

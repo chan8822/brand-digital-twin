@@ -6,7 +6,9 @@
 
 import * as crypto from 'crypto';
 import * as http from 'http';
+import * as url from 'url';
 import {config} from './config';
+import {eventBus} from './event_bus';
 import {resetRateLimiters, startServer} from './server';
 import {SupabaseClient} from './supabase_client';
 
@@ -27,6 +29,16 @@ describe('Native HTTP & SSE Server Integration Test', () => {
   let db: SupabaseClient;
   const PORT = 9988;
   const baseUrl = `http://localhost:${PORT}`;
+
+  const testToken = signJwt(
+    {
+      userId: 'test-user',
+      orgId: 'test-tenant',
+      role: 'media_buyer',
+      exp: Math.floor(Date.now() / 1000) + 3600,
+    },
+    config.auth.jwtSecret,
+  );
 
   const validContextTemplate = {
     tenant: {
@@ -71,32 +83,46 @@ describe('Native HTTP & SSE Server Integration Test', () => {
     server = startServer(PORT, db);
   });
 
+  beforeEach(() => {
+    resetRateLimiters();
+    eventBus.cleanup();
+  });
+
   afterAll((done) => {
     server.close(done);
   });
 
-  function getJsonFromUrl(urlStr: string): Promise<any> {
+  function getJsonFromUrl(urlStr: string, headers?: Record<string, string>): Promise<any> {
     return new Promise((resolve, reject) => {
+      const parsed = url.parse(urlStr);
       http
-        .get(urlStr, (res) => {
-          let data = '';
-          res.on('data', (chunk) => {
-            data += chunk.toString();
-          });
-          res.on('end', () => {
-            try {
-              resolve(JSON.parse(data));
-            } catch {
-              resolve(data);
-            }
-          });
-        })
+        .get(
+          {
+            hostname: parsed.hostname,
+            port: parsed.port ? Number(parsed.port) : undefined,
+            path: parsed.path,
+            headers: headers || {Authorization: `Bearer ${testToken}`},
+          },
+          (res) => {
+            let data = '';
+            res.on('data', (chunk) => {
+              data += chunk.toString();
+            });
+            res.on('end', () => {
+              try {
+                resolve(JSON.parse(data));
+              } catch {
+                resolve(data);
+              }
+            });
+          },
+        )
         .on('error', reject);
     });
   }
 
-  function getJson(path: string): Promise<any> {
-    return getJsonFromUrl(`${baseUrl}${path}`);
+  function getJson(path: string, headers?: Record<string, string>): Promise<any> {
+    return getJsonFromUrl(`${baseUrl}${path}`, headers);
   }
 
   function postJson(path: string, body: any, headers?: Record<string, string>): Promise<any> {
@@ -171,6 +197,16 @@ describe('Native HTTP & SSE Server Integration Test', () => {
   });
 
   it('should execute campaign actions and trigger SSE stream updates', (done) => {
+    const token = signJwt(
+      {
+        userId: 'test-user',
+        orgId: 'test-tenant',
+        role: 'media_buyer',
+        exp: Math.floor(Date.now() / 1000) + 3600,
+      },
+      config.auth.jwtSecret,
+    );
+
     const actionRequest = {
       idempotencyKey: 'action-test-sse',
       op: 'pause_campaign',
@@ -187,7 +223,7 @@ describe('Native HTTP & SSE Server Integration Test', () => {
     const context = validContextTemplate;
 
     const eventsReceived: any[] = [];
-    const clientReq = http.get(`${baseUrl}/api/v1/stream`, (sseRes) => {
+    const clientReq = http.get(`${baseUrl}/api/v1/stream?token=${token}`, (sseRes) => {
       sseRes.on('data', (chunk) => {
         const raw = chunk.toString();
         // SSE formatting could concatenate frames
@@ -223,16 +259,6 @@ describe('Native HTTP & SSE Server Integration Test', () => {
       done();
     });
 
-    const token = signJwt(
-      {
-        userId: 'test-user',
-        orgId: 'test-tenant',
-        role: 'media_buyer',
-        exp: Math.floor(Date.now() / 1000) + 3600,
-      },
-      config.auth.jwtSecret,
-    );
-
     // Make the POST action call after a tiny timeout to ensure SSE is connected
     setTimeout(async () => {
       const res = await postJson(
@@ -243,6 +269,39 @@ describe('Native HTTP & SSE Server Integration Test', () => {
       expect(res.status).toBe('success');
       expect(res.data.status).toBe('executed');
     }, 100);
+  });
+
+  it('should securely persist compliance governance events in the database when executing an action', async () => {
+    const actionRequest = {
+      idempotencyKey: 'action-compliance-log-test',
+      op: 'pause_campaign',
+      entity: 'campaign',
+      targetId: 'nike-summer-1',
+      payload: {
+        verifyMetrics: {
+          preExecutionROAS: 2.5,
+          postExecutionROAS: 2.6,
+        },
+      },
+    };
+
+    const res = await postJson(
+      '/api/v1/actions',
+      {actionRequest, context: validContextTemplate},
+      {Authorization: `Bearer ${testToken}`},
+    );
+
+    expect(res.status).toBe('success');
+    expect(res.data.status).toBe('executed');
+
+    // Retrieve governance activities from db to verify persistence
+    const events = await db.getGovernanceEvents('test-tenant');
+    const actionEvents = events.filter((e) => e.action_id === 'action-compliance-log-test');
+
+    // We expect events for plan, decide, etc.
+    expect(actionEvents.length).toBeGreaterThan(0);
+    const statuses = actionEvents.map((e) => e.status);
+    expect(statuses).toContain('auto_execute');
   });
 
   it('should reject requests with missing token (401)', async () => {
@@ -258,7 +317,7 @@ describe('Native HTTP & SSE Server Integration Test', () => {
 
     expect(res.status).toBe('error');
     expect(res.error.code).toBe('UNAUTHORIZED');
-    expect(res.error.message).toContain('Missing authorization header');
+    expect(res.error.message).toContain('Missing authorization credentials');
   });
 
   it('should reject requests with invalid/expired token (401)', async () => {

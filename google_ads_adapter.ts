@@ -12,6 +12,7 @@ import {
   RollbackHandle,
 } from './platform_adapter';
 import {PinoLogger} from './observability';
+import {PlatformAccount} from './agency_os_types';
 
 export interface CanonicalAdsRows {
   campaigns: Record<string, unknown>[];
@@ -39,6 +40,11 @@ export class GoogleAdsAdapter implements PlatformAdapter {
       ],
       reversible: true,
     },
+    {
+      entity: 'ad_group',
+      ops: ['pause', 'activate'],
+      reversible: true,
+    },
     {entity: 'spend_fact', ops: ['read'], reversible: true},
   ];
 
@@ -47,6 +53,14 @@ export class GoogleAdsAdapter implements PlatformAdapter {
     string,
     {name?: string; budget: number; status: string; activeVariantId?: string}
   > = new Map();
+
+  private simulatedAdGroups: Map<
+    string,
+    {campaignId: string; name: string; status: string}
+  > = new Map();
+
+  private readCount = 0;
+  public triggerAnomalyOnReadIndex = -1;
 
   private readonly logger: PinoLogger;
 
@@ -69,8 +83,112 @@ export class GoogleAdsAdapter implements PlatformAdapter {
       budget: 1000,
       status: 'ENABLED',
     });
+
+    // Populate mock ad groups
+    this.simulatedAdGroups.set('ag-nike-shoes', {
+      campaignId: 'c1',
+      name: 'Nike Running Shoes Ad Group',
+      status: 'ENABLED',
+    });
   }
 
+  async listSubAccounts(managerCustomerId: string): Promise<PlatformAccount[]> {
+    this.logger.info('Simulating MCC account hierarchy search', {managerCustomerId});
+
+    if (managerCustomerId !== 'mcc-root') {
+      return [];
+    }
+
+    const now = new Date().toISOString();
+    return [
+      {
+        accountId: 'acc-mcc-root',
+        tenantId: this.tenantId,
+        platform: 'google_ads',
+        platformAccountId: 'mcc-root',
+        accountName: 'Nike & Partners MCC',
+        accountType: 'manager',
+        status: 'active',
+        ingestedAt: now,
+      },
+      {
+        accountId: 'acc-sub-mcc-x',
+        tenantId: this.tenantId,
+        platform: 'google_ads',
+        platformAccountId: 'sub-mcc-x',
+        accountName: 'Europe Partners Sub-MCC',
+        accountType: 'manager',
+        parentAccountId: 'acc-mcc-root',
+        status: 'active',
+        ingestedAt: now,
+      },
+      {
+        accountId: 'acc-ads-sub-a',
+        tenantId: this.tenantId,
+        platform: 'google_ads',
+        platformAccountId: 'ads-sub-a',
+        accountName: 'Nike Brand Main',
+        accountType: 'sub_account',
+        parentAccountId: 'acc-mcc-root',
+        currency: 'USD',
+        timezone: 'America/New_York',
+        status: 'active',
+        ingestedAt: now,
+      },
+      {
+        accountId: 'acc-ads-sub-b',
+        tenantId: this.tenantId,
+        platform: 'google_ads',
+        platformAccountId: 'ads-sub-b',
+        accountName: 'Nike Brand UK',
+        accountType: 'sub_account',
+        parentAccountId: 'acc-mcc-root',
+        currency: 'GBP',
+        timezone: 'Europe/London',
+        status: 'active',
+        ingestedAt: now,
+      },
+      {
+        accountId: 'acc-ads-sub-c',
+        tenantId: this.tenantId,
+        platform: 'google_ads',
+        platformAccountId: 'ads-sub-c',
+        accountName: 'Adidas Brand Main',
+        accountType: 'sub_account',
+        parentAccountId: 'acc-mcc-root',
+        currency: 'EUR',
+        timezone: 'Europe/Berlin',
+        status: 'active',
+        ingestedAt: now,
+      },
+      {
+        accountId: 'acc-ads-sub-d',
+        tenantId: this.tenantId,
+        platform: 'google_ads',
+        platformAccountId: 'ads-sub-d',
+        accountName: 'Nike Reseller Sub',
+        accountType: 'sub_account',
+        parentAccountId: 'acc-sub-mcc-x',
+        currency: 'EUR',
+        timezone: 'Europe/Paris',
+        status: 'active',
+        ingestedAt: now,
+      },
+      {
+        accountId: 'acc-ads-sub-e',
+        tenantId: this.tenantId,
+        platform: 'google_ads',
+        platformAccountId: 'ads-sub-e',
+        accountName: 'Adidas Reseller Sub',
+        accountType: 'sub_account',
+        parentAccountId: 'acc-sub-mcc-x',
+        currency: 'EUR',
+        timezone: 'Europe/Rome',
+        status: 'active',
+        ingestedAt: now,
+      },
+    ];
+  }
 
   private endpoint() {
     const cleanCustId = this.customerId.replace(/-/g, '');
@@ -80,9 +198,9 @@ export class GoogleAdsAdapter implements PlatformAdapter {
   private async search(query: string): Promise<any[]> {
     this.logger.debug('Executing Google Ads query', {'query': query.trim()});
     // For local tests/dry-run, we intercept calls or catch failures
-    if (this.token === 'mock_auth_token') {
+    if (this.token.startsWith('mock')) {
       this.logger.debug('Mock Google Ads API request intercepted');
-      return [];
+      return this.getMockSearchResults();
     }
 
     try {
@@ -127,6 +245,7 @@ export class GoogleAdsAdapter implements PlatformAdapter {
 
 
   async read(since: Date): Promise<CanonicalAdsRows> {
+    this.readCount++;
     const formattedDate = since.toISOString().split('T')[0];
     this.logger.info('Reading campaigns and spend facts since date', {
       'since': formattedDate,
@@ -147,6 +266,18 @@ export class GoogleAdsAdapter implements PlatformAdapter {
 
     const results = await this.search(query);
     const normalized = this.normalize(results);
+
+    // If anomaly trigger index is met, inflate spend facts to cause ROAS drop
+    if (
+      this.triggerAnomalyOnReadIndex !== -1 &&
+      this.readCount >= this.triggerAnomalyOnReadIndex
+    ) {
+      this.logger.warn('Mocking anomaly: inflating cost in spend facts');
+      for (const sf of normalized.spend_facts) {
+        sf['amount'] = (sf['amount'] as number) * 2.0; // 2x cost
+      }
+    }
+
     this.logger.info('Campaign data extraction and normalization complete', {
       'campaignsCount': normalized.campaigns.length,
       'spendFactsCount': normalized.spend_facts.length,
@@ -225,13 +356,25 @@ export class GoogleAdsAdapter implements PlatformAdapter {
     const warnings: string[] = [];
     let projectedCost = 0;
 
-    // Validate the campaign target exists
-    const camp = this.simulatedCampaigns.get(req.targetId);
-    if (!camp) {
-      warnings.push(`Campaign ${req.targetId} not found in live cache.`);
-      this.logger.warn('Google Ads campaign not found in cache during planning', {
-        'targetId': req.targetId,
-      });
+    let campBudget = 0;
+    if (req.entity === 'ad_group') {
+      const adg = this.simulatedAdGroups.get(req.targetId);
+      if (!adg) {
+        warnings.push(`Ad Group ${req.targetId} not found in live cache.`);
+        this.logger.warn('Google Ads ad group not found in cache during planning', {
+          'targetId': req.targetId,
+        });
+      }
+    } else {
+      const camp = this.simulatedCampaigns.get(req.targetId);
+      if (!camp) {
+        warnings.push(`Campaign ${req.targetId} not found in live cache.`);
+        this.logger.warn('Google Ads campaign not found in cache during planning', {
+          'targetId': req.targetId,
+        });
+      } else {
+        campBudget = camp.budget;
+      }
     }
 
     if (req.op === 'update_budget') {
@@ -252,7 +395,7 @@ export class GoogleAdsAdapter implements PlatformAdapter {
           warnings: ['Invalid budget update value.'],
         };
       }
-      projectedCost = Math.abs(payload.budget - (camp?.budget ?? 0));
+      projectedCost = Math.abs(payload.budget - campBudget);
     } else if (req.op === 'scale_budget') {
       const payload = req.payload as {scaleFactor: number};
       if (
@@ -271,7 +414,7 @@ export class GoogleAdsAdapter implements PlatformAdapter {
           warnings: ['Invalid budget scale factor.'],
         };
       }
-      projectedCost = (camp?.budget ?? 0) * Math.abs(payload.scaleFactor - 1.0);
+      projectedCost = campBudget * Math.abs(payload.scaleFactor - 1.0);
     }
 
     this.logger.info('Google Ads action plan evaluated', {
@@ -304,6 +447,43 @@ export class GoogleAdsAdapter implements PlatformAdapter {
         'op': req.op,
       });
       return {ok: false, auditRef: 'invalid_plan', error: 'Plan is invalid'};
+    }
+
+    if (req.entity === 'ad_group') {
+      const adg = this.simulatedAdGroups.get(req.targetId);
+      const originalState = adg ? {...adg} : {status: 'UNKNOWN'};
+
+      if (req.op === 'pause') {
+        this.simulatedAdGroups.set(req.targetId, {
+          campaignId: adg?.campaignId ?? '',
+          name: adg?.name ?? '',
+          status: 'PAUSED',
+        });
+      } else if (req.op === 'activate') {
+        this.simulatedAdGroups.set(req.targetId, {
+          campaignId: adg?.campaignId ?? '',
+          name: adg?.name ?? '',
+          status: 'ENABLED',
+        });
+      }
+
+      const rollback: RollbackHandle = {
+        rollbackId: `rb_${req.idempotencyKey}`,
+        platform: this.platform,
+        originalState,
+      };
+
+      this.logger.info('Google Ads action executed successfully for ad group', {
+        'targetId': req.targetId,
+        'op': req.op,
+        'originalState': originalState,
+      });
+
+      return {
+        ok: true,
+        auditRef: `exec_${req.idempotencyKey}`,
+        rollback,
+      };
     }
 
     const camp = this.simulatedCampaigns.get(req.targetId);
@@ -422,8 +602,34 @@ export class GoogleAdsAdapter implements PlatformAdapter {
     }
   }
 
+  private getMockSearchResults(): any[] {
+    return [
+      {
+        campaign: {
+          id: 'c1',
+          name: 'Google Search Leads',
+          status: 'ENABLED',
+          advertising_channel_type: 'SEARCH',
+        },
+        metrics: {
+          cost_micros: '400000000', // $400 cost
+        },
+        segments: {
+          date: new Date().toISOString().split('T')[0],
+        },
+        customer: {
+          currency_code: 'USD',
+        },
+      },
+    ];
+  }
+
   // Helper to fetch simulated status in tests
   getSimulatedCampaign(id: string) {
     return this.simulatedCampaigns.get(id);
+  }
+
+  getSimulatedAdGroup(id: string) {
+    return this.simulatedAdGroups.get(id);
   }
 }

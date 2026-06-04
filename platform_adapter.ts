@@ -66,12 +66,12 @@ export interface PlatformAdapter {
   readonly capabilities: Capability[];
 
   // --- READ ---
-  read(since: Date): Promise<any> | AsyncIterable<any>;
+  read?(since: Date): Promise<any> | AsyncIterable<any>;
 
   // --- WRITE ---
-  plan(req: ActionRequest): Promise<ActionPlan>;
-  execute(plan: ActionPlan): Promise<ActionResult>;
-  rollback(h: RollbackHandle): Promise<ActionResult>;
+  plan?(req: ActionRequest): Promise<ActionPlan>;
+  execute?(plan: ActionPlan): Promise<ActionResult>;
+  rollback?(h: RollbackHandle): Promise<ActionResult>;
 
   // --- HEALTH ---
   healthCheck(): Promise<HealthReport>;

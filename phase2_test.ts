@@ -148,6 +148,28 @@ describe('Phase 2 Governance & Execution Suite', () => {
       'mock_auth',
       tenantId,
     );
+    // Set mock anomaly trigger on the 2nd read (which is the post-execution verification read)
+    adapter.triggerAnomalyOnReadIndex = 2;
+
+    await engine.supabase.saveOrder({
+      order_id: 'o1',
+      customer_id: 'cust1',
+      account_id: null,
+      channel: 'online',
+      surface: 'shopify',
+      placed_at: new Date().toISOString(),
+      currency: 'USD',
+      gross_revenue: 10000,
+      total_discounts: 0,
+      total_tax: 0,
+      shipping_charged: 0,
+      status: 'PAID',
+      tenant_id: tenantId,
+      source_system: 'shopify',
+      source_id: 'shop_o1',
+      source_version: '1.0',
+      ingested_at: new Date().toISOString(),
+    });
 
     trustLedger.setTier(tenantId, 'update_budget', 3); // Seed high trust
 
@@ -156,7 +178,7 @@ describe('Phase 2 Governance & Execution Suite', () => {
       op: 'update_budget',
       entity: 'campaign',
       targetId: 'c1', // initial simulated budget: 1000
-      payload: {budget: 1200, triggerAnomaly: true},
+      payload: {budget: 1200},
       confidence: 0.95,
     };
 

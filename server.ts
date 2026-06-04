@@ -6,11 +6,12 @@
 
 import * as http from 'http';
 import * as url from 'url';
+import {createHash} from 'node:crypto';
 import {config} from './config';
 import {sendErrorResponse, ValidationError, RateLimitError} from './errors';
 import {eventBus} from './event_bus';
 import {GoogleAdsAdapter} from './google_ads_adapter';
-import {authMiddleware} from './auth';
+import {authMiddleware, DecodedJwt} from './auth';
 import {validateActionRequest, validateContext} from './validation';
 import {TokenBucket, RateLimitingAdapterWrapper} from './rate_limiter';
 import {
@@ -20,6 +21,11 @@ import {
 } from './governance_engine';
 import {SupabaseClient} from './supabase_client';
 import {UnifiedIntelligenceBrain} from './unified_brain';
+import {IdentityResolver} from './identity_resolver';
+import {PersistentAuditSink} from './audit_sink';
+
+const sha256 = (s: string) =>
+  createHash('sha256').update(s.trim().toLowerCase()).digest('hex');
 
 const sseClients = new Set<http.ServerResponse>();
 
@@ -96,8 +102,13 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
   const tl = new TrustLedger();
 
   const server = http.createServer(async (req, res) => {
-    // Enable CORS by default
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    // Secure CORS settings: echo allowed origins only
+    const origin = req.headers['origin'];
+    if (origin && (origin.startsWith('http://localhost') || origin.endsWith('.google.com'))) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+    } else {
+      res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
+    }
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader(
       'Access-Control-Allow-Headers',
@@ -114,6 +125,165 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
       checkRateLimit(req);
       const parsedUrl = url.parse(req.url || '', true);
       const path = parsedUrl.pathname || '';
+
+      // A. Google Tag Gateway (GTG) - Public Endpoint
+      if (path === '/api/v1/gtg' && req.method === 'GET') {
+        const id = parsedUrl.query['id'] || 'GTM-DEFAULT';
+        res.writeHead(200, {'Content-Type': 'application/javascript'});
+        res.end(`
+          (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+          new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+          j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+          'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+          })(window,document,'script','dataLayer','${id}');
+          console.log('Google Tag Gateway active for container ${id}');
+        `);
+        return;
+      }
+
+      // B. Server-Side GTM Event Collection Endpoint - Public Ingestion
+      if (path === '/api/v1/sgtm/events' && req.method === 'POST') {
+        const body = await parseRequestBody(req);
+        const tenantId = (req.headers['x-tenant-id'] as string) || (parsedUrl.query['tenantId'] as string) || body.tenantId;
+
+        if (!tenantId) {
+          res.writeHead(400, {'Content-Type': 'application/json'});
+          res.end(JSON.stringify({
+            error: {
+              code: 'BAD_REQUEST',
+              message: 'Missing tenantId header, query parameter, or payload field',
+            },
+          }));
+          return;
+        }
+
+        const eventName = body.eventName;
+        const clientId = body.clientId;
+        const gclid = body.gclid;
+        const customerData = body.customerData || {};
+        const consent = body.consent || {
+          adStorage: 'granted',
+          adUserData: 'granted',
+          analyticsStorage: 'granted',
+        };
+
+        // Redact values based on Consent Mode v2
+        let resolvedEmail = customerData.email;
+        let resolvedPhone = customerData.phone;
+        let resolvedGclid = gclid;
+
+        if (consent.adUserData === 'denied') {
+          resolvedEmail = undefined;
+          resolvedPhone = undefined;
+        }
+        if (consent.adStorage === 'denied') {
+          resolvedGclid = undefined;
+        }
+
+        const requestDb = db.clone();
+        requestDb.setTenantContext(tenantId);
+        const resolver = new IdentityResolver(tenantId);
+
+        // Pre-seed IdentityResolver with current database links
+        const existingLinks = await requestDb.getIdentityLinks(tenantId);
+        for (const link of existingLinks) {
+          resolver.seedExistingLink(
+            link.identifier_hash,
+            link.customer_id,
+            link.confidence,
+          );
+        }
+
+        const inputs: any[] = [];
+        if (resolvedEmail) {
+          inputs.push({identifierType: 'email', rawIdentifier: resolvedEmail});
+        }
+        if (resolvedPhone) {
+          inputs.push({identifierType: 'phone', rawIdentifier: resolvedPhone});
+        }
+        if (clientId) {
+          inputs.push({identifierType: 'device', rawIdentifier: clientId});
+        }
+
+        const resolution = resolver.resolve(inputs);
+
+        if (resolution.isNew) {
+          await requestDb.saveCustomer({
+            customer_id: resolution.customerId,
+            account_id: null,
+            type: 'b2c',
+            first_seen: new Date().toISOString(),
+            consent_status: consent.adUserData === 'granted' ? 'GRANTED' : 'DENIED',
+            tenant_id: tenantId,
+            source_system: 'sgtm',
+            source_id: resolution.customerId,
+            source_version: 'v1',
+            ingested_at: new Date().toISOString(),
+          });
+        }
+
+        // Write new resolved links back to DB
+        const links = resolver.getLinks();
+        for (const [hash, link] of links.entries()) {
+          const matched = existingLinks.find((el) => el.identifier_hash === hash);
+          if (!matched) {
+            const type =
+              inputs.find((inp) => sha256(inp.rawIdentifier) === hash)
+                ?.identifierType || 'device';
+            await requestDb.saveIdentityLink({
+              customer_id: link.customerId,
+              identifier_type: type,
+              identifier_hash: hash,
+              confidence: link.confidence,
+              tenant_id: tenantId,
+              source_system: 'sgtm',
+              ingested_at: new Date().toISOString(),
+            });
+          }
+        }
+
+        const touchpointId = `tp-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+        await requestDb.saveTouchpoint({
+          touchpoint_id: touchpointId,
+          customer_id: resolution.customerId,
+          campaign_id: resolvedGclid ? `camp-${resolvedGclid}` : null,
+          order_id: body.orderId || null,
+          occurred_at: new Date().toISOString(),
+          type: eventName,
+          tenant_id: tenantId,
+          source_system: 'sgtm',
+          ingested_at: new Date().toISOString(),
+        });
+
+        sendSuccessResponse(res, {
+          status: 'collected',
+          touchpointId,
+          customerId: resolution.customerId,
+          consentApplied: consent,
+        });
+        return;
+      }
+
+      // Centralized Authentication for all v1 API endpoints
+      let decodedToken: DecodedJwt;
+      try {
+        decodedToken = authMiddleware(req, config.auth.jwtSecret);
+      } catch (authErr: any) {
+        res.writeHead(401, {'Content-Type': 'application/json'});
+        res.end(
+          JSON.stringify({
+            status: 'error',
+            error: {
+              code: 'UNAUTHORIZED',
+              message: authErr.message || 'Unauthorized',
+            },
+          }),
+        );
+        return;
+      }
+
+      const tenantId = decodedToken.orgId;
+
       // 1. SSE STREAM ENDPOINT
       if (path === '/api/v1/stream' && req.method === 'GET') {
         res.writeHead(200, {
@@ -134,8 +304,6 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
 
       // 2. HEALTH / STATUS PULSE
       if (path === '/api/v1/health' && req.method === 'GET') {
-        const tenantId =
-          (parsedUrl.query['tenantId'] as string) || 'test-tenant';
         const clients = await db.getClients(tenantId);
 
         sendSuccessResponse(res, {
@@ -153,8 +321,6 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
 
       // 3. RECOMMENDATIONS
       if (path === '/api/v1/recommendations' && req.method === 'GET') {
-        const tenantId =
-          (parsedUrl.query['tenantId'] as string) || 'test-tenant';
         const recs = await brain.analyzeProfitability(tenantId);
         sendSuccessResponse(res, {recommendations: recs});
         return;
@@ -162,8 +328,6 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
 
       // 4. RISKS
       if (path === '/api/v1/risks' && req.method === 'GET') {
-        const tenantId =
-          (parsedUrl.query['tenantId'] as string) || 'test-tenant';
         // Call brain risk check with empty inventory status for mock stability
         const risks = await brain.detectRisks(tenantId, []);
         sendSuccessResponse(res, {risks});
@@ -172,8 +336,6 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
 
       // 5. APPROVALS
       if (path === '/api/v1/approvals' && req.method === 'GET') {
-        const tenantId =
-          (parsedUrl.query['tenantId'] as string) || 'test-tenant';
         const approvals = await db.getApprovals(tenantId);
         sendSuccessResponse(res, {approvals});
         return;
@@ -181,7 +343,6 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
 
       // 6. EXECUTE CAMPAIGN ACTIONS (POST)
       if (path === '/api/v1/actions' && req.method === 'POST') {
-        const decodedToken = authMiddleware(req, config.auth.jwtSecret);
         const body = await parseRequestBody(req);
 
         // Map high-level brain recommendations to platform-specific operations before validation
@@ -231,7 +392,7 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
         requestDb.setTenantContext(decodedToken.orgId);
 
         const requestGovernance = new GovernanceEngine(
-          {record: async () => {}},
+          new PersistentAuditSink(requestDb),
           tl,
           cb,
           undefined,

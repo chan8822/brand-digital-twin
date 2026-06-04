@@ -65,11 +65,17 @@ export class ChaosAdapterWrapper implements PlatformAdapter {
 
   async read(since: Date): Promise<any> {
     await this.injectChaos();
+    if (!this.delegate.read) {
+      throw new Error(`Delegate '${this.delegate.platform}' does not support read.`);
+    }
     return this.delegate.read(since);
   }
 
   async plan(req: ActionRequest): Promise<ActionPlan> {
     await this.injectChaos();
+    if (!this.delegate.plan) {
+      throw new Error(`Delegate '${this.delegate.platform}' does not support plan.`);
+    }
     return this.delegate.plan(req);
   }
 
@@ -82,11 +88,17 @@ export class ChaosAdapterWrapper implements PlatformAdapter {
         error: 'Simulated partial write failure',
       };
     }
+    if (!this.delegate.execute) {
+      throw new Error(`Delegate '${this.delegate.platform}' does not support execute.`);
+    }
     return this.delegate.execute(plan);
   }
 
   async rollback(h: RollbackHandle): Promise<ActionResult> {
     await this.injectChaos();
+    if (!this.delegate.rollback) {
+      throw new Error(`Delegate '${this.delegate.platform}' does not support rollback.`);
+    }
     return this.delegate.rollback(h);
   }
 
@@ -129,6 +141,9 @@ export class ForensicReplayer {
         confidence: log.confidence ?? 1.0,
       };
 
+      if (!adapter.plan) {
+        throw new Error(`Platform adapter '${adapter.platform}' does not support planning.`);
+      }
       const plan = await adapter.plan(req);
       const earned = await this.governance.getTrustTier(
         ctx.tenant.tenantId,

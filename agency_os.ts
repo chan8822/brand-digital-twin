@@ -11,8 +11,9 @@ import {
   TeamMember,
 } from './agency_os_types';
 import {GovernanceEngine} from './governance_engine';
-import {Context} from './governance_types';
-import {ActionRequest} from './platform_adapter';
+import {Context, Role} from './governance_types';
+import {PinoLogger} from './observability';
+import {ActionRequest, PlatformAdapter} from './platform_adapter';
 import {SupabaseClient} from './supabase_client';
 
 /**
@@ -61,6 +62,8 @@ export class CollaborationHub {
  * ApprovalWorkflowManager orchestrates interactive sign-offs on actions that require human review.
  */
 export class ApprovalWorkflowManager {
+  private readonly logger = new PinoLogger();
+
   constructor(
     private readonly db: SupabaseClient,
     private readonly governance: GovernanceEngine,
@@ -76,7 +79,7 @@ export class ApprovalWorkflowManager {
     assignedRole: string,
   ): Promise<ApprovalRequest> {
     const approval: ApprovalRequest = {
-      approvalId: `appr-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      approvalId: `appr-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       orgId: 'org-1',
       entityType: req.entity,
       entityId: req.targetId,
@@ -86,12 +89,14 @@ export class ApprovalWorkflowManager {
       reason: reason,
       tenantId: ctx.tenant.tenantId,
       createdAt: Date.now(),
+      actionRequest: req,
+      context: ctx,
     };
     await this.db.saveApproval(approval);
 
     // Notify activity feed
     await this.db.logActivity({
-      eventId: `evt-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      eventId: `evt-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       orgId: 'org-1',
       actorId: 'system',
       actionType: 'approval_requested',
@@ -114,6 +119,7 @@ export class ApprovalWorkflowManager {
     approverMember: TeamMember,
     approved: boolean,
     comments?: string,
+    adapter?: PlatformAdapter,
   ): Promise<boolean> {
     const approvals = await this.db.getApprovals(approverMember.tenantId);
     const request = approvals.find((a) => a.approvalId === approvalId);
@@ -141,7 +147,7 @@ export class ApprovalWorkflowManager {
 
     // Log activity to the feed
     await this.db.logActivity({
-      eventId: `evt-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      eventId: `evt-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       orgId: request.orgId,
       actorId: approverMember.memberId,
       actionType: approved ? 'approval_signed_off' : 'approval_rejected',
@@ -152,6 +158,48 @@ export class ApprovalWorkflowManager {
       tenantId: request.tenantId,
       createdAt: Date.now(),
     });
+
+    // Resume execution if approved
+    if (approved && request.actionRequest && adapter) {
+      this.logger.info(
+        'Approval signed off: resuming execution via GovernanceEngine',
+        {
+          approvalId,
+          idempotencyKey: request.actionRequest.idempotencyKey,
+        },
+      );
+
+      const resumeCtx: Context = {
+        tenant: request.context.tenant,
+        role: {
+          name: approverMember.roleName,
+          permits: () => true, // elevated override permission
+        },
+        verifyWindowMs: request.context.verifyWindowMs,
+      };
+
+      // Register temporary waiver to bypass standard policy bounds
+      this.governance.registerWaiver(request.tenantId, {
+        allowedOps: [request.actionRequest.op],
+        overrideRole: approverMember.roleName,
+        reason: `Approved override sign-off (comments: ${comments || 'none'})`,
+        expiresAtMs: Date.now() + 5 * 60 * 1000, // 5 min window
+      });
+
+      const res = await this.governance.govern(
+        adapter,
+        request.actionRequest,
+        resumeCtx,
+      );
+      this.logger.info('Resumed governance execution complete', {
+        approvalId,
+        status: res.status,
+      });
+
+      if (res.status !== 'executed') {
+        throw new Error(`Resumed execution failed: status is ${res.status}`);
+      }
+    }
 
     return true;
   }

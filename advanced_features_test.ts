@@ -66,9 +66,36 @@ class DummyAdapter implements PlatformAdapter {
   rolledBackCount = 0;
   lastScaleFactor: number | undefined;
   execCount = 0;
+  readCount = 0;
+  triggerAnomalyOnReadIndex = -1;
 
   async read(since: Date) {
-    return [];
+    this.readCount++;
+    let cost = 400000000; // $400
+    if (
+      this.triggerAnomalyOnReadIndex !== -1 &&
+      this.readCount >= this.triggerAnomalyOnReadIndex
+    ) {
+      cost = 800000000; // $800
+    }
+    return {
+      campaigns: [
+        {
+          campaign_id: 'camp-123',
+          name: 'Dummy Campaign',
+          status: 'ENABLED',
+          advertising_channel_type: 'SEARCH',
+        },
+      ],
+      spend_facts: [
+        {
+          campaign_id: 'camp-123',
+          day: since.toISOString().split('T')[0],
+          amount: cost / 1000000, // $400 or $800
+          currency: 'USD',
+        },
+      ],
+    };
   }
 
   async plan(req: ActionRequest): Promise<ActionPlan> {
@@ -172,17 +199,34 @@ describe('Advanced Risk & Observability Features', () => {
 
   describe('Statistical Anomaly & Gradual Rollbacks', () => {
     it('should trigger gradual rollback on >15% ROAS drop', async () => {
+      adapter.triggerAnomalyOnReadIndex = 2;
+
+      await engine.supabase.saveOrder({
+        order_id: 'o1',
+        customer_id: 'cust1',
+        account_id: null,
+        channel: 'online',
+        surface: 'shopify',
+        placed_at: new Date().toISOString(),
+        currency: 'USD',
+        gross_revenue: 10000,
+        total_discounts: 0,
+        total_tax: 0,
+        shipping_charged: 0,
+        status: 'PAID',
+        tenant_id: 'tenant-1',
+        source_system: 'shopify',
+        source_id: 'shop_o1',
+        source_version: '1.0',
+        ingested_at: new Date().toISOString(),
+      });
+
       const req: ActionRequest = {
         idempotencyKey: 'key-anomaly',
         op: 'update_budget',
         entity: 'campaign',
         targetId: 'camp-123',
-        payload: {
-          verifyMetrics: {
-            preExecutionROAS: 3.0,
-            postExecutionROAS: 2.0, // Drop is (3 - 2)/3 = 33% (>15%)
-          },
-        },
+        payload: {},
         confidence: 0.9,
       };
 
@@ -541,15 +585,13 @@ describe('Advanced Risk & Observability Features', () => {
 
   describe('Governance Cost & Policy Validation', () => {
     it('should reject negative projected cost from adapter plan', async () => {
-      const negativeCostAdapter = {
-        ...adapter,
-        plan: async (req: ActionRequest) => ({
-          request: req,
-          valid: true,
-          projectedCost: -50, // Negative!
-          warnings: [],
-        }),
-      };
+      const negativeCostAdapter = Object.create(adapter);
+      negativeCostAdapter.plan = async (req: ActionRequest) => ({
+        request: req,
+        valid: true,
+        projectedCost: -50, // Negative!
+        warnings: [],
+      });
 
       await expectAsync(
         engine.govern(

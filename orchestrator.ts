@@ -188,11 +188,15 @@ export class Orchestrator {
       // Reverse order rollback
       while (rollbackStack.length > 0) {
         const item = rollbackStack.pop()!;
-        try {
-          await item.adapter.rollback(item.handle);
-        } catch (err) {
-          // Log rollback failure, but continue rolling back the rest
-          console.error(`Rollback failed for node ${item.nodeId}:`, err);
+        if (item.adapter.rollback) {
+          try {
+            await item.adapter.rollback(item.handle);
+          } catch (err) {
+            // Log rollback failure, but continue rolling back the rest
+            console.error(`Rollback failed for node ${item.nodeId}:`, err);
+          }
+        } else {
+          console.warn(`Rollback not supported by adapter '${item.adapter.platform}' for node ${item.nodeId}`);
         }
       }
 

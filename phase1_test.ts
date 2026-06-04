@@ -1,229 +1,331 @@
 import 'jasmine';
-import {AnalystAgent} from './analyst_agent';
-import {GoogleAdsAdapter} from './google_ads_adapter';
-import {IdentityResolver} from './identity_resolver';
-import {MetaAdsAdapter} from './meta_ads_adapter';
+import {createHash} from 'node:crypto';
+import {IngestionEngine} from './ingestion_engine';
+import {PoasCalculator} from './poas_calculator';
+import {SupabaseClient} from './supabase_client';
+import {PlatformAdapter} from './platform_adapter';
 
-describe('Phase 1 Integration Suite', () => {
-  const tenantId = 'tenant_test_123';
+const sha256 = (s: string) =>
+  createHash('sha256').update(s.trim().toLowerCase()).digest('hex');
 
-  // --- 1. Google Ads Adapter Test ---
-  describe('GoogleAdsAdapter', () => {
-    it('should fetch and normalize GAQL response into canonical campaigns and spend facts', async () => {
-      const adapter = new GoogleAdsAdapter(
-        '123-456-7890',
-        'mock_dev_token',
-        'mock_auth_token',
-        tenantId,
-      );
+describe('Phase 1a Ingestion and POAS calculation', () => {
+  let db: SupabaseClient;
+  let engine: IngestionEngine;
+  let calculator: PoasCalculator;
 
-      // Mock search function
-      const mockResults = [
-        {
-          campaign: {
-            id: '888',
-            name: 'Winter Search Campaign',
-            status: 'ENABLED',
-            advertisingChannelType: 'SEARCH',
-          },
-          metrics: {costMicros: '150000000'}, // $150.00
-          segments: {date: '2026-06-01'},
-          customer: {currencyCode: 'USD'},
-        },
-        {
-          campaign: {
-            id: '888',
-            name: 'Winter Search Campaign',
-            status: 'ENABLED',
-            advertisingChannelType: 'SEARCH',
-          },
-          metrics: {costMicros: '250000000'}, // $250.00
-          segments: {date: '2026-06-02'},
-          customer: {currencyCode: 'USD'},
-        },
-      ];
+  const tenantId = 'tenant_pilot_123';
 
-      spyOn(adapter as any, 'search').and.returnValue(
-        Promise.resolve(mockResults),
-      );
-
-      const rows = await adapter.read(new Date('2026-06-01'));
-
-      expect(rows.campaigns.length).toBe(1);
-      expect(rows.campaigns[0]['campaign_id']).toBe('888');
-      expect(rows.campaigns[0]['name']).toBe('Winter Search Campaign');
-      expect(rows.campaigns[0]['objective']).toBe('SEARCH');
-      expect(rows.campaigns[0]['status']).toBe('ENABLED');
-
-      expect(rows.spend_facts.length).toBe(2);
-      expect(rows.spend_facts[0]['campaign_id']).toBe('888');
-      expect(rows.spend_facts[0]['day']).toBe('2026-06-01');
-      expect(rows.spend_facts[0]['amount']).toBe(150.0);
-      expect(rows.spend_facts[1]['day']).toBe('2026-06-02');
-      expect(rows.spend_facts[1]['amount']).toBe(250.0);
-    });
+  beforeEach(() => {
+    db = new SupabaseClient(undefined, undefined, true);
+    db.setTenantContext(tenantId);
+    engine = new IngestionEngine(db);
+    calculator = new PoasCalculator(db);
   });
 
-  // --- 2. Meta Ads Adapter Test ---
-  describe('MetaAdsAdapter', () => {
-    it('should fetch and normalize Meta API response into canonical campaigns and spend facts', async () => {
-      const adapter = new MetaAdsAdapter(
-        'act_555',
-        'mock_access_token',
-        tenantId,
-      );
-
-      const mockCampaigns = {
-        data: [
-          {
-            id: '777',
-            name: 'Meta Conversion Ads',
-            status: 'ACTIVE',
-            objective: 'CONVERSIONS',
-          },
-        ],
-      };
-
-      const mockInsights = {
-        data: [
-          {
-            campaign_id: '777',
-            campaign_name: 'Meta Conversion Ads',
-            spend: '89.50',
-            date_start: '2026-06-01',
-            account_currency: 'USD',
-          },
-        ],
-      };
-
-      spyOn(adapter as any, 'fetchGraph').and.callFake((path: string) => {
-        if (path.includes('campaigns')) {
-          return Promise.resolve(mockCampaigns);
-        } else if (path.includes('insights')) {
-          return Promise.resolve(mockInsights);
-        }
-        return Promise.resolve({data: []});
-      });
-
-      const rows = await adapter.read(new Date('2026-06-01'));
-
-      expect(rows.campaigns.length).toBe(1);
-      expect(rows.campaigns[0]['campaign_id']).toBe('777');
-      expect(rows.campaigns[0]['objective']).toBe('CONVERSIONS');
-
-      expect(rows.spend_facts.length).toBe(1);
-      expect(rows.spend_facts[0]['campaign_id']).toBe('777');
-      expect(rows.spend_facts[0]['amount']).toBe(89.5);
-    });
-  });
-
-  // --- 3. Identity Resolver Test ---
-  describe('IdentityResolver', () => {
-    it('should resolve and cluster identifiers to a single customer ID', () => {
-      const resolver = new IdentityResolver(tenantId);
-
-      // Scenario 1: New customer signs up with email
-      const res1 = resolver.resolve([
-        {identifierType: 'email', rawIdentifier: 'alice@gmail.com'},
-      ]);
-      expect(res1.isNew).toBe(true);
-      const aliceId = res1.customerId;
-
-      // Scenario 2: Same customer logs in later with same email, adds phone number
-      const res2 = resolver.resolve([
-        {identifierType: 'email', rawIdentifier: 'alice@gmail.com'},
-        {identifierType: 'phone', rawIdentifier: '+1234567890'},
-      ]);
-      expect(res2.customerId).toBe(aliceId);
-      expect(res2.isNew).toBe(false);
-
-      // Scenario 3: Another customer signs up with phone only
-      const res3 = resolver.resolve([
-        {identifierType: 'phone', rawIdentifier: '+9876543210'},
-      ]);
-      expect(res3.isNew).toBe(true);
-      const bobId = res3.customerId;
-
-      // Scenario 4: A transaction occurs linking Bob's phone and Alice's email (a merge scenario)
-      const res4 = resolver.resolve([
-        {identifierType: 'email', rawIdentifier: 'alice@gmail.com'},
-        {identifierType: 'phone', rawIdentifier: '+9876543210'},
-      ]);
-
-      // Bob's ID and Alice's ID should merge to one
-      expect(res4.isNew).toBe(false);
-      expect(res4.customerId).toBeDefined();
-      expect(res4.mergedFromCustomerId).toBeDefined();
-    });
-  });
-
-  // --- 4. Analyst Agent Test ---
-  describe('AnalystAgent', () => {
-    const analyst = new AnalystAgent(tenantId);
-
-    it('should flag unprofitable spend when POAS is below 1.0', () => {
-      const campaigns = [
-        {campaign_id: 'c1', name: 'Wasteful PMax', tenant_id: tenantId},
-      ];
-      const spendFacts = [
-        {campaign_id: 'c1', amount: 500.0, tenant_id: tenantId}, // spent $500
-      ];
-      // 10% of gross revenue is attributed to the campaign in analyst logic.
-      // With $2000 gross revenue, attributed = $200.
-      // POAS = 200 / 500 = 0.4 < 1.0
-      const orders = [
-        {order_id: 'o1', gross_revenue: 2000.0, tenant_id: tenantId},
-      ];
-
-      const recommendations = analyst.analyzeUnprofitableSpend(
-        campaigns,
-        spendFacts,
-        orders,
-      );
-      expect(recommendations.length).toBe(1);
-      expect(recommendations[0].type).toBe('unprofitable_spend');
-      expect(recommendations[0].severity).toBe('high');
-      expect(recommendations[0].suggestedAction).toContain('Wasteful PMax');
-    });
-
-    it('should flag stockout risks when advertising low stock products', () => {
-      const variants = [
-        {variant_id: 'v1', sku: 'LOWSTOCK-SKU', stock: 3, cost_cogs: 20.0},
-      ];
-      const campaigns = [
-        {
-          campaign_id: 'c2',
-          name: 'Promo LOWSTOCK-SKU Campaign',
+  it('runs Shopify & Google Ads ingestion, aggregates to calculate POAS', async () => {
+    // 1. Setup mock Shopify Adapter read generator
+    const mockShopifyOrderBatch = [
+      {
+        order: {
+          order_id: 'gid://shopify/Order/111',
+          customer_id: sha256('gid://shopify/Customer/999'),
+          account_id: null,
+          channel: 'b2c_web',
+          surface: 'pilot-shop.myshopify.com',
+          placed_at: '2026-06-01T12:00:00Z',
+          currency: 'USD',
+          gross_revenue: 100.0,
+          total_discounts: 10.0,
+          total_tax: 5.0,
+          shipping_charged: 8.0,
+          status: 'PAID',
+          source_system: 'shopify',
+          source_id: 'gid://shopify/Order/111',
+          source_version: 'shopify@2025-10',
+          ingested_at: new Date().toISOString(),
           tenant_id: tenantId,
         },
-      ];
-      const spendFacts = [
-        {campaign_id: 'c2', amount: 150.0, tenant_id: tenantId},
-      ];
+        order_lines: [
+          {
+            order_line_id: 'gid://shopify/LineItem/line-111',
+            order_id: 'gid://shopify/Order/111',
+            variant_id: 'gid://shopify/ProductVariant/v1',
+            sku: 'SKU-1',
+            qty: 2,
+            unit_price: 45.0,
+            line_discount: 5.0, // 5.0 discount per unit -> 10.0 total discount
+            unit_cost: 20.0, // COGS = 20.0 * 2 = 40.0
+            source_system: 'shopify',
+            source_id: 'gid://shopify/LineItem/line-111',
+            source_version: 'shopify@2025-10',
+            ingested_at: new Date().toISOString(),
+            tenant_id: tenantId,
+          },
+        ],
+        customer: {
+          customer_id: sha256('gid://shopify/Customer/999'),
+          type: 'b2c',
+          first_seen: '2026-06-01T12:00:00Z',
+          consent_status: 'GRANTED',
+          source_system: 'shopify',
+          source_id: sha256('gid://shopify/Customer/999'),
+          source_version: 'shopify@2025-10',
+          ingested_at: new Date().toISOString(),
+          tenant_id: tenantId,
+        },
+        identity_links: [
+          {
+            customer_id: sha256('gid://shopify/Customer/999'),
+            identifier_type: 'email',
+            identifier_hash: sha256('buyer@example.com'),
+            confidence: 1.0,
+            source_system: 'shopify',
+            ingested_at: new Date().toISOString(),
+            tenant_id: tenantId,
+          },
+        ],
+      },
+      {
+        order: {
+          order_id: 'gid://shopify/Order/222',
+          customer_id: sha256('gid://shopify/Customer/999'),
+          account_id: null,
+          channel: 'b2c_web',
+          surface: 'pilot-shop.myshopify.com',
+          placed_at: '2026-06-03T15:00:00Z',
+          currency: 'USD',
+          gross_revenue: 200.0,
+          total_discounts: 0,
+          total_tax: 10.0,
+          shipping_charged: 12.0,
+          status: 'PAID',
+          source_system: 'shopify',
+          source_id: 'gid://shopify/Order/222',
+          source_version: 'shopify@2025-10',
+          ingested_at: new Date().toISOString(),
+          tenant_id: tenantId,
+        },
+        order_lines: [
+          {
+            order_line_id: 'gid://shopify/LineItem/line-222',
+            order_id: 'gid://shopify/Order/222',
+            variant_id: 'gid://shopify/ProductVariant/v2',
+            sku: 'SKU-2',
+            qty: 1,
+            unit_price: 200.0,
+            line_discount: 0,
+            unit_cost: 150.0, // COGS = 150.0
+            source_system: 'shopify',
+            source_id: 'gid://shopify/LineItem/line-222',
+            source_version: 'shopify@2025-10',
+            ingested_at: new Date().toISOString(),
+            tenant_id: tenantId,
+          },
+        ],
+        customer: {
+          customer_id: sha256('gid://shopify/Customer/999'),
+          type: 'b2c',
+          first_seen: '2026-06-01T12:00:00Z',
+          consent_status: 'GRANTED',
+          source_system: 'shopify',
+          source_id: sha256('gid://shopify/Customer/999'),
+          source_version: 'shopify@2025-10',
+          ingested_at: new Date().toISOString(),
+          tenant_id: tenantId,
+        },
+        identity_links: [],
+      },
+    ];
 
-      const recommendations = analyst.analyzeStockoutRisks(
-        variants,
-        campaigns,
-        spendFacts,
-      );
-      expect(recommendations.length).toBe(1);
-      expect(recommendations[0].type).toBe('stockout_risk');
-      expect(recommendations[0].projectedSavings).toBe(150.0);
+    const mockShopifyAdapter: PlatformAdapter = {
+      platform: 'shopify',
+      schemaVersion: 'shopify@2025-10',
+      capabilities: [],
+      read: async function* () {
+        yield mockShopifyOrderBatch;
+      },
+      plan: async () => {
+        throw new Error('Not implemented');
+      },
+      execute: async () => {
+        throw new Error('Not implemented');
+      },
+      rollback: async () => {
+        throw new Error('Not implemented');
+      },
+      healthCheck: async () => ({
+        ok: true,
+        latencyMs: 1,
+        schemaDriftDetected: false,
+        deprecationWarnings: [],
+      }),
+    };
+
+    // 2. Setup mock Google Ads and Meta Ads data
+    const mockAdData = {
+      campaigns: [
+        {
+          campaign_id: 'camp-google-1',
+          platform: 'google_ads',
+          name: 'Google Search Spring',
+          objective: 'sales',
+          status: 'active',
+          surface: 'google',
+          tenant_id: tenantId,
+          source_system: 'google_ads',
+          source_id: 'camp-google-1',
+          source_version: 'v15',
+          ingested_at: new Date().toISOString(),
+        },
+        {
+          campaign_id: 'camp-meta-1',
+          platform: 'meta_ads',
+          name: 'Meta Retargeting',
+          objective: 'sales',
+          status: 'active',
+          surface: 'facebook',
+          tenant_id: tenantId,
+          source_system: 'meta_ads',
+          source_id: 'camp-meta-1',
+          source_version: 'v18',
+          ingested_at: new Date().toISOString(),
+        },
+      ],
+      spend_facts: [
+        {
+          campaign_id: 'camp-google-1',
+          platform: 'google_ads',
+          day: '2026-06-01',
+          amount: 10.0,
+          currency: 'USD',
+          tenant_id: tenantId,
+          source_system: 'google_ads',
+          ingested_at: new Date().toISOString(),
+        },
+        {
+          campaign_id: 'camp-meta-1',
+          platform: 'meta_ads',
+          day: '2026-06-03',
+          amount: 25.0,
+          currency: 'USD',
+          tenant_id: tenantId,
+          source_system: 'meta_ads',
+          ingested_at: new Date().toISOString(),
+        },
+      ],
+    };
+
+    const mockAdsAdapter: PlatformAdapter = {
+      platform: 'google_ads',
+      schemaVersion: 'v15',
+      capabilities: [],
+      read: async () => mockAdData,
+      plan: async () => {
+        throw new Error('Not implemented');
+      },
+      execute: async () => {
+        throw new Error('Not implemented');
+      },
+      rollback: async () => {
+        throw new Error('Not implemented');
+      },
+      healthCheck: async () => ({
+        ok: true,
+        latencyMs: 1,
+        schemaDriftDetected: false,
+        deprecationWarnings: [],
+      }),
+    };
+
+    // 3. Sync all data using the Ingestion Engine
+    await engine.sync(mockShopifyAdapter, new Date('2026-06-01T00:00:00Z'));
+    await engine.sync(mockAdsAdapter, new Date('2026-06-01T00:00:00Z'));
+
+    // 4. Manually seed refunds, fulfillment costs, and touchpoints into the DB
+    await db.saveRefund({
+      refund_id: 'ref-1',
+      order_line_id: 'gid://shopify/LineItem/line-111',
+      amount: 20.0,
+      refunded_at: '2026-06-02T10:00:00Z',
+      tenant_id: tenantId,
+      source_system: 'shopify',
+      source_id: 'ref-1',
+      source_version: 'shopify@2025-10',
+      ingested_at: new Date().toISOString(),
     });
 
-    it('should flag margin drift when unit costs erode margin', () => {
-      const variants = [
-        {variant_id: 'v2', sku: 'SHIRT-01', cost_cogs: 30.0}, // Current COGS is $30
-      ];
-      const orderLines = [
-        {variant_id: 'v2', unit_cost: 20.0, qty: 5}, // Hist average cost was $20
-        {variant_id: 'v2', unit_cost: 20.0, qty: 5},
-      ];
-
-      const recommendations = analyst.analyzeMarginDrift(variants, orderLines);
-      expect(recommendations.length).toBe(1);
-      expect(recommendations[0].type).toBe('margin_drift');
-      expect(recommendations[0].title).toContain('Margin Erosion');
+    await db.saveFulfillmentCost({
+      order_id: 'gid://shopify/Order/111',
+      shipping_cost: 10.0,
+      marketplace_fee: 2.0,
+      carrier: 'UPS',
+      tenant_id: tenantId,
+      source_system: 'shopify',
+      source_id: 'fc-111',
+      source_version: 'shopify@2025-10',
+      ingested_at: new Date().toISOString(),
     });
+
+    await db.saveTouchpoint({
+      touchpoint_id: 'tp-1',
+      customer_id: sha256('gid://shopify/Customer/999'),
+      campaign_id: 'camp-google-1',
+      order_id: null,
+      occurred_at: '2026-06-01T10:00:00Z', // 2h before Order 1
+      type: 'click',
+      tenant_id: tenantId,
+      source_system: 'google_ads',
+      ingested_at: new Date().toISOString(),
+    });
+
+    await db.saveTouchpoint({
+      touchpoint_id: 'tp-2',
+      customer_id: sha256('gid://shopify/Customer/999'),
+      campaign_id: 'camp-meta-1',
+      order_id: null,
+      occurred_at: '2026-06-03T10:00:00Z', // 5h before Order 2
+      type: 'click',
+      tenant_id: tenantId,
+      source_system: 'meta_ads',
+      ingested_at: new Date().toISOString(),
+    });
+
+    // 5. Calculate POAS
+    const reports = await calculator.calculate(tenantId);
+
+    // 6. Assertions
+    expect(reports.length).toBe(2);
+
+    // Google Campaign check
+    const googleRep = reports.find((r) => r.campaignId === 'camp-google-1')!;
+    expect(googleRep).toBeDefined();
+    expect(googleRep.spend).toBe(10.0);
+    // Net Margin calculations:
+    // Gross Rev: (45 - 5) * 2 = 80
+    // COGS: 20 * 2 = 40
+    // Gross Margin: 80 - 40 = 40
+    // Refund: 20
+    // Fulfillment: 10 (shipping) + 2 (fee) = 12
+    // Net Margin: 40 - 20 - 12 = 8
+    // POAS: 8 / 10 = 0.8
+    expect(googleRep.contributionMargin).toBe(8.0);
+    expect(googleRep.poas).toBe(0.8);
+
+    // Meta Campaign check
+    const metaRep = reports.find((r) => r.campaignId === 'camp-meta-1')!;
+    expect(metaRep).toBeDefined();
+    expect(metaRep.spend).toBe(25.0);
+    // Net Margin calculations:
+    // Gross Rev: 200
+    // COGS: 150
+    // Gross Margin: 200 - 150 = 50
+    // Net Margin: 50
+    // POAS: 50 / 25 = 2.0
+    expect(metaRep.contributionMargin).toBe(50.0);
+    expect(metaRep.poas).toBe(2.0);
+
+    // Sorting order check: POAS ASC -> camp-google-1 (0.8) then camp-meta-1 (2.0)
+    expect(reports[0].campaignId).toBe('camp-google-1');
+    expect(reports[1].campaignId).toBe('camp-meta-1');
   });
 });

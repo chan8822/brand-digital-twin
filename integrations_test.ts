@@ -2,6 +2,7 @@
  * @fileoverview Unit tests for OPA policy evaluation, Supabase client, and Pino-like logger.
  */
 
+import {RealtimeEventBus} from './event_bus';
 import {
   CircuitBreaker,
   GovernanceEngine,
@@ -290,6 +291,59 @@ describe('Integrations (OPA, Supabase, Pino)', () => {
           l.includes('Decision resolved'),
         ),
       ).toBe(true);
+    });
+  });
+
+  describe('RealtimeEventBus', () => {
+    let bus: RealtimeEventBus;
+
+    beforeEach(() => {
+      bus = new RealtimeEventBus();
+    });
+
+    afterEach(() => {
+      bus.cleanup();
+    });
+
+    it('should emit events immediately when below burst rate limit', () => {
+      const events: any[] = [];
+      bus.on('event', (e) => events.push(e));
+
+      bus.emitRiskAlert('t1', 'a1', 'high', 'Alert 1');
+      bus.emitRiskAlert('t1', 'a2', 'high', 'Alert 2');
+
+      expect(events.length).toBe(2);
+      expect(events[0].alertId).toBe('a1');
+      expect(events[1].alertId).toBe('a2');
+    });
+
+    it('should queue and delay event emissions when burst capacity is exceeded', async () => {
+      const events: any[] = [];
+      bus.on('event', (e) => events.push(e));
+
+      // Emit 12 events. The first 10 (burst limit) should emit immediately.
+      // The remaining 2 should be queued and delayed.
+      for (let i = 0; i < 12; i++) {
+        bus.emitRiskAlert('t1', `alert-${i}`, 'info', `Msg ${i}`);
+      }
+
+      // Check immediately: only 10 should be emitted
+      expect(events.length).toBe(10);
+
+      // Wait up to 600ms for 11th event to emit
+      let start = Date.now();
+      while (events.length < 11 && Date.now() - start < 600) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      expect(events.length).toBe(11);
+
+      // Wait up to another 600ms (total 1200ms) for 12th event to emit
+      start = Date.now();
+      while (events.length < 12 && Date.now() - start < 600) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      expect(events.length).toBe(12);
+      expect(events[11].alertId).toBe('alert-11');
     });
   });
 });

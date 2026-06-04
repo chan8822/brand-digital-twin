@@ -71,8 +71,19 @@ ts_library(
     name = "google_ads_adapter",
     srcs = ["google_ads_adapter.ts"],
     deps = [
+        ":agency_os_types",
         ":observability",
         ":platform_adapter",
+        "//third_party/javascript/typings/node",
+    ],
+)
+
+ts_library(
+    name = "google_merchant_adapter",
+    srcs = ["google_merchant_adapter.ts"],
+    deps = [
+        ":agency_os_types",
+        ":observability",
         "//third_party/javascript/typings/node",
     ],
 )
@@ -138,6 +149,7 @@ ts_library(
         ":agency_os_types",
         ":governance_engine",
         ":governance_types",
+        ":observability",
         ":platform_adapter",
         ":supabase_client",
     ],
@@ -184,6 +196,7 @@ ts_library(
         ":google_ads_adapter",
         ":governance_engine",
         ":platform_adapter",
+        ":supabase_client",
     ],
 )
 
@@ -283,6 +296,8 @@ ts_library(
     srcs = ["onboarding_wizard.ts"],
     deps = [
         ":agency_os_types",
+        ":google_ads_adapter",
+        ":google_merchant_adapter",
         ":supabase_client",
     ],
 )
@@ -340,6 +355,50 @@ ts_library(
 )
 
 ts_library(
+    name = "ingestion_engine",
+    srcs = ["ingestion_engine.ts"],
+    deps = [
+        ":platform_adapter",
+        ":supabase_client",
+    ],
+)
+
+ts_library(
+    name = "poas_calculator",
+    srcs = ["poas_calculator.ts"],
+    deps = [
+        ":supabase_client",
+    ],
+)
+
+ts_library(
+    name = "coverage_monitor",
+    srcs = ["coverage_monitor.ts"],
+    deps = [
+        ":agency_os_types",
+        ":supabase_client",
+    ],
+)
+
+ts_library(
+    name = "audit_sink",
+    srcs = ["audit_sink.ts"],
+    deps = [
+        ":governance_types",
+        ":supabase_client",
+    ],
+)
+
+ts_library(
+    name = "credential_vault",
+    srcs = ["credential_vault.ts"],
+    deps = [
+        ":supabase_client",
+        "//third_party/javascript/typings/node",
+    ],
+)
+
+ts_library(
     name = "server",
     srcs = ["server.ts"],
     deps = [
@@ -353,6 +412,8 @@ ts_library(
         ":supabase_client",
         ":unified_brain",
         ":validation",
+        ":identity_resolver",
+        ":audit_sink",
         "//third_party/javascript/typings/node",
     ],
 )
@@ -368,8 +429,10 @@ ts_library(
         "easysaas_test.ts",
         "integrations_test.ts",
         "onboarding_simulator_test.ts",
+        "onboarding_hierarchy_test.ts",
         "omnichannel_test.ts",
         "phase1_test.ts",
+        "phase1b_test.ts",
         "phase2_test.ts",
         "phase3_test.ts",
         "phase4_test.ts",
@@ -377,6 +440,7 @@ ts_library(
         "shopify_adapter_test.ts",
         "stakeholder_portal_test.ts",
         "supabase_client_test.ts",
+        "credential_vault_test.ts",
     ],
     deps = [
         ":account_health",
@@ -388,8 +452,10 @@ ts_library(
         ":analyst_agent",
         ":attribution_engine",
         ":easysaas_orchestration",
+        ":event_bus",
         ":forecasting",
         ":google_ads_adapter",
+        ":google_merchant_adapter",
         ":google_express",
         ":governance_engine",
         ":governance_types",
@@ -406,6 +472,11 @@ ts_library(
         ":operational_hubs",
         ":orchestrator",
         ":platform_adapter",
+        ":ingestion_engine",
+        ":poas_calculator",
+        ":coverage_monitor",
+        ":credential_vault",
+        ":audit_sink",
         ":rate_limiter",
         ":rbi_aa_adapter",
         ":risk_radar",
@@ -435,6 +506,16 @@ jasmine_node_test(
 )
 
 jasmine_node_test(
+    name = "credential_vault_test",
+    srcs = [":brand_twin_tests"],
+)
+
+jasmine_node_test(
+    name = "phase1b_test",
+    srcs = [":brand_twin_tests"],
+)
+
+jasmine_node_test(
     name = "phase2_test",
     srcs = [":brand_twin_tests"],
 )
@@ -456,6 +537,11 @@ jasmine_node_test(
 
 jasmine_node_test(
     name = "onboarding_simulator_test",
+    srcs = [":brand_twin_tests"],
+)
+
+jasmine_node_test(
+    name = "onboarding_hierarchy_test",
     srcs = [":brand_twin_tests"],
 )
 

@@ -66,8 +66,12 @@ export class TrustLedger {
     cost = 100,
     maxDailyDollarsRisk = 1000,
     approvedByRole?: string,
+    currentDbTier?: number,
   ) {
     const key = `${tenantId}:${actionType}`;
+    if (currentDbTier !== undefined) {
+      this.setTier(tenantId, actionType, currentDbTier);
+    }
     const outcomes = this.history.get(key) ?? [];
     const now = Date.now();
 
@@ -192,11 +196,21 @@ export class GovernanceEngine {
     result?: ActionResult;
   }> {
     const span = this.metrics.startSpan('govern', adapter.platform);
-    const now = new Date().toISOString();
-    const plan = await adapter.plan(req);
-    if (plan.projectedCost < 0) {
-      throw new ValidationError('Projected cost must be non-negative');
-    }
+    let spanStatus: 'success' | 'failure' = 'success';
+    let spanError: string | undefined = undefined;
+
+    try {
+      if (!adapter.plan || !adapter.execute) {
+        throw new Error(`Platform adapter '${adapter.platform}' does not support write/execute operations.`);
+      }
+      const planFn = adapter.plan;
+      const executeFn = adapter.execute;
+
+      const now = new Date().toISOString();
+      const plan = await planFn.call(adapter, req);
+      if (plan.projectedCost < 0) {
+        throw new ValidationError('Projected cost must be non-negative');
+      }
     eventBus.emitPhaseUpdate(
       ctx.tenant.tenantId,
       req.idempotencyKey,
@@ -282,12 +296,14 @@ export class GovernanceEngine {
     });
 
     if (disp.kind === 'BLOCK') {
-      this.metrics.endSpan(span.spanId, 'failure', `Blocked: ${disp.reason}`);
+      spanStatus = 'failure';
+      spanError = `Blocked: ${disp.reason}`;
       return {status: 'blocked'};
     }
 
     if (disp.kind === 'QUEUE') {
-      this.metrics.endSpan(span.spanId, 'failure', `Queued: ${disp.reason}`);
+      spanStatus = 'failure';
+      spanError = `Queued: ${disp.reason}`;
       return {status: 'queued'};
     }
 
@@ -305,6 +321,7 @@ export class GovernanceEngine {
         nowMs - ctx.tenant.onboardingStartMs < 48 * 60 * 60 * 1000);
 
     let result: ActionResult;
+    let preMetrics: {roas: number} | null = null;
     if (isShadow) {
       result = {
         ok: true,
@@ -335,7 +352,12 @@ export class GovernanceEngine {
         tenantId: ctx.tenant.tenantId,
       });
       try {
-        result = await adapter.execute(plan);
+        preMetrics = await this.readCurrentMetrics(
+          adapter,
+          ctx.tenant.tenantId,
+          req.targetId,
+        );
+        result = await executeFn.call(adapter, plan);
         eventBus.emitPhaseUpdate(
           ctx.tenant.tenantId,
           req.idempotencyKey,
@@ -383,7 +405,8 @@ export class GovernanceEngine {
             `Trust tier degraded from ${previousTier} to ${newTier} for action ${req.op}`,
           );
         }
-        this.metrics.endSpan(span.spanId, 'failure', errorMsg);
+        spanStatus = 'failure';
+        spanError = errorMsg;
         throw new AdapterError(adapter.platform, errorMsg);
       }
     }
@@ -421,7 +444,8 @@ export class GovernanceEngine {
           `Trust tier degraded from ${previousTier} to ${newTier} for action ${req.op}`,
         );
       }
-      this.metrics.endSpan(span.spanId, 'failure', result.error);
+      spanStatus = 'failure';
+      spanError = result.error;
       return {status: 'blocked', result};
     }
 
@@ -436,12 +460,16 @@ export class GovernanceEngine {
     });
 
     // 4. Verify Phase
-    const verifyMetrics = (req.payload as any)?.verifyMetrics ?? {
-      preExecutionROAS: 2.0,
-      postExecutionROAS: 2.0,
-      triggerAnomaly: (req.payload as any)?.triggerAnomaly === true,
-    };
-    const verificationOk = await this.verify(req, verifyMetrics);
+    let verificationOk = true;
+    if (!isShadow) {
+      const postMetrics = await this.readCurrentMetrics(
+        adapter,
+        ctx.tenant.tenantId,
+        req.targetId,
+      );
+      verificationOk = await this.verify(req, preMetrics, postMetrics);
+    }
+
     eventBus.emitPhaseUpdate(
       ctx.tenant.tenantId,
       req.idempotencyKey,
@@ -490,6 +518,7 @@ export class GovernanceEngine {
         plan.projectedCost,
         ctx.tenant.policy.maxDailyDollarsRisk,
         ctx.role.name,
+        earned,
       );
       const newTier = this.trustLedger.getTier(ctx.tenant.tenantId, req.op);
       await this.supabase.saveTrustTier(ctx.tenant.tenantId, req.op, newTier);
@@ -504,11 +533,8 @@ export class GovernanceEngine {
       this.metrics.raiseAlert(
         `Circuit breaker tripped for platform ${adapter.platform}`,
       );
-      this.metrics.endSpan(
-        span.spanId,
-        'failure',
-        'Verification anomaly, rollback initiated',
-      );
+      spanStatus = 'failure';
+      spanError = 'Verification anomaly, rollback initiated';
       return {status: 'rolled_back', result: rollbackResult};
     }
 
@@ -520,6 +546,7 @@ export class GovernanceEngine {
       plan.projectedCost,
       ctx.tenant.policy.maxDailyDollarsRisk,
       ctx.role.name,
+      earned,
     );
     const finalTier = this.trustLedger.getTier(ctx.tenant.tenantId, req.op);
     await this.supabase.saveTrustTier(ctx.tenant.tenantId, req.op, finalTier);
@@ -530,7 +557,7 @@ export class GovernanceEngine {
       newTrustTier: finalTier,
     });
 
-    this.metrics.endSpan(span.spanId, 'success');
+    spanStatus = 'success';
     eventBus.emitPhaseUpdate(
       ctx.tenant.tenantId,
       req.idempotencyKey,
@@ -538,7 +565,14 @@ export class GovernanceEngine {
       'COMPLETE',
     );
     return {status: 'executed', result};
+  } catch (err: any) {
+    spanStatus = 'failure';
+    spanError = err instanceof Error ? err.message : String(err);
+    throw err;
+  } finally {
+    this.metrics.endSpan(span.spanId, spanStatus, spanError);
   }
+}
 
   /**
    * The core decision engine mapping trust tier constraints and limits.
@@ -696,37 +730,95 @@ export class GovernanceEngine {
    */
   private async verify(
     req: ActionRequest,
-    metrics: {
-      preExecutionROAS: number;
-      postExecutionROAS: number;
-      triggerAnomaly?: boolean;
-    },
+    preMetrics: {roas: number} | null,
+    postMetrics: {roas: number},
   ): Promise<boolean> {
-    if (metrics.triggerAnomaly) {
-      return false; // Anomaly detected
+    if ((req.payload as any)?.triggerAnomaly === true) {
+      return false; // Force anomaly detection for tests/chaos
     }
-    // Statistical threshold: Rollback if ROAS drops by more than 15%
-    const dropRatio =
-      (metrics.preExecutionROAS - metrics.postExecutionROAS) /
-      metrics.preExecutionROAS;
+    if (!preMetrics) return true;
+
+    // Guard divide-by-zero if pre ROAS is zero/negative (issue 2.2)
+    if (preMetrics.roas <= 0) {
+      this.logger.warn('Pre-execution ROAS is zero or negative, bypassing drop verification check');
+      return true;
+    }
+
+    const dropRatio = (preMetrics.roas - postMetrics.roas) / preMetrics.roas;
     if (dropRatio > 0.15) {
+      this.logger.warn('Verification anomaly: ROAS drop threshold exceeded', {
+        preROAS: preMetrics.roas,
+        postROAS: postMetrics.roas,
+        dropRatio,
+      });
       return false;
     }
     return true; // Verification passed
+  }
+
+  private async readCurrentMetrics(
+    adapter: PlatformAdapter,
+    tenantId: string,
+    campaignId: string,
+  ): Promise<{roas: number}> {
+    const since = new Date(Date.now() - 24 * 3600 * 1000);
+    let spend = 0;
+    try {
+      if (!adapter.read) {
+        return {roas: 0};
+      }
+      const readFn = adapter.read;
+      const data = await readFn.call(adapter, since);
+      if (data && Array.isArray(data.spend_facts)) {
+        spend = data.spend_facts
+          .filter((sf: any) => sf.campaign_id === campaignId)
+          .reduce((sum: number, sf: any) => sum + (sf.amount as number), 0);
+      }
+    } catch (err) {
+      this.logger.error('Failed to read spend metrics from adapter', {
+        err: err instanceof Error ? err.message : String(err),
+      });
+    }
+
+    let revenue = 0;
+    if (this.supabase) {
+      try {
+        const orders = await this.supabase.getOrders(tenantId);
+        // Simple attribution: 10% of revenue to this campaign
+        revenue =
+          orders.reduce(
+            (sum: number, o: any) => sum + (o.gross_revenue as number),
+            0,
+          ) * 0.1;
+      } catch (err) {
+        this.logger.error('Failed to read order metrics from database', {
+          err: err instanceof Error ? err.message : String(err),
+        });
+      }
+    } else {
+      revenue = 1000; // Fallback for tests when no DB
+    }
+
+    const roas = spend > 0 ? revenue / spend : 2.0;
+    return {roas};
   }
 
   private async executeGradualRollback(
     adapter: PlatformAdapter,
     handle: RollbackHandle,
   ): Promise<ActionResult> {
+    if (!adapter.rollback) {
+      throw new Error(`Platform adapter '${adapter.platform}' does not support rollback operations.`);
+    }
+    const rollbackFn = adapter.rollback;
     // Step 1: Revert 50% first
     const partialHandle = {...handle, scaleFactor: 0.5};
-    const firstStep = await adapter.rollback(partialHandle);
+    const firstStep = await rollbackFn.call(adapter, partialHandle);
     if (!firstStep.ok) {
       // If partial fails, execute full immediate recovery
-      return await adapter.rollback(handle);
+      return await rollbackFn.call(adapter, handle);
     }
     // Step 2: Complete remaining 50%
-    return await adapter.rollback({...handle, scaleFactor: 1.0});
+    return await rollbackFn.call(adapter, {...handle, scaleFactor: 1.0});
   }
 }

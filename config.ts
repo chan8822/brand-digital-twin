@@ -46,3 +46,17 @@ export const config = {
     ),
   },
 };
+
+// Fail-fast validation in production env
+if (config.server.env === 'production') {
+  if (!process.env['JWT_SECRET'] || process.env['JWT_SECRET'] === 'default-super-secret-key-9988') {
+    throw new Error('PRODUCTION SECURITY ERROR: JWT_SECRET environment variable is missing or insecure.');
+  }
+  if (!process.env['SUPABASE_KEY'] || process.env['SUPABASE_KEY'] === 'mock-secret-key-12345') {
+    throw new Error('PRODUCTION SECURITY ERROR: SUPABASE_KEY environment variable is missing or insecure.');
+  }
+  if (!process.env['SUPABASE_URL'] || process.env['SUPABASE_URL'].includes('mock-supabase')) {
+    throw new Error('PRODUCTION SECURITY ERROR: SUPABASE_URL environment variable is missing or invalid.');
+  }
+}
+

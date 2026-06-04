@@ -12,9 +12,61 @@ import {
   SocialMention,
   StakeholderAssociation,
   TeamMember,
+  PlatformAccount,
+  AccountLink,
+  AccountCredential,
+  ProductAdLink,
 } from './agency_os_types';
 import {BaseError} from './errors';
 import {PinoLogger} from './observability';
+
+export interface PlatformAccountEntry {
+  account_id: string;
+  tenant_id: string;
+  platform: string;
+  platform_account_id: string;
+  account_name: string | null;
+  account_type: string;
+  parent_account_id?: string | null;
+  currency?: string | null;
+  timezone?: string | null;
+  status: string;
+  ingested_at: string;
+}
+
+export interface AccountLinkEntry {
+  link_id: string;
+  tenant_id: string;
+  account_id_a: string;
+  account_id_b: string;
+  link_type: string;
+  confidence: number;
+  confirmed_by: string;
+  created_at: string;
+}
+
+export interface AccountCredentialEntry {
+  credential_id: string;
+  account_id: string;
+  tenant_id: string;
+  access_token: string;
+  refresh_token: string;
+  expires_at: string;
+  scopes: string[];
+  rotated_at: string | null;
+}
+
+export interface ProductAdLinkEntry {
+  tenant_id: string;
+  variant_id: string;
+  gmc_offer_id: string;
+  gmc_account_id: string;
+  ads_account_id: string;
+  ads_campaign_id: string;
+  ads_ad_group_id: string;
+  confidence: number;
+  resolved_at: string;
+}
 
 export interface TrustEntry {
   tenant: string;
@@ -103,6 +155,87 @@ export interface SpendFactEntry {
   ingested_at: string;
 }
 
+export interface CustomerEntry {
+  customer_id: string;
+  account_id: string | null;
+  type: string;
+  first_seen: string;
+  consent_status: string | null;
+  tenant_id: string;
+  source_system: string;
+  source_id: string;
+  source_version: string;
+  ingested_at: string;
+}
+
+export interface IdentityLinkEntry {
+  customer_id: string;
+  identifier_type: string;
+  identifier_hash: string;
+  confidence: number;
+  tenant_id: string;
+  source_system: string;
+  ingested_at: string;
+}
+
+export interface RefundEntry {
+  refund_id: string;
+  order_line_id: string;
+  amount: number;
+  refunded_at: string;
+  tenant_id: string;
+  source_system: string;
+  source_id: string;
+  source_version: string;
+  ingested_at: string;
+}
+
+export interface FulfillmentCostEntry {
+  order_id: string;
+  shipping_cost: number;
+  marketplace_fee: number;
+  carrier: string | null;
+  tenant_id: string;
+  source_system: string;
+  source_id: string;
+  source_version: string;
+  ingested_at: string;
+}
+
+export interface TouchpointEntry {
+  touchpoint_id: string;
+  customer_id: string | null;
+  campaign_id: string | null;
+  order_id: string | null;
+  occurred_at: string;
+  type: string; // 'impression' | 'click'
+  tenant_id: string;
+  source_system: string;
+  ingested_at: string;
+}
+
+export interface CredentialEntry {
+  tenant_id: string;
+  platform: string;
+  credential_key: string;
+  encrypted_value: string;
+  refresh_token: string | null;
+  expires_at: string | null;
+  updated_at: string;
+}
+
+export interface GovernanceEventEntry {
+  id?: string;
+  action_id: string;
+  tenant_id: string;
+  actor: string;
+  action_type: string;
+  target_entity: string;
+  status: string;
+  reason: string;
+  created_at: string;
+}
+
 /**
  * Supabase client orchestrator.
  */
@@ -111,11 +244,18 @@ export class SupabaseClient {
   private mockTrust: TrustEntry[] = [];
   private mockAuditLogs: AuditLogEntry[] = [];
   private mockLocks: LockEntry[] = [];
+  private mockCredentials: CredentialEntry[] = [];
+  private mockGovernanceEvents: GovernanceEventEntry[] = [];
 
   private mockOrders: OrderEntry[] = [];
   private mockOrderLines: OrderLineEntry[] = [];
   private mockCampaigns: CampaignEntry[] = [];
   private mockSpendFacts: SpendFactEntry[] = [];
+  private mockCustomers: CustomerEntry[] = [];
+  private mockIdentityLinks: IdentityLinkEntry[] = [];
+  private mockRefunds: RefundEntry[] = [];
+  private mockFulfillmentCosts: FulfillmentCostEntry[] = [];
+  private mockTouchpoints: TouchpointEntry[] = [];
 
   private mockTeamMembers: TeamMember[] = [];
   private mockClients: ClientProfile[] = [];
@@ -132,15 +272,27 @@ export class SupabaseClient {
   private mockCreativeAssets: CreativeAsset[] = [];
   private mockStakeholderAssociations: StakeholderAssociation[] = [];
 
+  private mockPlatformAccounts: PlatformAccountEntry[] = [];
+  private mockAccountLinks: AccountLinkEntry[] = [];
+  private mockAccountCredentials: AccountCredentialEntry[] = [];
+  private mockProductAdLinks: ProductAdLinkEntry[] = [];
+
   private activeTenantId: string | null = null;
   private snapshots: {
     mockTrust: TrustEntry[];
     mockAuditLogs: AuditLogEntry[];
     mockLocks: LockEntry[];
+    mockCredentials: CredentialEntry[];
+    mockGovernanceEvents: GovernanceEventEntry[];
     mockOrders: OrderEntry[];
     mockOrderLines: OrderLineEntry[];
     mockCampaigns: CampaignEntry[];
     mockSpendFacts: SpendFactEntry[];
+    mockCustomers: CustomerEntry[];
+    mockIdentityLinks: IdentityLinkEntry[];
+    mockRefunds: RefundEntry[];
+    mockFulfillmentCosts: FulfillmentCostEntry[];
+    mockTouchpoints: TouchpointEntry[];
     mockTeamMembers: TeamMember[];
     mockClients: ClientProfile[];
     mockCampaignBriefs: CampaignBrief[];
@@ -154,6 +306,10 @@ export class SupabaseClient {
     mockFinancialTransactions: FinancialTransaction[];
     mockCreativeAssets: CreativeAsset[];
     mockStakeholderAssociations: StakeholderAssociation[];
+    mockPlatformAccounts: PlatformAccountEntry[];
+    mockAccountLinks: AccountLinkEntry[];
+    mockAccountCredentials: AccountCredentialEntry[];
+    mockProductAdLinks: ProductAdLinkEntry[];
   } | null = null;
 
   private readonly logger: PinoLogger;
@@ -177,10 +333,17 @@ export class SupabaseClient {
     copy.mockTrust = this.mockTrust;
     copy.mockAuditLogs = this.mockAuditLogs;
     copy.mockLocks = this.mockLocks;
+    copy.mockCredentials = this.mockCredentials;
+    copy.mockGovernanceEvents = this.mockGovernanceEvents;
     copy.mockOrders = this.mockOrders;
     copy.mockOrderLines = this.mockOrderLines;
     copy.mockCampaigns = this.mockCampaigns;
     copy.mockSpendFacts = this.mockSpendFacts;
+    copy.mockCustomers = this.mockCustomers;
+    copy.mockIdentityLinks = this.mockIdentityLinks;
+    copy.mockRefunds = this.mockRefunds;
+    copy.mockFulfillmentCosts = this.mockFulfillmentCosts;
+    copy.mockTouchpoints = this.mockTouchpoints;
     copy.mockTeamMembers = this.mockTeamMembers;
     copy.mockClients = this.mockClients;
     copy.mockCampaignBriefs = this.mockCampaignBriefs;
@@ -194,6 +357,10 @@ export class SupabaseClient {
     copy.mockFinancialTransactions = this.mockFinancialTransactions;
     copy.mockCreativeAssets = this.mockCreativeAssets;
     copy.mockStakeholderAssociations = this.mockStakeholderAssociations;
+    copy.mockPlatformAccounts = this.mockPlatformAccounts;
+    copy.mockAccountLinks = this.mockAccountLinks;
+    copy.mockAccountCredentials = this.mockAccountCredentials;
+    copy.mockProductAdLinks = this.mockProductAdLinks;
     return copy;
   }
 
@@ -360,6 +527,31 @@ export class SupabaseClient {
     } catch {
       // Fail-safe
     }
+  }
+
+  // --- GOVERNANCE ACTIVITY EVENTS ---
+  async saveGovernanceEvent(event: GovernanceEventEntry): Promise<void> {
+    this.assertRls(event.tenant_id);
+    this.logger.info('Storing governance compliance event', {
+      'tenant': event.tenant_id,
+      'actionId': event.action_id,
+      'status': event.status,
+    });
+    if (this.mockMode) {
+      this.mockGovernanceEvents.push({
+        ...event,
+        id: `gov-ev-${this.mockGovernanceEvents.length}`,
+      });
+      return;
+    }
+  }
+
+  async getGovernanceEvents(tenant: string): Promise<GovernanceEventEntry[]> {
+    this.assertRls(tenant);
+    if (this.mockMode) {
+      return this.mockGovernanceEvents.filter((e) => e.tenant_id === tenant);
+    }
+    return [];
   }
 
   async getAuditLogs(tenant: string): Promise<AuditLogEntry[]> {
@@ -935,6 +1127,257 @@ export class SupabaseClient {
     }
   }
 
+  // --- CUSTOMERS ---
+  async getCustomers(tenant: string): Promise<CustomerEntry[]> {
+    this.assertRls(tenant);
+    if (this.mockMode) {
+      return this.mockCustomers.filter((c) => c.tenant_id === tenant);
+    }
+    return [];
+  }
+  async saveCustomer(customer: CustomerEntry): Promise<void> {
+    this.assertRls(customer.tenant_id);
+    if (this.mockMode) {
+      const idx = this.mockCustomers.findIndex(
+        (c) => c.customer_id === customer.customer_id,
+      );
+      if (idx >= 0) {
+        this.mockCustomers[idx] = customer;
+      } else {
+        this.mockCustomers.push(customer);
+      }
+    }
+  }
+
+  // --- IDENTITY LINKS ---
+  async getIdentityLinks(tenant: string): Promise<IdentityLinkEntry[]> {
+    this.assertRls(tenant);
+    if (this.mockMode) {
+      return this.mockIdentityLinks.filter((l) => l.tenant_id === tenant);
+    }
+    return [];
+  }
+  async saveIdentityLink(link: IdentityLinkEntry): Promise<void> {
+    this.assertRls(link.tenant_id);
+    if (this.mockMode) {
+      const idx = this.mockIdentityLinks.findIndex(
+        (l) =>
+          l.customer_id === link.customer_id &&
+          l.identifier_type === link.identifier_type &&
+          l.identifier_hash === link.identifier_hash,
+      );
+      if (idx < 0) {
+        this.mockIdentityLinks.push(link);
+      }
+    }
+  }
+
+  // --- REFUNDS ---
+  async getRefunds(tenant: string): Promise<RefundEntry[]> {
+    this.assertRls(tenant);
+    if (this.mockMode) {
+      return this.mockRefunds.filter((r) => r.tenant_id === tenant);
+    }
+    return [];
+  }
+  async saveRefund(refund: RefundEntry): Promise<void> {
+    this.assertRls(refund.tenant_id);
+    if (this.mockMode) {
+      const idx = this.mockRefunds.findIndex((r) => r.refund_id === refund.refund_id);
+      if (idx >= 0) {
+        this.mockRefunds[idx] = refund;
+      } else {
+        this.mockRefunds.push(refund);
+      }
+    }
+  }
+
+  // --- FULFILLMENT COSTS ---
+  async getFulfillmentCosts(tenant: string): Promise<FulfillmentCostEntry[]> {
+    this.assertRls(tenant);
+    if (this.mockMode) {
+      return this.mockFulfillmentCosts.filter((f) => f.tenant_id === tenant);
+    }
+    return [];
+  }
+  async saveFulfillmentCost(cost: FulfillmentCostEntry): Promise<void> {
+    this.assertRls(cost.tenant_id);
+    if (this.mockMode) {
+      const idx = this.mockFulfillmentCosts.findIndex(
+        (f) => f.order_id === cost.order_id,
+      );
+      if (idx >= 0) {
+        this.mockFulfillmentCosts[idx] = cost;
+      } else {
+        this.mockFulfillmentCosts.push(cost);
+      }
+    }
+  }
+
+  // --- TOUCHPOINTS ---
+  async getTouchpoints(tenant: string): Promise<TouchpointEntry[]> {
+    this.assertRls(tenant);
+    if (this.mockMode) {
+      return this.mockTouchpoints.filter((t) => t.tenant_id === tenant);
+    }
+    return [];
+  }
+  async saveTouchpoint(touchpoint: TouchpointEntry): Promise<void> {
+    this.assertRls(touchpoint.tenant_id);
+    if (this.mockMode) {
+      const idx = this.mockTouchpoints.findIndex(
+        (t) => t.touchpoint_id === touchpoint.touchpoint_id,
+      );
+      if (idx >= 0) {
+        this.mockTouchpoints[idx] = touchpoint;
+      } else {
+        this.mockTouchpoints.push(touchpoint);
+      }
+    }
+  }
+
+  // --- CREDENTIALS ---
+  async getCredentials(tenant: string): Promise<CredentialEntry[]> {
+    this.assertRls(tenant);
+    if (this.mockMode) {
+      return this.mockCredentials.filter((c) => c.tenant_id === tenant);
+    }
+    return [];
+  }
+
+  async saveCredential(cred: CredentialEntry): Promise<void> {
+    this.assertRls(cred.tenant_id);
+    if (this.mockMode) {
+      const idx = this.mockCredentials.findIndex(
+        (c) =>
+          c.tenant_id === cred.tenant_id &&
+          c.platform === cred.platform &&
+          c.credential_key === cred.credential_key,
+      );
+      if (idx >= 0) {
+        this.mockCredentials[idx] = cred;
+      } else {
+        this.mockCredentials.push(cred);
+      }
+    }
+  }
+
+  async deleteCredential(tenant: string, platform: string, key: string): Promise<void> {
+    this.assertRls(tenant);
+    if (this.mockMode) {
+      this.mockCredentials = this.mockCredentials.filter(
+        (c) =>
+          !(
+            c.tenant_id === tenant &&
+            c.platform === platform &&
+            c.credential_key === key
+          ),
+      );
+    }
+  }
+
+  async savePlatformAccount(account: PlatformAccountEntry): Promise<void> {
+    this.assertRls(account.tenant_id);
+    if (this.mockMode) {
+      const idx = this.mockPlatformAccounts.findIndex(
+        (a) => a.tenant_id === account.tenant_id && a.account_id === account.account_id
+      );
+      if (idx >= 0) {
+        this.mockPlatformAccounts[idx] = account;
+      } else {
+        this.mockPlatformAccounts.push(account);
+      }
+    }
+  }
+
+  async getPlatformAccounts(tenant: string): Promise<PlatformAccountEntry[]> {
+    this.assertRls(tenant);
+    if (this.mockMode) {
+      return this.mockPlatformAccounts.filter((a) => a.tenant_id === tenant);
+    }
+    return [];
+  }
+
+  async listSubAccounts(tenant: string, parentAccountId: string): Promise<PlatformAccountEntry[]> {
+    this.assertRls(tenant);
+    if (this.mockMode) {
+      return this.mockPlatformAccounts.filter(
+        (a) => a.tenant_id === tenant && a.parent_account_id === parentAccountId
+      );
+    }
+    return [];
+  }
+
+  async saveAccountLink(link: AccountLinkEntry): Promise<void> {
+    this.assertRls(link.tenant_id);
+    if (this.mockMode) {
+      const idx = this.mockAccountLinks.findIndex(
+        (l) => l.tenant_id === link.tenant_id && l.link_id === link.link_id
+      );
+      if (idx >= 0) {
+        this.mockAccountLinks[idx] = link;
+      } else {
+        this.mockAccountLinks.push(link);
+      }
+    }
+  }
+
+  async getAccountLinks(tenant: string): Promise<AccountLinkEntry[]> {
+    this.assertRls(tenant);
+    if (this.mockMode) {
+      return this.mockAccountLinks.filter((l) => l.tenant_id === tenant);
+    }
+    return [];
+  }
+
+  async saveAccountCredential(cred: AccountCredentialEntry): Promise<void> {
+    this.assertRls(cred.tenant_id);
+    if (this.mockMode) {
+      const idx = this.mockAccountCredentials.findIndex(
+        (c) => c.tenant_id === cred.tenant_id && c.credential_id === cred.credential_id
+      );
+      if (idx >= 0) {
+        this.mockAccountCredentials[idx] = cred;
+      } else {
+        this.mockAccountCredentials.push(cred);
+      }
+    }
+  }
+
+  async getAccountCredential(tenant: string, accountId: string): Promise<AccountCredentialEntry | null> {
+    this.assertRls(tenant);
+    if (this.mockMode) {
+      return this.mockAccountCredentials.find((c) => c.tenant_id === tenant && c.account_id === accountId) || null;
+    }
+    return null;
+  }
+
+  async saveProductAdLink(link: ProductAdLinkEntry): Promise<void> {
+    this.assertRls(link.tenant_id);
+    if (this.mockMode) {
+      const idx = this.mockProductAdLinks.findIndex(
+        (l) =>
+          l.tenant_id === link.tenant_id &&
+          l.variant_id === link.variant_id &&
+          l.gmc_offer_id === link.gmc_offer_id &&
+          l.ads_ad_group_id === link.ads_ad_group_id
+      );
+      if (idx >= 0) {
+        this.mockProductAdLinks[idx] = link;
+      } else {
+        this.mockProductAdLinks.push(link);
+      }
+    }
+  }
+
+  async getProductAdLinks(tenant: string): Promise<ProductAdLinkEntry[]> {
+    this.assertRls(tenant);
+    if (this.mockMode) {
+      return this.mockProductAdLinks.filter((l) => l.tenant_id === tenant);
+    }
+    return [];
+  }
+
   // --- TRANSACTION SIMULATION ---
   private transactionActive = false;
 
@@ -944,10 +1387,17 @@ export class SupabaseClient {
       mockTrust: JSON.parse(JSON.stringify(this.mockTrust)) as TrustEntry[],
       mockAuditLogs: JSON.parse(JSON.stringify(this.mockAuditLogs)) as AuditLogEntry[],
       mockLocks: JSON.parse(JSON.stringify(this.mockLocks)) as LockEntry[],
+      mockCredentials: JSON.parse(JSON.stringify(this.mockCredentials)) as CredentialEntry[],
+      mockGovernanceEvents: JSON.parse(JSON.stringify(this.mockGovernanceEvents)) as GovernanceEventEntry[],
       mockOrders: JSON.parse(JSON.stringify(this.mockOrders)) as OrderEntry[],
       mockOrderLines: JSON.parse(JSON.stringify(this.mockOrderLines)) as OrderLineEntry[],
       mockCampaigns: JSON.parse(JSON.stringify(this.mockCampaigns)) as CampaignEntry[],
       mockSpendFacts: JSON.parse(JSON.stringify(this.mockSpendFacts)) as SpendFactEntry[],
+      mockCustomers: JSON.parse(JSON.stringify(this.mockCustomers)) as CustomerEntry[],
+      mockIdentityLinks: JSON.parse(JSON.stringify(this.mockIdentityLinks)) as IdentityLinkEntry[],
+      mockRefunds: JSON.parse(JSON.stringify(this.mockRefunds)) as RefundEntry[],
+      mockFulfillmentCosts: JSON.parse(JSON.stringify(this.mockFulfillmentCosts)) as FulfillmentCostEntry[],
+      mockTouchpoints: JSON.parse(JSON.stringify(this.mockTouchpoints)) as TouchpointEntry[],
       mockTeamMembers: JSON.parse(JSON.stringify(this.mockTeamMembers)) as TeamMember[],
       mockClients: JSON.parse(JSON.stringify(this.mockClients)) as ClientProfile[],
       mockCampaignBriefs: JSON.parse(JSON.stringify(this.mockCampaignBriefs)) as CampaignBrief[],
@@ -961,6 +1411,10 @@ export class SupabaseClient {
       mockFinancialTransactions: JSON.parse(JSON.stringify(this.mockFinancialTransactions)) as FinancialTransaction[],
       mockCreativeAssets: JSON.parse(JSON.stringify(this.mockCreativeAssets)) as CreativeAsset[],
       mockStakeholderAssociations: JSON.parse(JSON.stringify(this.mockStakeholderAssociations)) as StakeholderAssociation[],
+      mockPlatformAccounts: JSON.parse(JSON.stringify(this.mockPlatformAccounts)) as PlatformAccountEntry[],
+      mockAccountLinks: JSON.parse(JSON.stringify(this.mockAccountLinks)) as AccountLinkEntry[],
+      mockAccountCredentials: JSON.parse(JSON.stringify(this.mockAccountCredentials)) as AccountCredentialEntry[],
+      mockProductAdLinks: JSON.parse(JSON.stringify(this.mockProductAdLinks)) as ProductAdLinkEntry[],
     };
     this.logger.info('Transaction boundary started');
   }
@@ -977,10 +1431,17 @@ export class SupabaseClient {
       this.mockTrust = this.snapshots.mockTrust;
       this.mockAuditLogs = this.snapshots.mockAuditLogs;
       this.mockLocks = this.snapshots.mockLocks;
+      this.mockCredentials = this.snapshots.mockCredentials;
+      this.mockGovernanceEvents = this.snapshots.mockGovernanceEvents;
       this.mockOrders = this.snapshots.mockOrders;
       this.mockOrderLines = this.snapshots.mockOrderLines;
       this.mockCampaigns = this.snapshots.mockCampaigns;
       this.mockSpendFacts = this.snapshots.mockSpendFacts;
+      this.mockCustomers = this.snapshots.mockCustomers;
+      this.mockIdentityLinks = this.snapshots.mockIdentityLinks;
+      this.mockRefunds = this.snapshots.mockRefunds;
+      this.mockFulfillmentCosts = this.snapshots.mockFulfillmentCosts;
+      this.mockTouchpoints = this.snapshots.mockTouchpoints;
       this.mockTeamMembers = this.snapshots.mockTeamMembers;
       this.mockClients = this.snapshots.mockClients;
       this.mockCampaignBriefs = this.snapshots.mockCampaignBriefs;
@@ -994,6 +1455,10 @@ export class SupabaseClient {
       this.mockFinancialTransactions = this.snapshots.mockFinancialTransactions;
       this.mockCreativeAssets = this.snapshots.mockCreativeAssets;
       this.mockStakeholderAssociations = this.snapshots.mockStakeholderAssociations;
+      this.mockPlatformAccounts = this.snapshots.mockPlatformAccounts;
+      this.mockAccountLinks = this.snapshots.mockAccountLinks;
+      this.mockAccountCredentials = this.snapshots.mockAccountCredentials;
+      this.mockProductAdLinks = this.snapshots.mockProductAdLinks;
       this.snapshots = null;
     }
     this.logger.info('Transaction boundary rolled back');

@@ -50,6 +50,8 @@ export interface ApprovalRequest {
   tenantId: string;
   createdAt: number;
   completedAt?: number;
+  actionRequest?: any; // Serialized ActionRequest to resume execution
+  context?: any; // Serialized Context
 }
 
 export interface ActivityFeedItem {
@@ -278,3 +280,52 @@ export interface StakeholderAssociation {
   };
   createdAt: number;
 }
+
+export interface PlatformAccount {
+  accountId: string;
+  tenantId: string;
+  platform: 'google_ads' | 'google_merchant' | 'meta' | 'shopify' | 'woocommerce' | 'magento' | 'custom_storefront';
+  platformAccountId: string;
+  accountName: string;
+  accountType: 'manager' | 'sub_account' | 'merchant_center' | 'storefront';
+  parentAccountId?: string;
+  currency?: string;
+  timezone?: string;
+  status: 'active' | 'suspended' | 'removed';
+  ingestedAt: string;
+}
+
+export interface AccountLink {
+  linkId: string;
+  tenantId: string;
+  accountIdA: string;
+  accountIdB: string;
+  linkType: 'ads_to_merchant' | 'ads_to_storefront' | 'merchant_to_storefront';
+  confidence: number;
+  confirmedBy: 'auto' | string;
+  createdAt: string;
+}
+
+export interface AccountCredential {
+  credentialId: string;
+  accountId: string;
+  tenantId: string;
+  accessToken: string; // encrypted
+  refreshToken: string; // encrypted
+  expiresAt: string;
+  scopes: string[];
+  rotatedAt?: string;
+}
+
+export interface ProductAdLink {
+  tenantId: string;
+  variantId: string;
+  gmcOfferId: string;
+  gmcAccountId: string;
+  adsAccountId: string;
+  adsCampaignId: string;
+  adsAdGroupId: string;
+  confidence: number;
+  resolvedAt: string;
+}
+

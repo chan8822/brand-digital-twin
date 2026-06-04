@@ -138,21 +138,37 @@ export class RateLimitingAdapterWrapper implements PlatformAdapter {
   }
 
   read(since: Date): Promise<any> {
+    if (!this.delegate.read) {
+      throw new Error(`Delegate platform '${this.platform}' does not support read operations.`);
+    }
+    const readFn = this.delegate.read;
     return this.callWithLimiterAndRetry(
-      () => this.delegate.read(since) as Promise<any>,
+      () => Promise.resolve(readFn.call(this.delegate, since)) as Promise<any>,
     );
   }
 
   plan(req: ActionRequest): Promise<ActionPlan> {
-    return this.callWithLimiterAndRetry(() => this.delegate.plan(req));
+    if (!this.delegate.plan) {
+      throw new Error(`Delegate platform '${this.platform}' does not support plan operations.`);
+    }
+    const planFn = this.delegate.plan;
+    return this.callWithLimiterAndRetry(() => planFn.call(this.delegate, req));
   }
 
   execute(plan: ActionPlan): Promise<ActionResult> {
-    return this.callWithLimiterAndRetry(() => this.delegate.execute(plan));
+    if (!this.delegate.execute) {
+      throw new Error(`Delegate platform '${this.platform}' does not support execute operations.`);
+    }
+    const executeFn = this.delegate.execute;
+    return this.callWithLimiterAndRetry(() => executeFn.call(this.delegate, plan));
   }
 
   rollback(h: RollbackHandle): Promise<ActionResult> {
-    return this.callWithLimiterAndRetry(() => this.delegate.rollback(h));
+    if (!this.delegate.rollback) {
+      throw new Error(`Delegate platform '${this.platform}' does not support rollback operations.`);
+    }
+    const rollbackFn = this.delegate.rollback;
+    return this.callWithLimiterAndRetry(() => rollbackFn.call(this.delegate, h));
   }
 
   healthCheck(): Promise<HealthReport> {
