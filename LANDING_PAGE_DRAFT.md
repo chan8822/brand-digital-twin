@@ -125,21 +125,35 @@ Questions? Chat with us — we're live on Discord.
 
 ---
 
+## PRICING
+
+### Simple. Fair. You Decide.
+
+No forced plans. No annual lock-in. After your 15-day trial, choose what fits.
+
+| Plan | Who it's for | Soft anchor |
+|------|-------------|-------------|
+| **Solo Brand** | 1 brand, up to $50K/month ad spend | ~$299/month |
+| **Growth Brand** | Up to 5 brands, up to $250K/month spend | ~$799/month |
+| **Agency** | Unlimited brands, MCC + white-label reporting | ~$2,500/month |
+
+**At $50K/month spend, a single unprofitable campaign pause typically saves $500–2,000/month. The tool pays for itself in week one.**
+
+---
+
 ## TRIAL CONVERSION: SUGGEST AN AMOUNT
 
-### When Your Trial Ends, You Choose the Price
+### When Your Trial Ends, You Name the Price
 
-We don't believe in hidden pricing or forced plans.
+These are anchors, not invoices. When your 15-day trial ends, **you** suggest the amount that feels fair for your business.
 
-When your 15-day trial ends, **you** suggest the amount you think Brand Digital Twin is worth to your business. We trust your judgment.
+> *"Most brands at your spend level find $299–$799/month fair. What works for you?"*
 
-- Some brands pay per brand (SaaS model)
-- Some pay per recovered margin (performance model)
-- Some negotiate based on spend under management
+- Solo founders paying $149. Agencies paying $3,000. All welcome.
+- No hard limits enforced until we've talked.
+- Account stays live while we work it out.
 
-We'll work with you to find what's fair.
-
-Why? Because we'd rather have one happy customer paying $200/month than ten angry customers on a $99/month plan they resent.
+Why? Because we'd rather have one honest conversation than a pricing page designed to trick you into a tier you don't need.
 
 ---
 
