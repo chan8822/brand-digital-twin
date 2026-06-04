@@ -26,6 +26,7 @@ export interface Waiver {
   reason: string;
   expiresAtMs: number;
   allowedOps: string[];
+  bypassIrreversible?: boolean;
 }
 
 export interface WhitelistRule {

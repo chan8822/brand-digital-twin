@@ -451,4 +451,72 @@ describe('Native HTTP & SSE Server Integration Test', () => {
       await new Promise<void>((resolve) => tempServer.close(() => resolve()));
     }
   });
+
+  it('should support end-to-end queue and approval resumption loop', async () => {
+    // 1. Submit an action that exceeds the maximum daily dollars risk limit to queue it
+    const actionPayload = {
+      actionRequest: {
+        idempotencyKey: 'resumption-test-key',
+        op: 'update_budget',
+        entity: 'campaign',
+        targetId: '888', // campaign 888 has budget 500
+        payload: {
+          budget: 3000, // projected cost = 2500 > maxDailyDollarsRisk (1000)
+        },
+      },
+      context: validContextTemplate,
+    };
+
+    const res1 = await postJson('/api/v1/actions', actionPayload, {
+      Authorization: `Bearer ${testToken}`,
+    });
+
+    expect(res1.status).toBe('success');
+    expect(res1.data.status).toBe('queued');
+
+    // 2. Fetch approvals to verify the approval request is registered
+    const approvalsRes = await getJson('/api/v1/approvals', {
+      Authorization: `Bearer ${testToken}`,
+    });
+    expect(approvalsRes.status).toBe('success');
+    const registeredApprovals = approvalsRes.data.approvals;
+    const approval = registeredApprovals.find(
+      (a: any) => a.approvalId === 'app_resumption-test-key',
+    );
+    expect(approval).toBeDefined();
+    expect(approval.status).toBe('pending');
+    expect(approval.assignedTo).toBe('cmo');
+
+    // 3. Make token for cmo role to sign off the request
+    const cmoToken = signJwt(
+      {
+        userId: 'test-cmo',
+        orgId: 'test-tenant',
+        role: 'cmo',
+        exp: Math.floor(Date.now() / 1000) + 3600,
+      },
+      config.auth.jwtSecret,
+    );
+
+    // 4. Submit approval resolution (POST /api/v1/approvals/app_resumption-test-key/approve)
+    const approveRes = await postJson(
+      `/api/v1/approvals/app_resumption-test-key/approve`,
+      {},
+      {Authorization: `Bearer ${cmoToken}`},
+    );
+
+    expect(approveRes.error ? approveRes.error.message : approveRes.status).toBe('success');
+    expect(approveRes.data.status).toBe('executed');
+
+    // 5. Verify the approval is marked approved in DB
+    const finalApprovalsRes = await getJson('/api/v1/approvals', {
+      Authorization: `Bearer ${testToken}`,
+    });
+    const finalApprovals = finalApprovalsRes.data.approvals;
+    const finalApproval = finalApprovals.find(
+      (a: any) => a.approvalId === 'app_resumption-test-key',
+    );
+    expect(finalApproval.status).toBe('approved');
+    expect(finalApproval.completedAt).toBeGreaterThan(0);
+  });
 });

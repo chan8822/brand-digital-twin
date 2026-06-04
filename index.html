@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Omni OS — Autonomous Ad Optimization Built on Trust & Profit</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Alpine.js CDN for interactive state -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    h1, h2, h3, .font-display {
+      font-family: 'Space Grotesk', sans-serif;
+    }
+  </style>
+</head>
+<body class="bg-neutral-950 text-neutral-100 selection:bg-indigo-500 selection:text-white antialiased overflow-x-hidden">
+
+  <!-- Header -->
+  <header class="border-b border-neutral-900 bg-neutral-950/80 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="text-2xl font-bold font-display tracking-tight text-white flex items-center gap-2">
+          <span class="h-6 w-6 rounded bg-indigo-500 inline-block"></span>
+          Omni OS
+        </span>
+        <span class="text-[10px] font-mono tracking-widest text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20 uppercase font-semibold">Beta</span>
+      </div>
+      <nav class="hidden md:flex items-center gap-8 text-sm font-medium text-neutral-400">
+        <a href="#features" class="hover:text-white transition">Value Props</a>
+        <a href="#calculator" class="hover:text-white transition">POAS Calculator</a>
+        <a href="#onboarding" class="hover:text-white transition">Interactive Demo</a>
+        <a href="#pricing" class="hover:text-white transition">Pricing</a>
+      </nav>
+      <div>
+        <a href="#onboarding" class="bg-indigo-600 text-white text-sm font-semibold px-5 py-2.5 rounded-lg hover:bg-indigo-500 hover:shadow-lg hover:shadow-indigo-600/25 transition">
+          Try Shadow Audit
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="relative pt-20 pb-24 md:pt-32 md:pb-36 border-b border-neutral-900 overflow-hidden">
+    <!-- Grid decorative background -->
+    <div class="absolute inset-0 bg-[linear-gradient(to_right,#171717_1px,transparent_1px),linear-gradient(to_bottom,#171717_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-30"></div>
+    <div class="relative max-w-5xl mx-auto px-6 text-center">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-neutral-800 bg-neutral-900/50 text-xs font-medium text-neutral-400 mb-8">
+        <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        Zero-Risk Setup: shadow mode starts immediately
+      </div>
+      <h1 class="text-4xl md:text-7xl font-bold font-display tracking-tight text-white mb-8 max-w-4xl mx-auto leading-[1.05]">
+        Autopilot ad optimization that actually <span class="text-indigo-400 underline decoration-indigo-500/50 underline-offset-8">asks for permission</span>.
+      </h1>
+      <p class="text-lg md:text-xl text-neutral-400 mb-12 max-w-2xl mx-auto leading-relaxed">
+        Most automated ad tools take your credit card, mess up campaigns in the background, and report vanity ROAS. Omni OS optimizes for true profit using graduated trust tiers and real-time storefront inventory loops.
+      </p>
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
+        <a href="#onboarding" class="w-full sm:w-auto bg-indigo-600 text-white font-semibold px-8 py-4 rounded-lg hover:bg-indigo-500 hover:shadow-xl hover:shadow-indigo-600/35 transition text-center text-lg">
+          Start 15-Day Free Trial
+        </a>
+        <a href="#calculator" class="w-full sm:w-auto border border-neutral-800 bg-neutral-900/50 hover:bg-neutral-900 text-white font-semibold px-8 py-4 rounded-lg transition text-center text-lg">
+          Calculate Your POAS
+        </a>
+      </div>
+      <div class="text-xs font-mono text-neutral-500">
+        No credit card required. Evaluates Shopify, Google & Meta in read-only mode first.
+      </div>
+    </div>
+  </section>
+
+  <!-- Value Propositions / ROAS is a Lie -->
+  <section id="features" class="py-24 border-b border-neutral-900 bg-neutral-900/10">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+        <div>
+          <span class="text-xs font-semibold uppercase tracking-wider text-indigo-400">The Hard Math</span>
+          <h2 class="text-3xl md:text-5xl font-bold font-display tracking-tight text-white mt-4 mb-6 leading-tight">
+            ROAS is a lie. <br><span class="text-neutral-400">Optimizing for it is bleeding your margin.</span>
+          </h2>
+          <p class="text-neutral-400 mb-8 leading-relaxed">
+            If your ad agency or tool brags about a "4.5x ROAS," they are hiding the truth. ROAS ignores your Cost of Goods Sold (COGS), warehouse costs, payment processor fees, and shipping costs. Scale a thin-margin campaign, and you aren't growing—you are losing money faster.
+          </p>
+          <div class="bg-neutral-950 border border-neutral-800 rounded-xl p-6 mb-8">
+            <div class="text-xs font-mono text-neutral-500 uppercase mb-3">Omni OS Profit Formula (POAS)</div>
+            <div class="text-xl md:text-2xl font-mono text-indigo-400 font-bold overflow-x-auto whitespace-nowrap py-1">
+              POAS = (Net Revenue - COGS - Shipping) / Ad Spend
+            </div>
+            <p class="text-xs text-neutral-500 mt-3">
+              If POAS is below 1.0, you are losing cash on every conversion. Omni OS catches this instantly.
+            </p>
+          </div>
+        </div>
+
+        <!-- Interactive Calculator Widget -->
+        <div id="calculator" x-data="{
+          revenue: 12000,
+          cogs: 4000,
+          fulfillment: 1500,
+          adspend: 4500,
+          get poas() {
+            if (this.adspend <= 0) return 0;
+            return ((this.revenue - this.cogs - this.fulfillment) / this.adspend).toFixed(2);
+          },
+          get margin() {
+            return this.revenue - this.cogs - this.fulfillment - this.adspend;
+          }
+        }" class="bg-neutral-900 border border-neutral-800 rounded-2xl p-8 shadow-2xl relative">
+          <div class="absolute top-4 right-4 bg-indigo-500/10 text-indigo-400 text-xs px-2.5 py-1 rounded border border-indigo-500/20 font-mono">
+            Live Simulator
+          </div>
+          <h3 class="text-xl font-bold font-display text-white mb-6">Interactive POAS Calculator</h3>
+          
+          <div class="space-y-4 mb-6">
+            <div>
+              <label class="block text-xs font-medium text-neutral-400 mb-1.5">Net Campaign Revenue ($)</label>
+              <input type="number" x-model.number="revenue" class="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-2.5 text-white font-mono focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none">
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-medium text-neutral-400 mb-1.5">Product COGS ($)</label>
+                <input type="number" x-model.number="cogs" class="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-2.5 text-white font-mono focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-neutral-400 mb-1.5">Fulfillment & Ship ($)</label>
+                <input type="number" x-model.number="fulfillment" class="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-2.5 text-white font-mono focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none">
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-neutral-400 mb-1.5">Ad Spend ($)</label>
+              <input type="number" x-model.number="adspend" class="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-2.5 text-white font-mono focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none">
+            </div>
+          </div>
+
+          <div class="border-t border-neutral-800 pt-6 space-y-4">
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-semibold text-neutral-400">Calculated POAS:</span>
+              <span class="text-3xl font-mono font-bold" :class="poas < 1.0 ? 'text-rose-500' : (poas < 1.5 ? 'text-amber-500' : 'text-emerald-500')" x-text="poas + 'x'"></span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-semibold text-neutral-400">Net Profit Margin:</span>
+              <span class="text-lg font-mono font-semibold" :class="margin < 0 ? 'text-rose-400' : 'text-emerald-400'" x-text="(margin >= 0 ? '+$' : '-$') + Math.abs(margin)"></span>
+            </div>
+
+            <!-- Dynamic Decision Card -->
+            <div class="rounded-lg p-4 text-xs font-medium mt-2" :class="poas < 1.0 ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : (poas < 1.5 ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20')">
+              <div class="font-bold uppercase tracking-wider mb-1" x-text="poas < 1.0 ? '🔴 Bleeding Margin' : (poas < 1.5 ? '🟡 Break Even' : '🟢 Profitable scale candidate')"></div>
+              <p x-text="poas < 1.0 ? 'Omni OS would instantly trigger a safety block and pause this campaign.' : (poas < 1.5 ? 'Safe optimization mode. Suggests minor budget shifts under Tier 1.' : 'Scale-ready winner. Eligible for automatic budget scaling up to Tier 4.')"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Graduated Autonomy Tiers -->
+  <section class="py-24 border-b border-neutral-900">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="text-center max-w-3xl mx-auto mb-16">
+        <span class="text-xs font-semibold uppercase tracking-wider text-indigo-400">Graduated Autonomy</span>
+        <h2 class="text-3xl md:text-5xl font-bold font-display text-white mt-4 mb-6">
+          You set the speed limit. We earn the trust.
+        </h2>
+        <p class="text-neutral-400 leading-relaxed">
+          You wouldn't hand the keys of a semi-truck to a stranger. Why hand your budget to unguided AI? Omni OS operates on a graduated trust scale, expanding its limits only as it proves profitability.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        <!-- Tier 0 -->
+        <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-6 flex flex-col justify-between hover:border-indigo-500/30 transition">
+          <div>
+            <div class="text-xs font-mono font-semibold text-indigo-400 mb-2">TIER 0</div>
+            <h4 class="text-lg font-bold font-display text-white mb-3">Observe Mode</h4>
+            <p class="text-xs text-neutral-400 leading-relaxed">
+              Read-only recommendations. Instantly identifies margin leaks but executes absolutely nothing without your click.
+            </p>
+          </div>
+          <span class="text-[10px] font-mono text-neutral-500 mt-6 uppercase">Default Start</span>
+        </div>
+        <!-- Tier 1 -->
+        <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-6 flex flex-col justify-between hover:border-indigo-500/30 transition">
+          <div>
+            <div class="text-xs font-mono font-semibold text-indigo-400 mb-2">TIER 1</div>
+            <h4 class="text-lg font-bold font-display text-white mb-3">Suggest</h4>
+            <p class="text-xs text-neutral-400 leading-relaxed">
+              Executes minor budget corrections and bid shifts under **$100/day**. Bypasses manual approvals for tiny adjustments.
+            </p>
+          </div>
+          <span class="text-[10px] font-mono text-indigo-400 mt-6 uppercase">Micro-Autonomy</span>
+        </div>
+        <!-- Tier 2 -->
+        <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-6 flex flex-col justify-between hover:border-indigo-500/30 transition">
+          <div>
+            <div class="text-xs font-mono font-semibold text-indigo-400 mb-2">TIER 2</div>
+            <h4 class="text-lg font-bold font-display text-white mb-3">Optimize</h4>
+            <p class="text-xs text-neutral-400 leading-relaxed">
+              Performs routine shifts up to **$500/day** on proven targets. Bypasses operator attention for baseline optimization tasks.
+            </p>
+          </div>
+          <span class="text-[10px] font-mono text-indigo-400 mt-6 uppercase">Moderate Autonomy</span>
+        </div>
+        <!-- Tier 3 -->
+        <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-6 flex flex-col justify-between hover:border-indigo-500/30 transition">
+          <div>
+            <div class="text-xs font-mono font-semibold text-indigo-400 mb-2">TIER 3</div>
+            <h4 class="text-lg font-bold font-display text-white mb-3">Lead</h4>
+            <p class="text-xs text-neutral-400 leading-relaxed">
+              Manages cross-channel shifts autonomously within daily blast-radius caps ($C_{max}$). Re-routes budget to top-performers.
+            </p>
+          </div>
+          <span class="text-[10px] font-mono text-indigo-400 mt-6 uppercase">High Autonomy</span>
+        </div>
+        <!-- Tier 4 -->
+        <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-6 flex flex-col justify-between hover:border-indigo-500/30 transition">
+          <div>
+            <div class="text-xs font-mono font-semibold text-indigo-400 mb-2">TIER 4</div>
+            <h4 class="text-lg font-bold font-display text-white mb-3">Mastery</h4>
+            <p class="text-xs text-neutral-400 leading-relaxed">
+              Aggressively scales budgets on high-POAS champions. Deploys 15-minute rollbacks if performance indicators drift.
+            </p>
+          </div>
+          <span class="text-[10px] font-mono text-emerald-400 mt-6 uppercase">Full Autopilot</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Stockout & Runway Blocks -->
+  <section class="py-24 border-b border-neutral-900 bg-neutral-900/10">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
+        <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-8">
+          <div class="h-10 w-10 rounded bg-indigo-500/10 text-indigo-400 flex items-center justify-center font-bold mb-6 font-mono text-lg">
+            📦
+          </div>
+          <h3 class="text-2xl font-bold font-display text-white mb-4">Real-Time Stockout Prevention</h3>
+          <p class="text-neutral-400 text-sm leading-relaxed mb-4">
+            Why pay Meta and Google for traffic on products you can't ship? Omni OS maps Shopify variant IDs to Google Ads ad groups. The moment a variant's inventory falls to zero, the Risk Radar pauses only that specific SKU's ad group, protecting ad spend while keeping standard campaigns active.
+          </p>
+        </div>
+
+        <div class="bg-neutral-950 border border-neutral-850 rounded-xl p-8">
+          <div class="h-10 w-10 rounded bg-indigo-500/10 text-indigo-400 flex items-center justify-center font-bold mb-6 font-mono text-lg">
+            📉
+          </div>
+          <h3 class="text-2xl font-bold font-display text-white mb-4">Cash Runway Protection</h3>
+          <p class="text-neutral-400 text-sm leading-relaxed mb-4">
+            If your bank account drops below 30 days of cash runway due to supplier bills, you shouldn't spend $2,000/day on ads. Omni OS syncs with bank APIs and Tally. If a runway limit warning is triggered, it throttles budgets to safe baseline limits.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Interactive Onboarding Wizard Simulator -->
+  <section id="onboarding" class="py-24 border-b border-neutral-900">
+    <div class="max-w-4xl mx-auto px-6">
+      <div class="text-center mb-12">
+        <span class="text-xs font-semibold uppercase tracking-wider text-indigo-400">Onboarding Simulator</span>
+        <h2 class="text-3xl md:text-5xl font-bold font-display text-white mt-4 mb-4">
+          Experience the 3-Minute Setup
+        </h2>
+        <p class="text-neutral-400 text-sm">
+          Run the interactive walkthrough to see exactly how Omni OS connects, secures, and audits.
+        </p>
+      </div>
+
+      <!-- Alpine.js Onboarding Step Flow -->
+      <div x-data="{
+        step: 1,
+        shopifyLinked: false,
+        googleLinked: false,
+        metaLinked: false,
+        safetyCap: 250,
+        selectedTier: 0,
+        scanning: false,
+        scanProgress: 0,
+        scanCompleted: false,
+        get allLinked() {
+          return this.shopifyLinked && this.googleLinked && this.metaLinked;
+        },
+        startScan() {
+          this.scanning = true;
+          this.scanProgress = 0;
+          let interval = setInterval(() => {
+            if (this.scanProgress >= 100) {
+              clearInterval(interval);
+              this.scanning = false;
+              this.scanCompleted = true;
+            } else {
+              this.scanProgress += 20;
+            }
+          }, 300);
+        }
+      }" class="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden shadow-2xl">
+        
+        <!-- Steps Header Bar -->
+        <div class="bg-neutral-950 px-8 py-4 border-b border-neutral-800 flex items-center justify-between text-xs font-mono text-neutral-500">
+          <span :class="step === 1 ? 'text-indigo-400 font-bold' : ''">1. INTEGRATIONS</span>
+          <span>&rarr;</span>
+          <span :class="step === 2 ? 'text-indigo-400 font-bold' : ''">2. SAFETY LIMITS</span>
+          <span>&rarr;</span>
+          <span :class="step === 3 ? 'text-indigo-400 font-bold' : ''">3. SHADOW AUDIT</span>
+        </div>
+
+        <!-- Step 1: Integrations -->
+        <div x-show="step === 1" class="p-8 space-y-6">
+          <h3 class="text-xl font-bold font-display text-white">Step 1: One-Click Integration Matrix</h3>
+          <p class="text-xs text-neutral-400 leading-relaxed">
+            Link storefront metrics and ad managers securely via OAuth. We scan history in read-only mode to calculate real POAS.
+          </p>
+
+          <div class="space-y-3">
+            <button @click="shopifyLinked = !shopifyLinked" class="w-full flex items-center justify-between bg-neutral-950 hover:bg-neutral-950/80 px-6 py-4 rounded-xl border transition" :class="shopifyLinked ? 'border-emerald-500/30' : 'border-neutral-800'">
+              <span class="text-sm font-semibold flex items-center gap-3">
+                <span class="h-6 w-6 rounded bg-neutral-900 flex items-center justify-center text-xs">🟢</span>
+                Shopify Storefront
+              </span>
+              <span class="text-xs font-mono" :class="shopifyLinked ? 'text-emerald-400' : 'text-neutral-500'" x-text="shopifyLinked ? 'Connected ✅' : 'Click to Link'"></span>
+            </button>
+
+            <button @click="googleLinked = !googleLinked" class="w-full flex items-center justify-between bg-neutral-950 hover:bg-neutral-950/80 px-6 py-4 rounded-xl border transition" :class="googleLinked ? 'border-emerald-500/30' : 'border-neutral-800'">
+              <span class="text-sm font-semibold flex items-center gap-3">
+                <span class="h-6 w-6 rounded bg-neutral-900 flex items-center justify-center text-xs">🔵</span>
+                Google Ads (MCC)
+              </span>
+              <span class="text-xs font-mono" :class="googleLinked ? 'text-emerald-400' : 'text-neutral-500'" x-text="googleLinked ? 'Connected ✅' : 'Click to Link'"></span>
+            </button>
+
+            <button @click="metaLinked = !metaLinked" class="w-full flex items-center justify-between bg-neutral-950 hover:bg-neutral-950/80 px-6 py-4 rounded-xl border transition" :class="metaLinked ? 'border-emerald-500/30' : 'border-neutral-800'">
+              <span class="text-sm font-semibold flex items-center gap-3">
+                <span class="h-6 w-6 rounded bg-neutral-900 flex items-center justify-center text-xs">🔵</span>
+                Meta Ads Manager
+              </span>
+              <span class="text-xs font-mono" :class="metaLinked ? 'text-emerald-400' : 'text-neutral-500'" x-text="metaLinked ? 'Connected ✅' : 'Click to Link'"></span>
+            </button>
+          </div>
+
+          <div class="flex justify-end pt-4">
+            <button @click="step = 2" :disabled="!allLinked" class="bg-indigo-600 hover:bg-indigo-500 disabled:bg-neutral-800 disabled:text-neutral-600 text-white text-sm font-semibold px-6 py-3 rounded-lg transition">
+              Next: Safety limits &rarr;
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 2: Safety Limits -->
+        <div x-show="step === 2" class="p-8 space-y-6">
+          <h3 class="text-xl font-bold font-display text-white">Step 2: Define Your Safety Guardrails</h3>
+          <p class="text-xs text-neutral-400 leading-relaxed">
+            Configure the maximum budget change Omni OS can execute automatically, and select your initial comfort tier.
+          </p>
+
+          <div class="space-y-5">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <label class="text-xs font-medium text-neutral-400">Daily Blast-Radius Limit (C_max)</label>
+                <span class="text-sm font-mono font-semibold text-indigo-400" x-text="'$' + safetyCap + '/day'"></span>
+              </div>
+              <input type="range" min="50" max="1000" step="50" x-model="safetyCap" class="w-full h-1 bg-neutral-950 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-neutral-400 mb-2">Initial Trust Tier</label>
+              <select x-model.number="selectedTier" class="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-2.5 text-sm text-white focus:border-indigo-500 outline-none">
+                <option value="0">Tier 0: Observe (Shadow Mode) - RECOMMENDED</option>
+                <option value="1">Tier 1: Suggest (Micro Shifts < $100)</option>
+                <option value="2">Tier 2: Optimize (Shifts < $500)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="flex justify-between pt-4">
+            <button @click="step = 1" class="text-neutral-400 text-sm font-semibold hover:text-white px-4">
+              &larr; Back
+            </button>
+            <button @click="step = 3" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-6 py-3 rounded-lg transition">
+              Next: Start Shadow Scan &rarr;
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 3: Shadow Audit -->
+        <div x-show="step === 3" class="p-8 space-y-6">
+          <h3 class="text-xl font-bold font-display text-white">Step 3: Run Free Shadow Audit</h3>
+          <p class="text-xs text-neutral-400 leading-relaxed">
+            The OS scans historical Shopify variant sales logs against ads data from the past 30 days. No budget will be touched.
+          </p>
+
+          <!-- Scanning state -->
+          <div x-show="scanning" class="py-8 space-y-4">
+            <div class="flex justify-between text-xs font-mono text-neutral-500">
+              <span>Scanning databases...</span>
+              <span x-text="scanProgress + '%'"></span>
+            </div>
+            <div class="w-full bg-neutral-950 h-2 rounded-full overflow-hidden">
+              <div class="bg-indigo-500 h-full transition-all duration-300" :style="'width: ' + scanProgress + '%'"></div>
+            </div>
+          </div>
+
+          <!-- Action block before scanning -->
+          <div x-show="!scanning && !scanCompleted" class="py-6 text-center">
+            <button @click="startScan()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-8 py-3 rounded-lg shadow-xl shadow-indigo-600/25 transition">
+              Start Free Shadow Scan
+            </button>
+          </div>
+
+          <!-- Scan completed results -->
+          <div x-show="scanCompleted" class="space-y-4 bg-neutral-950 border border-neutral-800 rounded-xl p-6">
+            <div class="flex items-center gap-2 text-emerald-400 font-bold text-sm mb-2">
+              <span>✓</span> Audit Completed Successfully
+            </div>
+            <div class="grid grid-cols-2 gap-4 text-center border-b border-neutral-800 pb-4">
+              <div>
+                <span class="block text-[10px] uppercase font-mono tracking-wider text-neutral-500">Wasted Ad Spend</span>
+                <span class="text-2xl font-mono font-bold text-rose-500">$1,420.00</span>
+              </div>
+              <div>
+                <span class="block text-[10px] uppercase font-mono tracking-wider text-neutral-500">Out-Of-Stock SKU Ads</span>
+                <span class="text-2xl font-mono font-bold text-amber-500">3 Ad Groups</span>
+              </div>
+            </div>
+            <p class="text-xs text-neutral-400 leading-relaxed">
+              Omni OS found that you spent **$1,420** in the last 30 days sending traffic to out-of-stock sizes. Correcting this would have recovered your trial license cost inside the first week.
+            </p>
+          </div>
+
+          <div class="flex justify-between pt-4">
+            <button @click="step = 2" class="text-neutral-400 text-sm font-semibold hover:text-white px-4">
+              &larr; Back
+            </button>
+            <button x-show="scanCompleted" @click="alert('Trial initialized! Welcome to Omni OS.')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold px-6 py-3 rounded-lg transition">
+              Claim Full Free Access
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing -->
+  <section id="pricing" class="py-24 border-b border-neutral-900 bg-neutral-900/10">
+    <div class="max-w-5xl mx-auto px-6">
+      <div class="text-center max-w-3xl mx-auto mb-16">
+        <span class="text-xs font-semibold uppercase tracking-wider text-indigo-400">PRICING</span>
+        <h2 class="text-3xl md:text-5xl font-bold font-display text-white mt-4 mb-4">
+          Simple. Fair. You Decide.
+        </h2>
+        <p class="text-neutral-400 text-sm leading-relaxed">
+          No forced plans. No annual lock-in. After your trial, choose what fits.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+        <!-- Solo Brand -->
+        <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-8 flex flex-col justify-between">
+          <div>
+            <h4 class="text-lg font-bold font-display text-white mb-2">Solo Brand</h4>
+            <p class="text-xs text-neutral-400 mb-6">1 brand · up to $50K/month ad spend</p>
+            <div class="text-4xl font-mono font-bold text-white mb-8">~$299<span class="text-xs text-neutral-500">/mo</span></div>
+          </div>
+          <a href="#onboarding" class="border border-neutral-800 bg-neutral-950 hover:bg-neutral-900 text-center py-2.5 rounded-lg text-sm font-semibold transition">
+            Select Solo
+          </a>
+        </div>
+
+        <!-- Growth Brand -->
+        <div class="bg-neutral-900 border-2 border-indigo-500 rounded-xl p-8 flex flex-col justify-between relative shadow-indigo-600/10 shadow-2xl">
+          <div class="absolute top-0 right-1/2 transform translate-x-1/2 -translate-y-1/2 bg-indigo-500 text-white text-[10px] font-mono uppercase tracking-widest px-3 py-1 rounded-full font-bold">
+            Popular
+          </div>
+          <div>
+            <h4 class="text-lg font-bold font-display text-white mb-2">Growth Brand</h4>
+            <p class="text-xs text-neutral-400 mb-6">Up to 5 brands · up to $250K/month spend</p>
+            <div class="text-4xl font-mono font-bold text-white mb-8">~$799<span class="text-xs text-neutral-500">/mo</span></div>
+          </div>
+          <a href="#onboarding" class="bg-indigo-600 hover:bg-indigo-500 text-white text-center py-2.5 rounded-lg text-sm font-semibold transition">
+            Select Growth
+          </a>
+        </div>
+
+        <!-- Agency -->
+        <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-8 flex flex-col justify-between">
+          <div>
+            <h4 class="text-lg font-bold font-display text-white mb-2">Agency</h4>
+            <p class="text-xs text-neutral-400 mb-6">Unlimited brands · MCC + white-label</p>
+            <div class="text-4xl font-mono font-bold text-white mb-8">~$2,500<span class="text-xs text-neutral-500">/mo</span></div>
+          </div>
+          <a href="#onboarding" class="border border-neutral-800 bg-neutral-950 hover:bg-neutral-900 text-center py-2.5 rounded-lg text-sm font-semibold transition">
+            Select Agency
+          </a>
+        </div>
+      </div>
+
+      <div class="bg-neutral-950 border border-neutral-800 rounded-2xl p-8 max-w-3xl mx-auto">
+        <h3 class="text-xl font-bold font-display text-white mb-4 text-center">When Your Trial Ends, You Name the Price</h3>
+        <p class="text-neutral-400 text-sm leading-relaxed mb-6 text-center">
+          These are anchors, not invoices. When your 15 days are up, you suggest the amount that feels fair for your business. We would rather have one honest conversation than a pricing page designed to trick you into a tier you don't need.
+        </p>
+        <blockquote class="text-center border-l-2 border-indigo-500 pl-4 py-1 text-sm font-mono text-indigo-400 mb-6">
+          "Most brands at your spend level find $299–$799/month fair. What works for you?"
+        </blockquote>
+        <ul class="text-xs text-neutral-500 space-y-2 max-w-md mx-auto">
+          <li class="flex items-center gap-2">✓ Solo founders paying $149. Agencies paying $3,000. All welcome.</li>
+          <li class="flex items-center gap-2">✓ No hard limits enforced until we've talked.</li>
+          <li class="flex items-center gap-2">✓ Account stays live while we work it out.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Section -->
+  <section class="py-24 bg-indigo-950/20 text-center relative overflow-hidden">
+    <div class="absolute inset-0 bg-indigo-600/5 [mask-image:radial-gradient(ellipse_at_center,black_60%,transparent_100%)]"></div>
+    <div class="relative max-w-4xl mx-auto px-6 space-y-8">
+      <h2 class="text-3xl md:text-6xl font-bold font-display text-white leading-tight">
+        Start seeing true profit metrics. <br>Stop bleeding margin.
+      </h2>
+      <a href="#onboarding" class="inline-block bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-8 py-4 rounded-lg shadow-xl shadow-indigo-600/35 transition text-lg">
+        Claim 15-Day Free Trial
+      </a>
+      <p class="text-xs font-mono text-neutral-500">
+        Takes 3 minutes. Zero setup fee. Pause anytime.
+      </p>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="border-t border-neutral-900 py-12 text-center text-xs text-neutral-500">
+    <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
+      <div>
+        &copy; 2026 Omni OS. All rights reserved. Built for high-growth merchants.
+      </div>
+      <div class="flex items-center gap-6">
+        <a href="#" class="hover:underline">Privacy Policy</a>
+        <a href="#" class="hover:underline">Terms of Service</a>
+        <a href="#" class="hover:underline">Security Architecture</a>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

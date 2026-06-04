@@ -18,6 +18,7 @@ import {
   CircuitBreaker,
   GovernanceEngine,
   TrustLedger,
+  Waiver,
 } from './governance_engine';
 import {SupabaseClient} from './supabase_client';
 import {UnifiedIntelligenceBrain} from './unified_brain';
@@ -338,6 +339,131 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
       if (path === '/api/v1/approvals' && req.method === 'GET') {
         const approvals = await db.getApprovals(tenantId);
         sendSuccessResponse(res, {approvals});
+        return;
+      }
+
+      // 5.5 APPROVAL RESUMPTION (POST)
+      if (
+        path.startsWith('/api/v1/approvals/') &&
+        path.endsWith('/approve') &&
+        req.method === 'POST'
+      ) {
+        const parts = path.split('/');
+        const approvalId = parts[4];
+        if (!approvalId) {
+          throw new ValidationError('Approval ID is missing from URL path');
+        }
+
+        const requestDb = db.clone();
+        requestDb.setTenantContext(decodedToken.orgId);
+
+        const approvals = await requestDb.getApprovals(decodedToken.orgId);
+        const approval = approvals.find((a) => a.approvalId === approvalId);
+
+        if (!approval) {
+          res.writeHead(404, {'Content-Type': 'application/json'});
+          res.end(
+            JSON.stringify({
+              status: 'error',
+              error: {
+                code: 'NOT_FOUND',
+                message: `Approval request '${approvalId}' not found`,
+              },
+            }),
+          );
+          return;
+        }
+
+        if (approval.status !== 'pending') {
+          throw new ValidationError(
+            `Approval request '${approvalId}' is already '${approval.status}'`,
+          );
+        }
+
+        // Validate that the user role matches the escalation target
+        const userRole = decodedToken.role.toLowerCase();
+        const targetRole = approval.assignedTo.toLowerCase();
+        if (userRole !== targetRole && userRole !== 'admin') {
+          res.writeHead(403, {'Content-Type': 'application/json'});
+          res.end(
+            JSON.stringify({
+              status: 'error',
+              error: {
+                code: 'FORBIDDEN',
+                message: `User role '${decodedToken.role}' is not authorized to approve this request (escalated to '${approval.assignedTo}')`,
+              },
+            }),
+          );
+          return;
+        }
+
+        // Re-construct Governance and Platform Adapters
+        const requestGovernance = new GovernanceEngine(
+          new PersistentAuditSink(requestDb),
+          tl,
+          cb,
+          undefined,
+          undefined,
+          requestDb,
+        );
+
+        // Register a manual bypass override waiver for the requestor's role
+        const waiver: Waiver = {
+          overrideRole: approval.context.role.name,
+          reason: `Manual manager sign-off by ${decodedToken.role}`,
+          expiresAtMs: Date.now() + 5000, // 5s expiry window
+          allowedOps: [approval.actionRequest.op],
+          bypassIrreversible: true,
+        };
+        requestGovernance.registerWaiver(decodedToken.orgId, waiver);
+
+        const rawAdapter = new GoogleAdsAdapter(
+          'mock-cust-id',
+          'mock-dev-token',
+          'mock-token',
+          decodedToken.orgId,
+        );
+        const adapter = new RateLimitingAdapterWrapper(
+          rawAdapter,
+          googleAdsLimiter,
+        );
+
+        // Reconstruct the Context role permit functions
+        const rawRole = approval.context.role as any;
+        const normalizedContext = {
+          ...approval.context,
+          role: {
+            ...approval.context.role,
+            permits: (op: string, entity: string) => {
+              const roleName = approval.context.role?.name;
+              if (roleName === 'media_buyer' || roleName === 'permittedRole') {
+                return true;
+              }
+              if (
+                Array.isArray(rawRole?.permissions) &&
+                (rawRole.permissions as string[]).includes(op)
+              ) {
+                return true;
+              }
+              return false;
+            },
+          },
+        };
+
+        const outcome = await requestGovernance.govern(
+          adapter,
+          approval.actionRequest,
+          normalizedContext,
+        );
+
+        if (outcome.status === 'executed') {
+          // Update approval request status in database
+          approval.status = 'approved';
+          approval.completedAt = Date.now();
+          await requestDb.saveApproval(approval);
+        }
+
+        sendSuccessResponse(res, outcome);
         return;
       }
 

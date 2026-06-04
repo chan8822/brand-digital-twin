@@ -14,6 +14,7 @@ import {
   RollbackHandle,
 } from './platform_adapter';
 import {SupabaseClient} from './supabase_client';
+import {ApprovalRequest} from './agency_os_types';
 
 import {
   AuditSink,
@@ -304,6 +305,21 @@ export class GovernanceEngine {
     if (disp.kind === 'QUEUE') {
       spanStatus = 'failure';
       spanError = `Queued: ${disp.reason}`;
+      const approval: ApprovalRequest = {
+        approvalId: `app_${req.idempotencyKey}`,
+        orgId: ctx.tenant.tenantId,
+        entityType: req.entity,
+        entityId: req.targetId || '',
+        requestedBy: 'agent:media_buyer',
+        assignedTo: disp.approver || ctx.tenant.policy.escalationRole,
+        status: 'pending',
+        reason: disp.reason,
+        tenantId: ctx.tenant.tenantId,
+        createdAt: Date.now(),
+        actionRequest: req,
+        context: ctx,
+      };
+      await this.supabase.saveApproval(approval);
       return {status: 'queued'};
     }
 
@@ -614,6 +630,7 @@ export class GovernanceEngine {
     const tenantWaivers = this.waivers.get(tenantId) ?? [];
     let hasWaiver = false;
     let waiverReason = '';
+    let matchedWaiver: Waiver | undefined = undefined;
     for (const waiver of tenantWaivers) {
       if (
         waiver.expiresAtMs > nowMs &&
@@ -623,7 +640,21 @@ export class GovernanceEngine {
       ) {
         hasWaiver = true;
         waiverReason = `temporary override waiver by role '${waiver.overrideRole}' (reason: ${waiver.reason})`;
+        matchedWaiver = waiver;
         break;
+      }
+    }
+
+    if (hasWaiver && matchedWaiver) {
+      const cap = adapter.capabilities.find(
+        (c: any) => c.entity === req.entity && c.ops.includes(req.op),
+      );
+      const isIrreversible = cap && !cap.reversible;
+      if (!isIrreversible || matchedWaiver.bypassIrreversible === true) {
+        return {
+          kind: 'AUTO_EXECUTE',
+          reason: waiverReason,
+        };
       }
     }
 
@@ -686,17 +717,25 @@ export class GovernanceEngine {
       };
     }
 
-    // Irreversible actions (sends, live publishes, payments) never auto-execute, even with waiver
+    // Irreversible actions (sends, live publishes, payments) never auto-execute, unless bypassIrreversible waiver exists
     const cap = adapter.capabilities.find(
       (c: any) => c.entity === req.entity && c.ops.includes(req.op),
     );
     if (cap && !cap.reversible) {
-      return {
-        kind: 'QUEUE',
-        reason:
-          'irreversible actions (sends/broadcasts) must always queue for human approval',
-        approver: policy.escalationRole,
-      };
+      const activeWaiverObj = tenantWaivers.find(
+        (w) =>
+          w.expiresAtMs > nowMs &&
+          w.allowedOps.includes(req.op) &&
+          w.bypassIrreversible === true,
+      );
+      if (!activeWaiverObj) {
+        return {
+          kind: 'QUEUE',
+          reason:
+            'irreversible actions (sends/broadcasts) must always queue for human approval',
+          approver: policy.escalationRole,
+        };
+      }
     }
 
     // Check earned vs required trust, unless waiver is active
