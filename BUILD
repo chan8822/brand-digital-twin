@@ -43,7 +43,28 @@ ts_library(
 ts_library(
     name = "shopify_adapter",
     srcs = ["shopify_adapter.ts"],
-    deps = ["//third_party/javascript/typings/node"],
+    deps = [
+        ":platform_adapter",
+        "//third_party/javascript/typings/node",
+    ],
+)
+
+ts_library(
+    name = "woocommerce_adapter",
+    srcs = ["woocommerce_adapter.ts"],
+    deps = [
+        ":platform_adapter",
+        "//third_party/javascript/typings/node",
+    ],
+)
+
+ts_library(
+    name = "magento_adapter",
+    srcs = ["magento_adapter.ts"],
+    deps = [
+        ":platform_adapter",
+        "//third_party/javascript/typings/node",
+    ],
 )
 
 ts_library(
@@ -347,6 +368,7 @@ ts_library(
         "easysaas_test.ts",
         "integrations_test.ts",
         "onboarding_simulator_test.ts",
+        "omnichannel_test.ts",
         "phase1_test.ts",
         "phase2_test.ts",
         "phase3_test.ts",
@@ -374,6 +396,8 @@ ts_library(
         ":identity_resolver",
         ":incident_response",
         ":meta_ads_adapter",
+        ":woocommerce_adapter",
+        ":magento_adapter",
         ":multi_agent_governance",
         ":observability",
         ":onboarding_simulator",
@@ -467,5 +491,10 @@ jasmine_node_test(
 
 jasmine_node_test(
     name = "supabase_client_test",
+    srcs = [":brand_twin_tests"],
+)
+
+jasmine_node_test(
+    name = "omnichannel_test",
     srcs = [":brand_twin_tests"],
 )

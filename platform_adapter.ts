@@ -52,6 +52,14 @@ export interface ActionResult {
   error?: string;
 }
 
+export interface CanonicalRows {
+  // one normalized order fans out into these table rows
+  order: Record<string, unknown>;
+  order_lines: Record<string, unknown>[];
+  customer?: Record<string, unknown>;
+  identity_links: Record<string, unknown>[];
+}
+
 export interface PlatformAdapter {
   readonly platform: string;
   readonly schemaVersion: string;

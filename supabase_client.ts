@@ -42,6 +42,67 @@ export interface LockEntry {
   expires_at: string;
 }
 
+export interface OrderEntry {
+  order_id: string;
+  customer_id: string | null;
+  account_id: string | null;
+  channel: string;
+  surface: string;
+  placed_at: string;
+  currency: string;
+  gross_revenue: number;
+  total_discounts: number;
+  total_tax: number;
+  shipping_charged: number;
+  status: string;
+  tenant_id: string;
+  source_system: string;
+  source_id: string;
+  source_version: string;
+  ingested_at: string;
+}
+
+export interface OrderLineEntry {
+  order_line_id: string;
+  order_id: string;
+  variant_id: string | null;
+  sku: string | null;
+  qty: number;
+  unit_price: number;
+  line_discount: number;
+  unit_cost: number;
+  tenant_id: string;
+  source_system: string;
+  source_id: string;
+  source_version: string;
+  ingested_at: string;
+}
+
+export interface CampaignEntry {
+  campaign_id: string;
+  platform: string;
+  name: string;
+  objective: string;
+  status: string;
+  surface: string;
+  tenant_id: string;
+  source_system: string;
+  source_id: string;
+  source_version: string;
+  ingested_at: string;
+}
+
+export interface SpendFactEntry {
+  campaign_id: string;
+  platform: string;
+  day: string;
+  amount: number;
+  currency: string;
+  tenant_id: string;
+  source_system: string;
+  ingested_at: string;
+}
+
 /**
  * Supabase client orchestrator.
  */
@@ -50,6 +111,11 @@ export class SupabaseClient {
   private mockTrust: TrustEntry[] = [];
   private mockAuditLogs: AuditLogEntry[] = [];
   private mockLocks: LockEntry[] = [];
+
+  private mockOrders: OrderEntry[] = [];
+  private mockOrderLines: OrderLineEntry[] = [];
+  private mockCampaigns: CampaignEntry[] = [];
+  private mockSpendFacts: SpendFactEntry[] = [];
 
   private mockTeamMembers: TeamMember[] = [];
   private mockClients: ClientProfile[] = [];
@@ -71,6 +137,10 @@ export class SupabaseClient {
     mockTrust: TrustEntry[];
     mockAuditLogs: AuditLogEntry[];
     mockLocks: LockEntry[];
+    mockOrders: OrderEntry[];
+    mockOrderLines: OrderLineEntry[];
+    mockCampaigns: CampaignEntry[];
+    mockSpendFacts: SpendFactEntry[];
     mockTeamMembers: TeamMember[];
     mockClients: ClientProfile[];
     mockCampaignBriefs: CampaignBrief[];
@@ -107,6 +177,10 @@ export class SupabaseClient {
     copy.mockTrust = this.mockTrust;
     copy.mockAuditLogs = this.mockAuditLogs;
     copy.mockLocks = this.mockLocks;
+    copy.mockOrders = this.mockOrders;
+    copy.mockOrderLines = this.mockOrderLines;
+    copy.mockCampaigns = this.mockCampaigns;
+    copy.mockSpendFacts = this.mockSpendFacts;
     copy.mockTeamMembers = this.mockTeamMembers;
     copy.mockClients = this.mockClients;
     copy.mockCampaignBriefs = this.mockCampaignBriefs;
@@ -775,6 +849,92 @@ export class SupabaseClient {
     }
   }
 
+  // --- ORDERS ---
+  async getOrders(tenant: string): Promise<OrderEntry[]> {
+    this.assertRls(tenant);
+    if (this.mockMode) {
+      return this.mockOrders.filter((o) => o.tenant_id === tenant);
+    }
+    return [];
+  }
+  async saveOrder(order: OrderEntry): Promise<void> {
+    this.assertRls(order.tenant_id);
+    if (this.mockMode) {
+      const idx = this.mockOrders.findIndex((o) => o.order_id === order.order_id);
+      if (idx >= 0) {
+        this.mockOrders[idx] = order;
+      } else {
+        this.mockOrders.push(order);
+      }
+    }
+  }
+
+  // --- ORDER LINES ---
+  async getOrderLines(tenant: string): Promise<OrderLineEntry[]> {
+    this.assertRls(tenant);
+    if (this.mockMode) {
+      return this.mockOrderLines.filter((l) => l.tenant_id === tenant);
+    }
+    return [];
+  }
+  async saveOrderLine(line: OrderLineEntry): Promise<void> {
+    this.assertRls(line.tenant_id);
+    if (this.mockMode) {
+      const idx = this.mockOrderLines.findIndex(
+        (l) => l.order_line_id === line.order_line_id,
+      );
+      if (idx >= 0) {
+        this.mockOrderLines[idx] = line;
+      } else {
+        this.mockOrderLines.push(line);
+      }
+    }
+  }
+
+  // --- CAMPAIGNS ---
+  async getCampaigns(tenant: string): Promise<CampaignEntry[]> {
+    this.assertRls(tenant);
+    if (this.mockMode) {
+      return this.mockCampaigns.filter((c) => c.tenant_id === tenant);
+    }
+    return [];
+  }
+  async saveCampaign(campaign: CampaignEntry): Promise<void> {
+    this.assertRls(campaign.tenant_id);
+    if (this.mockMode) {
+      const idx = this.mockCampaigns.findIndex(
+        (c) => c.campaign_id === campaign.campaign_id,
+      );
+      if (idx >= 0) {
+        this.mockCampaigns[idx] = campaign;
+      } else {
+        this.mockCampaigns.push(campaign);
+      }
+    }
+  }
+
+  // --- SPEND FACTS ---
+  async getSpendFacts(tenant: string): Promise<SpendFactEntry[]> {
+    this.assertRls(tenant);
+    if (this.mockMode) {
+      return this.mockSpendFacts.filter((s) => s.tenant_id === tenant);
+    }
+    return [];
+  }
+  async saveSpendFact(fact: SpendFactEntry): Promise<void> {
+    this.assertRls(fact.tenant_id);
+    if (this.mockMode) {
+      const idx = this.mockSpendFacts.findIndex(
+        (s) => s.campaign_id === fact.campaign_id && s.day === fact.day,
+      );
+      if (idx >= 0) {
+        this.mockSpendFacts[idx] = fact;
+      } else {
+        this.mockSpendFacts.push(fact);
+      }
+    }
+  }
+
   // --- TRANSACTION SIMULATION ---
   private transactionActive = false;
 
@@ -784,6 +944,10 @@ export class SupabaseClient {
       mockTrust: JSON.parse(JSON.stringify(this.mockTrust)) as TrustEntry[],
       mockAuditLogs: JSON.parse(JSON.stringify(this.mockAuditLogs)) as AuditLogEntry[],
       mockLocks: JSON.parse(JSON.stringify(this.mockLocks)) as LockEntry[],
+      mockOrders: JSON.parse(JSON.stringify(this.mockOrders)) as OrderEntry[],
+      mockOrderLines: JSON.parse(JSON.stringify(this.mockOrderLines)) as OrderLineEntry[],
+      mockCampaigns: JSON.parse(JSON.stringify(this.mockCampaigns)) as CampaignEntry[],
+      mockSpendFacts: JSON.parse(JSON.stringify(this.mockSpendFacts)) as SpendFactEntry[],
       mockTeamMembers: JSON.parse(JSON.stringify(this.mockTeamMembers)) as TeamMember[],
       mockClients: JSON.parse(JSON.stringify(this.mockClients)) as ClientProfile[],
       mockCampaignBriefs: JSON.parse(JSON.stringify(this.mockCampaignBriefs)) as CampaignBrief[],
@@ -813,6 +977,10 @@ export class SupabaseClient {
       this.mockTrust = this.snapshots.mockTrust;
       this.mockAuditLogs = this.snapshots.mockAuditLogs;
       this.mockLocks = this.snapshots.mockLocks;
+      this.mockOrders = this.snapshots.mockOrders;
+      this.mockOrderLines = this.snapshots.mockOrderLines;
+      this.mockCampaigns = this.snapshots.mockCampaigns;
+      this.mockSpendFacts = this.snapshots.mockSpendFacts;
       this.mockTeamMembers = this.snapshots.mockTeamMembers;
       this.mockClients = this.snapshots.mockClients;
       this.mockCampaignBriefs = this.snapshots.mockCampaignBriefs;
@@ -830,5 +998,4 @@ export class SupabaseClient {
     }
     this.logger.info('Transaction boundary rolled back');
   }
-
 }

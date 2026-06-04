@@ -5,43 +5,32 @@
 
 import {createHash} from 'node:crypto';
 
-// --- Minimal slice of the adapter contract used in Phase 0 ---
-export type Op = 'read';
-export interface Capability {
-  entity: string;
-  ops: Op[];
-  reversible: boolean;
-}
-export interface HealthReport {
-  ok: boolean;
-  latencyMs: number;
-  rateLimitRemaining?: number;
-  schemaDriftDetected: boolean;
-  deprecations: string[];
-}
-export interface CanonicalRows {
-  // one normalized order fans out into these table rows
-  order: Record<string, unknown>;
-  order_lines: Record<string, unknown>[];
-  customer?: Record<string, unknown>;
-  identity_links: Record<string, unknown>[];
-}
+import {
+  ActionPlan,
+  ActionRequest,
+  ActionResult,
+  CanonicalRows,
+  Capability,
+  HealthReport,
+  PlatformAdapter,
+  RollbackHandle,
+} from './platform_adapter';
 
 const API_VERSION = '2025-10';
 const sha256 = (s: string) =>
   createHash('sha256').update(s.trim().toLowerCase()).digest('hex');
 
-export class ShopifyAdapter {
+export class ShopifyAdapter implements PlatformAdapter {
   readonly platform = 'shopify';
   readonly schemaVersion = 'shopify@2025-10';
   readonly capabilities: Capability[] = [
-    {entity: 'order', ops: ['read'], reversible: true}, // read-only; no write ops declared
+    {entity: 'order', ops: ['read'], reversible: true},
   ];
 
   constructor(
-    private shop: string, // e.g. "ableys.myshopify.com"
-    private token: string, // Admin API access token (read scopes only)
-    private tenantId: string,
+    private readonly shop: string, // e.g. "ableys.myshopify.com"
+    private readonly token: string, // Admin API access token (read scopes only)
+    private readonly tenantId: string,
   ) {}
 
   private endpoint() {
@@ -246,15 +235,42 @@ export class ShopifyAdapter {
         ok: !!data?.shop?.name,
         latencyMs: Date.now() - t0,
         schemaDriftDetected: false,
-        deprecations: [],
+        deprecationWarnings: [],
       };
     } catch {
       return {
         ok: false,
         latencyMs: Date.now() - t0,
         schemaDriftDetected: true,
-        deprecations: [],
+        deprecationWarnings: [],
       };
     }
+  }
+
+  // --- WRITE PATH STUBS (Read-Only Adapter) ---
+
+  async plan(req: ActionRequest): Promise<ActionPlan> {
+    return {
+      request: req,
+      valid: false,
+      projectedCost: 0,
+      warnings: ['Shopify storefront adapter is read-only.'],
+    };
+  }
+
+  async execute(plan: ActionPlan): Promise<ActionResult> {
+    return {
+      ok: false,
+      auditRef: 'unsupported',
+      error: 'Shopify storefront adapter does not support executions.',
+    };
+  }
+
+  async rollback(h: RollbackHandle): Promise<ActionResult> {
+    return {
+      ok: false,
+      auditRef: 'unsupported',
+      error: 'Shopify storefront adapter does not support rollbacks.',
+    };
   }
 }
