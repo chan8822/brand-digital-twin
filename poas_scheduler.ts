@@ -57,15 +57,18 @@ export class PoasScheduler {
 
   async pollAndExecute() {
     const now = Date.now();
-    const overdue = await this.db.getOverdueJobs(now);
+    const ownerId = `scheduler-node-${Math.random().toString(36).substring(2, 7)}`;
 
-    for (const job of overdue) {
+    while (true) {
+      const job = await this.db.claimNextOverdueJob(now, ownerId);
+      if (!job) {
+        break; // No more overdue jobs to claim
+      }
+
       try {
-        await this.db.updateJobStatus(job.job_id, 'processing');
-        
         if (job.type === 'poas_daily') {
           await this.executePoasDaily(job.tenant_id);
-          
+
           // Reschedule for 24h later
           const nextRun = new Date(now + 24 * 3600 * 1000).toISOString();
           const nextJob: PendingJobEntry = {
@@ -79,7 +82,7 @@ export class PoasScheduler {
             created_at: new Date().toISOString(),
           };
           await this.db.savePendingJob(nextJob);
-          
+
           // Delete old job
           await this.db.deletePendingJob(job.job_id);
         } else if (job.type === 'settling_window') {
@@ -91,13 +94,13 @@ export class PoasScheduler {
           if (!adapter) {
             throw new Error(`No platform adapter registered for platform '${payload.platform}'`);
           }
-          
+
           if (!this.engine) {
             throw new Error(`GovernanceEngine is not registered on PoasScheduler`);
           }
-          
+
           await this.engine.verifyPendingAction(job, adapter);
-          
+
           // Delete job upon success
           await this.db.deletePendingJob(job.job_id);
         }

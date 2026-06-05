@@ -7,6 +7,9 @@ describe('PoasScheduler', () => {
   const tenantId = 'tenant-sched-test';
 
   beforeEach(async () => {
+    SupabaseClient.useSharedMockDb = true;
+    SupabaseClient.resetGlobalMockDb();
+
     db = new SupabaseClient('https://mock.supabase.co', 'mock-key', true);
     db.setTenantContext(tenantId);
     scheduler = new PoasScheduler(db, 1000);
@@ -173,6 +176,10 @@ describe('PoasScheduler', () => {
     });
   });
 
+  afterEach(() => {
+    SupabaseClient.useSharedMockDb = false;
+  });
+
   it('should schedule, run, reschedule, and flag unprofitable campaigns', async () => {
     // 1. Register tenant to create initial daily job
     await scheduler.registerTenant(tenantId);
@@ -226,5 +233,53 @@ describe('PoasScheduler', () => {
     signals = await db.getBrandSignals(tenantId);
     // Should still have only 1 signal because alreadySignaled guard matches the campaign ID
     expect(signals.filter((s) => s.type === 'low_performance_roi').length).toBe(1);
+  });
+
+  it('should split multiple overdue jobs across concurrent scheduler nodes without double-execution', async () => {
+    const schedulerA = new PoasScheduler(db, 1000);
+    const schedulerB = new PoasScheduler(db, 1000);
+
+    const tenants = ['tenant-1', 'tenant-2', 'tenant-3', 'tenant-4'];
+    db.setTenantContext(null);
+
+    // Clear all pending jobs first
+    (db as any).mockPendingJobs = [];
+
+    for (const t of tenants) {
+      await db.saveClient({
+        clientId: `client-${t}`,
+        orgId: `org-${t}`,
+        name: `Client ${t}`,
+        tenantId: t,
+        healthScore: 100,
+        churnRisk: 0.0,
+        marginTarget: 0.4,
+        mrr: 5000,
+      });
+
+      const job = {
+        job_id: `job-poas-${t}`,
+        tenant_id: t,
+        type: 'poas_daily' as const,
+        action_id: null,
+        run_at: new Date(Date.now() - 5000).toISOString(),
+        payload: null,
+        status: 'pending' as const,
+        created_at: new Date().toISOString(),
+      };
+      await db.savePendingJob(job);
+    }
+
+    await Promise.all([
+      schedulerA.pollAndExecute(),
+      schedulerB.pollAndExecute(),
+    ]);
+
+    const rawJobs = (db as any).mockPendingJobs;
+    expect(rawJobs.length).toBe(4);
+    for (const job of rawJobs) {
+      expect(job.status).toBe('pending');
+      expect(Date.parse(job.run_at)).toBeGreaterThan(Date.now() + 23 * 3600 * 1000);
+    }
   });
 });

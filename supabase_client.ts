@@ -270,6 +270,45 @@ export interface OnboardingEventEntry {
 }
 
 
+interface MockDbContainer {
+  mockTrust: TrustEntry[];
+  mockAuditLogs: AuditLogEntry[];
+  mockLocks: LockEntry[];
+  mockCredentials: CredentialEntry[];
+  mockGovernanceEvents: GovernanceEventEntry[];
+  mockOrders: OrderEntry[];
+  mockOrderLines: OrderLineEntry[];
+  mockCampaigns: CampaignEntry[];
+  mockSpendFacts: SpendFactEntry[];
+  mockCustomers: CustomerEntry[];
+  mockIdentityLinks: IdentityLinkEntry[];
+  mockRefunds: RefundEntry[];
+  mockFulfillmentCosts: FulfillmentCostEntry[];
+  mockTouchpoints: TouchpointEntry[];
+  mockTeamMembers: TeamMember[];
+  mockClients: ClientProfile[];
+  mockCampaignBriefs: CampaignBrief[];
+  mockApprovals: ApprovalRequest[];
+  mockActivityFeed: ActivityFeedItem[];
+  mockClientPortals: ClientPortalToken[];
+  mockBrandSignals: BrandSignal[];
+  mockIntegrationStates: IntegrationState[];
+  mockSocialMentions: SocialMention[];
+  mockCompetitorSignals: CompetitorSignal[];
+  mockFinancialTransactions: FinancialTransaction[];
+  mockCreativeAssets: CreativeAsset[];
+  mockStakeholderAssociations: StakeholderAssociation[];
+  mockBaselineContexts: Array<{tenant_id: string; context: BaselineContext}>;
+  mockCategoryBenchmarks: Array<{tenant_id: string; benchmarks: CategoryBenchmarks}>;
+  mockPlatformAccounts: PlatformAccountEntry[];
+  mockAccountLinks: AccountLinkEntry[];
+  mockAccountCredentials: AccountCredentialEntry[];
+  mockProductAdLinks: ProductAdLinkEntry[];
+  mockVariants: VariantEntry[];
+  mockPendingJobs: PendingJobEntry[];
+  mockOnboardingEvents: OnboardingEventEntry[];
+}
+
 class GlobalMockDb {
   static mockTrust: TrustEntry[] = [];
   static mockAuditLogs: AuditLogEntry[] = [];
@@ -313,113 +352,193 @@ class GlobalMockDb {
  * Supabase client orchestrator.
  */
 export class SupabaseClient {
-  private get mockTrust(): TrustEntry[] { return GlobalMockDb.mockTrust; }
-  private set mockTrust(v: TrustEntry[]) { GlobalMockDb.mockTrust = v; }
+  static useSharedMockDb = false;
 
-  private get mockAuditLogs(): AuditLogEntry[] { return GlobalMockDb.mockAuditLogs; }
-  private set mockAuditLogs(v: AuditLogEntry[]) { GlobalMockDb.mockAuditLogs = v; }
+  private localMockDb: MockDbContainer = {
+    mockTrust: [],
+    mockAuditLogs: [],
+    mockLocks: [],
+    mockCredentials: [],
+    mockGovernanceEvents: [],
+    mockOrders: [],
+    mockOrderLines: [],
+    mockCampaigns: [],
+    mockSpendFacts: [],
+    mockCustomers: [],
+    mockIdentityLinks: [],
+    mockRefunds: [],
+    mockFulfillmentCosts: [],
+    mockTouchpoints: [],
+    mockTeamMembers: [],
+    mockClients: [],
+    mockCampaignBriefs: [],
+    mockApprovals: [],
+    mockActivityFeed: [],
+    mockClientPortals: [],
+    mockBrandSignals: [],
+    mockIntegrationStates: [],
+    mockSocialMentions: [],
+    mockCompetitorSignals: [],
+    mockFinancialTransactions: [],
+    mockCreativeAssets: [],
+    mockStakeholderAssociations: [],
+    mockBaselineContexts: [],
+    mockCategoryBenchmarks: [],
+    mockPlatformAccounts: [],
+    mockAccountLinks: [],
+    mockAccountCredentials: [],
+    mockProductAdLinks: [],
+    mockVariants: [],
+    mockPendingJobs: [],
+    mockOnboardingEvents: [],
+  };
 
-  private get mockLocks(): LockEntry[] { return GlobalMockDb.mockLocks; }
-  private set mockLocks(v: LockEntry[]) { GlobalMockDb.mockLocks = v; }
+  static resetGlobalMockDb() {
+    GlobalMockDb.mockTrust = [];
+    GlobalMockDb.mockAuditLogs = [];
+    GlobalMockDb.mockLocks = [];
+    GlobalMockDb.mockCredentials = [];
+    GlobalMockDb.mockGovernanceEvents = [];
+    GlobalMockDb.mockOrders = [];
+    GlobalMockDb.mockOrderLines = [];
+    GlobalMockDb.mockCampaigns = [];
+    GlobalMockDb.mockSpendFacts = [];
+    GlobalMockDb.mockCustomers = [];
+    GlobalMockDb.mockIdentityLinks = [];
+    GlobalMockDb.mockRefunds = [];
+    GlobalMockDb.mockFulfillmentCosts = [];
+    GlobalMockDb.mockTouchpoints = [];
+    GlobalMockDb.mockTeamMembers = [];
+    GlobalMockDb.mockClients = [];
+    GlobalMockDb.mockCampaignBriefs = [];
+    GlobalMockDb.mockApprovals = [];
+    GlobalMockDb.mockActivityFeed = [];
+    GlobalMockDb.mockClientPortals = [];
+    GlobalMockDb.mockBrandSignals = [];
+    GlobalMockDb.mockIntegrationStates = [];
+    GlobalMockDb.mockSocialMentions = [];
+    GlobalMockDb.mockCompetitorSignals = [];
+    GlobalMockDb.mockFinancialTransactions = [];
+    GlobalMockDb.mockCreativeAssets = [];
+    GlobalMockDb.mockStakeholderAssociations = [];
+    GlobalMockDb.mockBaselineContexts = [];
+    GlobalMockDb.mockCategoryBenchmarks = [];
+    GlobalMockDb.mockPlatformAccounts = [];
+    GlobalMockDb.mockAccountLinks = [];
+    GlobalMockDb.mockAccountCredentials = [];
+    GlobalMockDb.mockProductAdLinks = [];
+    GlobalMockDb.mockVariants = [];
+    GlobalMockDb.mockPendingJobs = [];
+    GlobalMockDb.mockOnboardingEvents = [];
+  }
 
-  private get mockCredentials(): CredentialEntry[] { return GlobalMockDb.mockCredentials; }
-  private set mockCredentials(v: CredentialEntry[]) { GlobalMockDb.mockCredentials = v; }
+  private get mockTrust(): TrustEntry[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockTrust : this.localMockDb.mockTrust; }
+  private set mockTrust(v: TrustEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockTrust = v; else this.localMockDb.mockTrust = v; }
 
-  private get mockGovernanceEvents(): GovernanceEventEntry[] { return GlobalMockDb.mockGovernanceEvents; }
-  private set mockGovernanceEvents(v: GovernanceEventEntry[]) { GlobalMockDb.mockGovernanceEvents = v; }
+  private get mockAuditLogs(): AuditLogEntry[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockAuditLogs : this.localMockDb.mockAuditLogs; }
+  private set mockAuditLogs(v: AuditLogEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockAuditLogs = v; else this.localMockDb.mockAuditLogs = v; }
 
-  private get mockOrders(): OrderEntry[] { return GlobalMockDb.mockOrders; }
-  private set mockOrders(v: OrderEntry[]) { GlobalMockDb.mockOrders = v; }
+  private get mockLocks(): LockEntry[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockLocks : this.localMockDb.mockLocks; }
+  private set mockLocks(v: LockEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockLocks = v; else this.localMockDb.mockLocks = v; }
 
-  private get mockOrderLines(): OrderLineEntry[] { return GlobalMockDb.mockOrderLines; }
-  private set mockOrderLines(v: OrderLineEntry[]) { GlobalMockDb.mockOrderLines = v; }
+  private get mockCredentials(): CredentialEntry[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockCredentials : this.localMockDb.mockCredentials; }
+  private set mockCredentials(v: CredentialEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockCredentials = v; else this.localMockDb.mockCredentials = v; }
 
-  private get mockCampaigns(): CampaignEntry[] { return GlobalMockDb.mockCampaigns; }
-  private set mockCampaigns(v: CampaignEntry[]) { GlobalMockDb.mockCampaigns = v; }
+  private get mockGovernanceEvents(): GovernanceEventEntry[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockGovernanceEvents : this.localMockDb.mockGovernanceEvents; }
+  private set mockGovernanceEvents(v: GovernanceEventEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockGovernanceEvents = v; else this.localMockDb.mockGovernanceEvents = v; }
 
-  private get mockSpendFacts(): SpendFactEntry[] { return GlobalMockDb.mockSpendFacts; }
-  private set mockSpendFacts(v: SpendFactEntry[]) { GlobalMockDb.mockSpendFacts = v; }
+  private get mockOrders(): OrderEntry[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockOrders : this.localMockDb.mockOrders; }
+  private set mockOrders(v: OrderEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockOrders = v; else this.localMockDb.mockOrders = v; }
 
-  private get mockCustomers(): CustomerEntry[] { return GlobalMockDb.mockCustomers; }
-  private set mockCustomers(v: CustomerEntry[]) { GlobalMockDb.mockCustomers = v; }
+  private get mockOrderLines(): OrderLineEntry[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockOrderLines : this.localMockDb.mockOrderLines; }
+  private set mockOrderLines(v: OrderLineEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockOrderLines = v; else this.localMockDb.mockOrderLines = v; }
 
-  private get mockIdentityLinks(): IdentityLinkEntry[] { return GlobalMockDb.mockIdentityLinks; }
-  private set mockIdentityLinks(v: IdentityLinkEntry[]) { GlobalMockDb.mockIdentityLinks = v; }
+  private get mockCampaigns(): CampaignEntry[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockCampaigns : this.localMockDb.mockCampaigns; }
+  private set mockCampaigns(v: CampaignEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockCampaigns = v; else this.localMockDb.mockCampaigns = v; }
 
-  private get mockRefunds(): RefundEntry[] { return GlobalMockDb.mockRefunds; }
-  private set mockRefunds(v: RefundEntry[]) { GlobalMockDb.mockRefunds = v; }
+  private get mockSpendFacts(): SpendFactEntry[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockSpendFacts : this.localMockDb.mockSpendFacts; }
+  private set mockSpendFacts(v: SpendFactEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockSpendFacts = v; else this.localMockDb.mockSpendFacts = v; }
 
-  private get mockFulfillmentCosts(): FulfillmentCostEntry[] { return GlobalMockDb.mockFulfillmentCosts; }
-  private set mockFulfillmentCosts(v: FulfillmentCostEntry[]) { GlobalMockDb.mockFulfillmentCosts = v; }
+  private get mockCustomers(): CustomerEntry[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockCustomers : this.localMockDb.mockCustomers; }
+  private set mockCustomers(v: CustomerEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockCustomers = v; else this.localMockDb.mockCustomers = v; }
 
-  private get mockTouchpoints(): TouchpointEntry[] { return GlobalMockDb.mockTouchpoints; }
-  private set mockTouchpoints(v: TouchpointEntry[]) { GlobalMockDb.mockTouchpoints = v; }
+  private get mockIdentityLinks(): IdentityLinkEntry[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockIdentityLinks : this.localMockDb.mockIdentityLinks; }
+  private set mockIdentityLinks(v: IdentityLinkEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockIdentityLinks = v; else this.localMockDb.mockIdentityLinks = v; }
 
-  private get mockTeamMembers(): TeamMember[] { return GlobalMockDb.mockTeamMembers; }
-  private set mockTeamMembers(v: TeamMember[]) { GlobalMockDb.mockTeamMembers = v; }
+  private get mockRefunds(): RefundEntry[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockRefunds : this.localMockDb.mockRefunds; }
+  private set mockRefunds(v: RefundEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockRefunds = v; else this.localMockDb.mockRefunds = v; }
 
-  private get mockClients(): ClientProfile[] { return GlobalMockDb.mockClients; }
-  private set mockClients(v: ClientProfile[]) { GlobalMockDb.mockClients = v; }
+  private get mockFulfillmentCosts(): FulfillmentCostEntry[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockFulfillmentCosts : this.localMockDb.mockFulfillmentCosts; }
+  private set mockFulfillmentCosts(v: FulfillmentCostEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockFulfillmentCosts = v; else this.localMockDb.mockFulfillmentCosts = v; }
 
-  private get mockCampaignBriefs(): CampaignBrief[] { return GlobalMockDb.mockCampaignBriefs; }
-  private set mockCampaignBriefs(v: CampaignBrief[]) { GlobalMockDb.mockCampaignBriefs = v; }
+  private get mockTouchpoints(): TouchpointEntry[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockTouchpoints : this.localMockDb.mockTouchpoints; }
+  private set mockTouchpoints(v: TouchpointEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockTouchpoints = v; else this.localMockDb.mockTouchpoints = v; }
 
-  private get mockApprovals(): ApprovalRequest[] { return GlobalMockDb.mockApprovals; }
-  private set mockApprovals(v: ApprovalRequest[]) { GlobalMockDb.mockApprovals = v; }
+  private get mockTeamMembers(): TeamMember[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockTeamMembers : this.localMockDb.mockTeamMembers; }
+  private set mockTeamMembers(v: TeamMember[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockTeamMembers = v; else this.localMockDb.mockTeamMembers = v; }
 
-  private get mockActivityFeed(): ActivityFeedItem[] { return GlobalMockDb.mockActivityFeed; }
-  private set mockActivityFeed(v: ActivityFeedItem[]) { GlobalMockDb.mockActivityFeed = v; }
+  private get mockClients(): ClientProfile[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockClients : this.localMockDb.mockClients; }
+  private set mockClients(v: ClientProfile[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockClients = v; else this.localMockDb.mockClients = v; }
 
-  private get mockClientPortals(): ClientPortalToken[] { return GlobalMockDb.mockClientPortals; }
-  private set mockClientPortals(v: ClientPortalToken[]) { GlobalMockDb.mockClientPortals = v; }
+  private get mockCampaignBriefs(): CampaignBrief[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockCampaignBriefs : this.localMockDb.mockCampaignBriefs; }
+  private set mockCampaignBriefs(v: CampaignBrief[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockCampaignBriefs = v; else this.localMockDb.mockCampaignBriefs = v; }
 
-  private get mockBrandSignals(): BrandSignal[] { return GlobalMockDb.mockBrandSignals; }
-  private set mockBrandSignals(v: BrandSignal[]) { GlobalMockDb.mockBrandSignals = v; }
+  private get mockApprovals(): ApprovalRequest[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockApprovals : this.localMockDb.mockApprovals; }
+  private set mockApprovals(v: ApprovalRequest[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockApprovals = v; else this.localMockDb.mockApprovals = v; }
 
-  private get mockIntegrationStates(): IntegrationState[] { return GlobalMockDb.mockIntegrationStates; }
-  private set mockIntegrationStates(v: IntegrationState[]) { GlobalMockDb.mockIntegrationStates = v; }
+  private get mockActivityFeed(): ActivityFeedItem[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockActivityFeed : this.localMockDb.mockActivityFeed; }
+  private set mockActivityFeed(v: ActivityFeedItem[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockActivityFeed = v; else this.localMockDb.mockActivityFeed = v; }
 
-  private get mockSocialMentions(): SocialMention[] { return GlobalMockDb.mockSocialMentions; }
-  private set mockSocialMentions(v: SocialMention[]) { GlobalMockDb.mockSocialMentions = v; }
+  private get mockClientPortals(): ClientPortalToken[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockClientPortals : this.localMockDb.mockClientPortals; }
+  private set mockClientPortals(v: ClientPortalToken[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockClientPortals = v; else this.localMockDb.mockClientPortals = v; }
 
-  private get mockCompetitorSignals(): CompetitorSignal[] { return GlobalMockDb.mockCompetitorSignals; }
-  private set mockCompetitorSignals(v: CompetitorSignal[]) { GlobalMockDb.mockCompetitorSignals = v; }
+  private get mockBrandSignals(): BrandSignal[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockBrandSignals : this.localMockDb.mockBrandSignals; }
+  private set mockBrandSignals(v: BrandSignal[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockBrandSignals = v; else this.localMockDb.mockBrandSignals = v; }
 
-  private get mockFinancialTransactions(): FinancialTransaction[] { return GlobalMockDb.mockFinancialTransactions; }
-  private set mockFinancialTransactions(v: FinancialTransaction[]) { GlobalMockDb.mockFinancialTransactions = v; }
+  private get mockIntegrationStates(): IntegrationState[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockIntegrationStates : this.localMockDb.mockIntegrationStates; }
+  private set mockIntegrationStates(v: IntegrationState[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockIntegrationStates = v; else this.localMockDb.mockIntegrationStates = v; }
 
-  private get mockCreativeAssets(): CreativeAsset[] { return GlobalMockDb.mockCreativeAssets; }
-  private set mockCreativeAssets(v: CreativeAsset[]) { GlobalMockDb.mockCreativeAssets = v; }
+  private get mockSocialMentions(): SocialMention[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockSocialMentions : this.localMockDb.mockSocialMentions; }
+  private set mockSocialMentions(v: SocialMention[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockSocialMentions = v; else this.localMockDb.mockSocialMentions = v; }
 
-  private get mockStakeholderAssociations(): StakeholderAssociation[] { return GlobalMockDb.mockStakeholderAssociations; }
-  private set mockStakeholderAssociations(v: StakeholderAssociation[]) { GlobalMockDb.mockStakeholderAssociations = v; }
+  private get mockCompetitorSignals(): CompetitorSignal[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockCompetitorSignals : this.localMockDb.mockCompetitorSignals; }
+  private set mockCompetitorSignals(v: CompetitorSignal[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockCompetitorSignals = v; else this.localMockDb.mockCompetitorSignals = v; }
 
-  private get mockBaselineContexts(): Array<{tenant_id: string; context: BaselineContext}> { return GlobalMockDb.mockBaselineContexts; }
-  private set mockBaselineContexts(v: Array<{tenant_id: string; context: BaselineContext}>) { GlobalMockDb.mockBaselineContexts = v; }
+  private get mockFinancialTransactions(): FinancialTransaction[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockFinancialTransactions : this.localMockDb.mockFinancialTransactions; }
+  private set mockFinancialTransactions(v: FinancialTransaction[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockFinancialTransactions = v; else this.localMockDb.mockFinancialTransactions = v; }
 
-  private get mockCategoryBenchmarks(): Array<{tenant_id: string; benchmarks: CategoryBenchmarks}> { return GlobalMockDb.mockCategoryBenchmarks; }
-  private set mockCategoryBenchmarks(v: Array<{tenant_id: string; benchmarks: CategoryBenchmarks}>) { GlobalMockDb.mockCategoryBenchmarks = v; }
+  private get mockCreativeAssets(): CreativeAsset[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockCreativeAssets : this.localMockDb.mockCreativeAssets; }
+  private set mockCreativeAssets(v: CreativeAsset[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockCreativeAssets = v; else this.localMockDb.mockCreativeAssets = v; }
 
-  private get mockPlatformAccounts(): PlatformAccountEntry[] { return GlobalMockDb.mockPlatformAccounts; }
-  private set mockPlatformAccounts(v: PlatformAccountEntry[]) { GlobalMockDb.mockPlatformAccounts = v; }
+  private get mockStakeholderAssociations(): StakeholderAssociation[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockStakeholderAssociations : this.localMockDb.mockStakeholderAssociations; }
+  private set mockStakeholderAssociations(v: StakeholderAssociation[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockStakeholderAssociations = v; else this.localMockDb.mockStakeholderAssociations = v; }
 
-  private get mockAccountLinks(): AccountLinkEntry[] { return GlobalMockDb.mockAccountLinks; }
-  private set mockAccountLinks(v: AccountLinkEntry[]) { GlobalMockDb.mockAccountLinks = v; }
+  private get mockBaselineContexts(): Array<{tenant_id: string; context: BaselineContext}> { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockBaselineContexts : this.localMockDb.mockBaselineContexts; }
+  private set mockBaselineContexts(v: Array<{tenant_id: string; context: BaselineContext}>) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockBaselineContexts = v; else this.localMockDb.mockBaselineContexts = v; }
 
-  private get mockAccountCredentials(): AccountCredentialEntry[] { return GlobalMockDb.mockAccountCredentials; }
-  private set mockAccountCredentials(v: AccountCredentialEntry[]) { GlobalMockDb.mockAccountCredentials = v; }
+  private get mockCategoryBenchmarks(): Array<{tenant_id: string; benchmarks: CategoryBenchmarks}> { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockCategoryBenchmarks : this.localMockDb.mockCategoryBenchmarks; }
+  private set mockCategoryBenchmarks(v: Array<{tenant_id: string; benchmarks: CategoryBenchmarks}>) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockCategoryBenchmarks = v; else this.localMockDb.mockCategoryBenchmarks = v; }
 
-  private get mockProductAdLinks(): ProductAdLinkEntry[] { return GlobalMockDb.mockProductAdLinks; }
-  private set mockProductAdLinks(v: ProductAdLinkEntry[]) { GlobalMockDb.mockProductAdLinks = v; }
+  private get mockPlatformAccounts(): PlatformAccountEntry[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockPlatformAccounts : this.localMockDb.mockPlatformAccounts; }
+  private set mockPlatformAccounts(v: PlatformAccountEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockPlatformAccounts = v; else this.localMockDb.mockPlatformAccounts = v; }
 
-  private get mockVariants(): VariantEntry[] { return GlobalMockDb.mockVariants; }
-  private set mockVariants(v: VariantEntry[]) { GlobalMockDb.mockVariants = v; }
+  private get mockAccountLinks(): AccountLinkEntry[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockAccountLinks : this.localMockDb.mockAccountLinks; }
+  private set mockAccountLinks(v: AccountLinkEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockAccountLinks = v; else this.localMockDb.mockAccountLinks = v; }
 
-  private get mockPendingJobs(): PendingJobEntry[] { return GlobalMockDb.mockPendingJobs; }
-  private set mockPendingJobs(v: PendingJobEntry[]) { GlobalMockDb.mockPendingJobs = v; }
+  private get mockAccountCredentials(): AccountCredentialEntry[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockAccountCredentials : this.localMockDb.mockAccountCredentials; }
+  private set mockAccountCredentials(v: AccountCredentialEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockAccountCredentials = v; else this.localMockDb.mockAccountCredentials = v; }
 
-  private get mockOnboardingEvents(): OnboardingEventEntry[] { return GlobalMockDb.mockOnboardingEvents; }
-  private set mockOnboardingEvents(v: OnboardingEventEntry[]) { GlobalMockDb.mockOnboardingEvents = v; }
+  private get mockProductAdLinks(): ProductAdLinkEntry[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockProductAdLinks : this.localMockDb.mockProductAdLinks; }
+  private set mockProductAdLinks(v: ProductAdLinkEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockProductAdLinks = v; else this.localMockDb.mockProductAdLinks = v; }
+
+  private get mockVariants(): VariantEntry[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockVariants : this.localMockDb.mockVariants; }
+  private set mockVariants(v: VariantEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockVariants = v; else this.localMockDb.mockVariants = v; }
+
+  private get mockPendingJobs(): PendingJobEntry[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockPendingJobs : this.localMockDb.mockPendingJobs; }
+  private set mockPendingJobs(v: PendingJobEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockPendingJobs = v; else this.localMockDb.mockPendingJobs = v; }
+
+  private get mockOnboardingEvents(): OnboardingEventEntry[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockOnboardingEvents : this.localMockDb.mockOnboardingEvents; }
+  private set mockOnboardingEvents(v: OnboardingEventEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockOnboardingEvents = v; else this.localMockDb.mockOnboardingEvents = v; }
 
   private activeTenantId: string | null = null;
   private snapshots: {
@@ -1681,6 +1800,21 @@ export class SupabaseClient {
       );
     }
     return [];
+  }
+
+  async claimNextOverdueJob(currentTimeMs: number, ownerId: string): Promise<PendingJobEntry | null> {
+    if (this.mockMode) {
+      const job = this.mockPendingJobs.find(
+        (j) => j.status === 'pending' && Date.parse(j.run_at) <= currentTimeMs
+      );
+      if (job) {
+        job.status = 'processing';
+        this.logger.info(`[Mock DB] Atomically claimed job ${job.job_id} for owner ${ownerId}`);
+        return {...job};
+      }
+      return null;
+    }
+    return null;
   }
 
   async updateJobStatus(jobId: string, status: PendingJobEntry['status']): Promise<void> {

@@ -251,6 +251,9 @@ describe('Enterprise Agency OS (OneMCP & Bounded Contexts) Tests', () => {
     const realTenantId = 'tenant-alpha';
 
     beforeEach(async () => {
+      SupabaseClient.useSharedMockDb = true;
+      SupabaseClient.resetGlobalMockDb();
+
       db = new SupabaseClient();
       await db.clearCampaigns(realTenantId);
 
@@ -344,6 +347,10 @@ describe('Enterprise Agency OS (OneMCP & Bounded Contexts) Tests', () => {
         tenant_id: realTenantId,
         ingested_at: new Date().toISOString(),
       });
+    });
+
+    afterEach(() => {
+      SupabaseClient.useSharedMockDb = false;
     });
 
     it('IntelligentAnalystAgent should diagnose unprofitable campaign and return healing recommendations', async () => {

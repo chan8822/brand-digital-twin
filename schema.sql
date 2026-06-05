@@ -342,3 +342,30 @@ CREATE TABLE IF NOT EXISTS brand_twin.onboarding_events(
   duration_ms INT64,
   data JSON)
   CLUSTER BY tenant_id, stage;
+
+-- Atomic job claim function using SKIP LOCKED for PostgreSQL / Supabase
+CREATE OR REPLACE FUNCTION brand_twin.claim_next_pending_job(
+  current_time_ms BIGINT,
+  owner_id TEXT
+) RETURNS SETOF brand_twin.pending_jobs AS $$
+DECLARE
+  claimed_job brand_twin.pending_jobs;
+BEGIN
+  UPDATE brand_twin.pending_jobs
+  SET status = 'processing'
+  WHERE job_id = (
+    SELECT job_id
+    FROM brand_twin.pending_jobs
+    WHERE status = 'pending' AND EXTRACT(EPOCH FROM run_at) * 1000 <= current_time_ms
+    ORDER BY run_at ASC
+    FOR UPDATE SKIP LOCKED
+    LIMIT 1
+  )
+  RETURNING * INTO claimed_job;
+
+  IF FOUND THEN
+    RETURN NEXT claimed_job;
+  END IF;
+  RETURN;
+END;
+$$ LANGUAGE plpgsql;
