@@ -12,6 +12,8 @@ export const config = {
   },
   auth: {
     jwtSecret: process.env['JWT_SECRET'] || 'default-super-secret-key-9988',
+    masterKey:
+      process.env['MASTER_KEY'] || Buffer.alloc(32, 'a').toString('base64'),
   },
   database: {
     url:
@@ -34,6 +36,8 @@ export const config = {
       developerToken:
         process.env['GOOGLE_ADS_DEVELOPER_TOKEN'] || 'mock-dev-token',
       clientId: process.env['GOOGLE_ADS_CLIENT_ID'] || 'mock-client-id',
+      clientSecret:
+        process.env['GOOGLE_ADS_CLIENT_SECRET'] || 'mock-client-secret',
       rateLimitMax: Number(process.env['GOOGLE_ADS_RATE_LIMIT_MAX'] || '10'),
       rateLimitRefillRate: Number(
         process.env['GOOGLE_ADS_RATE_LIMIT_REFILL_RATE'] || '2',
@@ -41,6 +45,12 @@ export const config = {
     },
     metaAds: {
       appId: process.env['META_ADS_APP_ID'] || 'mock-meta-app-id',
+      appSecret: process.env['META_ADS_APP_SECRET'] || 'mock-meta-app-secret',
+    },
+    shopify: {
+      clientId: process.env['SHOPIFY_CLIENT_ID'] || 'mock-shopify-client-id',
+      clientSecret:
+        process.env['SHOPIFY_CLIENT_SECRET'] || 'mock-shopify-client-secret',
     },
   },
   rateLimit: {

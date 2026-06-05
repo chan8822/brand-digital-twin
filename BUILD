@@ -461,6 +461,17 @@ ts_library(
 )
 
 ts_library(
+    name = "oauth_flows",
+    srcs = ["oauth_flows.ts"],
+    deps = [
+        ":config",
+        ":credential_vault",
+        ":supabase_client",
+        "//third_party/javascript/typings/node",
+    ],
+)
+
+ts_library(
     name = "server",
     srcs = ["server.ts"],
     deps = [
@@ -472,6 +483,7 @@ ts_library(
         ":google_ads_adapter",
         ":governance_engine",
         ":identity_resolver",
+        ":oauth_flows",
         ":rate_limiter",
         ":supabase_client",
         ":unified_brain",
@@ -508,6 +520,8 @@ ts_library(
         "stakeholder_portal_test.ts",
         "supabase_client_test.ts",
         "user_auth_test.ts",
+        "auth_test.ts",
+        "oauth_flows_test.ts",
     ],
     deps = [
         ":auth",
@@ -527,6 +541,7 @@ ts_library(
         ":google_merchant_adapter",
         ":governance_engine",
         ":governance_types",
+        ":oauth_flows",
         ":incident_response",
         ":ingestion_engine",
         ":magento_adapter",
@@ -664,6 +679,16 @@ jasmine_node_test(
 
 jasmine_node_test(
     name = "user_auth_test",
+    srcs = [":brand_twin_tests"],
+)
+
+jasmine_node_test(
+    name = "auth_test",
+    srcs = [":brand_twin_tests"],
+)
+
+jasmine_node_test(
+    name = "oauth_flows_test",
     srcs = [":brand_twin_tests"],
 )
 

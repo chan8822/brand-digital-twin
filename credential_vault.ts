@@ -5,6 +5,12 @@ import {CredentialEntry, SupabaseClient} from './supabase_client';
  * Production-grade Secure Credential Vault for Multi-Tenant integrations.
  * Supports symmetric AES-256-GCM encryption at rest and auto OAuth token refresh.
  */
+function mapPlatformToProvider(platform: string): string {
+  if (platform === 'google') return 'google_ads';
+  if (platform === 'meta') return 'meta_ads';
+  return platform;
+}
+
 export class CredentialVault {
   private readonly algorithm = 'aes-256-gcm';
   private readonly keyBuffer: Buffer;
@@ -104,17 +110,33 @@ export class CredentialVault {
       const expiryMs = new Date(cred.expires_at).getTime();
       if (expiryMs - Date.now() < warningBufferMs) {
         // Trigger token refresh
-        const refreshed = await refreshOAuthCallback(cred.refresh_token);
-        const newEncryptedVal = this.encrypt(refreshed.accessToken);
-        const newExpiresAt = new Date(
-          Date.now() + refreshed.expiresInSeconds * 1000,
-        ).toISOString();
+        try {
+          const refreshed = await refreshOAuthCallback(cred.refresh_token);
+          const newEncryptedVal = this.encrypt(refreshed.accessToken);
+          const newExpiresAt = new Date(
+            Date.now() + refreshed.expiresInSeconds * 1000,
+          ).toISOString();
 
-        cred.encrypted_value = newEncryptedVal;
-        cred.expires_at = newExpiresAt;
-        cred.updated_at = new Date().toISOString();
+          cred.encrypted_value = newEncryptedVal;
+          cred.expires_at = newExpiresAt;
+          cred.updated_at = new Date().toISOString();
 
-        await this.db.saveCredential(cred);
+          await this.db.saveCredential(cred);
+        } catch (refreshErr) {
+          // Flag integration status as suspended in case of refresh failure
+          try {
+            const provider = mapPlatformToProvider(platform);
+            const integration = await this.db.getIntegrationState(tenantId, provider);
+            if (integration) {
+              integration.status = 'suspended';
+              integration.updatedAt = Date.now();
+              await this.db.saveIntegrationState(integration);
+            }
+          } catch (dbErr) {
+            // Ignore DB errors in vault to prioritize propagation of primary refresh error
+          }
+          throw refreshErr;
+        }
       }
     }
 

@@ -125,6 +125,40 @@ describe('Native HTTP & SSE Server Integration Test', () => {
     return getJsonFromUrl(`${baseUrl}${path}`, headers);
   }
 
+  function requestRaw(
+    path: string,
+    method: 'GET' | 'POST',
+    headers?: Record<string, string>,
+  ): Promise<{statusCode?: number; headers: http.IncomingHttpHeaders; body: string}> {
+    return new Promise((resolve, reject) => {
+      const req = http.request(
+        {
+          hostname: 'localhost',
+          port: PORT,
+          path,
+          method,
+          headers,
+        },
+        (res) => {
+          let body = '';
+          res.on('data', (chunk) => {
+            body += chunk.toString();
+          });
+          res.on('end', () => {
+            resolve({
+              statusCode: res.statusCode,
+              headers: res.headers,
+              body,
+            });
+          });
+        },
+      );
+      req.on('error', reject);
+      req.end();
+    });
+  }
+
+
   function postJson(path: string, body: any, headers?: Record<string, string>): Promise<any> {
     return new Promise((resolve, reject) => {
       const postData = JSON.stringify(body);
@@ -581,5 +615,59 @@ describe('Native HTTP & SSE Server Integration Test', () => {
     );
     expect(finalApproval.status).toBe('approved');
     expect(finalApproval.completedAt).toBeGreaterThan(0);
+  });
+
+  describe('OAuth Connect Flow API Integration', () => {
+    it('should redirect GET /api/v1/connect/google to Google OAuth URL (302) with signed state', async () => {
+      const res = await requestRaw('/api/v1/connect/google', 'GET', {
+        Authorization: `Bearer ${testToken}`,
+      });
+      expect(res.statusCode).toBe(302);
+      expect(res.headers.location).toBeDefined();
+      const location = res.headers.location!;
+      expect(location).toContain('accounts.google.com/o/oauth2/v2/auth');
+      expect(location).toContain(`client_id=${config.platforms.googleAds.clientId}`);
+      expect(location).toContain('state=');
+    });
+
+    it('should reject GET /api/v1/connect/google with 401 if unauthenticated', async () => {
+      const res = await requestRaw('/api/v1/connect/google', 'GET');
+      expect(res.statusCode).toBe(401);
+    });
+
+    it('should successfully handle callback GET /api/v1/connect/callback/google with valid signed state and code', async () => {
+      // 1. Get redirect state by requesting connection
+      const connectRes = await requestRaw('/api/v1/connect/google', 'GET', {
+        Authorization: `Bearer ${testToken}`,
+      });
+      const location = connectRes.headers.location!;
+      const urlObj = new URL(location);
+      const stateParam = urlObj.searchParams.get('state')!;
+
+      // 2. Fire callback with code and signed state
+      const callbackRes = await requestRaw(
+        `/api/v1/connect/callback/google?code=auth_code_999&state=${stateParam}`,
+        'GET',
+      );
+      expect(callbackRes.statusCode).toBe(200);
+      const data = JSON.parse(callbackRes.body) as any;
+      expect(data.status).toBe('success');
+      expect(data.data.message).toContain('google connected successfully');
+
+      // 3. Verify credentials exist in database
+      const creds = await db.getCredentials('test-tenant');
+      expect(creds.some((c) => c.platform === 'google' && c.refresh_token === 'mock-refresh-token-google')).toBeTrue();
+    });
+
+    it('should reject callback with invalid state token (400)', async () => {
+      const callbackRes = await requestRaw(
+        '/api/v1/connect/callback/google?code=auth_code_999&state=invalid_state_signature',
+        'GET',
+      );
+      expect(callbackRes.statusCode).toBe(400);
+      const data = JSON.parse(callbackRes.body) as any;
+      expect(data.status).toBe('error');
+      expect(data.error.code).toBe('OAUTH_CALLBACK_FAILED');
+    });
   });
 });

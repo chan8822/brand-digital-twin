@@ -11,7 +11,8 @@ import {config} from './config';
 import {sendErrorResponse, ValidationError, RateLimitError, PayloadTooLargeError} from './errors';
 import {eventBus} from './event_bus';
 import {GoogleAdsAdapter} from './google_ads_adapter';
-import {authMiddleware, DecodedJwt, signJwt, verifyJwt} from './auth';
+import {authMiddleware, DecodedJwt, signJwt, verifyJwt, signOauthState, verifyOauthState} from './auth';
+import {generateAuthUrl, handleOauthCallback} from './oauth_flows';
 import {validateActionRequest, validateContext} from './validation';
 import {TokenBucket, RateLimitingAdapterWrapper} from './rate_limiter';
 import {
@@ -444,6 +445,45 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
         return;
       }
 
+      // OAuth Callback route (Publicly accessible, state is verified)
+      const callbackMatch = path.match(/^\/api\/v1\/connect\/callback\/([^/]+)$/);
+      if (callbackMatch && req.method === 'GET') {
+        const platform = callbackMatch[1];
+        const state = parsedUrl.query['state'] as string;
+        const code = parsedUrl.query['code'] as string;
+
+        if (!state || !code) {
+          throw new ValidationError('Missing OAuth state or authorization code');
+        }
+
+        try {
+          const verified = verifyOauthState(state, config.auth.jwtSecret);
+          if (verified.platform !== platform) {
+            throw new ValidationError('OAuth platform mismatch in state token');
+          }
+
+          // Exchange code and save to CredentialVault (always mockMode = true in tests)
+          await handleOauthCallback(db, platform, code, verified.tenantId, true);
+
+          sendSuccessResponse(res, {
+            status: 'success',
+            message: `${platform} connected successfully. You can close this window now.`,
+          });
+        } catch (err: any) {
+          res.writeHead(400, {'Content-Type': 'application/json'});
+          res.end(
+            JSON.stringify({
+              status: 'error',
+              error: {
+                code: 'OAUTH_CALLBACK_FAILED',
+                message: err.message || String(err),
+              },
+            }),
+          );
+        }
+        return;
+      }
+
       // Centralized Authentication for all v1 API endpoints
       let decodedToken: DecodedJwt;
       try {
@@ -592,6 +632,34 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
           status: user.status,
           orgs: orgProfiles,
         });
+        return;
+      }
+
+      // Initiate OAuth connection for a platform (auth-gated)
+      const connectMatch = path.match(/^\/api\/v1\/connect\/([^/]+)$/);
+      if (connectMatch && req.method === 'GET') {
+        const platform = connectMatch[1];
+        const shop = parsedUrl.query['shop'] as string;
+
+        try {
+          const state = signOauthState(tenantId, decodedToken.userId, platform, config.auth.jwtSecret);
+          const authUrl = generateAuthUrl(platform, state, shop);
+
+          // Redirect user to OAuth consent screen
+          res.writeHead(302, {'Location': authUrl});
+          res.end();
+        } catch (err: any) {
+          res.writeHead(400, {'Content-Type': 'application/json'});
+          res.end(
+            JSON.stringify({
+              status: 'error',
+              error: {
+                code: 'OAUTH_INITIATION_FAILED',
+                message: err.message || String(err),
+              },
+            }),
+          );
+        }
         return;
       }
 

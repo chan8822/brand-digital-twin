@@ -107,4 +107,40 @@ describe('CredentialVault Secure Storage & Rotation', () => {
     expect(callbackTriggered).toBe(false);
     expect(token).toBe('fresh_access_token_000');
   });
+
+  it('should mark integration status as suspended if OAuth refresh callback throws an error', async () => {
+    // 1. Setup integration state as active
+    await db.saveIntegrationState({
+      integrationId: 'int-123',
+      tenantId,
+      provider: 'google_ads',
+      status: 'active',
+      settings: {},
+      updatedAt: Date.now(),
+    });
+
+    // 2. Setup credential that is close to expiry
+    await vault.storeSecret(
+      tenantId,
+      'google', // maps to google_ads
+      'oauth_token',
+      'old_access_token_123',
+      'refresh_token_xyz999',
+      2, // triggers refresh
+    );
+
+    // 3. Trigger secret fetch with a failing refresh callback
+    const failingCallback = async (refreshToken: string) => {
+      throw new Error('OAuth server returned 400 Bad Request (invalid grant)');
+    };
+
+    await expectAsync(
+      vault.getSecret(tenantId, 'google', 'oauth_token', failingCallback)
+    ).toBeRejectedWithError(/invalid grant/);
+
+    // 4. Verify integration state has transitioned to suspended
+    const state = await db.getIntegrationState(tenantId, 'google_ads');
+    expect(state).toBeDefined();
+    expect(state?.status).toBe('suspended');
+  });
 });
