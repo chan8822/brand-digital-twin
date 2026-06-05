@@ -18,13 +18,13 @@
 
 ## The actual remaining work
 
-### P1.2 — observability (close the gaps)
-- [ ] **Durable error sink:** `error_events` table + swappable Sentry-compatible
+### P1.2 — observability (partial)
+- [x] **Durable error sink:** `error_events` table + swappable Sentry-compatible
       webhook. Today metrics/alerts are **in-memory only** (`MetricsTracker`
       arrays) — they vanish on restart and aren't queryable. Persist them.
 - [ ] **Alert *rules*:** `raiseAlert()` exists but isn't wired to thresholds.
       Add rules on job-queue backlog + adapter error rate.
-- [ ] **Tenant-scoped, token-redacted** capture in the sink (ties to P1.6).
+- [x] **Tenant-scoped, token-redacted** capture in the sink (ties to P1.6).
 
 ### P1.3 — staging + release
 - [ ] Staging environment mirroring prod.
