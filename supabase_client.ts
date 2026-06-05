@@ -718,6 +718,10 @@ export class SupabaseClient {
     this.logger = logger || new PinoLogger();
   }
 
+  async ping(): Promise<boolean> {
+    return true;
+  }
+
   clone(): SupabaseClient {
     const copy = new SupabaseClient(
       this.supabaseUrl,

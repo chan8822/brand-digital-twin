@@ -926,6 +926,22 @@ describe('Native HTTP & SSE Server Integration Test', () => {
         expect(res.error.message).toContain('expired');
       });
     });
+
+    describe('Readiness Probe Diagnostics (B3.3)', () => {
+      it('should return status ready when database is available', async () => {
+        const res = await getJson('/ready', {} as any);
+        expect(res.status).toBe('success');
+        expect(res.data.status).toBe('ready');
+      });
+
+      it('should return 503 DATABASE_UNREACHABLE when database ping fails', async () => {
+        spyOn(db, 'ping').and.rejectWith(new Error('Connection timeout'));
+        const res = await getJson('/ready', {} as any);
+        expect(res.error).toBeDefined();
+        expect(res.error.code).toBe('DATABASE_UNREACHABLE');
+        expect(res.error.message).toContain('Connection timeout');
+      });
+    });
   });
 });
 

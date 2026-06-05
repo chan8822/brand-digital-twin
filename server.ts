@@ -517,7 +517,21 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
       
       // Readiness Probe (Public)
       if ((path === '/ready' || path === '/readyz') && req.method === 'GET') {
-        sendSuccessResponse(res, { status: 'ready' });
+        try {
+          await db.ping();
+          sendSuccessResponse(res, { status: 'ready' });
+        } catch (err: any) {
+          res.writeHead(503, {'Content-Type': 'application/json'});
+          res.end(
+            JSON.stringify({
+              status: 'error',
+              error: {
+                code: 'DATABASE_UNREACHABLE',
+                message: err.message || 'Database unreachable',
+              },
+            }),
+          );
+        }
         return;
       }
 
