@@ -46,7 +46,7 @@ In-house connectors (extend the `tally_adapter.ts` pattern to QuickBooks/Xero/Zo
 + the four-tactic COGS easing + the Profit-Readiness **hard gate** on advice.
 - [ ] Accounting connector adapters (QuickBooks/Xero/Zoho) over the existing pattern.
 - [ ] Silent COGS sweep → category-average estimate → Pareto manual-entry UI.
-- [ ] Profit Readiness gates/【degrades】advice when coverage is below threshold
+- [ ] Profit Readiness gates/degrades advice when coverage is below threshold
       (`profit_readiness.ts` scoring already exists — wire it as a gate).
 - [ ] COGS source tag per variant (shared with **P2.2** — build once).
 - [ ] Tests: messy-data brand reaches trustworthy POAS on ≥80% of spend.
