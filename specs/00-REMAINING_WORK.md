@@ -73,8 +73,8 @@ COGS + billing. **A stranger still can't connect a platform or click anything.**
 ### A3 — Product UI (3 items) — the big one
 | # | Item | Size | File(s) |
 |---|------|------|---------|
-| A3.1 | ✅ **DONE** — Next.js `app/` scaffold imported and configured (Tailwind, TanStack Query, types, API client, DualMetricCard). | L | `app/` |
-| A3.2 | ◐ **IN PROGRESS** — built: connect-your-stack + POAS dashboard + readiness gauge + live sweep + three-zone healing + autonomy/approvals + shared `Nav`, MOCK mode. **Whole core loop walkable.** Auth screens + SSE remain | XL | `app/` |
+| A3.1 | ✅ **DONE** — Next.js `app/` scaffold + auth-gated root routing (root routes by auth state, logout in nav) | L | `app/` |
+| A3.2 | ◐ **NEARLY DONE** — built: **auth (login/signup/verify/reset)** + connect-your-stack + POAS dashboard + readiness gauge + live sweep + three-zone healing + autonomy/approvals + shared `Nav`, MOCK mode. **Full loop signup→connect→insight walkable.** Only SSE live-updates + per-route auth guard remain | XL | `app/` |
 | A3.3 | ✅ **DONE** — endpoint (`dd9045a`) + `ReadinessGauge` UI on dashboard, wired to live `/profit-readiness` | M | `server.ts`, `profit_readiness.ts`, `app/` |
 | A3.4 | ☐ `GET /api/v1/sweep` endpoint — expose rich `SweepFinding[]` (today `/risks` returns only `string[]`); UI already built against it | S | `server.ts`, `risk_radar.ts` |
 | A3.5 | ☐ `GET/POST /api/v1/autonomy` — read/set current trust tier; UI dial already built against it (approvals already wired to live `/approvals`) | S | `server.ts`, `governance_engine.ts` |
@@ -165,11 +165,11 @@ Start A0 immediately; start A1→A3 in parallel; B and C follow.
 
 ---
 
-## The honest number (@ `47ab163`)
+## The honest number (@ `6915016`)
 
 - **~21 of 55 units done.** Phase 1 complete; A1 + A2 complete; A3.1 scaffold + A3.3 readiness done.
 - **~34 units left**, roughly **5–6 weeks for one focused full-stack dev**.
-- **Biggest remaining chunk:** the product UI screens (A3.2) — still the main XL blocker remaining.
+- **Biggest remaining Phase A chunk:** the product UI screens (A3.2) is nearly complete (only SSE live updates + auth guard remain).
 - **Gaps closed:** password reset (A1.1), explicit brand initialization -> OBSERVE (A1.5/B4), credential-vault refresh suspension (A2.3).
 - **Flagged gaps to build:** GET /api/v1/integrations (A2.4), short-lived signed tokens for OAuth GET /connect/:platform (A2.5), GET /api/v1/sweep (A3.4), GET/POST /api/v1/autonomy (A3.5).
 

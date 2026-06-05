@@ -46,7 +46,10 @@ cp .env.example .env.local
 | Readiness gauge | `src/components/ReadinessGauge.tsx` | score ring + COGS bar + factor checklist; live `/profit-readiness` |
 | Connect card | `src/components/ConnectCard.tsx` | per-platform tile; live OAuth redirect + reconnect |
 | Connect screen | `src/app/connect/page.tsx` | Shopify / Google / Meta; needs `GET /integrations` |
-| Nav | `src/components/Nav.tsx` | shared top nav across screens |
+| Auth layer | `src/lib/auth.ts` | signup/verify/login/reset wired to live A1; token storage |
+| Auth shell | `src/components/AuthShell.tsx` | shared centered card + form fields |
+| Auth screens | `src/app/{login,signup,verify,reset}/page.tsx` | full lifecycle, MOCK-aware |
+| Nav | `src/components/Nav.tsx` | shared top nav + logout |
 
 ## Data contract
 
@@ -71,6 +74,7 @@ Per `A-PHASE_BUILD_SPEC.md §A3`, still to build on this scaffold:
 - [x] Autonomy dial + approvals queue (`/autonomy` — `AutonomyDial.tsx` + `ApprovalRow.tsx`). Approvals read live `/approvals` + `/approvals/:id/approve`; dial **needs `GET/POST /api/v1/autonomy`**
 - [x] Profit Readiness gauge (`ReadinessGauge.tsx` on `/dashboard`) — wired to the **live** `GET /api/v1/profit-readiness` (landed upstream `dd9045a`); score ring + factor checklist + gating status
 - [x] Connect-your-stack (`/connect` — `ConnectCard.tsx`). Buttons kick off the **live** OAuth flow (`GET /connect/:platform`, A2 `a09e913`); reflects integration state incl. reconnect. Needs `GET /api/v1/integrations` to read linked state (A2.4), and a cookie/signed-token for the redirect (headers can't ride a top-level navigation)
+- [x] Auth screens (`/login`, `/signup`, `/verify`, `/reset`) — wired to the **live** A1 endpoints (signup/verify/login/refresh/reset, incl. `81b8161` reset). Token storage in sessionStorage, logout in nav, root routes by auth state
 - [ ] Profit Readiness gauge (`GET /api/v1/profit-readiness` — endpoint TBD)
 - [ ] SSE client for `/api/v1/stream`
 - [ ] Auth screens (signup/login/verify) once A1 UI is wired
