@@ -310,4 +310,57 @@ describe('SupabaseClient Database & Security Suite', () => {
       ).toBeRejectedWithError(/invalid migration filename format/i);
     });
   });
+
+  describe('Database Backup & Restore Drill (P1.4b)', () => {
+    it('should export database backup snapshot and restore it successfully resetting modified state', async () => {
+      db.resetLocalMockDb();
+
+      await db.saveClient({
+        clientId: 'client-1',
+        orgId: 'tenant-a',
+        name: 'Client Nike',
+        mrr: 5000,
+        marginTarget: 0.3,
+        healthScore: 90,
+        churnRisk: 0.05,
+        tenantId: 'tenant-a',
+      });
+
+      const initialBackup = await db.exportBackup();
+
+      await db.saveClient({
+        clientId: 'client-1',
+        orgId: 'tenant-a',
+        name: 'Client Nike V2',
+        mrr: 8000,
+        marginTarget: 0.3,
+        healthScore: 95,
+        churnRisk: 0.05,
+        tenantId: 'tenant-a',
+      });
+
+      await db.saveClient({
+        clientId: 'client-2',
+        orgId: 'tenant-a',
+        name: 'Client Adidas',
+        mrr: 3000,
+        marginTarget: 0.2,
+        healthScore: 80,
+        churnRisk: 0.1,
+        tenantId: 'tenant-a',
+      });
+
+      const stateBeforeRestore = await db.getClients('tenant-a');
+      expect(stateBeforeRestore.length).toBe(2);
+      expect(stateBeforeRestore.find(c => c.clientId === 'client-1')?.name).toBe('Client Nike V2');
+
+      await db.restoreBackup(initialBackup);
+
+      const stateAfterRestore = await db.getClients('tenant-a');
+      expect(stateAfterRestore.length).toBe(1);
+      expect(stateAfterRestore[0].clientId).toBe('client-1');
+      expect(stateAfterRestore[0].name).toBe('Client Nike');
+      expect(stateAfterRestore[0].mrr).toBe(5000);
+    });
+  });
 });

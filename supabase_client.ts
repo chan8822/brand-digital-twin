@@ -864,6 +864,151 @@ export class SupabaseClient {
     }
   }
 
+  async exportBackup(): Promise<string> {
+    this.logger.info('Exporting database backup snapshot');
+    const snapshot = {
+      mockTrust: this.mockTrust,
+      mockErrorEvents: this.mockErrorEvents,
+      mockAuditLogs: this.mockAuditLogs,
+      mockLocks: this.mockLocks,
+      mockCredentials: this.mockCredentials,
+      mockGovernanceEvents: this.mockGovernanceEvents,
+      mockOrders: this.mockOrders,
+      mockOrderLines: this.mockOrderLines,
+      mockCampaigns: this.mockCampaigns,
+      mockSpendFacts: this.mockSpendFacts,
+      mockCustomers: this.mockCustomers,
+      mockIdentityLinks: this.mockIdentityLinks,
+      mockRefunds: this.mockRefunds,
+      mockFulfillmentCosts: this.mockFulfillmentCosts,
+      mockTouchpoints: this.mockTouchpoints,
+      mockTeamMembers: this.mockTeamMembers,
+      mockClients: this.mockClients,
+      mockCampaignBriefs: this.mockCampaignBriefs,
+      mockApprovals: this.mockApprovals,
+      mockActivityFeed: this.mockActivityFeed,
+      mockClientPortals: this.mockClientPortals,
+      mockBrandSignals: this.mockBrandSignals,
+      mockIntegrationStates: this.mockIntegrationStates,
+      mockSocialMentions: this.mockSocialMentions,
+      mockCompetitorSignals: this.mockCompetitorSignals,
+      mockFinancialTransactions: this.mockFinancialTransactions,
+      mockCreativeAssets: this.mockCreativeAssets,
+      mockStakeholderAssociations: this.mockStakeholderAssociations,
+      mockBaselineContexts: this.mockBaselineContexts,
+      mockCategoryBenchmarks: this.mockCategoryBenchmarks,
+      mockPlatformAccounts: this.mockPlatformAccounts,
+      mockAccountLinks: this.mockAccountLinks,
+      mockAccountCredentials: this.mockAccountCredentials,
+      mockProductAdLinks: this.mockProductAdLinks,
+      mockVariants: this.mockVariants,
+      mockPendingJobs: this.mockPendingJobs,
+      mockOnboardingEvents: this.mockOnboardingEvents,
+      mockUsers: this.mockUsers,
+      mockRefreshTokens: this.mockRefreshTokens,
+      mockOrgs: this.mockOrgs,
+      mockOrgMembers: this.mockOrgMembers,
+      mockLegalAcceptances: this.mockLegalAcceptances,
+      mockSchemaMigrations: this.mockSchemaMigrations,
+    };
+    return JSON.stringify(snapshot, null, 2);
+  }
+
+  async restoreBackup(backupJson: string): Promise<void> {
+    this.logger.info('Restoring database from backup snapshot');
+    const snapshot = JSON.parse(backupJson) as MockDbContainer;
+
+    if (SupabaseClient.useSharedMockDb) {
+      GlobalMockDb.mockTrust = snapshot.mockTrust || [];
+      GlobalMockDb.mockErrorEvents = snapshot.mockErrorEvents || [];
+      GlobalMockDb.mockAuditLogs = snapshot.mockAuditLogs || [];
+      GlobalMockDb.mockLocks = snapshot.mockLocks || [];
+      GlobalMockDb.mockCredentials = snapshot.mockCredentials || [];
+      GlobalMockDb.mockGovernanceEvents = snapshot.mockGovernanceEvents || [];
+      GlobalMockDb.mockOrders = snapshot.mockOrders || [];
+      GlobalMockDb.mockOrderLines = snapshot.mockOrderLines || [];
+      GlobalMockDb.mockCampaigns = snapshot.mockCampaigns || [];
+      GlobalMockDb.mockSpendFacts = snapshot.mockSpendFacts || [];
+      GlobalMockDb.mockCustomers = snapshot.mockCustomers || [];
+      GlobalMockDb.mockIdentityLinks = snapshot.mockIdentityLinks || [];
+      GlobalMockDb.mockRefunds = snapshot.mockRefunds || [];
+      GlobalMockDb.mockFulfillmentCosts = snapshot.mockFulfillmentCosts || [];
+      GlobalMockDb.mockTouchpoints = snapshot.mockTouchpoints || [];
+      GlobalMockDb.mockTeamMembers = snapshot.mockTeamMembers || [];
+      GlobalMockDb.mockClients = snapshot.mockClients || [];
+      GlobalMockDb.mockCampaignBriefs = snapshot.mockCampaignBriefs || [];
+      GlobalMockDb.mockApprovals = snapshot.mockApprovals || [];
+      GlobalMockDb.mockActivityFeed = snapshot.mockActivityFeed || [];
+      GlobalMockDb.mockClientPortals = snapshot.mockClientPortals || [];
+      GlobalMockDb.mockBrandSignals = snapshot.mockBrandSignals || [];
+      GlobalMockDb.mockIntegrationStates = snapshot.mockIntegrationStates || [];
+      GlobalMockDb.mockSocialMentions = snapshot.mockSocialMentions || [];
+      GlobalMockDb.mockCompetitorSignals = snapshot.mockCompetitorSignals || [];
+      GlobalMockDb.mockFinancialTransactions = snapshot.mockFinancialTransactions || [];
+      GlobalMockDb.mockCreativeAssets = snapshot.mockCreativeAssets || [];
+      GlobalMockDb.mockStakeholderAssociations = snapshot.mockStakeholderAssociations || [];
+      GlobalMockDb.mockBaselineContexts = snapshot.mockBaselineContexts || [];
+      GlobalMockDb.mockCategoryBenchmarks = snapshot.mockCategoryBenchmarks || [];
+      GlobalMockDb.mockPlatformAccounts = snapshot.mockPlatformAccounts || [];
+      GlobalMockDb.mockAccountLinks = snapshot.mockAccountLinks || [];
+      GlobalMockDb.mockAccountCredentials = snapshot.mockAccountCredentials || [];
+      GlobalMockDb.mockProductAdLinks = snapshot.mockProductAdLinks || [];
+      GlobalMockDb.mockVariants = snapshot.mockVariants || [];
+      GlobalMockDb.mockPendingJobs = snapshot.mockPendingJobs || [];
+      GlobalMockDb.mockOnboardingEvents = snapshot.mockOnboardingEvents || [];
+      GlobalMockDb.mockUsers = snapshot.mockUsers || [];
+      GlobalMockDb.mockRefreshTokens = snapshot.mockRefreshTokens || [];
+      GlobalMockDb.mockOrgs = snapshot.mockOrgs || [];
+      GlobalMockDb.mockOrgMembers = snapshot.mockOrgMembers || [];
+      GlobalMockDb.mockLegalAcceptances = snapshot.mockLegalAcceptances || [];
+      GlobalMockDb.mockSchemaMigrations = snapshot.mockSchemaMigrations || [];
+    } else {
+      this.localMockDb.mockTrust = snapshot.mockTrust || [];
+      this.localMockDb.mockErrorEvents = snapshot.mockErrorEvents || [];
+      this.localMockDb.mockAuditLogs = snapshot.mockAuditLogs || [];
+      this.localMockDb.mockLocks = snapshot.mockLocks || [];
+      this.localMockDb.mockCredentials = snapshot.mockCredentials || [];
+      this.localMockDb.mockGovernanceEvents = snapshot.mockGovernanceEvents || [];
+      this.localMockDb.mockOrders = snapshot.mockOrders || [];
+      this.localMockDb.mockOrderLines = snapshot.mockOrderLines || [];
+      this.localMockDb.mockCampaigns = snapshot.mockCampaigns || [];
+      this.localMockDb.mockSpendFacts = snapshot.mockSpendFacts || [];
+      this.localMockDb.mockCustomers = snapshot.mockCustomers || [];
+      this.localMockDb.mockIdentityLinks = snapshot.mockIdentityLinks || [];
+      this.localMockDb.mockRefunds = snapshot.mockRefunds || [];
+      this.localMockDb.mockFulfillmentCosts = snapshot.mockFulfillmentCosts || [];
+      this.localMockDb.mockTouchpoints = snapshot.mockTouchpoints || [];
+      this.localMockDb.mockTeamMembers = snapshot.mockTeamMembers || [];
+      this.localMockDb.mockClients = snapshot.mockClients || [];
+      this.localMockDb.mockCampaignBriefs = snapshot.mockCampaignBriefs || [];
+      this.localMockDb.mockApprovals = snapshot.mockApprovals || [];
+      this.localMockDb.mockActivityFeed = snapshot.mockActivityFeed || [];
+      this.localMockDb.mockClientPortals = snapshot.mockClientPortals || [];
+      this.localMockDb.mockBrandSignals = snapshot.mockBrandSignals || [];
+      this.localMockDb.mockIntegrationStates = snapshot.mockIntegrationStates || [];
+      this.localMockDb.mockSocialMentions = snapshot.mockSocialMentions || [];
+      this.localMockDb.mockCompetitorSignals = snapshot.mockCompetitorSignals || [];
+      this.localMockDb.mockFinancialTransactions = snapshot.mockFinancialTransactions || [];
+      this.localMockDb.mockCreativeAssets = snapshot.mockCreativeAssets || [];
+      this.localMockDb.mockStakeholderAssociations = snapshot.mockStakeholderAssociations || [];
+      this.localMockDb.mockBaselineContexts = snapshot.mockBaselineContexts || [];
+      this.localMockDb.mockCategoryBenchmarks = snapshot.mockCategoryBenchmarks || [];
+      this.localMockDb.mockPlatformAccounts = snapshot.mockPlatformAccounts || [];
+      this.localMockDb.mockAccountLinks = snapshot.mockAccountLinks || [];
+      this.localMockDb.mockAccountCredentials = snapshot.mockAccountCredentials || [];
+      this.localMockDb.mockProductAdLinks = snapshot.mockProductAdLinks || [];
+      this.localMockDb.mockVariants = snapshot.mockVariants || [];
+      this.localMockDb.mockPendingJobs = snapshot.mockPendingJobs || [];
+      this.localMockDb.mockOnboardingEvents = snapshot.mockOnboardingEvents || [];
+      this.localMockDb.mockUsers = snapshot.mockUsers || [];
+      this.localMockDb.mockRefreshTokens = snapshot.mockRefreshTokens || [];
+      this.localMockDb.mockOrgs = snapshot.mockOrgs || [];
+      this.localMockDb.mockOrgMembers = snapshot.mockOrgMembers || [];
+      this.localMockDb.mockLegalAcceptances = snapshot.mockLegalAcceptances || [];
+      this.localMockDb.mockSchemaMigrations = snapshot.mockSchemaMigrations || [];
+    }
+  }
+
   clone(): SupabaseClient {
     const copy = new SupabaseClient(
       this.supabaseUrl,
