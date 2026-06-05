@@ -9,7 +9,7 @@
 | P1.1 atomic job claim | ✅ **DONE** | `claimNextOverdueJob` (`supabase_client.ts:1941`), `schema.sql:346` `FOR UPDATE SKIP LOCKED`, used in `poas_scheduler.ts:63`, **verified** by `tests/e2e/claim_concurrency_test.ts` |
 | P1.2 observability | 🟡 **PARTIAL** | `MetricsTracker` exists (spans, latency, `recordMetric`, `raiseAlert`, `getAverageLatency`) + `/ready` DB-ping landed (`fb03ddd`). **Gaps below.** |
 | P1.3 CI/CD + staging | 🟡 **PARTIAL** | UI CI (`brand-twin-app-ci.yml`) + engine `build.yaml` landed. **Staging env + one-command deploy/rollback not evidenced.** |
-| P1.4 DB safety | 🟡 **PARTIAL** | Versioned migrations baseline and runner implemented; backups and restore drill open. |
+| P1.4 DB safety | ✅ **DONE** | Versioned migrations baseline and runner, backup export, and tested restore drill implemented. |
 | P1.5 secrets | 🟡 **PARTIAL** | `validateEnv()` boot guard **DONE** (`config.ts:64` — refuses mock creds outside `NODE_ENV=test`). **Secret-manager integration absent** — still `process.env` with mock defaults. |
 | P1.6 security review | 🟡 **PARTIAL** | State-forgery (`oauth_flows_test`) + ticket replay/expiry (`server_test.ts:894–923`) tests green. **Dep-audit triage + token-leak log scan not tracked.** |
 | P1.7 load test | 🟡 **PARTIAL** | Job-claim concurrency test done. **Broader load (N-tenant sweep/healing, SSE fan-out) not done.** |
@@ -32,10 +32,10 @@
 - [ ] One-command deploy + one-command rollback (governance engine already has a
       rollback primitive — wire it).
 
-### P1.4 — DB safety (partial)
+### P1.4 — DB safety (done)
 - [x] Versioned forward-only migrations (from the single `schema.sql`) with a
       recorded applied-version + rollback support.
-- [ ] Automated backups + a **tested restore drill** on a throwaway DB.
+- [x] Automated backups + a **tested restore drill** on a throwaway DB.
 
 ### P1.5 — secret manager
 - [ ] Move prod secrets off `process.env` defaults into a secret manager (vault/KMS).
