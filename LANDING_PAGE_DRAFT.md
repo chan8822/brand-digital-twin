@@ -4,13 +4,46 @@
 
 ## HERO SECTION
 
-### Your Ad Spend, Automatically Optimized. Your Trust, Always Intact.
+### Your Ad Platforms Are Lying to You. We Tell You the Truth.
 
-Running ads across Google, Meta, and beyond? Tired of manual budget shuffling, missed stockouts, and unprofitable spend flying under the radar?
+Every ad platform is paid when you spend — so every dashboard shows you the
+number that keeps you spending. ROAS that ignores your costs. Attribution that
+double-counts every sale. Automation that scales you straight into negative
+margin.
 
-Brand Digital Twin is the first autonomous ad-optimization platform built on **graduated trust**, **real profit metrics**, and **hard safety guardrails**.
+Brand Digital Twin is the first system that treats advertising as part of your
+*business* — optimizing for real profit, real cash runway, and real inventory,
+not the vanity metrics the platforms feed you.
+
+One truth. Every platform. On your side.
 
 Start with a **15-day free trial**. No credit card. No configuration debt.
+
+**[ Show Me My Real Numbers ]**
+
+---
+
+## WHY THIS EXISTS
+
+### The advertising game is rigged — and everyone knows it but no one fixes it.
+
+- **The platforms** profit when you spend, not when you profit. Their metrics
+  prove it.
+- **ROAS is a proxy lie** — it counts revenue, ignores COGS, fulfillment,
+  returns, and discounts. Attribution windows overlap, so Google, Meta, and
+  email all claim the *same* sale. Reported revenue routinely exceeds real
+  revenue 2–4x.
+- **The complexity is post-human.** 5 ad platforms, 3 storefronts, GA4, a CRM,
+  email, SMS — each with its own dashboard fighting the others. No one can hold
+  it in their head.
+- **The expertise doesn't exist in one person.** Great media buyers aren't
+  accountants. Great CFOs don't know match types. Specialists optimize their
+  corner and miss the whole.
+- **Automation is misaligned.** Smart Bidding doesn't know your margin, your
+  stock, or your runway. It scales spend into the ground if conversions hold.
+
+We built Brand Digital Twin to end this — to make advertising a game where the
+founder, the agency, the platform, *and* the customer all win at once.
 
 ---
 
