@@ -8,6 +8,7 @@
  */
 import type {
   ApprovalRequest,
+  ProfitReadiness,
   RecommendationCard,
   SemanticTrustTier,
   SweepFinding,
@@ -133,6 +134,20 @@ export const MOCK_SWEEP: SweepFinding[] = [
 
 /** Current trust tier (new public accounts start at OBSERVE). */
 export const MOCK_TRUST_TIER: SemanticTrustTier = "ASSISTED";
+
+/** Profit readiness — partial coverage so advice is directional, not auto-exec. */
+export const MOCK_READINESS: ProfitReadiness = {
+  score: 68,
+  factors: {
+    cogsCoverage: 74,
+    shopifyLinked: true,
+    googleAdsLinked: true,
+    metaAdsLinked: true,
+    bankLinked: false,
+    historicalOrdersLoaded: true,
+  },
+  status: "directional_only",
+};
 
 /** Mock approvals queue — what's escalated to a human right now. */
 const now = Date.now();

@@ -6,13 +6,15 @@
  * worst-first by dollar drag so the most damaging lie surfaces at the top.
  */
 import { useMemo } from "react";
-import { useRecommendations } from "@/lib/queries";
+import { useRecommendations, useProfitReadiness } from "@/lib/queries";
 import { DualMetricCard } from "@/components/DualMetricCard";
+import { ReadinessGauge } from "@/components/ReadinessGauge";
 import { Nav } from "@/components/Nav";
 import { USE_MOCK } from "@/lib/api";
 
 export default function DashboardPage() {
   const { data, isLoading, isError, error } = useRecommendations();
+  const readiness = useProfitReadiness();
 
   const ranked = useMemo(
     () => (data ? [...data].sort((a, b) => b.dollarDrag - a.dollarDrag) : []),
@@ -51,6 +53,13 @@ export default function DashboardPage() {
         <div className="mb-6 rounded-lg border border-accent/20 bg-accent/10 px-4 py-2 text-xs text-accent">
           Demo data — set <code className="font-mono">NEXT_PUBLIC_API_URL</code> to
           wire the live engine.
+        </div>
+      )}
+
+      {/* Readiness qualifies whether the POAS numbers below can be trusted */}
+      {readiness.data && (
+        <div className="mb-6">
+          <ReadinessGauge readiness={readiness.data} />
         </div>
       )}
 

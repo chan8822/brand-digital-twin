@@ -55,25 +55,26 @@ COGS + billing. **A stranger still can't connect a platform or click anything.**
 ### A1 — In-house auth (5 items) — extend `auth.ts`
 | # | Item | Size | File(s) |
 |---|------|------|---------|
-| A1.1 | ✅ **DONE** (`6d9cf1c`/`44ca4ba`) — `user_auth.ts`: scrypt hashing + signup/verify/login/refresh-rotation (revoked-token reuse detection). **Gap: password reset NOT implemented.** | M | new `user_auth.ts` |
+| A1.1 | ✅ **DONE** (`6d9cf1c`/`44ca4ba`/`81b8161`) — `user_auth.ts`: scrypt hashing + signup/verify/login/refresh-rotation + **password reset** (`requestPasswordReset`/`confirmPasswordReset`, `81b8161`) | M | `user_auth.ts` |
 | A1.2 | ✅ **DONE** — Tables: `users`, `refresh_tokens`, `orgs`, `org_members` | S | `schema.sql` |
 | A1.3 | ✅ **DONE** — Endpoints `/auth/signup /verify /login /refresh`, `/me`, `/orgs`, `/orgs/:id/brands` | M | `server.ts` |
 | A1.4 | ☐ Rate-limit `/auth/login` + `/signup` (per-IP limiter exists; confirm wired to auth routes) | S | `rate_limiter.ts` |
 | A1.5 | ☐ New orgs auto-start trust tier OBSERVE (governance defaults to OBSERVE fallback; explicit new-org wiring not found) | S | governance wiring |
 
-### A2 — OAuth connect (3 items) — reuse `credential_vault.ts`
+### A2 — OAuth connect ✅ **DONE** (`a09e913`) — reuse `credential_vault.ts`
 | # | Item | Size | File(s) |
 |---|------|------|---------|
-| A2.1 | Signed `state` sign/verify helper | S | `auth.ts` |
-| A2.2 | `/connect/:platform` + `/callback` for Google Ads, Meta, Shopify | L | `server.ts`, new `oauth_flows.ts` |
-| A2.3 | Reconnect-on-refresh-failure path | S | `credential_vault.ts`, `integration_state` |
+| A2.1 | ✅ Signed `state` (`signOauthState`/`verifyOauthState`) | S | `auth.ts` |
+| A2.2 | ✅ `/connect/:platform` (302→consent) + `/connect/callback/:platform` for Google/Meta/Shopify | L | `server.ts`, `oauth_flows.ts` |
+| A2.3 | ✅ Reconnect-on-refresh-failure (`integration.status='suspended'`) | S | `credential_vault.ts` |
+| A2.4 | ☐ `GET /api/v1/integrations` — expose `getIntegrationStates()` so the connect UI can show what's linked (client method exists; no endpoint) | S | `server.ts` |
 
 ### A3 — Product UI (3 items) — the big one
 | # | Item | Size | File(s) |
 |---|------|------|---------|
 | A3.1 | ◐ **PARTIAL** — runnable Next.js `app/` scaffold landed in Wellness-Foods (tokens, api/types/queries layer, providers, dashboard route). Auth-gated routing pending A1 UI | L | `app/` |
-| A3.2 | ◐ **IN PROGRESS** — built: POAS dashboard + three-zone healing + live sweep + **autonomy dial & approvals queue** + shared `Nav`, MOCK mode. ~5 screens (connect, readiness gauge, auth) + SSE remain | XL | `app/` |
-| A3.3 | ☐ `GET /api/v1/profit-readiness` endpoint + gauge | M | `server.ts`, `poas_calculator.ts` |
+| A3.2 | ◐ **IN PROGRESS** — built: POAS dashboard + three-zone healing + live sweep + autonomy/approvals + **readiness gauge**, shared `Nav`, MOCK mode. Connect screen (now unblocked) + auth + SSE remain | XL | `app/` |
+| A3.3 | ✅ **DONE** — endpoint (`dd9045a`) + `ReadinessGauge` UI on dashboard, wired to live `/profit-readiness` | M | `server.ts`, `profit_readiness.ts`, `app/` |
 | A3.4 | ☐ `GET /api/v1/sweep` endpoint — expose rich `SweepFinding[]` (today `/risks` returns only `string[]`); UI already built against it | S | `server.ts`, `risk_radar.ts` |
 | A3.5 | ☐ `GET/POST /api/v1/autonomy` — read/set current trust tier; UI dial already built against it (approvals already wired to live `/approvals`) | S | `server.ts`, `governance_engine.ts` |
 

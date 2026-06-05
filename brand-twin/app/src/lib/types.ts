@@ -141,6 +141,24 @@ export const TRUST_TIERS: {
   { tier: "C_SUITE", level: 4, cap: 1_000_000, blurb: "Full autonomy within policy." },
 ];
 
+/**
+ * Profit readiness — is the POAS number trustworthy enough to act on?
+ * Matches profit_readiness.ts `ProfitReadinessResponse` @ 8807aa8.
+ * GET /api/v1/profit-readiness → { score, factors, status }
+ */
+export interface ProfitReadiness {
+  score: number; // 0–100
+  factors: {
+    cogsCoverage: number; // 0–100
+    shopifyLinked: boolean;
+    googleAdsLinked: boolean;
+    metaAdsLinked: boolean;
+    bankLinked: boolean;
+    historicalOrdersLoaded: boolean;
+  };
+  status: "ready" | "directional_only" | "incomplete";
+}
+
 /** Server success envelope (server.ts:119). */
 export interface ApiEnvelope<T> {
   status: "success";

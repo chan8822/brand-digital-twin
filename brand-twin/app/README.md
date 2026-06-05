@@ -43,6 +43,7 @@ cp .env.example .env.local
 | Autonomy dial | `src/components/AutonomyDial.tsx` | 5 trust tiers + daily caps, current highlighted |
 | Approval row | `src/components/ApprovalRow.tsx` | approve → `POST /approvals/:id/approve` |
 | Autonomy screen | `src/app/autonomy/page.tsx` | dial + approvals queue |
+| Readiness gauge | `src/components/ReadinessGauge.tsx` | score ring + COGS bar + factor checklist; live `/profit-readiness` |
 | Nav | `src/components/Nav.tsx` | shared top nav across screens |
 
 ## Data contract
@@ -66,7 +67,8 @@ Per `A-PHASE_BUILD_SPEC.md §A3`, still to build on this scaffold:
 - [x] Three-zone healing cards (`/healing` — `HealingCard.tsx`, OS acts / you decide / ads can't fix)
 - [x] Live sweep (`/sweep` — `SweepFindingRow.tsx`, severity→dollar sort). **Needs `GET /api/v1/sweep`** to expose the rich `SweepFinding[]` (`/risks` only returns `string[]` today)
 - [x] Autonomy dial + approvals queue (`/autonomy` — `AutonomyDial.tsx` + `ApprovalRow.tsx`). Approvals read live `/approvals` + `/approvals/:id/approve`; dial **needs `GET/POST /api/v1/autonomy`**
-- [ ] Connect-your-stack (A2 OAuth buttons) — blocked on A2
+- [x] Profit Readiness gauge (`ReadinessGauge.tsx` on `/dashboard`) — wired to the **live** `GET /api/v1/profit-readiness` (landed upstream `dd9045a`); score ring + factor checklist + gating status
+- [ ] Connect-your-stack (A2 OAuth buttons) — **now unblocked** (A2 landed `a09e913`); needs `GET /api/v1/integrations` to show linked state
 - [ ] Profit Readiness gauge (`GET /api/v1/profit-readiness` — endpoint TBD)
 - [ ] SSE client for `/api/v1/stream`
 - [ ] Auth screens (signup/login/verify) once A1 UI is wired
