@@ -98,4 +98,59 @@ describe('Observability & Durable Error Sink Suite (P1.2a)', () => {
       expect(event.context.cost).toBe(150.5);
     });
   });
+
+  describe('Real-time Alert Evaluation Rules (P1.2b)', () => {
+    let tracker: MetricsTracker;
+
+    beforeEach(() => {
+      tracker = new MetricsTracker();
+    });
+
+    it('should raise a critical alert when job backlog count exceeds 50', () => {
+      tracker.recordMetric({
+        name: 'pending_jobs_backlog_count',
+        platform: 'engine',
+        value: 60,
+        timestamp: new Date().toISOString(),
+      });
+
+      const alerts = tracker.getAlerts();
+      expect(alerts.length).toBe(1);
+      expect(alerts[0]).toContain('CRITICAL');
+      expect(alerts[0]).toContain('backlog size is 60');
+    });
+
+    it('should raise a critical alert when operation failure rate exceeds 10%', () => {
+      // Create 10 spans, 8 success and 2 failures (20% failure rate)
+      for (let i = 0; i < 8; i++) {
+        const s = tracker.startSpan('compute_poas', 'google_ads');
+        tracker.endSpan(s.spanId, 'success');
+      }
+
+      // 9th and 10th fail
+      for (let i = 0; i < 2; i++) {
+        const s = tracker.startSpan('compute_poas', 'google_ads');
+        tracker.endSpan(s.spanId, 'failure', 'API Timeout');
+      }
+
+      const alerts = tracker.getAlerts();
+      // Expect alert raised for failure rate exceeding 10%
+      const failureAlerts = alerts.filter(a => a.includes('failure rate is 20.0%'));
+      expect(failureAlerts.length).toBeGreaterThan(0);
+    });
+
+    it('should raise a warning alert when average operation latency exceeds 5000ms', () => {
+      // Create 10 spans with simulated high latency
+      for (let i = 0; i < 10; i++) {
+        const s = tracker.startSpan('compute_poas', 'google_ads');
+        // Manually adjust start time to mock high latency
+        s.startTimeMs = Date.now() - 6000; 
+        tracker.endSpan(s.spanId, 'success');
+      }
+
+      const alerts = tracker.getAlerts();
+      const latencyAlerts = alerts.filter(a => a.includes('latency across last 10 requests'));
+      expect(latencyAlerts.length).toBeGreaterThan(0);
+    });
+  });
 });

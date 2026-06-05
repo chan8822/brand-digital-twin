@@ -167,11 +167,43 @@ export class MetricsTracker {
           trace_id: span.traceId,
         }).catch(() => {});
       }
+      this.evaluateRules();
     }
   }
 
   recordMetric(metric: Metric) {
     this.metrics.push(metric);
+    this.evaluateRules();
+  }
+
+  evaluateRules() {
+    const pendingJobsBacklog = this.metrics
+      .filter((m) => m.name === 'pending_jobs_backlog_count')
+      .sort((a, b) => b.timestamp.localeCompare(a.timestamp))[0];
+
+    if (pendingJobsBacklog && pendingJobsBacklog.value > 50) {
+      this.raiseAlert(
+        `CRITICAL: Job queue backlog size is ${pendingJobsBacklog.value}, exceeding safety threshold of 50.`
+      );
+    }
+
+    const last10Spans = [...this.spans].slice(-10);
+    if (last10Spans.length > 0) {
+      const avgLatency = last10Spans.reduce((acc, s) => acc + (s.durationMs ?? 0), 0) / last10Spans.length;
+      if (avgLatency > 5000) {
+        this.raiseAlert(
+          `WARNING: Average operation latency across last ${last10Spans.length} requests is ${avgLatency.toFixed(1)}ms, exceeding budget of 5000ms.`
+        );
+      }
+
+      const failures = last10Spans.filter((s) => s.status === 'failure').length;
+      const failureRate = failures / last10Spans.length;
+      if (failureRate > 0.1) {
+        this.raiseAlert(
+          `CRITICAL: Operation failure rate is ${(failureRate * 100).toFixed(1)}% (last ${last10Spans.length} requests), exceeding threshold of 10%.`
+        );
+      }
+    }
   }
 
   raiseAlert(message: string) {
