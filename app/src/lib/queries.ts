@@ -6,12 +6,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, USE_MOCK } from "./api";
 import {
   MOCK_APPROVALS,
+  MOCK_READINESS,
   MOCK_RECOMMENDATIONS,
   MOCK_SWEEP,
   MOCK_TRUST_TIER,
 } from "./mock";
 import type {
   ApprovalRequest,
+  ProfitReadiness,
   RecommendationCard,
   SemanticTrustTier,
   SweepFinding,
@@ -81,6 +83,21 @@ export function useApprove() {
       });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["approvals"] }),
+  });
+}
+
+export function useProfitReadiness() {
+  return useQuery({
+    queryKey: ["profit-readiness"],
+    queryFn: async (): Promise<ProfitReadiness> => {
+      if (USE_MOCK) {
+        await new Promise((r) => setTimeout(r, 300));
+        return MOCK_READINESS;
+      }
+      // Live endpoint (dd9045a): returns ProfitReadiness directly as `data`.
+      return apiFetch<ProfitReadiness>("/api/v1/profit-readiness");
+    },
+    staleTime: 60_000,
   });
 }
 

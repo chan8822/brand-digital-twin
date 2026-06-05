@@ -16,10 +16,10 @@
 | Area | Done | Left | Note |
 |------|------|------|------|
 | Phase 1 tail (engine) | 2 | 0 | ✅ complete |
-| Phase A — usable by a stranger | 12 | ~4 | ✅ A1 + A2 done; A3.1 scaffold done, A3.2 screens left |
+| Phase A — usable by a stranger | 10 | ~9 | ✅ A1 + A2 done; A3.1+A3.3 done; A3.2 screens, A2.4 list, A3.4/A3.5 endpoints left |
 | Phase B — lawful & trustworthy | 9 | ~9 | B1 done, B2/B3 partial; B4 abuse open |
 | Phase C — self-serve value + money | 0 | 15 | not started |
-| **Totals** | **~23** | **~28** | of 51 |
+| **Totals** | **~21** | **~33** | of 54 |
 
 The engine + the identity/data-rights/legal spine are **done**. What's left is the
 two self-serve pieces (**A2 OAuth + A3 UI**), the rest of ops/abuse, and all of
@@ -61,19 +61,20 @@ COGS + billing. **A stranger still can't connect a platform or click anything.**
 | A1.4 | ✅ **DONE** — Rate-limit `/auth/login` + `/signup` via `rate_limiter.ts` (checkAuthRateLimit wired) | S | `rate_limiter.ts` |
 | A1.5 | ✅ **DONE** — New orgs auto-start trust tier OBSERVE (brand creation calls trust ledger setTier + saveTrustTier) | S | governance wiring |
 
-### A2 — OAuth connect (3 items) — reuse `credential_vault.ts`
+### A2 — OAuth connect ✅ **DONE** (`a09e913`) — reuse `credential_vault.ts`
 | # | Item | Size | File(s) |
 |---|------|------|---------|
-| A2.1 | ✅ **DONE** — Signed `state` sign/verify helper | S | `auth.ts` |
-| A2.2 | ✅ **DONE** — `/connect/:platform` + `/callback` for Google Ads, Meta, Shopify | L | `server.ts`, `oauth_flows.ts` |
-| A2.3 | ✅ **DONE** — Reconnect-on-refresh-failure path | S | `credential_vault.ts`, `integration_state` |
+| A2.1 | ✅ Signed `state` (`signOauthState`/`verifyOauthState`) | S | `auth.ts` |
+| A2.2 | ✅ `/connect/:platform` (302→consent) + `/connect/callback/:platform` for Google/Meta/Shopify | L | `server.ts`, `oauth_flows.ts` |
+| A2.3 | ✅ Reconnect-on-refresh-failure (`integration.status='suspended'`) | S | `credential_vault.ts` |
+| A2.4 | ☐ `GET /api/v1/integrations` — expose `getIntegrationStates()` so the connect UI can show what's linked (client method exists; no endpoint) | S | `server.ts` |
 
 ### A3 — Product UI (3 items) — the big one
 | # | Item | Size | File(s) |
 |---|------|------|---------|
 | A3.1 | ✅ **DONE** — Next.js `app/` scaffold imported and configured (Tailwind, TanStack Query, types, API client, DualMetricCard). | L | `app/` |
-| A3.2 | ◐ **IN PROGRESS** — built: POAS dashboard + three-zone healing + live sweep + **autonomy dial & approvals queue** + shared `Nav`, MOCK mode. ~5 screens (connect, readiness gauge, auth) + SSE remain | XL | `app/` |
-| A3.3 | ✅ **DONE** — `GET /api/v1/profit-readiness` endpoint + calculator | M | `server.ts`, `profit_readiness.ts` |
+| A3.2 | ◐ **IN PROGRESS** — built: POAS dashboard + three-zone healing + live sweep + autonomy/approvals + **readiness gauge**, shared `Nav`, MOCK mode. Connect screen (now unblocked) + auth + SSE remain | XL | `app/` |
+| A3.3 | ✅ **DONE** — endpoint (`dd9045a`) + `ReadinessGauge` UI on dashboard, wired to live `/profit-readiness` | M | `server.ts`, `profit_readiness.ts`, `app/` |
 | A3.4 | ☐ `GET /api/v1/sweep` endpoint — expose rich `SweepFinding[]` (today `/risks` returns only `string[]`); UI already built against it | S | `server.ts`, `risk_radar.ts` |
 | A3.5 | ☐ `GET/POST /api/v1/autonomy` — read/set current trust tier; UI dial already built against it (approvals already wired to live `/approvals`) | S | `server.ts`, `governance_engine.ts` |
 
@@ -163,12 +164,13 @@ Start A0 immediately; start A1→A3 in parallel; B and C follow.
 
 ---
 
-## The honest number (@ `07cbfe3`)
+## The honest number (@ `ce58a54`)
 
-- **~23 of 51 units done.** Phase 1 complete; A1 + A2 complete; A3.1 scaffold + A3.3 readiness done.
-- **~28 units left**, roughly **5–6 weeks for one focused full-stack dev**.
-- **Biggest remaining chunk:** the product UI screens (A3.2) — the main XL blocker remaining.
+- **~21 of 54 units done.** Phase 1 complete; A1 + A2 complete; A3.1 scaffold + A3.3 readiness done.
+- **~33 units left**, roughly **5–6 weeks for one focused full-stack dev**.
+- **Biggest remaining chunk:** the product UI screens (A3.2) — still the main XL blocker remaining.
 - **Gaps closed:** password reset (A1.1), explicit brand initialization -> OBSERVE (A1.5/B4), credential-vault refresh suspension (A2.3).
+- **Flagged gaps to build:** GET /api/v1/integrations (A2.4), GET /api/v1/sweep (A3.4), GET/POST /api/v1/autonomy (A3.5).
 
 Build order from here: **A0 clocks (in flight) -> A3.2 (UI screens wiring) -> B3/B4 -> C.**
 Each phase spec has the granular checklists + tests + definition-of-done.
