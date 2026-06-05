@@ -50,6 +50,7 @@ describe('Account Hierarchy Onboarding & Linking integration', () => {
     // Seed governance trust score for Google Ads so it has permission to execute immediately
     await db.saveTrustTier(tenantId, 'pause', 4);
     await db.saveTrustTier(tenantId, 'update_feed', 4);
+    await db.saveTrustTier(tenantId, 'create', 4);
 
     radar = new RiskRadar(governance, adsAdapter, db, tenantId);
 
@@ -184,5 +185,70 @@ describe('Account Hierarchy Onboarding & Linking integration', () => {
     const adgState = adsAdapter.getSimulatedAdGroup(adsAdGroupId);
     expect(adgState).toBeDefined();
     expect(adgState?.status).toBe('PAUSED');
+  });
+
+  it('should generate a paused cold-start margin discovery campaign targeting high-margin catalog items', async () => {
+    // 1. Seed catalog items with varying profit margins in the database
+    // Product 1 (High margin: 50% margin) -> Price $100, Cost $50 -> Profit $50
+    // Product 2 (Low margin: 20% margin) -> Price $200, Cost $160 -> Profit $40
+    await db.saveOrderLine({
+      order_line_id: 'ol-p1',
+      order_id: 'o-dummy-1',
+      variant_id: 'v-p1',
+      sku: 'HIGH-MARGIN-SKU',
+      qty: 1,
+      unit_price: 100,
+      line_discount: 0,
+      unit_cost: 50,
+      tenant_id: tenantId,
+      source_system: 'shopify',
+      source_id: 'ol-p1',
+      source_version: '1.0',
+      ingested_at: new Date().toISOString()
+    });
+    await db.saveOrderLine({
+      order_line_id: 'ol-p2',
+      order_id: 'o-dummy-1',
+      variant_id: 'v-p2',
+      sku: 'LOW-MARGIN-SKU',
+      qty: 1,
+      unit_price: 200,
+      line_discount: 0,
+      unit_cost: 160,
+      tenant_id: tenantId,
+      source_system: 'shopify',
+      source_id: 'ol-p2',
+      source_version: '1.0',
+      ingested_at: new Date().toISOString()
+    });
+
+    // 2. Run onboarding margin discovery campaign generator
+    const result = await wizard.generateMarginDiscoveryCampaign(
+      tenantId,
+      'ads-sub-a',
+      adsAdapter,
+      governance,
+      ctx
+    );
+
+    expect(result).toBeDefined();
+    expect(result?.targetSkus).toContain('HIGH-MARGIN-SKU');
+    expect(result?.targetSkus).not.toContain('LOW-MARGIN-SKU');
+
+    // 3. Verify campaign was created in PAUSED status in simulated google ads adapter
+    const simCamp = adsAdapter.getSimulatedCampaign(result!.campaignId);
+    expect(simCamp).toBeDefined();
+    expect(simCamp?.name).toBe('Twin-Discovery: High Margin Catalog');
+    expect(simCamp?.status).toBe('PAUSED');
+    expect(simCamp?.budget).toBe(500);
+
+    // 4. Verify product ad link was created linking variant to discovery campaign
+    const links = await db.getProductAdLinks(tenantId);
+    const linkForHigh = links.find((l) => l.variant_id === 'v-p1');
+    expect(linkForHigh).toBeDefined();
+    expect(linkForHigh?.ads_campaign_id).toBe(result!.campaignId);
+
+    const linkForLow = links.find((l) => l.variant_id === 'v-p2');
+    expect(linkForLow).toBeUndefined(); // Should not link low margin product
   });
 });

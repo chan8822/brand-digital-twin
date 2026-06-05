@@ -11,6 +11,7 @@ import {
 } from './supabase_client';
 import {GoogleAdsAdapter} from './google_ads_adapter';
 import {GoogleMerchantAdapter} from './google_merchant_adapter';
+import {Context, GovernanceEngine} from './governance_engine';
 
 export interface OnboardingParams {
   tenantId: string;
@@ -250,5 +251,90 @@ export class OnboardingWizard {
         resolved_at: new Date().toISOString(),
       });
     }
+  }
+
+  /**
+   * Generates a cold-start margin discovery campaign in Google Ads targeting high-margin products.
+   */
+  async generateMarginDiscoveryCampaign(
+    tenantId: string,
+    adsAccountId: string,
+    adsAdapter: GoogleAdsAdapter,
+    governance: GovernanceEngine,
+    ctx: Context,
+  ): Promise<{campaignId: string; targetSkus: string[]} | null> {
+    const orderLines = await this.db.getOrderLines(tenantId);
+
+    const skuMargins = new Map<string, {sku: string; variantId: string; marginPct: number}>();
+    for (const ol of orderLines) {
+      if (!ol.sku || !ol.variant_id) continue;
+      const margin = ol.unit_price - (ol.unit_cost ?? 0);
+      const marginPct = ol.unit_price > 0 ? margin / ol.unit_price : 0;
+      skuMargins.set(ol.sku, {
+        sku: ol.sku,
+        variantId: ol.variant_id,
+        marginPct,
+      });
+    }
+
+    const highMarginProducts = Array.from(skuMargins.values())
+      .filter((p) => p.marginPct >= 0.4)
+      .sort((a, b) => b.marginPct - a.marginPct);
+
+    if (highMarginProducts.length === 0) {
+      return null;
+    }
+
+    const targetSkus = highMarginProducts.map((p) => p.sku);
+    const campaignId = `c-discovery-${Date.now()}`;
+
+    const req = {
+      idempotencyKey: `onboard_discovery_${tenantId}_${Date.now()}`,
+      op: 'create' as const,
+      entity: 'campaign',
+      targetId: campaignId,
+      payload: {
+        name: `Twin-Discovery: High Margin Catalog`,
+        budget: 500,
+        status: 'PAUSED',
+        objective: 'SEARCH',
+      },
+      confidence: 1.0,
+    };
+
+    const outcome = await governance.govern(adsAdapter, req, ctx);
+    if (outcome.status === 'executed') {
+      await this.db.saveCampaign({
+        campaign_id: campaignId,
+        platform: 'google',
+        objective: 'SEARCH',
+        name: `Twin-Discovery: High Margin Catalog`,
+        status: 'PAUSED',
+        surface: 'google_search_network',
+        tenant_id: tenantId,
+        source_system: 'google',
+        source_id: campaignId,
+        source_version: 'v15',
+        ingested_at: new Date().toISOString(),
+      });
+
+      for (const p of highMarginProducts) {
+        await this.db.saveProductAdLink({
+          tenant_id: tenantId,
+          variant_id: p.variantId,
+          gmc_offer_id: `gmc_${p.sku}`,
+          gmc_account_id: 'gmc-acc-1',
+          ads_account_id: adsAccountId,
+          ads_campaign_id: campaignId,
+          ads_ad_group_id: '',
+          confidence: 1.0,
+          resolved_at: new Date().toISOString(),
+        });
+      }
+
+      return { campaignId, targetSkus };
+    }
+
+    return null;
   }
 }

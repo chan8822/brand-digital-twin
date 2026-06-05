@@ -37,6 +37,7 @@ export class GoogleAdsAdapter implements PlatformAdapter {
         'activate',
         'scale_budget',
         'update_feed',
+        'create',
       ],
       reversible: true,
     },
@@ -93,101 +94,169 @@ export class GoogleAdsAdapter implements PlatformAdapter {
   }
 
   async listSubAccounts(managerCustomerId: string): Promise<PlatformAccount[]> {
-    this.logger.info('Simulating MCC account hierarchy search', {managerCustomerId});
+    this.logger.info('Searching MCC account hierarchy', {managerCustomerId});
+    const cleanManagerId = managerCustomerId.replace(/-/g, '');
 
-    if (managerCustomerId !== 'mcc-root') {
-      return [];
+    if (this.token.startsWith('mock')) {
+      if (cleanManagerId !== 'mccroot') {
+        return [];
+      }
+      const now = new Date().toISOString();
+      return [
+        {
+          accountId: 'acc-mcc-root',
+          tenantId: this.tenantId,
+          platform: 'google_ads',
+          platformAccountId: 'mcc-root',
+          accountName: 'Nike & Partners MCC',
+          accountType: 'manager',
+          status: 'active',
+          ingestedAt: now,
+        },
+        {
+          accountId: 'acc-sub-mcc-x',
+          tenantId: this.tenantId,
+          platform: 'google_ads',
+          platformAccountId: 'sub-mcc-x',
+          accountName: 'Europe Partners Sub-MCC',
+          accountType: 'manager',
+          parentAccountId: 'acc-mcc-root',
+          status: 'active',
+          ingestedAt: now,
+        },
+        {
+          accountId: 'acc-ads-sub-a',
+          tenantId: this.tenantId,
+          platform: 'google_ads',
+          platformAccountId: 'ads-sub-a',
+          accountName: 'Nike Brand Main',
+          accountType: 'sub_account',
+          parentAccountId: 'acc-mcc-root',
+          currency: 'USD',
+          timezone: 'America/New_York',
+          status: 'active',
+          ingestedAt: now,
+        },
+        {
+          accountId: 'acc-ads-sub-b',
+          tenantId: this.tenantId,
+          platform: 'google_ads',
+          platformAccountId: 'ads-sub-b',
+          accountName: 'Nike Brand UK',
+          accountType: 'sub_account',
+          parentAccountId: 'acc-mcc-root',
+          currency: 'GBP',
+          timezone: 'Europe/London',
+          status: 'active',
+          ingestedAt: now,
+        },
+        {
+          accountId: 'acc-ads-sub-c',
+          tenantId: this.tenantId,
+          platform: 'google_ads',
+          platformAccountId: 'ads-sub-c',
+          accountName: 'Adidas Brand Main',
+          accountType: 'sub_account',
+          parentAccountId: 'acc-mcc-root',
+          currency: 'EUR',
+          timezone: 'Europe/Berlin',
+          status: 'active',
+          ingestedAt: now,
+        },
+        {
+          accountId: 'acc-ads-sub-d',
+          tenantId: this.tenantId,
+          platform: 'google_ads',
+          platformAccountId: 'ads-sub-d',
+          accountName: 'Nike Reseller Sub',
+          accountType: 'sub_account',
+          parentAccountId: 'acc-sub-mcc-x',
+          currency: 'EUR',
+          timezone: 'Europe/Paris',
+          status: 'active',
+          ingestedAt: now,
+        },
+        {
+          accountId: 'acc-ads-sub-e',
+          tenantId: this.tenantId,
+          platform: 'google_ads',
+          platformAccountId: 'ads-sub-e',
+          accountName: 'Adidas Reseller Sub',
+          accountType: 'sub_account',
+          parentAccountId: 'acc-sub-mcc-x',
+          currency: 'EUR',
+          timezone: 'Europe/Rome',
+          status: 'active',
+          ingestedAt: now,
+        },
+      ];
     }
 
-    const now = new Date().toISOString();
-    return [
-      {
-        accountId: 'acc-mcc-root',
-        tenantId: this.tenantId,
-        platform: 'google_ads',
-        platformAccountId: 'mcc-root',
-        accountName: 'Nike & Partners MCC',
-        accountType: 'manager',
-        status: 'active',
-        ingestedAt: now,
-      },
-      {
-        accountId: 'acc-sub-mcc-x',
-        tenantId: this.tenantId,
-        platform: 'google_ads',
-        platformAccountId: 'sub-mcc-x',
-        accountName: 'Europe Partners Sub-MCC',
-        accountType: 'manager',
-        parentAccountId: 'acc-mcc-root',
-        status: 'active',
-        ingestedAt: now,
-      },
-      {
-        accountId: 'acc-ads-sub-a',
-        tenantId: this.tenantId,
-        platform: 'google_ads',
-        platformAccountId: 'ads-sub-a',
-        accountName: 'Nike Brand Main',
-        accountType: 'sub_account',
-        parentAccountId: 'acc-mcc-root',
-        currency: 'USD',
-        timezone: 'America/New_York',
-        status: 'active',
-        ingestedAt: now,
-      },
-      {
-        accountId: 'acc-ads-sub-b',
-        tenantId: this.tenantId,
-        platform: 'google_ads',
-        platformAccountId: 'ads-sub-b',
-        accountName: 'Nike Brand UK',
-        accountType: 'sub_account',
-        parentAccountId: 'acc-mcc-root',
-        currency: 'GBP',
-        timezone: 'Europe/London',
-        status: 'active',
-        ingestedAt: now,
-      },
-      {
-        accountId: 'acc-ads-sub-c',
-        tenantId: this.tenantId,
-        platform: 'google_ads',
-        platformAccountId: 'ads-sub-c',
-        accountName: 'Adidas Brand Main',
-        accountType: 'sub_account',
-        parentAccountId: 'acc-mcc-root',
-        currency: 'EUR',
-        timezone: 'Europe/Berlin',
-        status: 'active',
-        ingestedAt: now,
-      },
-      {
-        accountId: 'acc-ads-sub-d',
-        tenantId: this.tenantId,
-        platform: 'google_ads',
-        platformAccountId: 'ads-sub-d',
-        accountName: 'Nike Reseller Sub',
-        accountType: 'sub_account',
-        parentAccountId: 'acc-sub-mcc-x',
-        currency: 'EUR',
-        timezone: 'Europe/Paris',
-        status: 'active',
-        ingestedAt: now,
-      },
-      {
-        accountId: 'acc-ads-sub-e',
-        tenantId: this.tenantId,
-        platform: 'google_ads',
-        platformAccountId: 'ads-sub-e',
-        accountName: 'Adidas Reseller Sub',
-        accountType: 'sub_account',
-        parentAccountId: 'acc-sub-mcc-x',
-        currency: 'EUR',
-        timezone: 'Europe/Rome',
-        status: 'active',
-        ingestedAt: now,
-      },
-    ];
+    const query = `
+      SELECT
+        customer_client.client_customer,
+        customer_client.level,
+        customer_client.status,
+        customer_client.descriptive_name,
+        customer_client.currency_code,
+        customer_client.time_zone,
+        customer_client.manager
+      FROM customer_client
+    `;
+
+    try {
+      const endpoint = `https://googleads.googleapis.com/${API_VERSION}/customers/${cleanManagerId}/googleAds:search`;
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'developer-token': this.developerToken,
+          'Authorization': `Bearer ${this.token}`,
+        },
+        body: JSON.stringify({query}),
+      });
+
+      if (!res.ok) {
+        this.logger.error('Google Ads MCC search failed', {
+          status: res.status,
+          statusText: res.statusText,
+        });
+        throw new Error(`Google Ads MCC hierarchy search error: ${res.statusText}`);
+      }
+
+      const json = (await res.json()) as any;
+      const results = json.results || [];
+      const platformAccounts: PlatformAccount[] = [];
+
+      for (const row of results) {
+        const cc = row.customerClient || row.customer_client;
+        if (!cc) continue;
+
+        const subCustomerId = cc.clientCustomer.split('/')[1];
+        const isManager = cc.manager === true || cc.manager === 'true';
+
+        platformAccounts.push({
+          accountId: `acc-ads-${subCustomerId}`,
+          tenantId: this.tenantId,
+          platform: 'google_ads',
+          platformAccountId: subCustomerId,
+          accountName: cc.descriptiveName || null,
+          accountType: isManager ? 'manager' : 'sub_account',
+          parentAccountId: managerCustomerId ? `acc-ads-${cleanManagerId}` : undefined,
+          currency: cc.currencyCode || null,
+          timezone: cc.timeZone || null,
+          status: cc.status || 'active',
+          ingestedAt: new Date().toISOString(),
+        });
+      }
+
+      return platformAccounts;
+    } catch (err: any) {
+      this.logger.error('Google Ads MCC hierarchy search failed with exception', {
+        error: err?.message || String(err),
+      });
+      throw err;
+    }
   }
 
   private endpoint() {
@@ -357,27 +426,49 @@ export class GoogleAdsAdapter implements PlatformAdapter {
     let projectedCost = 0;
 
     let campBudget = 0;
-    if (req.entity === 'ad_group') {
-      const adg = this.simulatedAdGroups.get(req.targetId);
-      if (!adg) {
-        warnings.push(`Ad Group ${req.targetId} not found in live cache.`);
-        this.logger.warn('Google Ads ad group not found in cache during planning', {
-          'targetId': req.targetId,
-        });
-      }
-    } else {
-      const camp = this.simulatedCampaigns.get(req.targetId);
-      if (!camp) {
-        warnings.push(`Campaign ${req.targetId} not found in live cache.`);
-        this.logger.warn('Google Ads campaign not found in cache during planning', {
-          'targetId': req.targetId,
-        });
+    if (req.op !== 'create') {
+      if (req.entity === 'ad_group') {
+        const adg = this.simulatedAdGroups.get(req.targetId);
+        if (!adg) {
+          warnings.push(`Ad Group ${req.targetId} not found in live cache.`);
+          this.logger.warn('Google Ads ad group not found in cache during planning', {
+            'targetId': req.targetId,
+          });
+        }
       } else {
-        campBudget = camp.budget;
+        const camp = this.simulatedCampaigns.get(req.targetId);
+        if (!camp) {
+          warnings.push(`Campaign ${req.targetId} not found in live cache.`);
+          this.logger.warn('Google Ads campaign not found in cache during planning', {
+            'targetId': req.targetId,
+          });
+        } else {
+          campBudget = camp.budget;
+        }
       }
     }
 
-    if (req.op === 'update_budget') {
+    if (req.op === 'create') {
+      const payload = req.payload as {name: string; budget: number; status: string; objective: string};
+      if (
+        !payload ||
+        typeof payload.name !== 'string' ||
+        typeof payload.budget !== 'number' ||
+        payload.budget <= 0
+      ) {
+        this.logger.warn('Invalid create plan payload', {
+          'targetId': req.targetId,
+          'payload': payload,
+        });
+        return {
+          request: req,
+          valid: false,
+          projectedCost: 0,
+          warnings: ['Invalid campaign creation parameters.'],
+        };
+      }
+      projectedCost = payload.budget;
+    } else if (req.op === 'update_budget') {
       const payload = req.payload as {budget: number};
       if (
         !payload ||
@@ -449,28 +540,43 @@ export class GoogleAdsAdapter implements PlatformAdapter {
       return {ok: false, auditRef: 'invalid_plan', error: 'Plan is invalid'};
     }
 
-    if (req.entity === 'ad_group') {
-      const adg = this.simulatedAdGroups.get(req.targetId);
-      const originalState = adg ? {...adg} : {status: 'UNKNOWN'};
+    const isMock = this.token.startsWith('mock');
 
-      if (req.op === 'pause') {
-        this.simulatedAdGroups.set(req.targetId, {
-          campaignId: adg?.campaignId ?? '',
-          name: adg?.name ?? '',
-          status: 'PAUSED',
-        });
-      } else if (req.op === 'activate') {
-        this.simulatedAdGroups.set(req.targetId, {
-          campaignId: adg?.campaignId ?? '',
-          name: adg?.name ?? '',
-          status: 'ENABLED',
-        });
+    if (req.entity === 'ad_group') {
+      let originalState: any;
+      if (isMock) {
+        const adg = this.simulatedAdGroups.get(req.targetId);
+        originalState = adg ? {...adg} : {status: 'UNKNOWN'};
+
+        if (req.op === 'pause') {
+          this.simulatedAdGroups.set(req.targetId, {
+            campaignId: adg?.campaignId ?? '',
+            name: adg?.name ?? '',
+            status: 'PAUSED',
+          });
+        } else if (req.op === 'activate') {
+          this.simulatedAdGroups.set(req.targetId, {
+            campaignId: adg?.campaignId ?? '',
+            name: adg?.name ?? '',
+            status: 'ENABLED',
+          });
+        }
+      } else {
+        const state = await this.fetchAdGroupState(req.targetId);
+        originalState = { status: state.status };
+
+        const newStatus = req.op === 'pause' ? 'PAUSED' : 'ENABLED';
+        await this.mutateAdGroup(req.targetId, { status: newStatus });
       }
 
       const rollback: RollbackHandle = {
         rollbackId: `rb_${req.idempotencyKey}`,
         platform: this.platform,
-        originalState,
+        originalState: {
+          entityType: 'ad_group',
+          targetId: req.targetId,
+          ...originalState
+        },
       };
 
       this.logger.info('Google Ads action executed successfully for ad group', {
@@ -486,53 +592,112 @@ export class GoogleAdsAdapter implements PlatformAdapter {
       };
     }
 
-    const camp = this.simulatedCampaigns.get(req.targetId);
-    const originalState = camp ? {...camp} : {budget: 0, status: 'UNKNOWN'};
+    let originalState: any;
+    if (isMock) {
+      if (req.op === 'create') {
+        originalState = { isCreated: true };
+        const payload = req.payload as {name: string; budget: number; status: string; objective: string};
+        this.simulatedCampaigns.set(req.targetId, {
+          name: payload.name,
+          budget: payload.budget,
+          status: payload.status === 'ENABLED' ? 'ENABLED' : 'PAUSED',
+        });
+      } else {
+        const camp = this.simulatedCampaigns.get(req.targetId);
+        originalState = camp ? {...camp} : {budget: 0, status: 'UNKNOWN'};
 
-    if (req.op === 'update_budget') {
-      const payload = req.payload as {budget: number};
-      this.simulatedCampaigns.set(req.targetId, {
-        budget: payload.budget,
-        status: camp?.status ?? 'ENABLED',
-      });
-    } else if (req.op === 'scale_budget') {
-      const payload = req.payload as {scaleFactor: number};
-      this.simulatedCampaigns.set(req.targetId, {
-        budget: (camp?.budget ?? 0) * payload.scaleFactor,
-        status: camp?.status ?? 'ENABLED',
-      });
-    } else if (req.op === 'update_feed') {
-      this.simulatedCampaigns.set(req.targetId, {
-        name: camp?.name,
-        budget: camp?.budget ?? 0,
-        status: camp?.status ?? 'ENABLED',
-        activeVariantId: (req.payload as any)?.activeVariantId,
-      });
-    } else if (req.op === 'pause') {
-      this.simulatedCampaigns.set(req.targetId, {
-        budget: camp?.budget ?? 0,
-        status: 'PAUSED',
-      });
-    } else if (req.op === 'activate') {
-      const payload = req.payload as {name?: string; budget?: number};
-      this.simulatedCampaigns.set(req.targetId, {
-        name: payload?.name ?? camp?.name,
-        budget: payload?.budget ?? camp?.budget ?? 0,
-        status: 'ENABLED',
-      });
+        if (req.op === 'update_budget') {
+          const payload = req.payload as {budget: number};
+          this.simulatedCampaigns.set(req.targetId, {
+            budget: payload.budget,
+            status: camp?.status ?? 'ENABLED',
+          });
+        } else if (req.op === 'scale_budget') {
+          const payload = req.payload as {scaleFactor: number};
+          this.simulatedCampaigns.set(req.targetId, {
+            budget: (camp?.budget ?? 0) * payload.scaleFactor,
+            status: camp?.status ?? 'ENABLED',
+          });
+        } else if (req.op === 'update_feed') {
+          this.simulatedCampaigns.set(req.targetId, {
+            name: camp?.name,
+            budget: camp?.budget ?? 0,
+            status: camp?.status ?? 'ENABLED',
+            activeVariantId: (req.payload as any)?.activeVariantId,
+          });
+        } else if (req.op === 'pause') {
+          this.simulatedCampaigns.set(req.targetId, {
+            budget: camp?.budget ?? 0,
+            status: 'PAUSED',
+          });
+        } else if (req.op === 'activate') {
+          const payload = req.payload as {name?: string; budget?: number};
+          this.simulatedCampaigns.set(req.targetId, {
+            name: payload?.name ?? camp?.name,
+            budget: payload?.budget ?? camp?.budget ?? 0,
+            status: 'ENABLED',
+          });
+        }
+      }
+    } else {
+      if (req.op === 'create') {
+        originalState = { isCreated: true };
+        const payload = req.payload as {name: string; budget: number; status: string; objective: string};
+        const budgetResourceName = await this.createBudget(payload.budget);
+        const operations = [
+          {
+            create: {
+              name: payload.name,
+              status: payload.status === 'ENABLED' ? 'ENABLED' : 'PAUSED',
+              advertisingChannelType: payload.objective,
+              campaignBudget: budgetResourceName,
+            }
+          }
+        ];
+        await this.mutate('campaigns:mutate', operations);
+      } else {
+        const state = await this.fetchCampaignState(req.targetId);
+        originalState = {
+          budget: state.budget,
+          status: state.status,
+          budgetResourceName: state.budgetResourceName
+        };
+
+        if (req.op === 'update_budget') {
+          const payload = req.payload as {budget: number};
+          if (state.budgetResourceName) {
+            await this.mutateBudget(state.budgetResourceName, payload.budget);
+          }
+        } else if (req.op === 'scale_budget') {
+          const payload = req.payload as {scaleFactor: number};
+          if (state.budgetResourceName) {
+            await this.mutateBudget(state.budgetResourceName, state.budget * payload.scaleFactor);
+          }
+        } else if (req.op === 'pause') {
+          await this.mutateCampaign(req.targetId, { status: 'PAUSED' });
+        } else if (req.op === 'activate') {
+          await this.mutateCampaign(req.targetId, { status: 'ENABLED' });
+        } else if (req.op === 'update_feed') {
+          this.logger.info('Real Google Ads update_feed not fully implemented, skipping API mutation');
+        }
+      }
     }
 
     const rollback: RollbackHandle = {
       rollbackId: `rb_${req.idempotencyKey}`,
       platform: this.platform,
-      originalState,
+      originalState: {
+        entityType: 'campaign',
+        targetId: req.targetId,
+        ...originalState
+      },
     };
 
     this.logger.info('Google Ads action executed successfully', {
       'targetId': req.targetId,
       'op': req.op,
       'originalState': originalState,
-      'newState': this.simulatedCampaigns.get(req.targetId),
+      'newState': isMock ? this.simulatedCampaigns.get(req.targetId) : 'API mutated',
     });
 
     return {
@@ -543,35 +708,57 @@ export class GoogleAdsAdapter implements PlatformAdapter {
   }
 
   async rollback(h: RollbackHandle): Promise<ActionResult> {
-    const original = h.originalState as {budget: number; status: string};
-    const targetId = h.rollbackId.replace('rb_', '');
+    const original = h.originalState as {
+      entityType: 'campaign' | 'ad_group';
+      targetId: string;
+      budget?: number;
+      status: string;
+      budgetResourceName?: string;
+      isCreated?: boolean;
+    };
     this.logger.info('Rolling back Google Ads action', {
       'rollbackId': h.rollbackId,
       'originalState': original,
     });
 
-    // In our simulation, targetId is the campaign key or maps to it
-    // Search the matching campaign. Since we used the targetId in execute:
-    // Let's restore the budget and status on the target.
-    // For simplicity, we track campaign targets.
-    // Let's assume h.rollbackId maps back to the campaign (e.g. c1 or 888)
-    const campaignsList = ['c1', '888'];
-    // Simply look for where the state belongs or set it back.
-    // Let's find target from handle info if stored.
-    // In production we would map targetId to the entity.
-    // Let's assume target is "c1" or "888". In testing we will use "c1".
-    const target = campaignsList.includes(targetId) ? targetId : 'c1';
+    const isMock = this.token.startsWith('mock');
 
-    const previousState = this.simulatedCampaigns.get(target);
-    this.simulatedCampaigns.set(target, {
-      budget: original.budget,
-      status: original.status,
-    });
+    if (original.entityType === 'ad_group') {
+      if (isMock) {
+        const adg = this.simulatedAdGroups.get(original.targetId);
+        this.simulatedAdGroups.set(original.targetId, {
+          campaignId: adg?.campaignId ?? '',
+          name: adg?.name ?? '',
+          status: original.status,
+        });
+      } else {
+        await this.mutateAdGroup(original.targetId, { status: original.status });
+      }
+    } else {
+      if (original.isCreated === true) {
+        if (isMock) {
+          this.simulatedCampaigns.delete(original.targetId);
+        } else {
+          await this.mutateCampaign(original.targetId, { status: 'REMOVED' });
+        }
+      } else {
+        if (isMock) {
+          this.simulatedCampaigns.set(original.targetId, {
+            budget: original.budget ?? 0,
+            status: original.status,
+          });
+        } else {
+          await this.mutateCampaign(original.targetId, { status: original.status });
+          if (original.budgetResourceName && original.budget !== undefined) {
+            await this.mutateBudget(original.budgetResourceName, original.budget);
+          }
+        }
+      }
+    }
 
     this.logger.info('Google Ads action rolled back complete', {
-      'targetId': target,
-      'previousState': previousState,
-      'restoredState': this.simulatedCampaigns.get(target),
+      'targetId': original.targetId,
+      'restoredState': original,
     });
 
     return {
@@ -580,6 +767,148 @@ export class GoogleAdsAdapter implements PlatformAdapter {
     };
   }
 
+
+  private async fetchCampaignState(campaignId: string): Promise<{budget: number; status: string; budgetResourceName?: string}> {
+    const query = `
+      SELECT campaign.status, campaign.campaign_budget
+      FROM campaign
+      WHERE campaign.id = '${campaignId}'
+    `;
+    const results = await this.search(query);
+    if (results.length === 0) {
+      throw new Error(`Campaign ${campaignId} not found on Google Ads API`);
+    }
+    const status = results[0].campaign.status;
+    const budgetResourceName = results[0].campaign.campaignBudget || results[0].campaign.campaign_budget;
+
+    let budget = 0;
+    if (budgetResourceName) {
+      const budgetQuery = `
+        SELECT campaign_budget.amount_micros
+        FROM campaign_budget
+        WHERE campaign_budget.resource_name = '${budgetResourceName}'
+      `;
+      const budgetResults = await this.search(budgetQuery);
+      if (budgetResults.length > 0 && budgetResults[0].campaignBudget) {
+        const amountMicros = parseFloat(budgetResults[0].campaignBudget.amountMicros || budgetResults[0].campaignBudget.amount_micros || '0');
+        budget = amountMicros / 1000000.0;
+      }
+    }
+
+    return {budget, status, budgetResourceName};
+  }
+
+  private async fetchAdGroupState(adGroupId: string): Promise<{status: string}> {
+    const query = `
+      SELECT ad_group.status
+      FROM ad_group
+      WHERE ad_group.id = '${adGroupId}'
+    `;
+    const results = await this.search(query);
+    if (results.length === 0) {
+      throw new Error(`Ad Group ${adGroupId} not found on Google Ads API`);
+    }
+    return {status: results[0].adGroup.status};
+  }
+
+  private async mutate(endpoint: string, operations: any[]): Promise<any> {
+    if (this.token.startsWith('mock')) {
+      return {results: []};
+    }
+    const cleanCustId = this.customerId.replace(/-/g, '');
+    const url = `https://googleads.googleapis.com/${API_VERSION}/customers/${cleanCustId}/${endpoint}`;
+
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'developer-token': this.developerToken,
+          'Authorization': `Bearer ${this.token}`,
+        },
+        body: JSON.stringify({operations}),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Google Ads API mutate error: ${res.statusText}`);
+      }
+
+      return await res.json();
+    } catch (err: any) {
+      this.logger.error('Google Ads mutate execution failed', {
+        error: err?.message || String(err),
+      });
+      throw err;
+    }
+  }
+
+  private async mutateCampaign(campaignId: string, updates: any): Promise<void> {
+    const cleanCustId = this.customerId.replace(/-/g, '');
+    const resourceName = `customers/${cleanCustId}/campaigns/${campaignId}`;
+    const operations = [
+      {
+        update: {
+          resourceName,
+          ...updates
+        },
+        updateMask: Object.keys(updates).join(',')
+      }
+    ];
+    await this.mutate('campaigns:mutate', operations);
+  }
+
+  private async mutateAdGroup(adGroupId: string, updates: any): Promise<void> {
+    const cleanCustId = this.customerId.replace(/-/g, '');
+    const resourceName = `customers/${cleanCustId}/adGroups/${adGroupId}`;
+    const operations = [
+      {
+        update: {
+          resourceName,
+          ...updates
+        },
+        updateMask: Object.keys(updates).join(',')
+      }
+    ];
+    await this.mutate('adGroups:mutate', operations);
+  }
+
+  private async mutateBudget(budgetResourceName: string, amountDollars: number): Promise<void> {
+    const amountMicros = Math.round(amountDollars * 1000000);
+    const operations = [
+      {
+        update: {
+          resourceName: budgetResourceName,
+          amountMicros
+        },
+        updateMask: 'amountMicros'
+      }
+    ];
+    await this.mutate('campaignBudgets:mutate', operations);
+  }
+
+  private async createBudget(amountDollars: number): Promise<string> {
+    if (this.token.startsWith('mock')) {
+      const cleanCustId = this.customerId.replace(/-/g, '');
+      return `customers/${cleanCustId}/campaignBudgets/mock_budget_${Date.now()}`;
+    }
+
+    const amountMicros = Math.round(amountDollars * 1000000);
+    const operations = [
+      {
+        create: {
+          name: `Twin-Discovery-Budget-${Date.now()}`,
+          amountMicros,
+          explicitlyShared: false,
+        }
+      }
+    ];
+    const res = await this.mutate('campaignBudgets:mutate', operations);
+    const resourceName = res.results?.[0]?.resourceName;
+    if (!resourceName) {
+      throw new Error('Failed to retrieve resourceName from budget creation response');
+    }
+    return resourceName;
+  }
 
   async healthCheck(): Promise<HealthReport> {
     const t0 = Date.now();

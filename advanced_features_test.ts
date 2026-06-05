@@ -14,6 +14,7 @@ import {RateLimitingAdapterWrapper, TokenBucket} from './rate_limiter';
 import {RiskRadar, VariantInventory} from './risk_radar';
 import {ChaosAdapterWrapper, ForensicReplayer} from './simulation';
 import {OpaPolicyEngine} from './opa_policy';
+import {RbiAaAdapter} from './rbi_aa_adapter';
 
 class DummyAuditSink {
   records: any[] = [];
@@ -509,6 +510,83 @@ describe('Advanced Risk & Observability Features', () => {
 
       expect(googleAds.getSimulatedCampaign('c1')?.budget).toBe(1200); // 1000 * 1.2
       expect(googleAds.getSimulatedCampaign('888')?.budget).toBe(350); // 500 * 0.7
+    });
+  });
+
+  describe('Financial Runway Spend Throttling (Risk Radar)', () => {
+    let googleAds: GoogleAdsAdapter;
+    let rbiAdapter: RbiAaAdapter;
+    let radar: RiskRadar;
+
+    beforeEach(async () => {
+      googleAds = new GoogleAdsAdapter(
+        '888-888-8888',
+        'dev_token',
+        'mock_auth_token',
+        'tenant-1',
+      );
+      radar = new RiskRadar(engine, googleAds, engine.supabase, 'tenant-1');
+      rbiAdapter = new RbiAaAdapter('mock_consent_token', 'tenant-1');
+
+      // Clear campaigns before each test to ensure clean assertions
+      await engine.supabase.clearCampaigns('tenant-1');
+
+      // Seed two campaigns in the database for the tenant
+      await engine.supabase.saveCampaign({
+        campaign_id: 'c1',
+        tenant_id: 'tenant-1',
+        name: 'Google Search Leads',
+        platform: 'google',
+        objective: 'SEARCH',
+        status: 'ENABLED',
+        surface: 'google_search_network',
+        source_id: 'c1',
+        source_system: 'google',
+        source_version: 'v15',
+        ingested_at: new Date().toISOString()
+      });
+      await engine.supabase.saveCampaign({
+        campaign_id: '888',
+        tenant_id: 'tenant-1',
+        name: 'Mock PMax Campaign',
+        platform: 'google',
+        objective: 'PMAX',
+        status: 'ENABLED',
+        surface: 'google_search_network',
+        source_id: '888',
+        source_system: 'google',
+        source_version: 'v15',
+        ingested_at: new Date().toISOString()
+      });
+
+      trustLedger.tiers['tenant-1:scale_budget'] = 3;
+      trustLedger.tiers['tenant-1:pause'] = 3;
+    });
+
+    it('should do nothing if runway is healthy (e.g. > 4 months)', async () => {
+      const actions = await radar.scanFinancialRunway(ctx, rbiAdapter, 500000);
+      expect(actions.length).toBe(0);
+
+      expect(googleAds.getSimulatedCampaign('c1')?.budget).toBe(1000);
+      expect(googleAds.getSimulatedCampaign('888')?.status).toBe('ENABLED');
+    });
+
+    it('should scale down budgets by 40% if runway is low (e.g. 2-4 months)', async () => {
+      const actions = await radar.scanFinancialRunway(ctx, rbiAdapter, 1200000);
+      expect(actions).toContain('scaled_campaign_c1_low_runway');
+      expect(actions).toContain('scaled_campaign_888_low_runway');
+
+      expect(googleAds.getSimulatedCampaign('c1')?.budget).toBe(600); // 1000 * 0.6
+      expect(googleAds.getSimulatedCampaign('888')?.budget).toBe(300); // 500 * 0.6
+    });
+
+    it('should pause all active campaigns if runway is critical (e.g. < 2 months)', async () => {
+      const actions = await radar.scanFinancialRunway(ctx, rbiAdapter, 2500000);
+      expect(actions).toContain('paused_campaign_c1_critical_runway');
+      expect(actions).toContain('paused_campaign_888_critical_runway');
+
+      expect(googleAds.getSimulatedCampaign('c1')?.status).toBe('PAUSED');
+      expect(googleAds.getSimulatedCampaign('888')?.status).toBe('PAUSED');
     });
   });
 

@@ -197,6 +197,7 @@ ts_library(
         ":google_ads_adapter",
         ":governance_engine",
         ":platform_adapter",
+        ":rbi_aa_adapter",
         ":supabase_client",
     ],
 )
@@ -229,7 +230,15 @@ ts_library(
 ts_library(
     name = "onboarding_simulator",
     srcs = ["onboarding_simulator.ts"],
-    deps = ["//third_party/javascript/typings/node"],
+    deps = [
+        ":analyst_agent",
+        ":google_ads_adapter",
+        ":governance_engine",
+        ":poas_calculator",
+        ":risk_radar",
+        ":supabase_client",
+        "//third_party/javascript/typings/node",
+    ],
 )
 
 ts_library(
@@ -299,6 +308,7 @@ ts_library(
         ":agency_os_types",
         ":google_ads_adapter",
         ":google_merchant_adapter",
+        ":governance_engine",
         ":supabase_client",
     ],
 )

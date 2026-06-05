@@ -1105,6 +1105,13 @@ export class SupabaseClient {
     }
   }
 
+  async clearCampaigns(tenant: string): Promise<void> {
+    this.assertRls(tenant);
+    if (this.mockMode) {
+      this.mockCampaigns = this.mockCampaigns.filter((c) => c.tenant_id !== tenant);
+    }
+  }
+
   // --- SPEND FACTS ---
   async getSpendFacts(tenant: string): Promise<SpendFactEntry[]> {
     this.assertRls(tenant);

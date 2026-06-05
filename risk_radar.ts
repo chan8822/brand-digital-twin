@@ -2,6 +2,7 @@ import {GoogleAdsAdapter} from './google_ads_adapter';
 import {Context, GovernanceEngine} from './governance_engine';
 import {ActionRequest} from './platform_adapter';
 import {SupabaseClient} from './supabase_client';
+import {RbiAaAdapter} from './rbi_aa_adapter';
 
 export interface VariantInventory {
   variantId: string;
@@ -226,6 +227,62 @@ export class RiskRadar {
               `scaled_down_campaign_${tgt.targetId}_for_low_roi_${item.sku}`,
             );
           }
+        }
+      }
+    }
+
+    return actionsTaken;
+  }
+
+  /**
+   * Monitors financial runway and downscales or pauses campaigns if runway is short.
+   */
+  async scanFinancialRunway(
+    ctx: Context,
+    rbiAdapter: RbiAaAdapter,
+    monthlyBurnInr: number,
+  ): Promise<string[]> {
+    const actionsTaken: string[] = [];
+    const runwayMonths = await rbiAdapter.calculateRunwayMonths(monthlyBurnInr);
+
+    if (runwayMonths <= 0) return [];
+
+    const campaigns = this.db && this.tenantId ? await this.db.getCampaigns(this.tenantId) : [];
+
+    for (const c of campaigns) {
+      const isActive = c.status === 'ENABLED' || c.status === 'active';
+      if (!isActive) continue;
+
+      if (runwayMonths < 2) {
+        const req: ActionRequest = {
+          idempotencyKey: `radar_runway_critical_${c.campaign_id}_${Date.now()}`,
+          op: 'pause',
+          entity: 'campaign',
+          targetId: c.campaign_id,
+          payload: {
+            reason: `CRITICAL RUNWAY WARNING: Only ${runwayMonths.toFixed(1)} months of cash runway remaining. Pausing campaign to preserve cash.`,
+          },
+          confidence: 1.0,
+        };
+        const outcome = await this.governance.govern(this.googleAdapter, req, ctx);
+        if (outcome.status === 'executed') {
+          actionsTaken.push(`paused_campaign_${c.campaign_id}_critical_runway`);
+        }
+      } else if (runwayMonths < 4) {
+        const req: ActionRequest = {
+          idempotencyKey: `radar_runway_low_${c.campaign_id}_${Date.now()}`,
+          op: 'scale_budget',
+          entity: 'campaign',
+          targetId: c.campaign_id,
+          payload: {
+            scaleFactor: 0.6,
+            reason: `LOW RUNWAY WARNING: ${runwayMonths.toFixed(1)} months of cash runway remaining. Scaling budget to 60%.`,
+          },
+          confidence: 1.0,
+        };
+        const outcome = await this.governance.govern(this.googleAdapter, req, ctx);
+        if (outcome.status === 'executed') {
+          actionsTaken.push(`scaled_campaign_${c.campaign_id}_low_runway`);
         }
       }
     }

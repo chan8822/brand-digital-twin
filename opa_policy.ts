@@ -94,6 +94,7 @@ export class OpaPolicyEngine {
         'activate',
         'scale_budget',
         'update_feed',
+        'create',
       ];
       if (allowedOps.includes(input.op)) {
         return true;

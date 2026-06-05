@@ -6,7 +6,8 @@ export type Op =
   | 'pause'
   | 'activate'
   | 'scale_budget'
-  | 'update_feed';
+  | 'update_feed'
+  | 'create';
 
 export interface Capability {
   entity: string; // 'campaign' | 'order' | 'audience' | etc.

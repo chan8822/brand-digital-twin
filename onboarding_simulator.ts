@@ -1,4 +1,9 @@
 import * as readline from 'readline';
+import {SupabaseClient} from './supabase_client';
+import {PoasCalculator} from './poas_calculator';
+import {RiskRadar} from './risk_radar';
+import {GoogleAdsAdapter} from './google_ads_adapter';
+import {GovernanceEngine} from './governance_engine';
 
 export interface OnboardingState {
   storefrontUrl: string;
@@ -26,6 +31,191 @@ export class OnboardingSimulator {
       output: process.stdout,
     });
   }
+
+  private async seedMockData(db: SupabaseClient) {
+    const tenantId = 'tenant_onboard_123';
+    await db.clearCampaigns(tenantId);
+
+  await db.saveCampaign({
+    campaign_id: 'c-meta-1',
+    tenant_id: tenantId,
+    name: 'Meta Lookalike Purchase [BLUE-SHIRT-M]',
+    platform: 'meta',
+    objective: 'CONVERSIONS',
+    status: 'active',
+    surface: 'meta_ads',
+    source_id: 'c-meta-1',
+    source_system: 'meta',
+    source_version: 'v18',
+    ingested_at: new Date().toISOString(),
+  });
+  await db.saveCampaign({
+    campaign_id: 'c-meta-2',
+    tenant_id: tenantId,
+    name: 'Meta Retargeting Catalog',
+    platform: 'meta',
+    objective: 'CATALOG_SALES',
+    status: 'active',
+    surface: 'meta_ads',
+    source_id: 'c-meta-2',
+    source_system: 'meta',
+    source_version: 'v18',
+    ingested_at: new Date().toISOString(),
+  });
+
+  await db.saveSpendFact({
+    campaign_id: 'c-meta-1',
+    platform: 'meta',
+    day: new Date().toISOString().split('T')[0],
+    amount: 1500,
+    currency: 'USD',
+    tenant_id: tenantId,
+    source_system: 'meta',
+    ingested_at: new Date().toISOString(),
+  });
+  await db.saveSpendFact({
+    campaign_id: 'c-meta-2',
+    platform: 'meta',
+    day: new Date().toISOString().split('T')[0],
+    amount: 900,
+    currency: 'USD',
+    tenant_id: tenantId,
+    source_system: 'meta',
+    ingested_at: new Date().toISOString(),
+  });
+
+  await db.saveOrder({
+    order_id: 'o1',
+    customer_id: 'cust1',
+    account_id: null,
+    channel: 'online',
+    surface: 'shopify',
+    placed_at: new Date().toISOString(),
+    currency: 'USD',
+    gross_revenue: 800,
+    total_discounts: 0,
+    total_tax: 0,
+    shipping_charged: 0,
+    status: 'PAID',
+    tenant_id: tenantId,
+    source_system: 'shopify',
+    source_id: 'o1',
+    source_version: '1.0',
+    ingested_at: new Date().toISOString(),
+  });
+
+  await db.saveOrderLine({
+    order_line_id: 'ol1',
+    order_id: 'o1',
+    variant_id: 'v1',
+    sku: 'BLUE-SHIRT-M',
+    qty: 1,
+    unit_price: 800,
+    line_discount: 0,
+    unit_cost: 500,
+    tenant_id: tenantId,
+    source_system: 'shopify',
+    source_id: 'ol1',
+    source_version: '1.0',
+    ingested_at: new Date().toISOString(),
+  });
+
+  await db.saveOrder({
+    order_id: 'o2',
+    customer_id: 'cust2',
+    account_id: null,
+    channel: 'online',
+    surface: 'shopify',
+    placed_at: new Date().toISOString(),
+    currency: 'USD',
+    gross_revenue: 1000,
+    total_discounts: 0,
+    total_tax: 0,
+    shipping_charged: 0,
+    status: 'PAID',
+    tenant_id: tenantId,
+    source_system: 'shopify',
+    source_id: 'o2',
+    source_version: '1.0',
+    ingested_at: new Date().toISOString(),
+  });
+
+  await db.saveOrderLine({
+    order_line_id: 'ol2',
+    order_id: 'o2',
+    variant_id: 'v2',
+    sku: 'RED-SHIRT-L',
+    qty: 1,
+    unit_price: 1000,
+    line_discount: 0,
+    unit_cost: 850,
+    tenant_id: tenantId,
+    source_system: 'shopify',
+    source_id: 'ol2',
+    source_version: '1.0',
+    ingested_at: new Date().toISOString(),
+  });
+
+  await db.saveRefund({
+    refund_id: 'ref1',
+    order_line_id: 'ol2',
+    amount: 300,
+    refunded_at: new Date().toISOString(),
+    tenant_id: tenantId,
+    source_system: 'shopify',
+    source_id: 'ref1',
+    source_version: '1.0',
+    ingested_at: new Date().toISOString(),
+  });
+
+  await db.saveTouchpoint({
+    touchpoint_id: 'tp1',
+    customer_id: 'cust1',
+    campaign_id: 'c-meta-1',
+    order_id: 'o1',
+    occurred_at: new Date(Date.now() - 3600 * 1000).toISOString(),
+    type: 'click',
+    tenant_id: tenantId,
+    source_system: 'meta',
+    ingested_at: new Date().toISOString(),
+  });
+
+  await db.saveTouchpoint({
+    touchpoint_id: 'tp2',
+    customer_id: 'cust2',
+    campaign_id: 'c-meta-2',
+    order_id: 'o2',
+    occurred_at: new Date(Date.now() - 3600 * 1000).toISOString(),
+    type: 'click',
+    tenant_id: tenantId,
+    source_system: 'meta',
+    ingested_at: new Date().toISOString(),
+  });
+
+  await db.saveProductAdLink({
+    tenant_id: tenantId,
+    variant_id: 'v1',
+    gmc_offer_id: 'gmc_v1',
+    gmc_account_id: 'gmc_acc',
+    ads_account_id: 'ads_acc',
+    ads_campaign_id: 'c-meta-1',
+    ads_ad_group_id: '',
+    confidence: 1.0,
+    resolved_at: new Date().toISOString(),
+  });
+
+  await db.saveProductAdLink({
+    tenant_id: tenantId,
+    variant_id: 'v2',
+    gmc_offer_id: 'gmc_v2',
+    gmc_account_id: 'gmc_acc',
+    ads_account_id: 'ads_acc',
+    ads_campaign_id: 'c-meta-2',
+    ads_ad_group_id: '',
+    confidence: 1.0,
+    resolved_at: new Date().toISOString(),
+  });
+}
 
   start() {
     console.clear();
@@ -132,19 +322,85 @@ export class OnboardingSimulator {
     );
   }
 
-  private screen4Insights() {
+  private async screen4Insights() {
     console.clear();
     console.log('\n[ SCREEN 4 of 4: Brand Digital Twin Ready ]');
     console.log('Your shadow twin has reconciled your last 30 days of data!\n');
-    console.log(
-      '[!] Found $2,400 of unprofitable ad spend on 3 Meta campaigns',
+
+    const tenantId = 'tenant_onboard_123';
+    const db = new SupabaseClient();
+    await this.seedMockData(db);
+
+    // 1. POAS vs ROAS Audit Sweep
+    const poasCalc = new PoasCalculator(db);
+    const reports = await poasCalc.calculate(tenantId);
+
+    let unprofitableSpend = 0;
+    let unprofitableCampaignCount = 0;
+
+    for (const r of reports) {
+      if (r.poas !== null && r.poas < 1.0) {
+        unprofitableCampaignCount++;
+        unprofitableSpend += r.spend;
+      }
+    }
+
+    if (unprofitableCampaignCount > 0) {
+      console.log(
+        `[!] Found $${unprofitableSpend.toLocaleString()} of unprofitable ad spend on ${unprofitableCampaignCount} campaigns`
+      );
+      console.log(
+        '    that reported positive ROAS but are net-negative after COGS & refunds'
+      );
+    } else {
+      console.log('[x] All campaigns are profitable based on true POAS!');
+    }
+
+    // 2. Inventory Sweep
+    const googleAds = new GoogleAdsAdapter(
+      '888-888-8888',
+      'dev_token',
+      'mock_auth_token',
+      tenantId,
     );
-    console.log(
-      '    that reported positive ROAS but are net-negative after COGS & refunds',
+    const auditSink = { record: async () => {} };
+    const trustLedger = { getTier: () => 2, recordOutcome: () => {} };
+    const circuitBreaker = { isTripped: () => false };
+
+    const engine = new GovernanceEngine(
+      auditSink as any,
+      trustLedger as any,
+      circuitBreaker as any,
     );
-    console.log(
-      '[!] 2 Shopify variants are 4 days from stockout with active ads running\n',
-    );
+
+    const radar = new RiskRadar(engine, googleAds, db, tenantId);
+    radar.seedInventory({
+      variantId: 'v1',
+      sku: 'BLUE-SHIRT-M',
+      qty: 0, // Out of stock
+      promotedCampaignIds: ['c-meta-1'],
+    });
+
+    const ctx = {
+      tenant: { tenantId, policy: { maxDailyDollarsRisk: 1000, maxBudgetMovePct: 0.2, minConfidence: 0.8, escalationRole: 'cmo' } },
+      role: { permits: () => true },
+      verifyWindowMs: 100,
+    };
+
+    const radarActions = await radar.scanStockouts(ctx);
+    let outOfStockAdsPausedCount = 0;
+    for (const action of radarActions) {
+      if (action.startsWith('paused_') || action.startsWith('queued_pause_')) {
+        outOfStockAdsPausedCount++;
+      }
+    }
+
+    if (outOfStockAdsPausedCount > 0) {
+      console.log(
+        `[!] ${outOfStockAdsPausedCount} variant(s) are out of stock with active ads running`
+      );
+      console.log('    (Safe-governance trigger is queued to pause these campaigns)\n');
+    }
 
     console.log('Current Configuration Summary:');
     console.log(JSON.stringify(this.state, null, 2));
