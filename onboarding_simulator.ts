@@ -584,3 +584,7 @@ export class OnboardingSimulator {
     );
   }
 }
+
+if (typeof require !== 'undefined' && require.main === module) {
+  new OnboardingSimulator().start();
+}
