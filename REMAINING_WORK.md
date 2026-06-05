@@ -28,8 +28,12 @@ Everything below is the product shell + the COGS/billing that make it self-serve
 
 | # | Item | Size | Spec | File(s) |
 |---|------|------|------|---------|
-| 1.1 | Atomic job claim (`FOR UPDATE SKIP LOCKED` RPC) — replace `getOverdueJobs`+`updateJobStatus` | S | `PHASE_B §B5` | `supabase_client.ts`, `poas_scheduler.ts`, `schema.sql` |
+| 1.1 | ✅ **DONE** (`0edfe80`) — atomic job claim via `claimNextOverdueJob(now, ownerId)` lock-owner loop | S | `PHASE_B §B5` | `supabase_client.ts`, `poas_scheduler.ts`, `schema.sql` |
 | 1.2 | Real bank connections — RBI AA (India) live consent flow + Plaid (global) | L | gap doc | `rbi_aa_adapter.ts` (new `plaid_adapter.ts`) |
+
+> **Progress: 1 of 51 units complete.** The engine is finished; the public shell
+> (Phases A/B/C) has not started — only 1.1 (an engine-correctness item) landed
+> since this tracker was written. 49 units (1.2 + all of A/B/C) remain.
 
 ---
 
