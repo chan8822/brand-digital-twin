@@ -19,7 +19,11 @@ inside each stage is driven by the goal they pick.
 5. INHABIT      → Daily dashboard, trust ledger, graduated autonomy
 ```
 
-The emotional arc: *Curious → Committed → Surprised → Convinced → Reliant.*
+The emotional arc: *Curious → Committed → Surprised → Decided → Reliant.*
+
+**Stage 3.5 — HEAL** is now inserted between SWEEP and FIRST VALUE.
+The sweep finds the problems. The healing layer turns each finding into a
+three-zone decision card before the user ever sees a dashboard.
 
 ---
 
@@ -95,19 +99,48 @@ Fires the instant the last integration connects. 2–5 min, live progress feed.
 
 ---
 
+## STAGE 3.5 — HEAL (inserted between sweep and dashboard)
+
+The sweep finds the problems. The healing layer turns the top findings into
+**three-zone decision cards** — not a list of metrics, but a decision surface
+the user acts on before ever opening the dashboard.
+
+Each card for a problem campaign shows:
+
+```
+WHAT WE CAN DO NOW    → 1-tap ad-side actions the OS executes (reversible)
+WHAT NEEDS YOUR CALL  → business-side levers (pricing, thresholds, channel)
+WHAT ADS CANNOT FIX   → honest signal when product economics are broken
+```
+
+The third zone is what builds trust. A system that says "no bid optimisation
+will make this product profitable at current margins" is more trustworthy than
+one that keeps recommending adjustments on an unfixable problem.
+
+**Incrementality hedge:** campaigns that attribute suspiciously well (brand
+keywords, very consistent POAS) arrive with a Zone 1 prompt:
+*"Before scaling, a 2-week geo holdout would confirm whether this is creating
+demand or capturing it. Want us to set that up?"*
+
+See `HEALING_RECOMMENDATIONS.md` for the full root cause map and prescription tiers.
+
+---
+
 ## STAGE 4 — FIRST VALUE (< 5 minutes from signup)
 
 The single most important moment of the trial. Goal determines the headline number.
+Now paired with a healing card so the number arrives with a path, not just a verdict.
 
-| Goal | The one true number shown |
-|------|---------------------------|
-| **Sales** | "Your real POAS is **0.8x** — not the 4.2x ROAS your dashboard shows." |
-| **Lead Gen** | "Your true cost per *qualified* lead is **$84**, not the $31 you're reporting." |
-| **Awareness** | "**62%** of your impressions hit the same 8% of people 11+ times." |
-| **Organic** | "Your highest-margin product gets **0.3%** of your organic traffic." |
+| Goal | The number | What follows it |
+|------|-----------|-----------------|
+| **Sales** | "Your real POAS is 0.8× — not the 4.2× ROAS your dashboard shows." | Top 3 campaigns as healing cards |
+| **Lead Gen** | "Your true cost per qualified lead is $84, not the $31 you're reporting." | Form + CRM gap flagged; CPL healing card |
+| **Awareness** | "62% of your impressions hit the same 8% of people 11+ times." | Frequency cap card; audience expansion |
+| **Organic** | "Your highest-margin product gets 0.3% of your organic traffic." | Content gap card; indexing check |
 
-This is the trial's hook. Everything before it is friction to minimize; this
-moment is what converts.
+This is the trial's hook. Everything before it is friction to minimise; this
+moment is what converts. But the number alone is not enough — the decision
+that follows it is what makes the user stay.
 
 ---
 

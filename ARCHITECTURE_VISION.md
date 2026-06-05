@@ -199,8 +199,53 @@ Reading the existing build through this lens, the priority order sharpens:
 
 ---
 
+---
+
+## The Insight-to-Action Loop (Layer 2 addition)
+
+Surfacing a truth without a path is worse than silence. The intelligence brain
+completes a full loop for every finding:
+
+```
+MEASURE  → True POAS (L1 Truth Engine)
+DIAGNOSE → Root cause attribution — which cost component drives low POAS
+PRESCRIBE→ Tier 1 (OS acts) / Tier 2 (user approves) / Tier 3 (business flag)
+BOUNDARY → Honest signal when ads cannot fix the problem
+HEDGE    → Incrementality flag when attribution may be inflated
+```
+
+The three-zone healing card is the UX expression of this loop.
+See `HEALING_RECOMMENDATIONS.md` for full specification.
+
+---
+
+## 360° Coverage Map (16 domains, by phase)
+
+| Domain | Phase 1 | Phase 2 | Phase 3 | Phase 4 |
+|--------|---------|---------|---------|---------|
+| Paid Search | ✅ Google | — | Bing | — |
+| Paid Social | ✅ Meta | — | TikTok / LinkedIn | — |
+| Organic Search | — | ✅ GSC | — | — |
+| Email Marketing | — | ✅ Klaviyo/Mailchimp | — | — |
+| Web Analytics | Partial | ✅ GA4 | — | — |
+| SMS / Push | Partial | ✅ SMS | — | — |
+| Social Organic | — | ✅ | — | — |
+| Reviews & Reputation | — | ✅ | — | — |
+| Ecommerce / Storefront | ✅ | — | — | — |
+| Product / Catalog | ✅ | — | — | — |
+| Marketplace | — | — | ✅ Flipkart/Amazon | — |
+| Customer / LTV | Partial | — | ✅ LTV engine | LTV-adjusted POAS |
+| Financial | Partial | — | ✅ QuickBooks/Tally | — |
+| Influencer / Affiliate | — | — | ✅ | — |
+| Incrementality | Flagged only | — | — | ✅ holdout |
+| Customer Support | — | — | — | ✅ Zendesk/Freshworks |
+
+**Current coverage: ~37%.** Phase 2 completion raises this to ~65% and unlocks LP publication.
+
+---
+
 ## The One-Sentence Version
 
-**Brand Digital Twin is the system that tells advertising the truth about the
-business it serves — so that for the first time, the founder, the agency, the
-platform, and the customer can all win at once.**
+**Brand Digital Twin is the system that connects advertising to the truth of the
+business it serves — and tells the brand not just what is wrong, but exactly
+what to do about it, and what it cannot fix with ads alone.**
