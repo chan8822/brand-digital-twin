@@ -1,4 +1,4 @@
-# Phase B Build Spec — "Lawful & Trustworthy"
+# [PRIORITY B] Phase B Build Spec — "Lawful & Trustworthy" (B1→B5)
 
 > The second public-launch slice (`PUBLIC_LAUNCH_GAP.md` Gaps 5, 6 + the atomic
 > job-claim correctness fix). Makes the product legal to operate publicly and safe

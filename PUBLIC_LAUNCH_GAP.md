@@ -208,9 +208,9 @@ It is more total *surface area* than the engine was — but far less *novel risk
    are built on existing primitives — `auth.ts`, `credential_vault.ts`,
    `tally_adapter.ts`, `rbi_aa_adapter.ts` — not WorkOS/Stripe/Codat.
 3. **Delivered as a prioritized spec set** the upstream team builds against:
-   - `PHASE_A_BUILD_SPEC.md` — usable by a stranger (in-house auth + OAuth + UI)
-   - `PHASE_B_BUILD_SPEC.md` — lawful & trustworthy (data rights, legal, ops, abuse, atomic jobs)
-   - `PHASE_C_BUILD_SPEC.md` — self-serve value + money (in-house COGS connectors + suggest-an-amount billing)
+   - `A-PHASE_BUILD_SPEC.md` — usable by a stranger (in-house auth + OAuth + UI)
+   - `B-PHASE_BUILD_SPEC.md` — lawful & trustworthy (data rights, legal, ops, abuse, atomic jobs)
+   - `C-PHASE_BUILD_SPEC.md` — self-serve value + money (in-house COGS connectors + suggest-an-amount billing)
 
 GAP 2's external approvals (Google/Meta/Shopify) and the legal review remain the
 **long poles** — kick them off first (Phase A §A0) even though they finish last.

@@ -1,4 +1,4 @@
-# Phase A Build Spec — "Usable By A Stranger"
+# [PRIORITY A] Phase A Build Spec — "Usable By A Stranger" (A0→A3)
 
 > The first public-launch slice (`PUBLIC_LAUNCH_GAP.md` Gaps 1, 2, 4). Turns the
 > headless engine into something a person can sign up for, connect, and use with

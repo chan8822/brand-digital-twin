@@ -1,4 +1,4 @@
-# Phase C Build Spec — "Self-Serve Value + Money"
+# [PRIORITY C] Phase C Build Spec — "Self-Serve Value + Money" (C1→C2)
 
 > The final public-launch slice (`PUBLIC_LAUNCH_GAP.md` Gaps 7, 3). Makes POAS
 > trustworthy without us in the room, and turns on revenue. In-house per this

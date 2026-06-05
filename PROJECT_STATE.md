@@ -74,11 +74,11 @@ multi-instance DB isolation across concurrent tests — landed `a6ab7db`).
 
 **One conformance gap (non-blocking for single-process):** `getOverdueJobs` +
 `updateJobStatus` are two separate calls — race risk under concurrent workers.
-Needs `FOR UPDATE SKIP LOCKED` RPC before horizontal scale. Spec: `PHASE_B_BUILD_SPEC.md §B5`.
+Needs `FOR UPDATE SKIP LOCKED` RPC before horizontal scale. Spec: `B-PHASE_BUILD_SPEC.md §B5`.
 
 **Open (Phase 1 tail):** real bank connections (RBI AA / Plaid).
 
-**Public launch build in progress:** `PHASE_A/B/C_BUILD_SPEC.md`.
+**Public launch build in progress:** `A/B/C-PHASE_BUILD_SPEC.md`.
 
 ---
 
@@ -96,7 +96,7 @@ Needs `FOR UPDATE SKIP LOCKED` RPC before horizontal scale. Spec: `PHASE_B_BUILD
 10. **Pricing:** "suggest an amount" with soft anchors (~$299 / $799 / $2,500). Flagged for A/B.
 11. **Build the public shell now** — validation gate deferred to a soft-launch cohort (overrides the "validate first" stance below).
 12. **Build in-house for the public shell** — auth/billing/COGS-aggregator extend existing primitives (`auth.ts`, `credential_vault.ts`, `tally_adapter.ts`); not WorkOS/Stripe/Codat. (Narrows Decision #6 to notifications/OCR only.)
-13. **Public-launch spec set** — `PHASE_A/B/C_BUILD_SPEC.md`, prioritized A→B→C.
+13. **Public-launch spec set** — `A/B/C-PHASE_BUILD_SPEC.md`, prioritized A→B→C.
 
 ---
 
@@ -115,7 +115,7 @@ sound? does COGS-easing reach readiness? — now answered *during* soft launch.
 
 1. **PUB-A0 long poles** — start Google/Meta/Shopify app review + legal engagement
    *today* (external clocks you can't compress). *(Highest leverage.)*
-2. **PUB-A** — in-house auth + OAuth connect + React SPA (`PHASE_A_BUILD_SPEC`).
-3. **PUB-B** — data rights, legal, ops, abuse controls, atomic job claim (`PHASE_B_BUILD_SPEC`).
-4. **PUB-C** — in-house COGS connectors + suggest-an-amount billing (`PHASE_C_BUILD_SPEC`).
+2. **PUB-A** — in-house auth + OAuth connect + React SPA (`A-PHASE_BUILD_SPEC.md`).
+3. **PUB-B** — data rights, legal, ops, abuse controls, atomic job claim (`B-PHASE_BUILD_SPEC.md`).
+4. **PUB-C** — in-house COGS connectors + suggest-an-amount billing (`C-PHASE_BUILD_SPEC.md`).
 5. **Watch upstream + sync** — the team builds against these specs in near-real-time.

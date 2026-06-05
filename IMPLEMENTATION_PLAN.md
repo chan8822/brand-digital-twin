@@ -140,7 +140,7 @@ on WhatsApp/Slack without login. **Publish the landing page.***
 
 Decisions: **build now** (validation deferred to soft-launch cohort), **build
 in-house** (extend existing primitives, not WorkOS/Stripe/Codat). Specs:
-`PHASE_A_BUILD_SPEC.md` · `PHASE_B_BUILD_SPEC.md` · `PHASE_C_BUILD_SPEC.md`.
+`A-PHASE_BUILD_SPEC.md` · `B-PHASE_BUILD_SPEC.md` · `C-PHASE_BUILD_SPEC.md`.
 
 **PUB-A — Usable by a stranger**
 - [ ] A0: start Google/Meta/Shopify app review + legal engagement (external clocks)

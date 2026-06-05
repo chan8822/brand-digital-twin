@@ -1,6 +1,6 @@
-# A3.1 Scaffold Spec — Product UI Foundation + First Screen
+# [PRIORITY A3] Scaffold Spec — Product UI Foundation + First Screen
 
-> Concrete starting point for the product UI (`PHASE_A_BUILD_SPEC.md` A3). Defines
+> Concrete starting point for the product UI (`A-PHASE_BUILD_SPEC.md` A3). Defines
 > the app skeleton, the shared layer (design tokens, API client, auth), and builds
 > the **first real screen — the POAS hero** — wired to the existing
 > `/api/v1/recommendations` endpoint. Grounded @ `a6ab7db`.

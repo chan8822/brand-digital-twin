@@ -1,4 +1,4 @@
-# Remaining Work — Precise Implementation Tracker
+# [PRIORITY 00 · INDEX] Remaining Work — Precise Implementation Tracker
 
 > Single source of truth for what's left to ship the public product. Verified
 > against upstream `brand-digital-twin` @ `a6ab7db`. Every item is either DONE
@@ -37,7 +37,7 @@ Everything below is the product shell + the COGS/billing that make it self-serve
 
 ---
 
-## PHASE A — Usable by a stranger (16 items)  → `PHASE_A_BUILD_SPEC.md`
+## PHASE A — Usable by a stranger (16 items)  → `A-PHASE_BUILD_SPEC.md`
 
 ### A0 — External clocks (not code; start first) — 5 items
 | # | Item | Size |
@@ -76,7 +76,7 @@ Everything below is the product shell + the COGS/billing that make it self-serve
 
 ---
 
-## PHASE B — Lawful & trustworthy (18 items)  → `PHASE_B_BUILD_SPEC.md`
+## PHASE B — Lawful & trustworthy (18 items)  → `B-PHASE_BUILD_SPEC.md`
 
 ### B1 — Data rights (6)
 | # | Item | Size | File(s) |
@@ -110,7 +110,7 @@ Everything below is the product shell + the COGS/billing that make it self-serve
 
 ---
 
-## PHASE C — Self-serve value + money (15 items)  → `PHASE_C_BUILD_SPEC.md`
+## PHASE C — Self-serve value + money (15 items)  → `C-PHASE_BUILD_SPEC.md`
 
 ### C1 — COGS aggregator (8)
 | # | Item | Size | File(s) |
