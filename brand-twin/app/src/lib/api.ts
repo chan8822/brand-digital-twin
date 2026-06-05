@@ -21,16 +21,38 @@ export class ApiError extends Error {
   }
 }
 
-/** Access token getter — swap for cookie/session store when A1 auth UI lands. */
+/** Access token getter — swap for cookie/session store later if needed. */
 export function getAccessToken(): string | null {
   if (typeof window === "undefined") return null;
   return window.sessionStorage.getItem("bt_access_token");
+}
+
+export function setAccessToken(token: string | null): void {
+  if (typeof window === "undefined") return;
+  if (token) window.sessionStorage.setItem("bt_access_token", token);
+  else window.sessionStorage.removeItem("bt_access_token");
+}
+
+export function setRefreshToken(token: string | null): void {
+  if (typeof window === "undefined") return;
+  if (token) window.sessionStorage.setItem("bt_refresh_token", token);
+  else window.sessionStorage.removeItem("bt_refresh_token");
 }
 
 /** Active tenant (brand) id — set after brand selection. */
 export function getTenantId(): string | null {
   if (typeof window === "undefined") return null;
   return window.sessionStorage.getItem("bt_tenant_id");
+}
+
+export function setTenantId(id: string | null): void {
+  if (typeof window === "undefined") return;
+  if (id) window.sessionStorage.setItem("bt_tenant_id", id);
+  else window.sessionStorage.removeItem("bt_tenant_id");
+}
+
+export function isAuthed(): boolean {
+  return USE_MOCK || getAccessToken() !== null;
 }
 
 /**

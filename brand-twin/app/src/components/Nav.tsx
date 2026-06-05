@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { clsx } from "clsx";
+import { logout } from "@/lib/auth";
 
 const LINKS = [
   { href: "/connect", label: "Connect" },
@@ -14,6 +15,13 @@ const LINKS = [
 
 export function Nav() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  function onLogout() {
+    logout();
+    router.replace("/login");
+  }
+
   return (
     <nav className="border-b border-border bg-surface/50 backdrop-blur">
       <div className="mx-auto flex max-w-5xl items-center gap-6 px-6 py-3">
@@ -39,6 +47,13 @@ export function Nav() {
             );
           })}
         </div>
+        <button
+          type="button"
+          onClick={onLogout}
+          className="ml-auto rounded-md px-3 py-1.5 text-sm text-text-muted transition-colors hover:text-text-primary"
+        >
+          Log out
+        </button>
       </div>
     </nav>
   );
