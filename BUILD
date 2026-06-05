@@ -146,6 +146,7 @@ ts_library(
         ":errors",
         ":healing_types",
         ":observability",
+        "//third_party/javascript/typings/node",
     ],
 )
 
@@ -490,10 +491,13 @@ ts_library(
         ":event_bus",
         ":google_ads_adapter",
         ":governance_engine",
+        ":healing_types",
         ":identity_resolver",
         ":oauth_flows",
+        ":poas_calculator",
         ":profit_readiness",
         ":rate_limiter",
+        ":risk_radar",
         ":supabase_client",
         ":unified_brain",
         ":user_auth",

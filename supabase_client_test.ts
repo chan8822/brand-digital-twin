@@ -1,4 +1,6 @@
 import 'jasmine';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import {BaseError} from './errors';
 import {SupabaseClient} from './supabase_client';
 
@@ -243,6 +245,69 @@ describe('SupabaseClient Database & Security Suite', () => {
 
       const second = await db.acquireLock('camp-1', 'node-2', 5000);
       expect(second).toBe(true);
+    });
+  });
+
+  describe('Versioned Database Migrations (P1.4a)', () => {
+    const tempMigrationsDir = path.join(process.env['TEST_TMPDIR'] || '/tmp', 'temp_migrations_test');
+
+    beforeEach(() => {
+      db.resetLocalMockDb();
+      if (fs.existsSync(tempMigrationsDir)) {
+        fs.rmSync(tempMigrationsDir, { recursive: true, force: true });
+      }
+      fs.mkdirSync(tempMigrationsDir, { recursive: true });
+    });
+
+    afterEach(() => {
+      if (fs.existsSync(tempMigrationsDir)) {
+        fs.rmSync(tempMigrationsDir, { recursive: true, force: true });
+      }
+    });
+
+    it('should run migrations in order on fresh database', async () => {
+      fs.writeFileSync(path.join(tempMigrationsDir, '0001_init.sql'), 'CREATE TABLE t1 (id INT);');
+      fs.writeFileSync(path.join(tempMigrationsDir, '0002_add_cols.sql'), 'ALTER TABLE t1 ADD COLUMN name TEXT;');
+
+      const res = await db.runMigrations(tempMigrationsDir);
+      expect(res.applied.length).toBe(2);
+      expect(res.applied[0]).toBe('0001_init.sql');
+      expect(res.applied[1]).toBe('0002_add_cols.sql');
+
+      const res2 = await db.runMigrations(tempMigrationsDir);
+      expect(res2.applied.length).toBe(0);
+    });
+
+    it('should show pending migrations but not apply them in dry-run mode', async () => {
+      fs.writeFileSync(path.join(tempMigrationsDir, '0001_init.sql'), 'CREATE TABLE t1 (id INT);');
+
+      const dryRunRes = await db.runMigrations(tempMigrationsDir, { dryRun: true });
+      expect(dryRunRes.applied.length).toBe(1);
+      expect(dryRunRes.applied[0]).toBe('0001_init.sql');
+
+      const res = await db.runMigrations(tempMigrationsDir);
+      expect(res.applied.length).toBe(1);
+      expect(res.applied[0]).toBe('0001_init.sql');
+    });
+
+    it('should reject already applied migrations if local file checksum changed', async () => {
+      fs.writeFileSync(path.join(tempMigrationsDir, '0001_init.sql'), 'CREATE TABLE t1 (id INT);');
+
+      await db.runMigrations(tempMigrationsDir);
+
+      fs.writeFileSync(path.join(tempMigrationsDir, '0001_init.sql'), 'CREATE TABLE t1 (id INT, modified INT);');
+
+      await expectAsync(
+        db.runMigrations(tempMigrationsDir)
+      ).toBeRejectedWithError(/checksum mismatch/i);
+    });
+
+    it('should reject invalid migration filename formats', async () => {
+      fs.writeFileSync(path.join(tempMigrationsDir, 'init.sql'), 'CREATE TABLE t1 (id INT);');
+
+      await expectAsync(
+        db.runMigrations(tempMigrationsDir)
+      ).toBeRejectedWithError(/invalid migration filename format/i);
     });
   });
 });

@@ -17,6 +17,9 @@ import {
   AccountCredential,
   ProductAdLink,
 } from './agency_os_types';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import {createHash} from 'node:crypto';
 import {BaseError} from './errors';
 import {PinoLogger} from './observability';
 import {BaselineContext, CategoryBenchmarks} from './healing_types';
@@ -311,6 +314,15 @@ export interface OnboardingEventEntry {
   data: any | null;
 }
 
+/**
+ * Represents a record of an applied database schema migration version.
+ */
+export interface SchemaMigrationEntry {
+  version: number;
+  name: string;
+  applied_at: string;
+  checksum: string;
+}
 
 interface MockDbContainer {
   mockTrust: TrustEntry[];
@@ -354,6 +366,7 @@ interface MockDbContainer {
   mockOrgs: OrgEntry[];
   mockOrgMembers: OrgMemberEntry[];
   mockLegalAcceptances: LegalAcceptanceEntry[];
+  mockSchemaMigrations: SchemaMigrationEntry[];
 }
 
 class GlobalMockDb {
@@ -398,6 +411,7 @@ class GlobalMockDb {
   static mockOrgs: OrgEntry[] = [];
   static mockOrgMembers: OrgMemberEntry[] = [];
   static mockLegalAcceptances: LegalAcceptanceEntry[] = [];
+  static mockSchemaMigrations: SchemaMigrationEntry[] = [];
 }
 
 /**
@@ -448,6 +462,7 @@ export class SupabaseClient {
     mockOrgs: [],
     mockOrgMembers: [],
     mockLegalAcceptances: [],
+    mockSchemaMigrations: [],
   };
 
   static resetGlobalMockDb() {
@@ -492,6 +507,7 @@ export class SupabaseClient {
     GlobalMockDb.mockOrgs = [];
     GlobalMockDb.mockOrgMembers = [];
     GlobalMockDb.mockLegalAcceptances = [];
+    GlobalMockDb.mockSchemaMigrations = [];
   }
   
   resetLocalMockDb() {
@@ -537,6 +553,7 @@ export class SupabaseClient {
       mockOrgs: [],
       mockOrgMembers: [],
       mockLegalAcceptances: [],
+      mockSchemaMigrations: [],
     };
   }
 
@@ -662,6 +679,9 @@ export class SupabaseClient {
   private get mockLegalAcceptances(): LegalAcceptanceEntry[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockLegalAcceptances : this.localMockDb.mockLegalAcceptances; }
   private set mockLegalAcceptances(v: LegalAcceptanceEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockLegalAcceptances = v; else this.localMockDb.mockLegalAcceptances = v; }
 
+  private get mockSchemaMigrations(): SchemaMigrationEntry[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockSchemaMigrations : this.localMockDb.mockSchemaMigrations; }
+  private set mockSchemaMigrations(v: SchemaMigrationEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockSchemaMigrations = v; else this.localMockDb.mockSchemaMigrations = v; }
+
   private activeTenantId: string | null = null;
   private snapshots: {
     mockTrust: TrustEntry[];
@@ -705,6 +725,7 @@ export class SupabaseClient {
     mockOrgs: OrgEntry[];
     mockOrgMembers: OrgMemberEntry[];
     mockLegalAcceptances: LegalAcceptanceEntry[];
+    mockSchemaMigrations: SchemaMigrationEntry[];
   } | null = null;
 
   private readonly logger: PinoLogger;
@@ -720,6 +741,107 @@ export class SupabaseClient {
 
   async ping(): Promise<boolean> {
     return true;
+  }
+
+  async runMigrations(
+    migrationsDir: string,
+    options?: { dryRun?: boolean },
+  ): Promise<{ applied: string[] }> {
+    this.logger.info('Running database migrations', { migrationsDir, dryRun: !!options?.dryRun });
+
+    if (!fs.existsSync(migrationsDir)) {
+      throw new Error(`Migrations directory does not exist: ${migrationsDir}`);
+    }
+
+    const files = fs.readdirSync(migrationsDir)
+      .filter((file) => file.endsWith('.sql'))
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+
+    const applied: string[] = [];
+
+    await this.beginTransaction();
+
+    try {
+      let appliedRecords: SchemaMigrationEntry[] = [];
+      if (this.mockMode) {
+        appliedRecords = [...this.mockSchemaMigrations];
+      } else {
+        const url = `${this.supabaseUrl}/rest/v1/schema_migrations?select=*`;
+        const response = await fetch(url, {
+          headers: {
+            'apikey': this.supabaseKey,
+            'Authorization': `Bearer ${this.supabaseKey}`,
+          },
+        });
+        if (response.ok) {
+          appliedRecords = (await response.json()) as SchemaMigrationEntry[];
+        }
+      }
+
+      const appliedMap = new Map<number, SchemaMigrationEntry>();
+      for (const record of appliedRecords) {
+        appliedMap.set(record.version, record);
+      }
+
+      for (const file of files) {
+        const match = file.match(/^(\d+)_(.+)\.sql$/);
+        if (!match) {
+          throw new Error(`Invalid migration filename format: ${file}. Expected NNNN_name.sql`);
+        }
+        const version = parseInt(match[1], 10);
+        const name = match[2];
+
+        const filePath = path.join(migrationsDir, file);
+        const sqlContent = fs.readFileSync(filePath, 'utf8');
+        const checksum = createHash('sha256').update(sqlContent).digest('hex');
+
+        const appliedRecord = appliedMap.get(version);
+
+        if (appliedRecord) {
+          if (appliedRecord.checksum !== checksum) {
+            throw new Error(
+              `Migration checksum mismatch for version ${version} (${file}). ` +
+              `Applied checksum: ${appliedRecord.checksum}, Local file checksum: ${checksum}. ` +
+              `Aborting to prevent database corruption.`
+            );
+          }
+          continue;
+        }
+
+        this.logger.info(`Applying migration: ${file}`);
+        applied.push(file);
+
+        if (!options?.dryRun) {
+          if (this.mockMode) {
+            this.mockSchemaMigrations.push({
+              version,
+              name,
+              applied_at: new Date().toISOString(),
+              checksum,
+            });
+          } else {
+            const url = `${this.supabaseUrl}/rest/v1/schema_migrations`;
+            await fetch(url, {
+              method: 'POST',
+              headers: {
+                'apikey': this.supabaseKey,
+                'Authorization': `Bearer ${this.supabaseKey}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=minimal',
+              },
+              body: JSON.stringify({ version, name, checksum }),
+            });
+          }
+        }
+      }
+
+      await this.commitTransaction();
+      return { applied };
+    } catch (err) {
+      await this.rollbackTransaction();
+      this.logger.error('Database migration failed', { error: err });
+      throw err;
+    }
   }
 
   clone(): SupabaseClient {
@@ -2361,6 +2483,7 @@ export class SupabaseClient {
       mockOrgs: JSON.parse(JSON.stringify(this.mockOrgs)) as OrgEntry[],
       mockOrgMembers: JSON.parse(JSON.stringify(this.mockOrgMembers)) as OrgMemberEntry[],
       mockLegalAcceptances: JSON.parse(JSON.stringify(this.mockLegalAcceptances)) as LegalAcceptanceEntry[],
+      mockSchemaMigrations: JSON.parse(JSON.stringify(this.mockSchemaMigrations)) as SchemaMigrationEntry[],
     };
     this.logger.info('Transaction boundary started');
   }
@@ -2415,6 +2538,7 @@ export class SupabaseClient {
       this.mockOrgs = this.snapshots.mockOrgs;
       this.mockOrgMembers = this.snapshots.mockOrgMembers;
       this.mockLegalAcceptances = this.snapshots.mockLegalAcceptances;
+      this.mockSchemaMigrations = this.snapshots.mockSchemaMigrations;
       this.snapshots = null;
     }
     this.logger.info('Transaction boundary rolled back');
