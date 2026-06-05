@@ -71,9 +71,9 @@ COGS + billing. **A stranger still can't connect a platform or click anything.**
 ### A3 — Product UI (3 items) — the big one
 | # | Item | Size | File(s) |
 |---|------|------|---------|
-| A3.1 | SPA scaffold (React/Next + LP design tokens), auth-gated routing | L | new `app/` |
-| A3.2 | 9 screens wired to real endpoints + SSE `/stream` client | XL | `app/` |
-| A3.3 | `GET /api/v1/profit-readiness` endpoint + gauge | M | `server.ts`, `poas_calculator.ts` |
+| A3.1 | ◐ **PARTIAL** — runnable Next.js `app/` scaffold landed in Wellness-Foods (tokens, api/types/queries layer, providers, dashboard route). Auth-gated routing pending A1 UI | L | `app/` |
+| A3.2 | ◐ **STARTED** — first screen built: POAS dashboard hero + `DualMetricCard` (ROAS vs POAS, dollar-drag, count-up, estimated-COGS chip), worst-first sort, MOCK mode. 8 screens + SSE client remain | XL | `app/` |
+| A3.3 | ☐ `GET /api/v1/profit-readiness` endpoint + gauge | M | `server.ts`, `poas_calculator.ts` |
 
 > **Phase A note:** the MCP agent layer (`a6ab7db`) already exposes engine tools
 > as JSON-RPC — A3.2 can call those instead of building all-new HTTP endpoints.
