@@ -319,3 +319,26 @@ CREATE TABLE IF NOT EXISTS brand_twin.creative_assets(
   compliance_ok BOOLEAN,
   created_at TIMESTAMP)
   CLUSTER BY tenant_id, campaign;
+
+-- Hardened durable background jobs / timers
+CREATE TABLE IF NOT EXISTS brand_twin.pending_jobs(
+  job_id STRING NOT NULL,
+  tenant_id STRING NOT NULL,
+  type STRING NOT NULL,  -- 'poas_daily' | 'settling_window'
+  action_id STRING,
+  run_at TIMESTAMP NOT NULL,
+  payload JSON,
+  status STRING NOT NULL,  -- 'pending' | 'processing' | 'completed' | 'failed'
+  created_at TIMESTAMP)
+  CLUSTER BY tenant_id, type;
+
+-- Onboarding path observability telemetry events
+CREATE TABLE IF NOT EXISTS brand_twin.onboarding_events(
+  event_id STRING NOT NULL,
+  tenant_id STRING NOT NULL,
+  stage STRING NOT NULL,
+  event_name STRING NOT NULL,
+  timestamp TIMESTAMP NOT NULL,
+  duration_ms INT64,
+  data JSON)
+  CLUSTER BY tenant_id, stage;

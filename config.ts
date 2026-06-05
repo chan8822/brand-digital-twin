@@ -47,16 +47,39 @@ export const config = {
   },
 };
 
-// Fail-fast validation in production env
-if (config.server.env === 'production') {
-  if (!process.env['JWT_SECRET'] || process.env['JWT_SECRET'] === 'default-super-secret-key-9988') {
-    throw new Error('PRODUCTION SECURITY ERROR: JWT_SECRET environment variable is missing or insecure.');
+export function validateEnv() {
+  const isTest =
+    process.env['NODE_ENV'] === 'test' ||
+    typeof (globalThis as any)['jasmine'] !== 'undefined';
+  if (isTest) {
+    return;
   }
-  if (!process.env['SUPABASE_KEY'] || process.env['SUPABASE_KEY'] === 'mock-secret-key-12345') {
-    throw new Error('PRODUCTION SECURITY ERROR: SUPABASE_KEY environment variable is missing or insecure.');
+
+  const missing: string[] = [];
+  const requiredVars = [
+    'SUPABASE_URL',
+    'SUPABASE_KEY',
+    'GOOGLE_ADS_CLIENT_ID',
+    'GOOGLE_ADS_DEVELOPER_TOKEN',
+    'META_ADS_APP_ID',
+    'JWT_SECRET',
+  ];
+
+  for (const v of requiredVars) {
+    const val = process.env[v];
+    if (!val || val.startsWith('mock-') || val.includes('mock-supabase') || val === 'default-super-secret-key-9988' || val === 'mock-secret-key-12345') {
+      missing.push(v);
+    }
   }
-  if (!process.env['SUPABASE_URL'] || process.env['SUPABASE_URL'].includes('mock-supabase')) {
-    throw new Error('PRODUCTION SECURITY ERROR: SUPABASE_URL environment variable is missing or invalid.');
+
+  if (missing.length > 0) {
+    throw new Error(
+      `STARTUP ERROR: Missing or mock credentials found in non-test environment for: ${missing.join(', ')}. ` +
+      `Please configure actual variables or copy .env.example to .env to populate credentials.`
+    );
   }
 }
+
+// Automatically validate env on start
+validateEnv();
 

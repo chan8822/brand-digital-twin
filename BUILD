@@ -38,7 +38,6 @@ ts_library(
     deps = [
         ":governance_engine",
         ":platform_adapter",
-        "//third_party/javascript/typings/node",
     ],
 )
 
@@ -92,7 +91,6 @@ ts_library(
     deps = [
         ":agency_os_types",
         ":observability",
-        "//third_party/javascript/typings/node",
     ],
 )
 
@@ -219,7 +217,6 @@ ts_library(
         ":governance_engine",
         ":governance_types",
         ":platform_adapter",
-        "//third_party/javascript/typings/node",
     ],
 )
 
@@ -241,7 +238,6 @@ ts_library(
     name = "onboarding_simulator",
     srcs = ["onboarding_simulator.ts"],
     deps = [
-        ":analyst_agent",
         ":google_ads_adapter",
         ":governance_engine",
         ":healing_types",
@@ -464,6 +460,7 @@ ts_library(
         "agency_os_test.ts",
         "credential_vault_test.ts",
         "easysaas_test.ts",
+        "enterprise_os_test.ts",
         "integrations_test.ts",
         "omnichannel_test.ts",
         "onboarding_hierarchy_test.ts",

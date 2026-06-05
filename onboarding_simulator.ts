@@ -17,6 +17,9 @@ export interface OnboardingState {
 
 export class OnboardingSimulator {
   private rl: readline.Interface;
+  private readonly db = new SupabaseClient();
+  private readonly tenantId = 'tenant_onboard_123';
+  private lastEventTime = Date.now();
   private state: OnboardingState = {
     storefrontUrl: '',
     connectedSurfaces: [],
@@ -30,6 +33,22 @@ export class OnboardingSimulator {
     this.rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout,
+    });
+  }
+
+  private async recordStage(stage: string, eventName: string, data?: any) {
+    const now = Date.now();
+    const durationMs = now - this.lastEventTime;
+    this.lastEventTime = now;
+
+    await this.db.saveOnboardingEvent({
+      event_id: `evt-${stage}-${Date.now()}`,
+      tenant_id: this.tenantId,
+      stage,
+      event_name: eventName,
+      timestamp: new Date(now).toISOString(),
+      duration_ms: durationMs,
+      data: data || null,
     });
   }
 
@@ -320,14 +339,16 @@ export class OnboardingSimulator {
     console.log('=================================================');
     console.log('      GaaS Brand Digital Twin Onboarding        ');
     console.log('=================================================');
+    this.lastEventTime = Date.now();
     this.screen1Scan();
   }
 
   private screen1Scan() {
     console.log('\n[ SCREEN 1 of 4: Scan & Audit ]');
     console.log("Build your brand's digital twin in seconds.");
-    this.rl.question('Enter your storefront URL (e.g. ableys.in): ', (url) => {
+    this.rl.question('Enter your storefront URL (e.g. ableys.in): ', async (url) => {
       this.state.storefrontUrl = url;
+      await this.recordStage('goal_declared', 'Storefront URL Submitted', { storefrontUrl: url });
       console.log('\nScanning storefront...');
       setTimeout(() => {
         console.log('[x] Shopify Storefront Detected');
@@ -358,7 +379,7 @@ export class OnboardingSimulator {
 
     this.rl.question(
       "\nType 'connect' to authorize mock integrations: ",
-      (ans) => {
+      async (ans) => {
         if (ans.toLowerCase() === 'connect') {
           this.state.connectedSurfaces = [
             'shopify',
@@ -373,6 +394,7 @@ export class OnboardingSimulator {
           this.state.connectedSurfaces = ['shopify'];
           console.log('\nOnly Shopify (Read-Only) connected.');
         }
+        await this.recordStage('connected', 'Surfaces Connected', { connectedSurfaces: this.state.connectedSurfaces });
         this.rl.question(
           '\nPress [Enter] to set Governance Guardrails...',
           () => {
@@ -425,13 +447,14 @@ export class OnboardingSimulator {
     console.log('\n[ SCREEN 4 of 4: Brand Digital Twin Ready ]');
     console.log('Your shadow twin has reconciled your last 30 days of data!\n');
 
-    const tenantId = 'tenant_onboard_123';
-    const db = new SupabaseClient();
-    await this.seedMockData(db);
+    await this.recordStage('sweep_started', 'Diagnostic Sweep Initiated');
+
+    await this.seedMockData(this.db);
 
     // 1. POAS vs ROAS Audit Sweep
-    const poasCalc = new PoasCalculator(db);
-    const reports = await poasCalc.calculate(tenantId);
+    const poasCalc = new PoasCalculator(this.db);
+    const reports = await poasCalc.calculate(this.tenantId);
+    await this.recordStage('first_poas_computed', 'First POAS Computation Complete', { reports });
 
     console.log('Campaign Performance Audit (ROAS vs POAS):');
     console.log('----------------------------------------------------------------------');
@@ -453,7 +476,7 @@ export class OnboardingSimulator {
       '888-888-8888',
       'dev_token',
       'mock_auth_token',
-      tenantId,
+      this.tenantId,
     );
     const auditSink = { record: async () => {} };
     const trustLedger = { getTier: () => 2, recordOutcome: () => {} };
@@ -465,7 +488,7 @@ export class OnboardingSimulator {
       circuitBreaker as any,
     );
 
-    const radar = new RiskRadar(engine, googleAds, db, tenantId);
+    const radar = new RiskRadar(engine, googleAds, this.db, this.tenantId);
     radar.seedInventory({
       variantId: 'v1',
       sku: 'BLUE-SHIRT-M',
@@ -474,7 +497,7 @@ export class OnboardingSimulator {
     });
 
     const ctx = {
-      tenant: { tenantId, policy: { maxDailyDollarsRisk: 1000, maxBudgetMovePct: 0.2, minConfidence: 0.8, escalationRole: 'cmo' } },
+      tenant: { tenantId: this.tenantId, policy: { maxDailyDollarsRisk: 1000, maxBudgetMovePct: 0.2, minConfidence: 0.8, escalationRole: 'cmo' } },
       role: { permits: () => true },
       verifyWindowMs: 100,
     };
@@ -525,6 +548,9 @@ export class OnboardingSimulator {
       return b.dollarImpact - a.dollarImpact;
     });
 
+    await this.recordStage('sweep_complete', 'Diagnostic Sweep Complete', { findingsCount: findings.length });
+    await this.recordStage('first_healing_card_shown', 'First Healing Recommendations Rendered', { findings });
+
     console.log('\nDiagnostic Sweep Findings:');
     console.log('----------------------------------------------------------------------');
     for (const f of findings) {
@@ -543,12 +569,14 @@ export class OnboardingSimulator {
 
     this.rl.question(
       "\nType 'activate' to begin Shadow Run (Read-Only): ",
-      (ans) => {
+      async (ans) => {
         if (ans.toLowerCase() === 'activate') {
+          await this.recordStage('first_action_taken', 'Shadow Run Activated', { state: this.state });
           console.log('\n=================================================');
           console.log('   SHADOW RUN ACTIVATED SUCCESSFULLY!            ');
           console.log('=================================================');
         } else {
+          await this.recordStage('first_action_taken', 'Onboarding Paused Draft Config Saved');
           console.log('\nOnboarding paused. Config saved as draft.');
         }
         this.rl.close();

@@ -1,4 +1,5 @@
 import {OnboardingSimulator} from './onboarding_simulator';
+import {SupabaseClient} from './supabase_client';
 
 describe('OnboardingSimulator', () => {
   let simulator: OnboardingSimulator;
@@ -40,5 +41,31 @@ describe('OnboardingSimulator', () => {
     expect(logs.some(l => l.includes('Out of Stock safety pause for SKU BLUE-SHIRT-M'))).toBe(true);
     expect(logs.some(l => l.includes('Budget-capped winner: Meta Catalog Winner [SCALABLE]'))).toBe(true);
     expect(logs.some(l => l.includes('Purchase conversion tracking signal loss'))).toBe(true);
+  });
+
+  it('should emit structured onboarding events at each stage transition', async () => {
+    const mockRl = {
+      question: (query: string, callback: (ans: string) => void) => {
+        callback('activate');
+      },
+      close: () => {},
+    };
+    (simulator as any).rl = mockRl;
+
+    await (simulator as any).screen4Insights();
+
+    const db = (simulator as any).db as SupabaseClient;
+    const events = await db.getOnboardingEvents((simulator as any).tenantId);
+
+    const stages = events.map((e: any) => e.stage);
+    expect(stages).toContain('sweep_started');
+    expect(stages).toContain('first_poas_computed');
+    expect(stages).toContain('sweep_complete');
+    expect(stages).toContain('first_healing_card_shown');
+    expect(stages).toContain('first_action_taken');
+
+    // durationMs should be set as a number
+    expect(events[0].duration_ms).toBeDefined();
+    expect(typeof events[0].duration_ms).toBe('number');
   });
 });

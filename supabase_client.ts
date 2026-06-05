@@ -248,6 +248,27 @@ export interface VariantEntry {
   ingested_at: string;
 }
 
+export interface PendingJobEntry {
+  job_id: string;
+  tenant_id: string;
+  type: 'poas_daily' | 'settling_window';
+  action_id: string | null;
+  run_at: string;
+  payload: any | null;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  created_at: string;
+}
+
+export interface OnboardingEventEntry {
+  event_id: string;
+  tenant_id: string;
+  stage: string;
+  event_name: string;
+  timestamp: string;
+  duration_ms: number | null;
+  data: any | null;
+}
+
 
 /**
  * Supabase client orchestrator.
@@ -293,6 +314,8 @@ export class SupabaseClient {
   private mockAccountCredentials: AccountCredentialEntry[] = [];
   private mockProductAdLinks: ProductAdLinkEntry[] = [];
   private mockVariants: VariantEntry[] = [];
+  private mockPendingJobs: PendingJobEntry[] = [];
+  private mockOnboardingEvents: OnboardingEventEntry[] = [];
 
   private activeTenantId: string | null = null;
   private snapshots: {
@@ -328,6 +351,8 @@ export class SupabaseClient {
     mockAccountCredentials: AccountCredentialEntry[];
     mockProductAdLinks: ProductAdLinkEntry[];
     mockVariants: VariantEntry[];
+    mockPendingJobs: PendingJobEntry[];
+    mockOnboardingEvents: OnboardingEventEntry[];
     mockBaselineContexts: Array<{tenant_id: string; context: BaselineContext}>;
     mockCategoryBenchmarks: Array<{tenant_id: string; benchmarks: CategoryBenchmarks}>;
   } | null = null;
@@ -382,6 +407,8 @@ export class SupabaseClient {
     copy.mockAccountCredentials = this.mockAccountCredentials;
     copy.mockProductAdLinks = this.mockProductAdLinks;
     copy.mockVariants = this.mockVariants;
+    copy.mockPendingJobs = this.mockPendingJobs;
+    copy.mockOnboardingEvents = this.mockOnboardingEvents;
     return copy;
   }
 
@@ -1522,6 +1549,67 @@ export class SupabaseClient {
     }
   }
 
+  // --- BACKGROUND JOBS PERSISTENCE ---
+  async savePendingJob(job: PendingJobEntry): Promise<void> {
+    this.assertRls(job.tenant_id);
+    if (this.mockMode) {
+      const idx = this.mockPendingJobs.findIndex((j) => j.job_id === job.job_id);
+      if (idx >= 0) {
+        this.mockPendingJobs[idx] = job;
+      } else {
+        this.mockPendingJobs.push(job);
+      }
+    }
+  }
+
+  async getPendingJobs(tenant: string): Promise<PendingJobEntry[]> {
+    this.assertRls(tenant);
+    if (this.mockMode) {
+      return this.mockPendingJobs.filter((j) => j.tenant_id === tenant);
+    }
+    return [];
+  }
+
+  async getOverdueJobs(currentTimeMs: number): Promise<PendingJobEntry[]> {
+    if (this.mockMode) {
+      return this.mockPendingJobs.filter(
+        (j) => j.status === 'pending' && Date.parse(j.run_at) <= currentTimeMs
+      );
+    }
+    return [];
+  }
+
+  async updateJobStatus(jobId: string, status: PendingJobEntry['status']): Promise<void> {
+    if (this.mockMode) {
+      const job = this.mockPendingJobs.find((j) => j.job_id === jobId);
+      if (job) {
+        job.status = status;
+      }
+    }
+  }
+
+  async deletePendingJob(jobId: string): Promise<void> {
+    if (this.mockMode) {
+      this.mockPendingJobs = this.mockPendingJobs.filter((j) => j.job_id !== jobId);
+    }
+  }
+
+  // --- ONBOARDING TELEMETRY PERSISTENCE ---
+  async saveOnboardingEvent(event: OnboardingEventEntry): Promise<void> {
+    this.assertRls(event.tenant_id);
+    if (this.mockMode) {
+      this.mockOnboardingEvents.push(event);
+    }
+  }
+
+  async getOnboardingEvents(tenant: string): Promise<OnboardingEventEntry[]> {
+    this.assertRls(tenant);
+    if (this.mockMode) {
+      return this.mockOnboardingEvents.filter((e) => e.tenant_id === tenant);
+    }
+    return [];
+  }
+
   // --- TRANSACTION SIMULATION ---
   private transactionActive = false;
 
@@ -1560,6 +1648,8 @@ export class SupabaseClient {
       mockAccountCredentials: JSON.parse(JSON.stringify(this.mockAccountCredentials)) as AccountCredentialEntry[],
       mockProductAdLinks: JSON.parse(JSON.stringify(this.mockProductAdLinks)) as ProductAdLinkEntry[],
       mockVariants: JSON.parse(JSON.stringify(this.mockVariants)) as VariantEntry[],
+      mockPendingJobs: JSON.parse(JSON.stringify(this.mockPendingJobs)) as PendingJobEntry[],
+      mockOnboardingEvents: JSON.parse(JSON.stringify(this.mockOnboardingEvents)) as OnboardingEventEntry[],
       mockBaselineContexts: JSON.parse(JSON.stringify(this.mockBaselineContexts)) as Array<{tenant_id: string; context: BaselineContext}>,
       mockCategoryBenchmarks: JSON.parse(JSON.stringify(this.mockCategoryBenchmarks)) as Array<{tenant_id: string; benchmarks: CategoryBenchmarks}>,
     };
@@ -1607,6 +1697,8 @@ export class SupabaseClient {
       this.mockAccountCredentials = this.snapshots.mockAccountCredentials;
       this.mockProductAdLinks = this.snapshots.mockProductAdLinks;
       this.mockVariants = this.snapshots.mockVariants;
+      this.mockPendingJobs = this.snapshots.mockPendingJobs;
+      this.mockOnboardingEvents = this.snapshots.mockOnboardingEvents;
       this.mockBaselineContexts = this.snapshots.mockBaselineContexts;
       this.mockCategoryBenchmarks = this.snapshots.mockCategoryBenchmarks;
       this.snapshots = null;

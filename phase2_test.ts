@@ -250,11 +250,23 @@ describe('Phase 2 Governance & Execution Suite', () => {
 
     const res = await engine.govern(adapter, req, ctx);
 
-    // Should indicate it was rolled back
-    expect(res.status).toBe('rolled_back');
+    // Should indicate it was executed because verification is deferred to a background job
+    expect(res.status).toBe('executed');
+    expect(res.result?.auditRef).toContain('verify-deferred-');
 
-    // Simulated budget must revert to original budget: 1000
-    const camp = adapter.getSimulatedCampaign('c1');
+    // Budget is not rolled back yet
+    let camp = adapter.getSimulatedCampaign('c1');
+    expect(camp?.budget).toBe(1200);
+
+    // Get the scheduled job and run it manually
+    const jobs = await engine.supabase.getPendingJobs(tenantId);
+    expect(jobs.length).toBe(1);
+    expect(jobs[0].type).toBe('settling_window');
+    
+    await engine.verifyPendingAction(jobs[0], adapter);
+
+    // Simulated budget must now revert to original budget: 1000
+    camp = adapter.getSimulatedCampaign('c1');
     expect(camp?.budget).toBe(1000);
 
     // Trust ledger should record the failure, dropping tier
@@ -339,7 +351,14 @@ describe('Phase 2 Governance & Execution Suite', () => {
     const elapsed = endTime - startTime;
 
     expect(res.status).toBe('executed');
-    // It should have taken at least 150ms due to the verifyWindowMs delay
-    expect(elapsed).toBeGreaterThanOrEqual(150);
+    // It should return immediately as the thread doesn't sleep anymore
+    expect(elapsed).toBeLessThan(30);
+
+    // Verify a verify job was scheduled with correct run_at
+    const jobs = await engine.supabase.getPendingJobs(tenantId);
+    expect(jobs.length).toBe(1);
+    expect(jobs[0].type).toBe('settling_window');
+    const runAt = Date.parse(jobs[0].run_at);
+    expect(runAt).toBeGreaterThanOrEqual(startTime + 150);
   });
 });

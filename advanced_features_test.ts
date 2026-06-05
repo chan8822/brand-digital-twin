@@ -232,7 +232,16 @@ describe('Advanced Risk & Observability Features', () => {
       };
 
       const res = await engine.govern(adapter, req, ctx);
-      expect(res.status).toBe('rolled_back');
+      expect(res.status).toBe('executed');
+
+      // Verify job was scheduled
+      const jobs = await engine.supabase.getPendingJobs('tenant-1');
+      expect(jobs.length).toBe(1);
+      expect(jobs[0].type).toBe('settling_window');
+
+      // Run verification manually
+      await engine.verifyPendingAction(jobs[0], adapter);
+
       expect(adapter.rolledBackCount).toBe(2); // Step 1 (50%) & Step 2 (100%)
       expect(adapter.lastScaleFactor).toBe(1.0);
 

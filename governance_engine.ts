@@ -13,7 +13,7 @@ import {
   PlatformAdapter,
   RollbackHandle,
 } from './platform_adapter';
-import {SupabaseClient} from './supabase_client';
+import {SupabaseClient, PendingJobEntry} from './supabase_client';
 import {ApprovalRequest} from './agency_os_types';
 
 import {
@@ -502,12 +502,32 @@ export class GovernanceEngine {
     let verificationOk = true;
     if (!isShadow) {
       if (ctx.verifyWindowMs && ctx.verifyWindowMs > 0) {
-        this.logger.debug(`Sleeping for verification window: ${ctx.verifyWindowMs}ms`, {
+        this.logger.info(`Scheduling verification job for action ${req.idempotencyKey} after ${ctx.verifyWindowMs}ms delay`, {
           actionId: req.idempotencyKey,
         });
-        await new Promise<void>((resolve) => {
-          setTimeout(resolve, ctx.verifyWindowMs);
-        });
+        const runAt = new Date(Date.now() + ctx.verifyWindowMs).toISOString();
+        const job: PendingJobEntry = {
+          job_id: `job-verify-${req.idempotencyKey}`,
+          tenant_id: ctx.tenant.tenantId,
+          type: 'settling_window',
+          action_id: req.idempotencyKey,
+          run_at: runAt,
+          payload: {
+            req,
+            preMetrics,
+            rollbackPlan: result.rollback || null,
+            projectedCost: plan.projectedCost,
+            maxDailyDollarsRisk: ctx.tenant.policy.maxDailyDollarsRisk,
+            roleName: ctx.role.name,
+            earned,
+            platform: adapter.platform,
+          },
+          status: 'pending',
+          created_at: new Date().toISOString(),
+        };
+        await this.supabase.savePendingJob(job);
+        
+        return {status: 'executed', result: {ok: true, auditRef: `verify-deferred-${req.idempotencyKey}`}};
       }
       const postMetrics = await this.readCurrentMetrics(
         adapter,
@@ -912,5 +932,100 @@ export class GovernanceEngine {
     }
     // Step 2: Complete remaining 50%
     return await rollbackFn.call(adapter, {...handle, scaleFactor: 1.0});
+  }
+
+  async verifyPendingAction(job: PendingJobEntry, adapter: PlatformAdapter): Promise<void> {
+    const payload = job.payload;
+    const req = payload.req;
+    const preMetrics = payload.preMetrics;
+    const tenantId = job.tenant_id;
+
+    this.logger.info(`Running deferred verification job ${job.job_id} for action ${req.idempotencyKey}`, {
+      actionId: req.idempotencyKey,
+    });
+
+    const postMetrics = await this.readCurrentMetrics(
+      adapter,
+      tenantId,
+      req.targetId,
+    );
+
+    const verificationOk = await this.verify(req, preMetrics, postMetrics);
+
+    eventBus.emitPhaseUpdate(
+      tenantId,
+      req.idempotencyKey,
+      'VERIFY',
+      verificationOk ? 'COMPLETE' : 'FAILED',
+    );
+
+    if (!verificationOk && payload.rollbackPlan) {
+      this.logger.warn('Verification anomaly detected, initiating rollback', {
+        actionId: req.idempotencyKey,
+        tenantId,
+      });
+      eventBus.emitPhaseUpdate(
+        tenantId,
+        req.idempotencyKey,
+        'ROLLBACK',
+        'IN_PROGRESS',
+      );
+      const rollbackResult = await this.executeGradualRollback(
+        adapter,
+        payload.rollbackPlan,
+      );
+      eventBus.emitPhaseUpdate(
+        tenantId,
+        req.idempotencyKey,
+        'ROLLBACK',
+        'COMPLETE',
+      );
+      await this.audit.record({
+        action_id: req.idempotencyKey,
+        tenant_id: tenantId,
+        actor: 'agent:media_buyer',
+        action_type: req.op,
+        target_entity: req.entity,
+        status: 'rolled_back',
+        reason: 'Post-execution verification anomaly detected',
+        created_at: new Date().toISOString(),
+      });
+
+      const previousTier = payload.earned;
+      this.trustLedger.recordOutcome(
+        tenantId,
+        req.op,
+        false,
+        payload.projectedCost,
+        payload.maxDailyDollarsRisk,
+        payload.roleName,
+        payload.earned,
+      );
+      const newTier = this.trustLedger.getTier(tenantId, req.op);
+      await this.supabase.saveTrustTier(tenantId, req.op, newTier);
+
+      if (newTier < previousTier) {
+        this.metrics.raiseAlert(
+          `Trust tier degraded from ${previousTier} to ${newTier} for action ${req.op}`,
+        );
+      }
+
+      this.circuitBreaker.trip(adapter.platform);
+      this.metrics.raiseAlert(
+        `Circuit breaker tripped for platform ${adapter.platform}`,
+      );
+    } else {
+      this.trustLedger.recordOutcome(
+        tenantId,
+        req.op,
+        true,
+        payload.projectedCost,
+        payload.maxDailyDollarsRisk,
+        payload.roleName,
+        payload.earned,
+      );
+      const finalTier = this.trustLedger.getTier(tenantId, req.op);
+      await this.supabase.saveTrustTier(tenantId, req.op, finalTier);
+    }
   }
 }

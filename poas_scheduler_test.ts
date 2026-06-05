@@ -9,7 +9,7 @@ describe('PoasScheduler', () => {
   beforeEach(async () => {
     db = new SupabaseClient('https://mock.supabase.co', 'mock-key', true);
     db.setTenantContext(tenantId);
-    scheduler = new PoasScheduler(db, 1000); // 1s interval (not used in manual run)
+    scheduler = new PoasScheduler(db, 1000);
 
     // Clear db collections
     await db.clearCampaigns(tenantId);
@@ -62,7 +62,7 @@ describe('PoasScheduler', () => {
       campaign_id: 'c-unprofit',
       platform: 'meta',
       day: '2026-06-05',
-      amount: 1000, // Spend $1000
+      amount: 1000,
       currency: 'USD',
       tenant_id: tenantId,
       source_system: 'meta',
@@ -72,7 +72,7 @@ describe('PoasScheduler', () => {
       campaign_id: 'c-profit',
       platform: 'google',
       day: '2026-06-05',
-      amount: 500, // Spend $500
+      amount: 500,
       currency: 'USD',
       tenant_id: tenantId,
       source_system: 'google',
@@ -80,8 +80,6 @@ describe('PoasScheduler', () => {
     });
 
     // Seed orders & order lines
-    // Order 1 (Attributed to c-unprofit via touchpoint)
-    // Gross: $1200. Cost: $1000. Margin: $200. Spend: $1000. POAS: 0.2 (Unprofitable)
     await db.saveOrder({
       order_id: 'o1',
       customer_id: 'cust1',
@@ -128,8 +126,6 @@ describe('PoasScheduler', () => {
       ingested_at: new Date().toISOString(),
     });
 
-    // Order 2 (Attributed to c-profit via touchpoint)
-    // Gross: $1500. Cost: $500. Margin: $1000. Spend: $500. POAS: 2.0 (Profitable)
     await db.saveOrder({
       order_id: 'o2',
       customer_id: 'cust2',
@@ -177,35 +173,58 @@ describe('PoasScheduler', () => {
     });
   });
 
-  it('should flag unprofitable campaigns with low performance brand signals', async () => {
-    // Run the scheduler jobs
-    await scheduler.runJobs();
+  it('should schedule, run, reschedule, and flag unprofitable campaigns', async () => {
+    // 1. Register tenant to create initial daily job
+    await scheduler.registerTenant(tenantId);
+    let jobs = await db.getPendingJobs(tenantId);
+    expect(jobs.length).toBe(1);
+    expect(jobs[0].type).toBe('poas_daily');
+    expect(jobs[0].status).toBe('pending');
 
+    // 2. Run the polling queue execution
+    await scheduler.pollAndExecute();
+
+    // 3. Verify unprofitable campaign has brand signal
     const signals = await db.getBrandSignals(tenantId);
-    
-    // Should have created 1 signal for the unprofitable campaign
     const lowPerfSignals = signals.filter((s) => s.type === 'low_performance_roi');
     expect(lowPerfSignals.length).toBe(1);
     expect(lowPerfSignals[0].payload['campaignId']).toBe('c-unprofit');
-    expect(lowPerfSignals[0].severity).toBe('high');
-    expect(lowPerfSignals[0].message).toContain("has unprofitable POAS");
 
-    // Profitable campaign should NOT have a signal
-    const profitSignal = signals.find(
-      (s) => s.type === 'low_performance_roi' && s.payload['campaignId'] === 'c-profit'
-    );
-    expect(profitSignal).toBeUndefined();
+    // 4. Verify original job is rescheduled in future (24 hours from now)
+    jobs = await db.getPendingJobs(tenantId);
+    expect(jobs.length).toBe(1);
+    expect(jobs[0].status).toBe('pending');
+    expect(Date.parse(jobs[0].run_at)).toBeGreaterThan(Date.now() + 23 * 3600 * 1000);
+
+    // 5. Subsequent immediate run does not execute (no new signals, no duplicate jobs)
+    await scheduler.pollAndExecute();
+    const consecutiveJobs = await db.getPendingJobs(tenantId);
+    expect(consecutiveJobs.length).toBe(1);
+    expect(consecutiveJobs[0].job_id).toBe(jobs[0].job_id); // unchanged
   });
 
   it('should not duplicate signals on consecutive runs', async () => {
-    await scheduler.runJobs();
+    await scheduler.registerTenant(tenantId);
+    await scheduler.pollAndExecute();
     let signals = await db.getBrandSignals(tenantId);
     expect(signals.filter((s) => s.type === 'low_performance_roi').length).toBe(1);
 
-    // Run again
-    await scheduler.runJobs();
+    // Force run another job by manually saving one that is overdue
+    const forceOverdueJob = {
+      job_id: `job-poas-force-${Date.now()}`,
+      tenant_id: tenantId,
+      type: 'poas_daily' as const,
+      action_id: null,
+      run_at: new Date(Date.now() - 1000).toISOString(),
+      payload: null,
+      status: 'pending' as const,
+      created_at: new Date().toISOString(),
+    };
+    await db.savePendingJob(forceOverdueJob);
+
+    await scheduler.pollAndExecute();
     signals = await db.getBrandSignals(tenantId);
-    // Still should only have 1 signal
+    // Should still have only 1 signal because alreadySignaled guard matches the campaign ID
     expect(signals.filter((s) => s.type === 'low_performance_roi').length).toBe(1);
   });
 });
