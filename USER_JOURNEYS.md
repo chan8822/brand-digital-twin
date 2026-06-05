@@ -12,18 +12,44 @@ Every user, regardless of goal, moves through the same five stages. What changes
 inside each stage is driven by the goal they pick.
 
 ```
+0. SCAN         → Brand baseline on domain alone — nothing connected yet
 1. DECLARE      → What's your goal? (primary + optional secondary)
 2. CONNECT      → Goal-filtered integration stack
 3. SWEEP        → Automated diagnostic across connected platforms
+3.5 HEAL        → Findings become three-zone decision cards
 4. FIRST VALUE  → One true number / prioritized issue list (< 5 min in)
 5. INHABIT      → Daily dashboard, trust ledger, graduated autonomy
 ```
 
-The emotional arc: *Curious → Committed → Surprised → Decided → Reliant.*
+The emotional arc: *Seen → Curious → Committed → Surprised → Decided → Reliant.*
+
+**Stage 0 (SCAN)** runs before anything is connected — on just a domain. It
+establishes the brand's observable presence/perception/trust baseline, delivers
+first value before any OAuth, and becomes the context layer every later
+recommendation consults. See `BRAND_BASELINE_SCAN.md`.
 
 **Stage 3.5 — HEAL** is now inserted between SWEEP and FIRST VALUE.
 The sweep finds the problems. The healing layer turns each finding into a
 three-zone decision card before the user ever sees a dashboard.
+
+---
+
+## STAGE 0 — SCAN (before anything is connected)
+
+The user enters only a domain. In ~90 seconds the OS returns a baseline of the
+brand's observable digital reality — presence, paid footprint, perception, trust,
+social standing — assembled entirely from public data. No account, no OAuth.
+
+It delivers three things at once:
+1. **First value before friction** — "here's your entire digital presence, scored"
+2. **Fixes the brand can act on today** — review responses, brand defense, site
+   speed — improvements that need nothing connected
+3. **A specific reason to connect** — "you rank #1 for these 8 terms; connect
+   Search Console so we don't tell you to bid against your own free traffic"
+
+The baseline persists as the **context layer** the healing engine consults before
+every later prescription. See `BRAND_BASELINE_SCAN.md` for the full signal map,
+the observable-vs-owned model, and the improvement layer.
 
 ---
 

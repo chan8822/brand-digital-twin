@@ -22,6 +22,32 @@ no tool. The insight has no value until someone acts on it.
 
 ---
 
+## The Context Layer (Brand Baseline Scan)
+
+Before the healing engine prescribes, it consults the observable baseline from
+the Brand Baseline Scan (`BRAND_BASELINE_SCAN.md`) — presence, paid footprint,
+perception, trust, social standing — assembled from public data with no
+connection required. This is what keeps advice safe across channels the user
+hasn't connected.
+
+| Context signal | How it guards the prescription |
+|----------------|-------------------------------|
+| Organic rank on the SKU's terms | Blocks "pause paid" advice on terms where paid defends a ranked position |
+| Competitor bidding on brand terms | Flags when pausing cedes ground to a named competitor |
+| Perception / rating trend falling | Downgrades confidence on "scale this" advice |
+| Channel whitespace | Informs where to expand, not only where to cut |
+
+Every card declares its own completeness honestly:
+> *"Based on paid + commerce data and your observable footprint. Email and
+>  organic not connected — connect them so this accounts for cross-channel
+>  effects."*
+
+This is the same honesty principle as the incrementality hedge: the OS states
+what it cannot see at the moment it advises, rather than pretending to full
+visibility.
+
+---
+
 ## Root Cause Attribution Engine
 
 When POAS is low, `diagnoseRootCause()` traces which cost component is the

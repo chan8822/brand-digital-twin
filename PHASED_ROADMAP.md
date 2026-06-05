@@ -25,7 +25,8 @@ Organic, email, marketplace, support: zero or minimal.
 
 | Item | What's needed | Market |
 |------|--------------|--------|
-| **Healing recommendations engine** | `diagnoseRootCause()` in `risk_radar.ts`; structured tier-1/2/3 prescriptions from `analyzeProfitability()`; three-zone card UX. See `HEALING_RECOMMENDATIONS.md`. | Both |
+| **Brand Baseline Scan (Stage 0)** | Observable-footprint scan on domain alone — presence, paid, perception, trust, social — via public sources. Becomes the healing engine's context layer + first-value-before-OAuth. See `BRAND_BASELINE_SCAN.md`. | Both |
+| **Healing recommendations engine** | `diagnoseRootCause()` in `risk_radar.ts`; structured tier-1/2/3 prescriptions from `analyzeProfitability()`; three-zone card UX consulting the baseline context layer. See `HEALING_RECOMMENDATIONS.md`. | Both |
 | **Incrementality flagging** | Add consistency check to `decide()` — suspected-non-incremental campaigns held at Tier 2. Holdout test prompt in healing card Zone 1. | Both |
 | **ROAS + POAS dual display** | Render both metrics side-by-side; gap line as the hero number. | Both |
 | **5-tier semantic naming + per-tier $ caps** | Name tiers Observe / Suggest / Optimize / Lead / Mastery. Enforce per-tier dollar limits, not just tenant-level cap. | Both |
