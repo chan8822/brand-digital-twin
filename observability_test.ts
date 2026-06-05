@@ -42,7 +42,7 @@ describe('Observability & Durable Error Sink Suite (P1.2a)', () => {
 
     it('should redact JWT tokens and credit card numbers found in string values', () => {
       const jwtToken = 'header.payload.signature';
-      const creditCard = '1234-5678-9012-3456';
+      const creditCard = '4111-1111-1111-1111';
 
       const input = {
         message: 'Transaction failed',
