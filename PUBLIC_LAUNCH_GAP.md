@@ -196,6 +196,21 @@ it (UI, OAuth, auth, billing, legal, ops) plus **one strategic piece** (the COGS
 aggregator) that makes the value land without us in the room.
 
 It is more total *surface area* than the engine was — but far less *novel risk*.
-The validation gate (`VALIDATION_PLAN.md` 3-brands test) should still run on the
-internal build **before** investing in this shell. Build the public wrapper for a
-value proposition you've proven brands act on — not before.
+
+---
+
+## Decisions taken (this session) — supersede the recommendations above
+
+1. **Build now, don't gate on validation.** The 3-brands validation
+   (`VALIDATION_PLAN.md`) is **consciously deferred** — it will run as a
+   soft-launch cohort on the real public product rather than as a pre-build gate.
+2. **Build in-house, not buy.** Gaps 1/4 (auth), 3 (billing), 7 (COGS aggregator)
+   are built on existing primitives — `auth.ts`, `credential_vault.ts`,
+   `tally_adapter.ts`, `rbi_aa_adapter.ts` — not WorkOS/Stripe/Codat.
+3. **Delivered as a prioritized spec set** the upstream team builds against:
+   - `PHASE_A_BUILD_SPEC.md` — usable by a stranger (in-house auth + OAuth + UI)
+   - `PHASE_B_BUILD_SPEC.md` — lawful & trustworthy (data rights, legal, ops, abuse, atomic jobs)
+   - `PHASE_C_BUILD_SPEC.md` — self-serve value + money (in-house COGS connectors + suggest-an-amount billing)
+
+GAP 2's external approvals (Google/Meta/Shopify) and the legal review remain the
+**long poles** — kick them off first (Phase A §A0) even though they finish last.

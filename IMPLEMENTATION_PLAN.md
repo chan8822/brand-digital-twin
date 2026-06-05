@@ -136,6 +136,35 @@ on WhatsApp/Slack without login. **Publish the landing page.***
 
 ---
 
+## Public Launch Track (parallel to channel phases — decided this session)
+
+Decisions: **build now** (validation deferred to soft-launch cohort), **build
+in-house** (extend existing primitives, not WorkOS/Stripe/Codat). Specs:
+`PHASE_A_BUILD_SPEC.md` · `PHASE_B_BUILD_SPEC.md` · `PHASE_C_BUILD_SPEC.md`.
+
+**PUB-A — Usable by a stranger**
+- [ ] A0: start Google/Meta/Shopify app review + legal engagement (external clocks)
+- [ ] A1: in-house auth (extend `auth.ts`): signup/verify/login/refresh/reset + org→brand model
+- [ ] A2: OAuth connect (Google Ads/Meta/Shopify) via `CredentialVault`
+- [ ] A3: React/Next SPA, 9 screens wired to real endpoints + `GET /profit-readiness`
+
+**PUB-B — Lawful & trustworthy**
+- [ ] B1: in-house data deletion (cascade) + export (GDPR/DPDP)
+- [ ] B2: legal pages + acceptance log
+- [ ] B3: production ops (error tracking, metrics/alerts, CI/CD, backups, secrets, runbook)
+- [ ] B4: abuse controls (quotas, OBSERVE-by-default + new-account spend cap)
+- [ ] B5: atomic job claim (`FOR UPDATE SKIP LOCKED`) before multi-instance
+
+**PUB-C — Self-serve value + money**
+- [ ] C1: in-house COGS connectors (Zoho/QuickBooks/Xero on `tally_adapter` pattern) + readiness gate
+- [ ] C2: in-house billing state machine + day-15 suggest-an-amount + Razorpay/card rail
+
+*Exit: a stranger self-serves signup → connect → trustworthy POAS → healing cards
+→ day-15 names a price → activates. Then the deferred 3-brands validation runs as
+a soft-launch cohort.*
+
+---
+
 ## Critical Path & Dependencies
 
 ```
