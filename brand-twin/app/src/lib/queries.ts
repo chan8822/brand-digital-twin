@@ -4,8 +4,8 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch, USE_MOCK } from "./api";
-import { MOCK_RECOMMENDATIONS } from "./mock";
-import type { RecommendationCard } from "./types";
+import { MOCK_RECOMMENDATIONS, MOCK_SWEEP } from "./mock";
+import type { RecommendationCard, SweepFinding } from "./types";
 
 export function useRecommendations() {
   return useQuery({
@@ -20,6 +20,22 @@ export function useRecommendations() {
         "/api/v1/recommendations",
       );
       return data.recommendations;
+    },
+    staleTime: 60_000,
+  });
+}
+
+export function useSweep() {
+  return useQuery({
+    queryKey: ["sweep"],
+    queryFn: async (): Promise<SweepFinding[]> => {
+      if (USE_MOCK) {
+        await new Promise((r) => setTimeout(r, 350));
+        return MOCK_SWEEP;
+      }
+      // Needs `GET /api/v1/sweep` exposing the rich SweepFinding[] (see types.ts).
+      const data = await apiFetch<{ sweep: SweepFinding[] }>("/api/v1/sweep");
+      return data.sweep;
     },
     staleTime: 60_000,
   });

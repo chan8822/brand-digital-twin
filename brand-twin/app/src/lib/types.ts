@@ -72,6 +72,30 @@ export interface CampaignPoasReport {
   orders: number;
 }
 
+export type Severity = "CRITICAL" | "WARNING" | "OPPORTUNITY";
+
+/**
+ * Diagnostic sweep finding — the rich shape produced by the 5 scanners in
+ * risk_radar.ts (scanStockouts / scanROIEfficiency / scanConversionTracking /
+ * scanCheckoutEvents / scanBudgetCappedWinners), verified @ 44ca4ba.
+ *
+ * NOTE: this rich shape is produced internally but is NOT yet exposed by an
+ * endpoint — `/api/v1/risks` currently returns `string[]` (detectRisks). A
+ * `GET /api/v1/sweep → { sweep: SweepFinding[] }` endpoint is needed to wire
+ * this screen to live data (tracked in 00-REMAINING_WORK.md).
+ */
+export interface SweepFinding {
+  code: string;
+  severity: Severity;
+  check: string;
+  entityId: string | null;
+  title: string;
+  detail: string;
+  dollarImpact: number;
+  /** present when 1-tap fixable (ActionRequest in the engine) */
+  suggestedAction?: unknown;
+}
+
 /** Server success envelope (server.ts:119). */
 export interface ApiEnvelope<T> {
   status: "success";
