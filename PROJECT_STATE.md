@@ -57,24 +57,23 @@ barrier is effort + the psychological ask of admitting the old number flattered.
 ## Build state (verified against real code)
 
 **Real & working:** POAS truth engine · multi-tenant isolation (DB-enforced) ·
-governance + trust ledger · Shopify/Woo/Magento orders · Google Ads + Meta spend
-· real Google Ads write path · runway→spend throttle · MCC+GMC enumeration ·
-daily POAS scheduler · ROAS+POAS dual report · 5 semantic autonomy tiers + per-tier
-caps · idempotency store · settling-window verification ·
-healing engine `diagnoseRootCause()` + recommendation cards (spec-conformant:
-side split, dollar-weighted ranking, incrementality flag, `CampaignCostBreakdown`) ·
-**all 5 sweep checks** (`scanStockouts` · `scanConversionTracking` · `scanCheckoutEvents` ·
-`scanROIEfficiency` · `scanBudgetCappedWinners`, merged + sorted by severity→dollarImpact) ·
-**zero-order cold-start** (`getVariants()` catalog fallback, `MarginDiscoveryResult` union,
-`needs_cogs` route — all per `SWEEP_COLDSTART_SPEC` — landed `d7bb573`).
+governance + trust ledger · Shopify/Woo/Magento orders · Google Ads + Meta spend ·
+real Google Ads write path · runway→spend throttle · MCC+GMC enumeration ·
+ROAS+POAS dual report · 5 semantic autonomy tiers + per-tier caps · idempotency store ·
+healing engine `diagnoseRootCause()` + recommendation cards (side split,
+dollar-weighted ranking, incrementality flag, `CampaignCostBreakdown`, §7 cross-channel
+guards, §8 confidence gates) · all 5 sweep checks (sorted severity→dollarImpact) ·
+zero-order cold-start (`getVariants()` fallback, `MarginDiscoveryResult` union) ·
+**durable job queue** (`pending_jobs` table · `poas_daily` + `settling_window` job
+types · 5-min polling worker · `validateEnv()` startup guard · `.env.example`) ·
+**onboarding telemetry** (`onboarding_events` table · 7-stage instrumentation
+`goal_declared → first_action_taken`) — landed `53d7bc7`.
 
-**In flight:** nothing — Phase 1 build complete except bank connections.
-
-**Not yet verified against spec:** baseline-context cross-channel guards (§7 of
-HEALING_ENGINE_SPEC) and confidence/edge-case gates (§8) — confirm on next sync.
-
-**Hardening debt:** scheduler + settling window use in-process timers — move to
-durable queue/cron for production.
+**One conformance gap (non-blocking):** `getOverdueJobs` + `updateJobStatus` are two
+separate calls — not an atomic `UPDATE … RETURNING`. In mock mode this is fine;
+against real Postgres under concurrent workers a race can double-run a job. Needs
+a single RPC / CTE before running multiple worker processes. Single-process Phase 1
+is safe; flag before scaling to multi-instance.
 
 **Open (Phase 1 tail):** real bank connections (RBI AA / Plaid).
 
