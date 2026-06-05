@@ -70,6 +70,12 @@ from day 1**. They gate P4, not the build. Start them now.
 - **B3 — Production ops:**
   - [ ] Error tracking + metrics + alerting wired into `observability.ts`.
   - [ ] CI/CD pipeline; staging environment mirroring prod.
+  - [x] **CI typecheck/lint/build gate for `brand-twin/app`** (standalone, not in
+        the pnpm workspace — needs its own job). Started:
+        `.github/workflows/brand-twin-app-ci.yml` runs `npm ci` → typecheck →
+        lint → `next build` on any change under `brand-twin/app/`. This is the
+        durable, prod-mirroring answer to "does the UI compile" — not a one-off
+        install in an ephemeral container. The passing build feeds staging deploy.
   - [ ] DB backup + tested restore; migration runner with rollback.
   - [ ] Secret management out of env files (vault/KMS) in prod.
   - [ ] `incident_response.ts` fleshed out; on-call + support channel.
