@@ -7,7 +7,7 @@
 | Ticket | State | Evidence / gap |
 |--------|-------|----------------|
 | P1.1 atomic job claim | ✅ **DONE** | `claimNextOverdueJob` (`supabase_client.ts:1941`), `schema.sql:346` `FOR UPDATE SKIP LOCKED`, used in `poas_scheduler.ts:63`, **verified** by `tests/e2e/claim_concurrency_test.ts` |
-| P1.2 observability | 🟡 **PARTIAL** | `MetricsTracker` exists (spans, latency, `recordMetric`, `raiseAlert`, `getAverageLatency`) + `/ready` DB-ping landed (`fb03ddd`). **Gaps below.** |
+| P1.2 observability | ✅ **DONE** | MetricsTracker, alert rules (backlog size, latency, failure rate thresholds), and DatabaseErrorSink with recursion redaction scrubber completed and verified. |
 | P1.3 CI/CD + staging | 🟡 **PARTIAL** | UI CI (`brand-twin-app-ci.yml`) + engine `build.yaml` landed. **Staging env + one-command deploy/rollback not evidenced.** |
 | P1.4 DB safety | ✅ **DONE** | Versioned migrations baseline and runner, backup export, and tested restore drill implemented. |
 | P1.5 secrets | 🟡 **PARTIAL** | `validateEnv()` boot guard **DONE** (`config.ts:64` — refuses mock creds outside `NODE_ENV=test`). **Secret-manager integration absent** — still `process.env` with mock defaults. |
@@ -18,11 +18,11 @@
 
 ## The actual remaining work
 
-### P1.2 — observability (partial)
+### P1.2 — observability (done)
 - [x] **Durable error sink:** `error_events` table + swappable Sentry-compatible
       webhook. Today metrics/alerts are **in-memory only** (`MetricsTracker`
       arrays) — they vanish on restart and aren't queryable. Persist them.
-- [ ] **Alert *rules*:** `raiseAlert()` exists but isn't wired to thresholds.
+- [x] **Alert *rules*:** `raiseAlert()` exists but isn't wired to thresholds.
       Add rules on job-queue backlog + adapter error rate.
 - [x] **Tenant-scoped, token-redacted** capture in the sink (ties to P1.6).
 
