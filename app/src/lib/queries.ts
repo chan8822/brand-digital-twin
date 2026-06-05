@@ -2,10 +2,20 @@
  * TanStack Query hooks — one per major data surface. In MOCK mode (no
  * NEXT_PUBLIC_API_URL) they resolve from `mock.ts` so the UI renders standalone.
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, USE_MOCK } from "./api";
-import { MOCK_RECOMMENDATIONS, MOCK_SWEEP } from "./mock";
-import type { RecommendationCard, SweepFinding } from "./types";
+import {
+  MOCK_APPROVALS,
+  MOCK_RECOMMENDATIONS,
+  MOCK_SWEEP,
+  MOCK_TRUST_TIER,
+} from "./mock";
+import type {
+  ApprovalRequest,
+  RecommendationCard,
+  SemanticTrustTier,
+  SweepFinding,
+} from "./types";
 
 export function useRecommendations() {
   return useQuery({
@@ -36,6 +46,55 @@ export function useSweep() {
       // Needs `GET /api/v1/sweep` exposing the rich SweepFinding[] (see types.ts).
       const data = await apiFetch<{ sweep: SweepFinding[] }>("/api/v1/sweep");
       return data.sweep;
+    },
+    staleTime: 60_000,
+  });
+}
+
+export function useApprovals() {
+  return useQuery({
+    queryKey: ["approvals"],
+    queryFn: async (): Promise<ApprovalRequest[]> => {
+      if (USE_MOCK) {
+        await new Promise((r) => setTimeout(r, 350));
+        return MOCK_APPROVALS;
+      }
+      const data = await apiFetch<{ approvals: ApprovalRequest[] }>(
+        "/api/v1/approvals",
+      );
+      return data.approvals;
+    },
+    staleTime: 30_000,
+  });
+}
+
+export function useApprove() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (approvalId: string): Promise<void> => {
+      if (USE_MOCK) {
+        await new Promise((r) => setTimeout(r, 300));
+        return;
+      }
+      await apiFetch<unknown>(`/api/v1/approvals/${approvalId}/approve`, {
+        method: "POST",
+      });
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["approvals"] }),
+  });
+}
+
+export function useAutonomy() {
+  return useQuery({
+    queryKey: ["autonomy"],
+    queryFn: async (): Promise<SemanticTrustTier> => {
+      if (USE_MOCK) {
+        await new Promise((r) => setTimeout(r, 250));
+        return MOCK_TRUST_TIER;
+      }
+      // Needs `GET /api/v1/autonomy` exposing the current trust tier (see types.ts).
+      const data = await apiFetch<{ tier: SemanticTrustTier }>("/api/v1/autonomy");
+      return data.tier;
     },
     staleTime: 60_000,
   });
