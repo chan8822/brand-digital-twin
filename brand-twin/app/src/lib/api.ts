@@ -56,19 +56,31 @@ export function isAuthed(): boolean {
 }
 
 /**
+ * Fetch a short-lived, single-use auth ticket (A2.5). Used to authenticate the
+ * two flows that cannot carry an `Authorization: Bearer` header — the OAuth
+ * redirect (a top-level navigation) and the SSE stream (EventSource is GET-only
+ * and header-less). The Bearer-authed `fetch` exchanges the access token for a
+ * ~60s HMAC ticket bound to {userId, orgId}; the server verifies and burns it.
+ *
+ * Returns null in MOCK mode (no backend) so callers degrade gracefully.
+ */
+export async function getTicket(): Promise<string | null> {
+  if (USE_MOCK) return null;
+  const { ticket } = await apiFetch<{ ticket: string }>("/api/v1/auth/ticket");
+  return ticket;
+}
+
+/**
  * URL that kicks off the OAuth flow for a platform (A2 — `GET /connect/:platform`
  * 302-redirects to the provider's consent screen).
  *
- * INTEGRATION NOTE: this is a top-level browser navigation, which cannot carry
- * the `Authorization: Bearer` header. The engine's connect endpoint is
- * auth-gated, so production wiring needs one of: (a) a cookie/session for the
- * redirect, or (b) a short-lived signed token passed as a query param. Flagged
- * in the tracker — for now the helper appends the token as `?t=` so the demo
- * navigation is shaped correctly.
+ * This is a top-level browser navigation and cannot carry the `Authorization`
+ * header, so it authenticates with a single-use ticket (A2.5) appended as
+ * `?ticket=`. No long-lived token ever lands in a URL / log / referrer.
  */
-export function connectUrl(platform: string): string {
-  const token = getAccessToken();
-  const q = token ? `?t=${encodeURIComponent(token)}` : "";
+export async function connectUrl(platform: string): Promise<string> {
+  const ticket = await getTicket();
+  const q = ticket ? `?ticket=${encodeURIComponent(ticket)}` : "";
   return `${API_BASE}/api/v1/connect/${platform}${q}`;
 }
 

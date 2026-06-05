@@ -43,7 +43,7 @@ export function ConnectCard({
     (state?.settings?.shop as string) ||
     undefined;
 
-  function onConnect() {
+  async function onConnect() {
     if (USE_MOCK) {
       // No live engine in demo mode — show what would happen.
       alert(
@@ -51,7 +51,8 @@ export function ConnectCard({
       );
       return;
     }
-    window.location.href = connectUrl(connectKey);
+    // Fetch a single-use ticket (A2.5), then navigate to the consent screen.
+    window.location.href = await connectUrl(connectKey);
   }
 
   return (

@@ -6,13 +6,13 @@
  * without polling. Event types observed: 'connected', 'phase_update',
  * 'risk_alert', 'recommendation'.
  *
- * No-op in MOCK mode. NOTE: EventSource is GET-only and cannot send the
- * `Authorization` header — the live stream needs cookie/session or a token
- * query param (same constraint as the OAuth redirect, tracked as A2.5).
+ * No-op in MOCK mode. EventSource is GET-only and cannot send the
+ * `Authorization` header, so the stream authenticates with a single-use ticket
+ * (A2.5) appended as `?ticket=` — fetched via the Bearer-authed `getTicket()`.
  */
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { API_BASE, USE_MOCK } from "./api";
+import { API_BASE, USE_MOCK, getTicket } from "./api";
 
 const EVENT_TO_QUERY: Record<string, string[]> = {
   risk_alert: ["risks", "sweep"],
@@ -26,9 +26,20 @@ export function useStream() {
   useEffect(() => {
     if (USE_MOCK || typeof window === "undefined") return;
 
-    const es = new EventSource(`${API_BASE}/api/v1/stream`);
+    let es: EventSource | null = null;
+    let cancelled = false;
 
-    es.onmessage = (e) => {
+    // Exchange the access token for a single-use ticket, then open the stream.
+    void (async () => {
+      const ticket = await getTicket().catch(() => null);
+      if (cancelled) return;
+      const q = ticket ? `?ticket=${encodeURIComponent(ticket)}` : "";
+      es = new EventSource(`${API_BASE}/api/v1/stream${q}`);
+      wire(es);
+    })();
+
+    function wire(stream: EventSource) {
+      stream.onmessage = (e) => {
       try {
         const data = JSON.parse(e.data) as { type?: string };
         const keys = data.type ? EVENT_TO_QUERY[data.type] : undefined;
@@ -40,12 +51,16 @@ export function useStream() {
       } catch {
         // Ignore non-JSON keepalive frames.
       }
-    };
+      };
 
-    es.onerror = () => {
-      // Browser auto-reconnects; nothing to do.
-    };
+      stream.onerror = () => {
+        // Browser auto-reconnects; nothing to do.
+      };
+    }
 
-    return () => es.close();
+    return () => {
+      cancelled = true;
+      es?.close();
+    };
   }, [qc]);
 }
