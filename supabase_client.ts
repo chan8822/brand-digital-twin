@@ -493,6 +493,52 @@ export class SupabaseClient {
     GlobalMockDb.mockOrgMembers = [];
     GlobalMockDb.mockLegalAcceptances = [];
   }
+  
+  resetLocalMockDb() {
+    this.localMockDb = {
+      mockTrust: [],
+      mockAuditLogs: [],
+      mockLocks: [],
+      mockCredentials: [],
+      mockGovernanceEvents: [],
+      mockOrders: [],
+      mockOrderLines: [],
+      mockCampaigns: [],
+      mockSpendFacts: [],
+      mockCustomers: [],
+      mockIdentityLinks: [],
+      mockRefunds: [],
+      mockFulfillmentCosts: [],
+      mockTouchpoints: [],
+      mockTeamMembers: [],
+      mockClients: [],
+      mockCampaignBriefs: [],
+      mockApprovals: [],
+      mockActivityFeed: [],
+      mockClientPortals: [],
+      mockBrandSignals: [],
+      mockIntegrationStates: [],
+      mockSocialMentions: [],
+      mockCompetitorSignals: [],
+      mockFinancialTransactions: [],
+      mockCreativeAssets: [],
+      mockStakeholderAssociations: [],
+      mockBaselineContexts: [],
+      mockCategoryBenchmarks: [],
+      mockPlatformAccounts: [],
+      mockAccountLinks: [],
+      mockAccountCredentials: [],
+      mockProductAdLinks: [],
+      mockVariants: [],
+      mockPendingJobs: [],
+      mockOnboardingEvents: [],
+      mockUsers: [],
+      mockRefreshTokens: [],
+      mockOrgs: [],
+      mockOrgMembers: [],
+      mockLegalAcceptances: [],
+    };
+  }
 
   private get mockTrust(): TrustEntry[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockTrust : this.localMockDb.mockTrust; }
   private set mockTrust(v: TrustEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockTrust = v; else this.localMockDb.mockTrust = v; }
@@ -2127,6 +2173,12 @@ export class SupabaseClient {
     if (this.mockMode) {
       this.mockLegalAcceptances.push(entry);
       return;
+    }
+  }
+
+  async resetUserLegalConsents(userId: string): Promise<void> {
+    if (this.mockMode) {
+      this.mockLegalAcceptances = this.mockLegalAcceptances.filter((a) => a.user_id !== userId);
     }
   }
 
