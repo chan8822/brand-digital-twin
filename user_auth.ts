@@ -1,6 +1,7 @@
 import * as crypto from 'crypto';
+import {config} from './config';
 import {DecodedJwt, signJwt, verifyJwt} from './auth';
-import {SupabaseClient, UserEntry, RefreshTokenEntry, OrgEntry} from './supabase_client';
+import {SupabaseClient, UserEntry, RefreshTokenEntry, OrgEntry, LegalAcceptanceEntry} from './supabase_client';
 import {AuthError} from './errors';
 
 // Session config constants
@@ -58,7 +59,19 @@ export async function signup(
   password: string,
   orgName: string,
   secret: string,
+  policyAccepted?: boolean,
+  acceptedVersion?: string,
+  ipAddress?: string | null,
 ): Promise<{user: UserEntry; verificationToken: string}> {
+  if (config.legal.activeVersion) {
+    if (!policyAccepted) {
+      throw new AuthError('Terms and conditions must be accepted to register');
+    }
+    if (acceptedVersion !== config.legal.activeVersion) {
+      throw new AuthError(`You must accept the active terms version (${config.legal.activeVersion})`);
+    }
+  }
+
   const existing = await db.getUserByEmail(email);
   if (existing) {
     throw new AuthError('User already exists');
@@ -76,6 +89,17 @@ export async function signup(
   };
 
   await db.saveUser(user);
+
+  if (policyAccepted) {
+    const acceptance: LegalAcceptanceEntry = {
+      acceptance_id: `acpt_${crypto.randomUUID()}`,
+      user_id: userId,
+      doc_version: acceptedVersion || 'v1.0',
+      ip_address: ipAddress || null,
+      accepted_at: new Date().toISOString(),
+    };
+    await db.saveLegalAcceptance(acceptance);
+  }
 
   // Create organization
   const orgId = `org_${crypto.randomUUID()}`;

@@ -57,6 +57,12 @@ export class RateLimitError extends BaseError {
   }
 }
 
+export class PayloadTooLargeError extends BaseError {
+  constructor(message = 'Payload too large') {
+    super('PAYLOAD_TOO_LARGE', 413, message);
+  }
+}
+
 /**
  * Sends a structured JSON error response using native http ServerResponse.
  */

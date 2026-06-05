@@ -103,6 +103,24 @@ export class PoasScheduler {
 
           // Delete job upon success
           await this.db.deletePendingJob(job.job_id);
+        } else if (job.type === 'hard_delete_account') {
+          const payload = job.payload;
+          if (!payload || !payload.orgId || !payload.userId) {
+            throw new Error(`Job ${job.job_id} payload is missing orgId or userId`);
+          }
+
+          // 1. Hard delete all tenant data across all mock DB tables
+          await this.db.hardDeleteTenantData(payload.orgId);
+
+          // 2. Anonymize user details/actor tags in audit logs and governance events
+          await this.db.anonymizeLogs(payload.orgId);
+
+          // 3. Delete user logins, auth entries
+          await this.db.deleteUser(payload.userId);
+          await this.db.deleteOrg(payload.orgId);
+
+          // 4. Delete the job itself
+          await this.db.deletePendingJob(job.job_id);
         }
       } catch (err) {
         console.error(`Failed executing job ${job.job_id}:`, err);

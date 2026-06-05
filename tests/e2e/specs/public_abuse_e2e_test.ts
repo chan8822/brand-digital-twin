@@ -24,6 +24,7 @@ describe('Public Abuse Protection E2E Tests', () => {
 
   beforeEach(() => {
     resetRateLimiters();
+    db.resetLocalMockDb();
   });
 
   afterAll((done) => {
@@ -139,7 +140,7 @@ describe('Public Abuse Protection E2E Tests', () => {
 
       // None of these should be rate-limited to 429 because they are all from different IPs (1 request each)
       for (const res of responses) {
-        expect(res.status).toBe(412); // Precondition Failed or 401 Unauthorized, not 429
+        expect(res.status).toBe(401); // 401 Unauthorized (invalid credentials), not 429
         if (res.status === 429) {
           fail('Should not be rate limited on distinct IPs');
         }

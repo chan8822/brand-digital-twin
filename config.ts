@@ -8,6 +8,7 @@ export const config = {
   server: {
     port: Number(process.env['PORT'] || '3000'),
     env: process.env['NODE_ENV'] || 'development',
+    baseUrl: process.env['BASE_URL'] || 'http://localhost:3000',
   },
   auth: {
     jwtSecret: process.env['JWT_SECRET'] || 'default-super-secret-key-9988',
@@ -16,6 +17,9 @@ export const config = {
     url:
       process.env['SUPABASE_URL'] || 'https://mock-supabase.brandtwin.internal',
     key: process.env['SUPABASE_KEY'] || 'mock-secret-key-12345',
+  },
+  legal: {
+    activeVersion: process.env['LEGAL_ACTIVE_VERSION'] || '',
   },
   governance: {
     defaultDailyRiskCap: Number(

@@ -93,12 +93,18 @@ describe('Legal Consent E2E Tests', () => {
       const pw = 'Pw123!';
       const orgName = 'ConsentOrg';
 
-      let user = await db.getUserByEmail(email);
-      if (!user) {
-        const { verificationToken } = await signup(db, email, pw, orgName, jwtSecret, true);
-        await verifyEmail(db, verificationToken, jwtSecret);
-        user = await db.getUserByEmail(email);
+      const existingUser = await db.getUserByEmail(email);
+      if (existingUser) {
+        const orgs = await db.getUserOrgs(existingUser.user_id);
+        for (const o of orgs) {
+          await db.deleteOrg(o.org_id);
+          await db.hardDeleteTenantData(o.org_id);
+        }
+        await db.deleteUser(existingUser.user_id);
       }
+
+      const { user, verificationToken } = await signup(db, email, pw, orgName, jwtSecret, true);
+      await verifyEmail(db, verificationToken, jwtSecret);
 
       if (user) {
         // Reset legal history for user to ensure fresh consent checks

@@ -40,6 +40,9 @@ describe('Job Claiming E2E Tests', () => {
 
   interface JobClaimResponseBody {
     status?: string;
+    data?: {
+      status?: string;
+    };
     error?: string;
   }
 
@@ -106,7 +109,7 @@ describe('Job Claiming E2E Tests', () => {
       );
       expect(res.status).toBe(200);
       const body = res.body as JobClaimResponseBody;
-      expect(body.status).toBe('claimed');
+      expect(body.data?.status).toBe('claimed');
 
       // Verify status in DB
       const jobs = await db.getPendingJobs(tenantOrgId);
@@ -138,7 +141,7 @@ describe('Job Claiming E2E Tests', () => {
       );
       expect(res2.status).toBe(200);
       const body2 = res2.body as JobClaimResponseBody;
-      expect(body2.status).toBe('claimed');
+      expect(body2.data?.status).toBe('claimed');
 
       const jobs = await db.getPendingJobs(tenantOrgId);
       const job = jobs.find(j => j.job_id === jobId);
