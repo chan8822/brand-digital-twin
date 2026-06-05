@@ -70,10 +70,10 @@ Each phase ends at a usable milestone. The LP publishes at the end of Phase 2.
 - [x] ROAS + POAS dual display (the "two numbers / gap" hero) — *landed 0bb1824*
 - [x] 5-tier semantic naming + per-tier $ caps (OBSERVE→C_SUITE) — *landed 0bb1824*
 - [x] Daily POAS scheduler (per tenant) — *landed 0bb1824; harden: move off in-process setInterval*
-- [ ] Diagnostic sweep — 3 missing checks (conversion tracking, budget-capped winners, checkout events)
+- [ ] Diagnostic sweep — 3 missing checks (conversion tracking, budget-capped winners, checkout events) — *spec: `SWEEP_COLDSTART_SPEC.md` Part A*
 - [x] Idempotency store (replayed POST dedup) — *landed 0bb1824*
 - [x] Time-delayed verification (settling window) — *landed 0bb1824; harden: persist the pending verification job*
-- [ ] Zero-order cold-start path (catalog-cost when no order history)
+- [ ] Zero-order cold-start path (catalog-cost when no order history) — *spec: `SWEEP_COLDSTART_SPEC.md` Part B*
 - [ ] RBI AA real connection (India) · Plaid (global)
 
 *Section E remaining: 3 sweep checks · zero-order cold-start · real bank connections.*
