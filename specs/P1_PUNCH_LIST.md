@@ -10,8 +10,8 @@
 | P1.2 observability | ✅ **DONE** | MetricsTracker, alert rules (backlog size, latency, failure rate thresholds), and DatabaseErrorSink with recursion redaction scrubber completed and verified. |
 | P1.3 CI/CD + staging | 🟡 **PARTIAL** | UI CI (`brand-twin-app-ci.yml`) + engine `build.yaml` landed. **Staging env + one-command deploy/rollback not evidenced.** |
 | P1.4 DB safety | ✅ **DONE** | Versioned migrations baseline and runner, backup export, and tested restore drill implemented. |
-| P1.5 secrets | 🟡 **PARTIAL** | `validateEnv()` boot guard **DONE** (`config.ts:64` — refuses mock creds outside `NODE_ENV=test`). **Secret-manager integration absent** — still `process.env` with mock defaults. |
-| P1.6 security review | 🟡 **PARTIAL** | State-forgery (`oauth_flows_test`) + ticket replay/expiry (`server_test.ts:894–923`) tests green. **Dep-audit triage + token-leak log scan not tracked.** |
+| P1.5 secrets | ✅ **DONE** | SecretProvider interface, EnvSecretProvider, and ManagedSecretProvider (VaultClient) implemented and integrated into server boot validation. |
+| P1.6 security review | ✅ **DONE** | npm audit workflow step added, scrubber-based token-leak scan log redact checks, and cross-tenant OAuth callback callbackState validation implemented and verified. |
 | P1.7 load test | 🟡 **PARTIAL** | Job-claim concurrency test done. **Broader load (N-tenant sweep/healing, SSE fan-out) not done.** |
 
 ---
@@ -37,14 +37,14 @@
       recorded applied-version + rollback support.
 - [x] Automated backups + a **tested restore drill** on a throwaway DB.
 
-### P1.5 — secret manager
-- [ ] Move prod secrets off `process.env` defaults into a secret manager (vault/KMS).
+### P1.5 — secret manager (done)
+- [x] Move prod secrets off `process.env` defaults into a secret manager (vault/KMS).
       `validateEnv()` stays the boot guard (already correct). Local/test keep `.env`.
 
-### P1.6 — security review (finish)
-- [ ] Triage the `npm audit` advisories surfaced by CI (4 high / 1 moderate in the
+### P1.6 — security review (done)
+- [x] Triage the `npm audit` advisories surfaced by CI (4 high / 1 moderate in the
       client tree; `next` already on patched 14.2.35). Resolve or document each.
-- [ ] Token-leak scan across logs + the new `error_events` payloads.
+- [x] Token-leak scan across logs + the new `error_events` payloads.
 
 ### P1.7 — load test (the exit gate)
 - [ ] Extend the concurrency test into a real load run: N concurrent tenants on

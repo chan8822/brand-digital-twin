@@ -22,6 +22,10 @@ jobs:
         displayName: 'Install Dependencies'
 
       - script: |
+          npm audit --audit-level=high
+        displayName: 'Dependency Security Audit'
+
+      - script: |
           npm run lint
         displayName: 'Run Linter'
 
