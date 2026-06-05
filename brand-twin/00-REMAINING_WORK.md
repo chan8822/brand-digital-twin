@@ -72,9 +72,10 @@ COGS + billing. **A stranger still can't connect a platform or click anything.**
 | # | Item | Size | File(s) |
 |---|------|------|---------|
 | A3.1 | ◐ **PARTIAL** — runnable Next.js `app/` scaffold landed in Wellness-Foods (tokens, api/types/queries layer, providers, dashboard route). Auth-gated routing pending A1 UI | L | `app/` |
-| A3.2 | ◐ **IN PROGRESS** — built: POAS dashboard (`DualMetricCard`) + three-zone healing (`HealingCard`) + **live sweep** (`SweepFindingRow`, severity→dollar sort) + shared `Nav`, MOCK mode. ~6 screens + SSE client remain | XL | `app/` |
+| A3.2 | ◐ **IN PROGRESS** — built: POAS dashboard + three-zone healing + live sweep + **autonomy dial & approvals queue** + shared `Nav`, MOCK mode. ~5 screens (connect, readiness gauge, auth) + SSE remain | XL | `app/` |
 | A3.3 | ☐ `GET /api/v1/profit-readiness` endpoint + gauge | M | `server.ts`, `poas_calculator.ts` |
 | A3.4 | ☐ `GET /api/v1/sweep` endpoint — expose rich `SweepFinding[]` (today `/risks` returns only `string[]`); UI already built against it | S | `server.ts`, `risk_radar.ts` |
+| A3.5 | ☐ `GET/POST /api/v1/autonomy` — read/set current trust tier; UI dial already built against it (approvals already wired to live `/approvals`) | S | `server.ts`, `governance_engine.ts` |
 
 > **Phase A note:** the MCP agent layer (`a6ab7db`) already exposes engine tools
 > as JSON-RPC — A3.2 can call those instead of building all-new HTTP endpoints.

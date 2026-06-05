@@ -96,6 +96,51 @@ export interface SweepFinding {
   suggestedAction?: unknown;
 }
 
+/**
+ * Approval request — what's waiting on a human (governance escalation).
+ * Matches agency_os_types.ts `ApprovalRequest` @ 44ca4ba.
+ * GET /api/v1/approvals → { approvals: ApprovalRequest[] }
+ * POST /api/v1/approvals/:id/approve → resume execution
+ */
+export interface ApprovalRequest {
+  approvalId: string;
+  orgId: string;
+  entityType: string; // 'campaign' | 'budget_shift' | 'whatsapp_broadcast'
+  entityId: string;
+  requestedBy: string;
+  assignedTo: string;
+  status: "pending" | "approved" | "rejected";
+  reason?: string;
+  tenantId: string;
+  createdAt: number;
+  completedAt?: number;
+}
+
+/**
+ * Trust tiers (governance_types.ts). Ordered 0→4 with per-tier daily $ caps
+ * (governance_engine.ts). No read/write endpoint exists yet — a
+ * `GET/POST /api/v1/autonomy` is needed to wire the dial live (tracked).
+ */
+export type SemanticTrustTier =
+  | "OBSERVE"
+  | "REVIEW"
+  | "ASSISTED"
+  | "AUTONOMOUS"
+  | "C_SUITE";
+
+export const TRUST_TIERS: {
+  tier: SemanticTrustTier;
+  level: number;
+  cap: number;
+  blurb: string;
+}[] = [
+  { tier: "OBSERVE", level: 0, cap: 0, blurb: "Watches only — no actions taken." },
+  { tier: "REVIEW", level: 1, cap: 100, blurb: "Proposes; every action needs approval." },
+  { tier: "ASSISTED", level: 2, cap: 500, blurb: "Acts on small fixes; escalates the rest." },
+  { tier: "AUTONOMOUS", level: 3, cap: 2000, blurb: "Acts within daily cap; escalates outliers." },
+  { tier: "C_SUITE", level: 4, cap: 1_000_000, blurb: "Full autonomy within policy." },
+];
+
 /** Server success envelope (server.ts:119). */
 export interface ApiEnvelope<T> {
   status: "success";

@@ -40,6 +40,9 @@ cp .env.example .env.local
 | Healing screen | `src/app/healing/page.tsx` | actionable campaigns only, worst-first |
 | Sweep finding row | `src/components/SweepFindingRow.tsx` | severity-led, dollar-at-stake, 1-tap-fix chip |
 | Sweep screen | `src/app/sweep/page.tsx` | severity→dollar sort; needs `GET /api/v1/sweep` |
+| Autonomy dial | `src/components/AutonomyDial.tsx` | 5 trust tiers + daily caps, current highlighted |
+| Approval row | `src/components/ApprovalRow.tsx` | approve → `POST /approvals/:id/approve` |
+| Autonomy screen | `src/app/autonomy/page.tsx` | dial + approvals queue |
 | Nav | `src/components/Nav.tsx` | shared top nav across screens |
 
 ## Data contract
@@ -62,8 +65,8 @@ Per `A-PHASE_BUILD_SPEC.md §A3`, still to build on this scaffold:
 
 - [x] Three-zone healing cards (`/healing` — `HealingCard.tsx`, OS acts / you decide / ads can't fix)
 - [x] Live sweep (`/sweep` — `SweepFindingRow.tsx`, severity→dollar sort). **Needs `GET /api/v1/sweep`** to expose the rich `SweepFinding[]` (`/risks` only returns `string[]` today)
+- [x] Autonomy dial + approvals queue (`/autonomy` — `AutonomyDial.tsx` + `ApprovalRow.tsx`). Approvals read live `/approvals` + `/approvals/:id/approve`; dial **needs `GET/POST /api/v1/autonomy`**
 - [ ] Connect-your-stack (A2 OAuth buttons) — blocked on A2
-- [ ] Autonomy dial + approvals queue
 - [ ] Profit Readiness gauge (`GET /api/v1/profit-readiness` — endpoint TBD)
 - [ ] SSE client for `/api/v1/stream`
 - [ ] Auth screens (signup/login/verify) once A1 UI is wired

@@ -6,7 +6,12 @@
  * The campaigns are deliberately chosen to show the core story: high ROAS that
  * hides a thin or negative POAS — the gap the product exists to expose.
  */
-import type { RecommendationCard, SweepFinding } from "./types";
+import type {
+  ApprovalRequest,
+  RecommendationCard,
+  SemanticTrustTier,
+  SweepFinding,
+} from "./types";
 
 export const MOCK_RECOMMENDATIONS: RecommendationCard[] = [
   {
@@ -123,5 +128,37 @@ export const MOCK_SWEEP: SweepFinding[] = [
     title: "Retargeting is budget-capped at POAS 3.4×",
     detail: "Profitable campaign hitting its daily cap — headroom to scale spend.",
     dollarImpact: 4700,
+  },
+];
+
+/** Current trust tier (new public accounts start at OBSERVE). */
+export const MOCK_TRUST_TIER: SemanticTrustTier = "ASSISTED";
+
+/** Mock approvals queue — what's escalated to a human right now. */
+const now = Date.now();
+export const MOCK_APPROVALS: ApprovalRequest[] = [
+  {
+    approvalId: "apr-1001",
+    orgId: "org-demo",
+    entityType: "budget_shift",
+    entityId: "meta-022",
+    requestedBy: "RiskRadarAgent",
+    assignedTo: "cmo",
+    status: "pending",
+    reason: "Scale budget +$300/day on Retargeting (POAS 3.4×, budget-capped) — exceeds ASSISTED $500 cap.",
+    tenantId: "org-demo",
+    createdAt: now - 1000 * 60 * 22,
+  },
+  {
+    approvalId: "apr-1002",
+    orgId: "org-demo",
+    entityType: "campaign",
+    entityId: "g-ads-001",
+    requestedBy: "GovernanceShadowAgent",
+    assignedTo: "cmo",
+    status: "pending",
+    reason: "Pause Brand Defense (POAS 0.42×, structurally unprofitable) pending margin review.",
+    tenantId: "org-demo",
+    createdAt: now - 1000 * 60 * 60 * 3,
   },
 ];
