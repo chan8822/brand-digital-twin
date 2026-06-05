@@ -4,225 +4,229 @@
 
 ## HERO SECTION
 
-### Your Ad Platforms Are Lying to You. We Tell You the Truth.
+### Every Campaign Has Two Numbers. Most Businesses Only See One.
 
-Every ad platform is paid when you spend — so every dashboard shows you the
-number that keeps you spending. ROAS that ignores your costs. Attribution that
-double-counts every sale. Automation that scales you straight into negative
-margin.
+Your ad dashboards show revenue attributed to your campaigns.
+Brand Digital Twin shows what that revenue actually cost you to earn —
+and what's left after.
 
-Brand Digital Twin is the first system that treats advertising as part of your
-*business* — optimizing for real profit, real cash runway, and real inventory,
-not the vanity metrics the platforms feed you.
+Connect your platforms, your storefront, and your inventory.
+We'll show you which campaigns are growing your business and which ones
+just look like they are.
 
-One truth. Every platform. On your side.
+**15-day free trial. No credit card. No lock-in.**
 
-Start with a **15-day free trial**. No credit card. No configuration debt.
-
-**[ Show Me My Real Numbers ]**
+**[ See What Your Campaigns Actually Return ]**
 
 ---
 
-## WHY THIS EXISTS
+## THE GAP MOST BUSINESSES NEVER SEE
 
-### The advertising game is rigged — and everyone knows it but no one fixes it.
+You check your ROAS. It looks strong. Revenue is up.
 
-- **The platforms** profit when you spend, not when you profit. Their metrics
-  prove it.
-- **ROAS is a proxy lie** — it counts revenue, ignores COGS, fulfillment,
-  returns, and discounts. Attribution windows overlap, so Google, Meta, and
-  email all claim the *same* sale. Reported revenue routinely exceeds real
-  revenue 2–4x.
-- **The complexity is post-human.** 5 ad platforms, 3 storefronts, GA4, a CRM,
-  email, SMS — each with its own dashboard fighting the others. No one can hold
-  it in their head.
-- **The expertise doesn't exist in one person.** Great media buyers aren't
-  accountants. Great CFOs don't know match types. Specialists optimize their
-  corner and miss the whole.
-- **Automation is misaligned.** Smart Bidding doesn't know your margin, your
-  stock, or your runway. It scales spend into the ground if conversions hold.
+But at the end of the month, the margin isn't there.
 
-We built Brand Digital Twin to end this — to make advertising a game where the
-founder, the agency, the platform, *and* the customer all win at once.
+It rarely is a single cause. It's usually a combination:
+a high-performing campaign driving traffic to an out-of-stock product,
+a fulfilment cost that wasn't factored in, a refund rate that spiked quietly,
+an attribution window that counted the same sale three times across three platforms.
+
+None of your dashboards showed you any of it — because none of them were built to.
+
+Brand Digital Twin is built to show you the whole picture:
+**what you spent, what it earned, what it cost, and what's left.**
 
 ---
 
-## VALUE PROP 1: PROFIT OVER VANITY
+## HOW IT WORKS
 
-### Stop Optimizing ROAS. Start Optimizing Profit.
+### 1. Connect your stack
 
-ROAS is a lie. A 4x ROAS campaign can destroy margin if COGS and fulfillment costs eat the profit.
+Link your ad accounts, storefront, and analytics in a few clicks.
+Google Ads MCC, Meta, Merchant Center, Shopify, WooCommerce, GA4 — connect once
+and every sub-account, product, and campaign comes through automatically.
 
-Brand Digital Twin computes true **POAS** (Profit on Ad Spend) — accounting for:
+### 2. We run a full diagnostic across everything you connected
 
-- Actual COGS from your inventory system
-- Prorated fulfillment costs per order line
-- Refunds and chargebacks
-- Last-touch attribution to the campaign that earned it
+Within minutes of your first connection, the OS sweeps across your entire stack
+and surfaces what needs attention — campaigns running to low-stock products,
+spend with no conversion tracking, budget capped on your most efficient
+campaigns, checkout events that aren't firing.
 
-One true number. Your real profit per campaign. Every day.
+Not a report. A prioritised action list.
 
-**Result:** Brands cut unprofitable spend and find hidden growth they didn't know existed.
+### 3. See your actual return on ad spend
 
----
+Brand Digital Twin computes **POAS — Profit on Ad Spend** — factoring in your
+real costs: COGS, fulfilment, discounts, refunds, and last-touch attribution to
+the campaign that earned the order.
 
-## VALUE PROP 2: SAFE AUTONOMY VIA EARNED TRUST
+Your ROAS is 4.2x. Your POAS is 0.8x.
+That's not a judgment — it's just what the numbers say when you look at all of them.
 
-### Start in Shadow Mode. Earn Autonomy.
+### 4. Take action — at your own pace
 
-You're not handing over the keys on day one.
+The OS recommends. You decide how much it can act on its own.
 
-Every action the system proposes is logged. Every recommendation is visible. As it proves itself over days and weeks, it earns higher autonomy:
-
-| Tier | Name | What it does |
-|------|------|--------------|
-| 0 | Observe | Recommendations only. You approve everything. |
-| 1 | Suggest | Small budget shifts (<$100) auto-execute if confident. |
-| 2 | Optimize | Moderate changes up to $500 auto-execute. |
-| 3 | Lead | Larger campaigns execute autonomously within daily caps. |
-| 4 | Mastery | Full autonomy on proven winners. |
-
-Revert instantly. Circuit breakers trip on anomalies. Trust is earned, not assumed.
-
-**Result:** Media buyers go from firefighting to strategy. Brands sleep easier.
+Start with full visibility and manual approval. As recommendations prove
+themselves accurate, allow the system to handle smaller changes automatically —
+budget shifts, pause decisions, bid adjustments — within limits you set.
+Undo anything, any time.
 
 ---
 
-## VALUE PROP 3: INVENTORY-AWARE SPEND
+## WHAT IT WATCHES, SO YOU DON'T HAVE TO
 
-### Your Ad Spend Respects Your Stock.
+**Campaign profitability, not just performance**
+Every campaign measured against real margin, updated daily. The ones that look
+good but aren't earning their keep become obvious.
 
-Running ads to 3 units left? Brand Digital Twin watches inventory in real-time and pauses ad spend automatically when stock goes critical.
+**Inventory and spend in the same view**
+When stock on a promoted product drops below your threshold, spend pauses
+automatically. No more budget going to pages that can't convert.
 
-No more: *"We blew $5K on traffic to an out-of-stock page."*
+**Cash runway, connected to your ad budget**
+The OS can see your current burn rate against your bank balance. If spend is
+accelerating faster than revenue supports, it flags it — or adjusts, if you've
+asked it to.
 
-Connected to Shopify, WooCommerce, Magento, or any custom storefront. Real-time syncing.
-
-**Result:** Every ad dollar goes to product that can actually ship.
-
----
-
-## VALUE PROP 4: CASH RUNWAY PROTECTION
-
-### Know When You're Burning Too Hot.
-
-Brand Digital Twin connects your bank account and predicts your cash runway based on current burn rate and ad spend.
-
-If you're burning hot, it doesn't just warn you — it automatically throttles spend to keep you alive until the next revenue inflection.
-
-Especially critical for bootstrap brands who live month-to-month.
-
-**Result:** No more panic at 3am wondering if payroll clears.
+**Your whole platform stack, as one system**
+Each platform's data, attribution, and metrics interpreted together rather than
+in separate dashboards that don't agree with each other.
 
 ---
 
-## VALUE PROP 5: ONE DASHBOARD, ALL PLATFORMS
+## BUILT FOR EVERY STAGE
 
-### Google Ads MCC? Multi-client Merchant Center? 50 Shopify stores?
+**Just starting out?**
+No ad history, no data yet — the OS still has you. Connect your storefront and
+we'll show you which products have the margin to support paid acquisition, and
+what your first campaigns should look like based on real unit economics, not
+guesswork.
 
-Connect once. See everything.
+**Running and scaling?**
+Find the spend that's working against you. See which campaigns have room to
+scale and which ones are already past the point of diminishing return.
 
-Link your Google Ads manager account and we recursively fetch every sub-account. Link your Merchant Center and we enumerate every merchant. Link Shopify and we find all your stores.
-
-Everything cross-referenced. Per-brand POAS. Per-brand alerts. One place to lead.
-
-**For agencies:** Finally, a single pane of glass that treats client accounts as truly separate entities, not blended metrics.
-
-**Result:** Agencies manage 100 brands from one OS. Brands manage all channels in one place.
+**Managing multiple brands or clients?**
+Each brand is fully separate — its own data, its own performance baseline, its
+own action thresholds. A portfolio view sits above it, but nothing bleeds across.
+One place to see everything; no client ever sees another's numbers.
 
 ---
 
 ## SOCIAL PROOF
 *(placeholder — replace with real numbers from beta)*
 
-> "We recovered $18K in margin in the first month just by pausing campaigns that were losing money on a POAS basis." — *Beta Brand, DTC Apparel*
+> "The first thing we saw was that one of our top-spend campaigns was running
+> to three products that were already out of stock. We'd never caught that
+> before — it just didn't show up anywhere we were looking."
+> — *Beta Brand, DTC Apparel*
 
 ---
 
-## CTA SECTION 1: FREE TRIAL
+## START FREE — 15 DAYS, EVERYTHING INCLUDED
 
-### Start Your 15-Day Free Trial
+No credit card. No payment method on file. Full access from day one.
 
-No credit card required. No payment method on file. Full access to all features.
+From the moment you connect your first platform, you'll see:
+- Actual margin per campaign, not reported ROAS
+- A live diagnostic of what's costing you without your knowing
+- Inventory and spend linked in real time
+- Cash runway relative to current ad burn
+- Recommendations you can approve, or let run, entirely on your terms
 
-**What you'll get:**
-- ✓ Real-time POAS analysis across all your campaigns
-- ✓ Live stockout alerts and inventory sync
-- ✓ Trust ledger and shadow-mode recommendations
-- ✓ Cash runway forecasting
-- ✓ Multi-account setup (Google Ads MCC, GMC, Shopify)
+**[ Start Your 15-Day Free Trial ]**
 
-**[ Start Free Trial ]**
-
-Questions? Chat with us — we're live on Discord.
+Questions before you start? We're available on Discord.
 
 ---
 
 ## PRICING
 
-### Simple. Fair. You Decide.
+### You decide what it's worth.
 
-No forced plans. No annual lock-in. After your 15-day trial, choose what fits.
+After your trial, there's no system forcing you into a plan.
+We'll share what brands at similar spend levels typically find reasonable —
+and you tell us what feels right for your business.
 
-| Plan | Who it's for | Soft anchor |
-|------|-------------|-------------|
-| **Solo Brand** | 1 brand, up to $50K/month ad spend | ~$299/month |
-| **Growth Brand** | Up to 5 brands, up to $250K/month spend | ~$799/month |
-| **Agency** | Unlimited brands, MCC + white-label reporting | ~$2,500/month |
+| Plan | Best for | Reference range |
+|------|----------|-----------------|
+| **Solo Brand** | One brand · up to $50K/month ad spend | ~$299/month |
+| **Growth Brand** | Up to 5 brands · up to $250K/month spend | ~$799/month |
+| **Agency** | Unlimited brands · MCC + white-label | ~$2,500/month |
 
-**At $50K/month spend, a single unprofitable campaign pause typically saves $500–2,000/month. The tool pays for itself in week one.**
+At $50K/month in ad spend, catching a single inefficient campaign typically
+recovers $500–2,000/month. For most brands, the OS pays for itself in the
+first week of the trial.
 
 ---
 
-## TRIAL CONVERSION: SUGGEST AN AMOUNT
+## WHEN YOUR TRIAL ENDS
 
-### When Your Trial Ends, You Name the Price
+### A conversation, not a paywall.
 
-These are anchors, not invoices. When your 15-day trial ends, **you** suggest the amount that feels fair for your business.
+On day 15 you'll see a simple screen: *what would you pay for this?*
 
-> *"Most brands at your spend level find $299–$799/month fair. What works for you?"*
+Tell us a number. Tell us why. We'll respond within a day.
 
-- Solo founders paying $149. Agencies paying $3,000. All welcome.
-- No hard limits enforced until we've talked.
-- Account stays live while we work it out.
+Some solo founders land at $149. Some agencies at $3,000.
+Your account stays live while we work it out — no cutoff, no credit card hold.
 
-Why? Because we'd rather have one honest conversation than a pricing page designed to trick you into a tier you don't need.
+We'd rather start from what's genuinely fair to you than hand you a pricing
+tier designed to extract the maximum we can get away with.
 
 ---
 
 ## FINAL CTA
 
-### Join the 15-Day Free Trial
+### See your actual numbers. Start free.
 
-Start seeing true profit metrics. Start trusting automation. Stop bleeding margin.
+Connect your platforms. Run the diagnostic. Find out what your campaigns
+are really returning.
 
-**[ Free Trial — No CC Required ]**
+**[ Free 15-Day Trial — No Card Required ]**
 
 ---
 
-## NOTES FOR DESIGN/DEV
+## NOTES FOR DESIGN / DEV
 
 ### Visual direction
-- **Hero:** Side-by-side comparison — ROAS view (4.2x, looks great) vs. POAS view (0.8x, reveals the truth)
-- **Trust ledger:** Simple 0–4 tier diagram, animated progression
-- **Account linking flow:** Screenshot of MCC picker → GMC picker → Shopify multi-store selector
-- **POAS calculator demo:** Interactive widget — enter ROAS, COGS %, fulfillment cost → outputs real POAS
-- **Dashboard mockup:** POAS card, cash runway gauge, stockout alerts, trust tier badge
-- **Sticky CTA:** Trial button persistent in header and floating footer
+- **Hero:** Dual metric card — same campaign, ROAS (4.2x) beside POAS (0.8x).
+  No commentary needed; the gap speaks.
+- **Diagnostic sweep:** Animated live-scan UI — items resolve as flags or clears.
+  Feels like a health check, not a report.
+- **Autonomy dial:** Simple 0–4 slider visual. User sees exactly how much the
+  OS can act without asking.
+- **Inventory + spend link:** Split view — stock level (left), active spend
+  (right), connected by a live line that turns amber/red as stock drops.
+- **Dashboard mockup:** POAS card (hero), cash runway gauge, stockout alerts,
+  autonomy tier badge.
+- **Sticky CTA:** Trial button in header and floating footer at all times.
+
+### Tone guidelines (updated)
+- BAU language — sound like a CFO and a great operator in the same sentence,
+  not a fintech manifesto
+- Let the gap surface through the user's recognition, not our proclamation
+- "See what your campaigns actually return" not "we tell you the truth"
+- Describe the problem in terms the reader has already lived
+- Subliminal confidence: the OS knows things your current stack doesn't —
+  never needs to say it loudly
 
 ### Conversion flow (end of trial)
-1. Day 14: In-app nudge — "Your trial ends tomorrow"
-2. Day 15: "Suggest your price" modal — amount field, currency, optional note
-3. Async review — team reaches out within 24h to confirm or negotiate
-4. Activation — account stays live while negotiating
-
-### Tone guidelines
-- Direct, honest, slightly irreverent — not corporate-speak
-- "ROAS is a lie" not "ROAS has limitations"
-- "Stop bleeding margin" not "optimize profitability"
-- "Media buyers go from firefighting to strategy" — emotional win, not feature list
+1. Day 14 — in-app nudge: "Your trial ends tomorrow. Here's what we found."
+   (Summary of top findings from their diagnostic — reminds them of the value.)
+2. Day 15 — "What would you pay?" screen. Amount field, optional note, submit.
+3. Response within 24h. Account stays live during the conversation.
+4. Activation on agreement.
 
 ### Target audience
-- Founders / brand owners ($1M–$10M revenue DTC brands)
-- Performance marketing agencies managing 10–100 sub-accounts
-- Media buyers skeptical of automation but desperate for margin visibility
+- Founders / brand owners running $10K–$500K/month in ad spend
+- In-house performance marketers who know the dashboards don't agree
+- Agencies that want to move from reporting to advising
+- Any business where margin matters more than gross revenue
+
+### Goal-first onboarding note
+First screen after signup asks primary goal (Sales / Lead Gen / Awareness /
+Organic) + optional secondary. Integration stack, diagnostic sweep criteria,
+and primary metric all adapt to the goal declared. See `USER_JOURNEYS.md`.
