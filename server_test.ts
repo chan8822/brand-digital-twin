@@ -810,6 +810,83 @@ describe('Native HTTP & SSE Server Integration Test', () => {
       });
       expect(res.error).toBeDefined();
     });
+
+    describe('API Wiring and Launch Gaps', () => {
+      it('should retrieve integration states for tenant', async () => {
+        const res = await getJson('/api/v1/integrations');
+        expect(res.status).toBe('success');
+        expect(res.data.integrations).toBeDefined();
+        expect(Array.isArray(res.data.integrations)).toBe(true);
+      });
+
+      it('should redirect to Google OAuth consent screen when redirect token is valid', async () => {
+        const res = await requestRaw(
+          `/api/v1/connect/google?t=${encodeURIComponent(testToken)}`,
+          'GET',
+        );
+        expect(res.statusCode).toBe(302);
+        expect(res.headers.location).toContain('accounts.google.com');
+      });
+
+      it('should fail OAuth connect redirection with 401 when t token is invalid', async () => {
+        const res = await requestRaw('/api/v1/connect/google?t=invalid-token', 'GET');
+        expect(res.statusCode).toBe(401);
+      });
+
+      it('should run diagnostic sweep and return rich findings', async () => {
+        const res = await getJson('/api/v1/sweep');
+        expect(res.status).toBe('success');
+        expect(res.data.sweep).toBeDefined();
+        expect(Array.isArray(res.data.sweep)).toBe(true);
+      });
+
+      it('should get and set autonomy trust tier settings correctly', async () => {
+        // GET should return default OBSERVE
+        const getRes = await getJson('/api/v1/autonomy');
+        expect(getRes.status).toBe('success');
+        expect(getRes.data.tier).toBe('OBSERVE');
+
+        // POST should update tier successfully as admin
+        const adminToken = signJwt(
+          {
+            userId: 'admin-user',
+            orgId: 'test-tenant',
+            role: 'admin',
+            exp: Math.floor(Date.now() / 1000) + 3600,
+          },
+          config.auth.jwtSecret,
+        );
+        const setRes = await postJson(
+          '/api/v1/autonomy',
+          { tier: 'AUTONOMOUS' },
+          { Authorization: `Bearer ${adminToken}` },
+        );
+        expect(setRes.status).toBe('success');
+        expect(setRes.data.tier).toBe('AUTONOMOUS');
+
+        // Verify updated tier with GET
+        const verifyRes = await getJson('/api/v1/autonomy');
+        expect(verifyRes.data.tier).toBe('AUTONOMOUS');
+
+        // Non-admin POST to elevate autonomy to C_SUITE should return 403
+        const userToken = signJwt(
+          {
+            userId: 'user-user',
+            orgId: 'test-tenant',
+            role: 'user',
+            exp: Math.floor(Date.now() / 1000) + 3600,
+          },
+          config.auth.jwtSecret,
+        );
+        const forbiddenRes = await postJson(
+          '/api/v1/autonomy',
+          { tier: 'C_SUITE' },
+          { Authorization: `Bearer ${userToken}` },
+        );
+        expect(forbiddenRes.error).toBeDefined();
+        expect(forbiddenRes.error.code).toBe('FORBIDDEN');
+      });
+    });
   });
 });
 

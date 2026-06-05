@@ -14,6 +14,7 @@ import {GoogleAdsAdapter} from './google_ads_adapter';
 import {authMiddleware, DecodedJwt, signJwt, verifyJwt, signOauthState, verifyOauthState} from './auth';
 import {generateAuthUrl, handleOauthCallback} from './oauth_flows';
 import {ProfitReadinessCalculator} from './profit_readiness';
+import {PoasCalculator} from './poas_calculator';
 import {validateActionRequest, validateContext} from './validation';
 import {TokenBucket, RateLimitingAdapterWrapper} from './rate_limiter';
 import {
@@ -21,6 +22,7 @@ import {
   GovernanceEngine,
   TrustLedger,
   Waiver,
+  Context,
 } from './governance_engine';
 import {SupabaseClient, OrgEntry, PendingJobEntry, LegalAcceptanceEntry} from './supabase_client';
 import {signup, verifyEmail, login, rotateRefreshToken, requestPasswordReset, confirmPasswordReset} from './user_auth';
@@ -28,6 +30,8 @@ import * as crypto from 'crypto';
 import {UnifiedIntelligenceBrain} from './unified_brain';
 import {IdentityResolver} from './identity_resolver';
 import {PersistentAuditSink} from './audit_sink';
+import {RiskRadar} from './risk_radar';
+import {SweepFinding} from './healing_types';
 
 const sha256 = (s: string) =>
   createHash('sha256').update(s.trim().toLowerCase()).digest('hex');
@@ -526,6 +530,53 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
           );
         }
         return;
+      }      // Initiate OAuth connection for a platform (auth-gated, supports parameter token)
+      const connectMatch = path.match(/^\/api\/v1\/connect\/([^/]+)$/);
+      if (connectMatch && req.method === 'GET') {
+        const platform = connectMatch[1];
+        const tokenQuery = parsedUrl.query['t'] as string;
+        const shop = parsedUrl.query['shop'] as string;
+
+        let decoded: DecodedJwt;
+        try {
+          if (tokenQuery) {
+            decoded = verifyJwt(tokenQuery, config.auth.jwtSecret);
+          } else {
+            decoded = authMiddleware(req, config.auth.jwtSecret);
+          }
+        } catch (authErr: any) {
+          res.writeHead(401, {'Content-Type': 'application/json'});
+          res.end(
+            JSON.stringify({
+              status: 'error',
+              error: {
+                code: 'UNAUTHORIZED',
+                message: authErr.message || 'Unauthorized Connect Request',
+              },
+            }),
+          );
+          return;
+        }
+
+        try {
+          const state = signOauthState(decoded.orgId, decoded.userId, platform, config.auth.jwtSecret);
+          const authUrl = generateAuthUrl(platform, state, shop);
+
+          res.writeHead(302, {'Location': authUrl});
+          res.end();
+        } catch (err: any) {
+          res.writeHead(400, {'Content-Type': 'application/json'});
+          res.end(
+            JSON.stringify({
+              status: 'error',
+              error: {
+                code: 'OAUTH_INITIATION_FAILED',
+                message: err.message || String(err),
+              },
+            }),
+          );
+        }
+        return;
       }
 
       // Centralized Authentication for all v1 API endpoints
@@ -679,33 +730,6 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
         return;
       }
 
-      // Initiate OAuth connection for a platform (auth-gated)
-      const connectMatch = path.match(/^\/api\/v1\/connect\/([^/]+)$/);
-      if (connectMatch && req.method === 'GET') {
-        const platform = connectMatch[1];
-        const shop = parsedUrl.query['shop'] as string;
-
-        try {
-          const state = signOauthState(tenantId, decodedToken.userId, platform, config.auth.jwtSecret);
-          const authUrl = generateAuthUrl(platform, state, shop);
-
-          // Redirect user to OAuth consent screen
-          res.writeHead(302, {'Location': authUrl});
-          res.end();
-        } catch (err: any) {
-          res.writeHead(400, {'Content-Type': 'application/json'});
-          res.end(
-            JSON.stringify({
-              status: 'error',
-              error: {
-                code: 'OAUTH_INITIATION_FAILED',
-                message: err.message || String(err),
-              },
-            }),
-          );
-        }
-        return;
-      }
 
       // 1.8 GET /api/v1/profit-readiness (Retrieve current tenant profit readiness score)
       if (path === '/api/v1/profit-readiness' && req.method === 'GET') {
@@ -938,10 +962,157 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
         return;
       }
 
+      // 4.5 DIAGNOSTIC SWEEP (GET)
+      if (path === '/api/v1/sweep' && req.method === 'GET') {
+        const requestDb = db.clone();
+        requestDb.setTenantContext(tenantId);
+
+        // Reconstruct governance engine and platform adapters
+        const rawAdapter = new GoogleAdsAdapter(
+          'mock-cust-id',
+          'mock-dev-token',
+          'mock-token',
+          tenantId,
+        );
+        const adapter = new RateLimitingAdapterWrapper(
+          rawAdapter,
+          googleAdsLimiter,
+        );
+
+        const requestGovernance = new GovernanceEngine(
+          new PersistentAuditSink(requestDb),
+          tl,
+          cb,
+          undefined,
+          undefined,
+          requestDb,
+        );
+
+        // Initialize RiskRadar with raw (unwrapped) GoogleAdsAdapter
+        const radar = new RiskRadar(requestGovernance, rawAdapter, requestDb, tenantId);
+
+        // Seed default variant inventory corresponding to mock campaigns
+        const campaigns = await requestDb.getCampaigns(tenantId);
+        for (const c of campaigns) {
+          radar.seedInventory({
+            variantId: `var_${c.campaign_id}`,
+            sku: `SKU-${c.campaign_id.toUpperCase()}`,
+            qty: 15, // healthy base qty
+            promotedCampaignIds: [c.campaign_id],
+          });
+        }
+
+        const ctx: Context = {
+          role: {
+            name: decodedToken.role,
+            permits: () => true,
+          },
+          tenant: {
+            tenantId,
+            policy: {
+              maxDailyDollarsRisk: 1000,
+              maxBudgetMovePct: 0.20,
+              minConfidence: 0.85,
+              escalationRole: 'cmo',
+            },
+          },
+          verifyWindowMs: 0,
+        };
+
+        // Instantiate inline mock BankAdapter for runway alerts fallback
+        const mockBank = {
+          platform: 'mock_bank',
+          schemaVersion: '1.0',
+          getConsentedBalances: async () => [],
+          calculateRunwayMonths: async (monthlyBurn: number) => 1.5, // 1.5 months trigger alert
+        };
+
+        // Retrieve POAS reports for winners check
+        const poasCalc = new PoasCalculator(requestDb);
+        const poasReports = await poasCalc.calculate(tenantId).catch(() => []);
+
+        // Run scans concurrently
+        const [
+          stockouts,
+          roi,
+          runway,
+          conv,
+          winners,
+          checkout,
+        ] = await Promise.all([
+          radar.scanStockouts(ctx),
+          radar.scanROIEfficiency(ctx),
+          radar.scanFinancialRunway(ctx, mockBank, 500000).catch(() => []),
+          radar.scanConversionTracking(ctx),
+          radar.scanBudgetCappedWinners(ctx, poasReports),
+          radar.scanCheckoutEvents(ctx),
+        ]);
+
+        const sweep: SweepFinding[] = [
+          ...stockouts,
+          ...roi,
+          ...runway,
+          ...conv,
+          ...winners,
+          ...checkout,
+        ];
+
+        sendSuccessResponse(res, {sweep});
+        return;
+      }
+
       // 5. APPROVALS
       if (path === '/api/v1/approvals' && req.method === 'GET') {
         const approvals = await db.getApprovals(tenantId);
         sendSuccessResponse(res, {approvals});
+        return;
+      }
+
+      // 5.2 INTEGRATIONS LIST (GET)
+      if (path === '/api/v1/integrations' && req.method === 'GET') {
+        const integrations = await db.getIntegrationStates(tenantId);
+        sendSuccessResponse(res, {integrations});
+        return;
+      }
+
+      // 5.3 GET AUTONOMY TIER (GET)
+      if (path === '/api/v1/autonomy' && req.method === 'GET') {
+        const trustVal = await db.getTrustTier(tenantId, 'global');
+        const validTiers = ['OBSERVE', 'REVIEW', 'ASSISTED', 'AUTONOMOUS', 'C_SUITE'];
+        const tier = trustVal !== null && trustVal >= 0 && trustVal < 5 ? validTiers[trustVal] : 'OBSERVE';
+        sendSuccessResponse(res, {tier});
+        return;
+      }
+
+      // 5.4 SET AUTONOMY TIER (POST)
+      if (path === '/api/v1/autonomy' && req.method === 'POST') {
+        const body = await parseRequestBody(req);
+        const {tier} = body;
+        
+        const validTiers = ['OBSERVE', 'REVIEW', 'ASSISTED', 'AUTONOMOUS', 'C_SUITE'];
+        if (!tier || !validTiers.includes(tier)) {
+          throw new ValidationError(`Invalid semantic trust tier: ${tier}`);
+        }
+
+        // Only admins can elevate autonomy to AUTONOMOUS or C_SUITE
+        if (decodedToken.role !== 'admin' && (tier === 'AUTONOMOUS' || tier === 'C_SUITE')) {
+          res.writeHead(403, {'Content-Type': 'application/json'});
+          res.end(
+            JSON.stringify({
+              status: 'error',
+              error: {
+                code: 'FORBIDDEN',
+                message: 'Only administrators can elevate autonomy to high tiers.',
+              },
+            }),
+          );
+          return;
+        }
+
+        const tierNum = validTiers.indexOf(tier);
+        await db.saveTrustTier(tenantId, 'global', tierNum);
+
+        sendSuccessResponse(res, {status: 'success', tier});
         return;
       }
 
