@@ -36,6 +36,9 @@ cp .env.example .env.local
 | Query hooks | `src/lib/queries.ts` | TanStack Query; MOCK-aware |
 | Dual-metric hero | `src/components/DualMetricCard.tsx` | ROAS vs POAS, dollar-drag callout, count-up, estimated-COGS chip |
 | Dashboard | `src/app/dashboard/page.tsx` | sorts worst-first by `dollarDrag` |
+| Three-zone healing card | `src/components/HealingCard.tsx` | OS acts / you decide / ads can't fix, with dollar-recovery + caveat |
+| Healing screen | `src/app/healing/page.tsx` | actionable campaigns only, worst-first |
+| Nav | `src/components/Nav.tsx` | shared top nav across screens |
 
 ## Data contract
 
@@ -55,9 +58,9 @@ prescriptions (`osActs` / `userApproves` / `adsCantFix`), `confidence`, and a
 
 Per `A-PHASE_BUILD_SPEC.md §A3`, still to build on this scaffold:
 
+- [x] Three-zone healing cards (`/healing` — `HealingCard.tsx`, OS acts / you decide / ads can't fix)
 - [ ] Connect-your-stack (A2 OAuth buttons) — blocked on A2
 - [ ] Live sweep (`GET /api/v1/risks`)
-- [ ] Three-zone healing cards (reuse `RecommendationCard.osActs/userApproves/adsCantFix`)
 - [ ] Autonomy dial + approvals queue
 - [ ] Profit Readiness gauge (`GET /api/v1/profit-readiness` — endpoint TBD)
 - [ ] SSE client for `/api/v1/stream`

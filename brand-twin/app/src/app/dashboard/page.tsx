@@ -8,6 +8,7 @@
 import { useMemo } from "react";
 import { useRecommendations } from "@/lib/queries";
 import { DualMetricCard } from "@/components/DualMetricCard";
+import { Nav } from "@/components/Nav";
 import { USE_MOCK } from "@/lib/api";
 
 export default function DashboardPage() {
@@ -24,7 +25,9 @@ export default function DashboardPage() {
   );
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-10">
+    <>
+      <Nav />
+      <main className="mx-auto max-w-5xl px-6 py-10">
       <header className="mb-8 flex items-end justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Profit on Ad Spend</h1>
@@ -70,7 +73,8 @@ export default function DashboardPage() {
           <DualMetricCard key={card.campaignId} card={card} />
         ))}
       </div>
-    </main>
+      </main>
+    </>
   );
 }
 
