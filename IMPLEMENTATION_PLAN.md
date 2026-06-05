@@ -6,7 +6,7 @@
 
 ---
 
-## Current State (verified @ commit 8e1d450)
+## Current State (verified @ commit 0bb1824)
 
 **Real and working:**
 POAS truth engine · multi-tenant isolation (DB-enforced) · governance + trust
@@ -14,7 +14,20 @@ ledger · Shopify/Woo/Magento orders · Google Ads + Meta spend · real Google A
 write path · runway → spend throttle · MCC + GMC real enumeration · cold-start
 margin discovery · diagnostic sweep (2 of 5 checks).
 
-**Everything in our doc set since is net-new and unbuilt:** baseline scan,
+**Newly landed (commit 0bb1824 — closes most of Phase 1 Section E):**
+- ✅ Daily POAS scheduler (`poas_scheduler.ts` — `setInterval`, per-tenant, signal dedup)
+- ✅ ROAS + POAS in every report (`poas_calculator.ts` — both fields computed)
+- ✅ 5 semantic tiers with per-tier $ caps (OBSERVE/REVIEW/ASSISTED/AUTONOMOUS/C_SUITE)
+- ✅ Idempotency store (`supabase_client.getAuditLog` + cached-return in `govern()`)
+- ✅ Settling window (`verifyWindowMs` — verification deferred before postMetrics read)
+
+**Productionization caveats on the new work (hardening, not blockers):**
+- Scheduler uses in-process `setInterval` — not durable across restarts; move to a
+  queue/cron (BullMQ) for production.
+- Settling window uses in-process `setTimeout` — a real 24–72h window must be a
+  persisted/queued job, or a process restart loses the pending verification.
+
+**Everything in our doc set since is still net-new and unbuilt:** baseline scan,
 healing engine, profit-readiness/COGS easing, 3P adoption layer, the 360°
 channel expansion.
 
@@ -54,14 +67,16 @@ Each phase ends at a usable milestone. The LP publishes at the end of Phase 2.
 - [ ] Incrementality flag in `decide()` — suspect campaigns held at Tier 2
 
 **E. Close the open correctness gaps**
-- [ ] ROAS + POAS dual display (the "two numbers / gap" hero)
-- [ ] 5-tier semantic naming (Observe/Suggest/Optimize/Lead/Mastery) + per-tier $ caps
-- [ ] Daily POAS scheduler (cron per tenant)
+- [x] ROAS + POAS dual display (the "two numbers / gap" hero) — *landed 0bb1824*
+- [x] 5-tier semantic naming + per-tier $ caps (OBSERVE→C_SUITE) — *landed 0bb1824*
+- [x] Daily POAS scheduler (per tenant) — *landed 0bb1824; harden: move off in-process setInterval*
 - [ ] Diagnostic sweep — 3 missing checks (conversion tracking, budget-capped winners, checkout events)
-- [ ] Idempotency store (replayed POST dedup)
-- [ ] Time-delayed verification worker (24–72h settling window)
+- [x] Idempotency store (replayed POST dedup) — *landed 0bb1824*
+- [x] Time-delayed verification (settling window) — *landed 0bb1824; harden: persist the pending verification job*
 - [ ] Zero-order cold-start path (catalog-cost when no order history)
 - [ ] RBI AA real connection (India) · Plaid (global)
+
+*Section E remaining: 3 sweep checks · zero-order cold-start · real bank connections.*
 
 *Exit: a brand connects, sees its baseline, gets true POAS, and receives
 actionable healing cards. Internal dogfood. No public LP yet.*

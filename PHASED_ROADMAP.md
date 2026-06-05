@@ -5,14 +5,16 @@
 
 ---
 
-## Baseline (current state @ commit 8e1d450)
+## Baseline (current state @ commit 0bb1824)
 
 **Real and working:**
 POAS truth engine · multi-tenant isolation · governance + trust ledger ·
 Shopify / WooCommerce / Magento order ingestion · Google Ads + Meta Ads spend ·
 sGTM measurement spine · inventory-aware spend pause · cash runway throttle ·
 MCC + GMC real enumeration · cold-start margin discovery · diagnostic sweep
-(2 of 5 checks real).
+(2 of 5 checks real) · **daily POAS scheduler · ROAS+POAS dual report · 5 semantic
+autonomy tiers with per-tier caps · idempotency store · settling-window verification**
+(all landed in 0bb1824).
 
 **Coverage:** ~37% of 360° digital footprint. Strong paid + commerce core.
 Organic, email, marketplace, support: zero or minimal.
