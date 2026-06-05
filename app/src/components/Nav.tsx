@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 
 const LINKS = [
+  { href: "/connect", label: "Connect" },
   { href: "/dashboard", label: "POAS" },
   { href: "/sweep", label: "Sweep" },
   { href: "/healing", label: "Healing" },

@@ -8,6 +8,7 @@
  */
 import type {
   ApprovalRequest,
+  IntegrationState,
   ProfitReadiness,
   RecommendationCard,
   SemanticTrustTier,
@@ -134,6 +135,34 @@ export const MOCK_SWEEP: SweepFinding[] = [
 
 /** Current trust tier (new public accounts start at OBSERVE). */
 export const MOCK_TRUST_TIER: SemanticTrustTier = "ASSISTED";
+
+/** Connected integrations — Google + Shopify active, Meta needs reconnect. */
+export const MOCK_INTEGRATIONS: IntegrationState[] = [
+  {
+    integrationId: "int-g",
+    tenantId: "org-demo",
+    provider: "google_ads",
+    status: "active",
+    settings: { account: "123-456-7890" },
+    updatedAt: Date.now() - 1000 * 60 * 60 * 26,
+  },
+  {
+    integrationId: "int-s",
+    tenantId: "org-demo",
+    provider: "shopify",
+    status: "active",
+    settings: { shop: "demo-brand.myshopify.com" },
+    updatedAt: Date.now() - 1000 * 60 * 60 * 26,
+  },
+  {
+    integrationId: "int-m",
+    tenantId: "org-demo",
+    provider: "meta_ads",
+    status: "suspended", // refresh failed → reconnect path (A2.3)
+    settings: {},
+    updatedAt: Date.now() - 1000 * 60 * 90,
+  },
+];
 
 /** Profit readiness — partial coverage so advice is directional, not auto-exec. */
 export const MOCK_READINESS: ProfitReadiness = {

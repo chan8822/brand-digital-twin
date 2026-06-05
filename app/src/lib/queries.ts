@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, USE_MOCK } from "./api";
 import {
   MOCK_APPROVALS,
+  MOCK_INTEGRATIONS,
   MOCK_READINESS,
   MOCK_RECOMMENDATIONS,
   MOCK_SWEEP,
@@ -13,6 +14,7 @@ import {
 } from "./mock";
 import type {
   ApprovalRequest,
+  IntegrationState,
   ProfitReadiness,
   RecommendationCard,
   SemanticTrustTier,
@@ -83,6 +85,24 @@ export function useApprove() {
       });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["approvals"] }),
+  });
+}
+
+export function useIntegrations() {
+  return useQuery({
+    queryKey: ["integrations"],
+    queryFn: async (): Promise<IntegrationState[]> => {
+      if (USE_MOCK) {
+        await new Promise((r) => setTimeout(r, 300));
+        return MOCK_INTEGRATIONS;
+      }
+      // Needs `GET /api/v1/integrations` exposing getIntegrationStates (A2.4).
+      const data = await apiFetch<{ integrations: IntegrationState[] }>(
+        "/api/v1/integrations",
+      );
+      return data.integrations;
+    },
+    staleTime: 30_000,
   });
 }
 

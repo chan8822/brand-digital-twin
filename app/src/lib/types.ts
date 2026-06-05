@@ -159,6 +159,34 @@ export interface ProfitReadiness {
   status: "ready" | "directional_only" | "incomplete";
 }
 
+/**
+ * Integration connection state. Matches agency_os_types.ts `IntegrationState`
+ * @ 8807aa8. The OAuth connect flow (A2, `a09e913`) writes these on callback.
+ * NOTE: no `GET /api/v1/integrations` endpoint exists yet to read them over HTTP
+ * (client method `getIntegrationStates` exists) — tracked as A2.4.
+ */
+export type IntegrationProvider =
+  | "google_ads"
+  | "meta_ads"
+  | "meta_ads_api"
+  | "shopify"
+  | "quickbooks"
+  | "gmail"
+  | "slack"
+  | "hubspot"
+  | "asana"
+  | "figma"
+  | "brandwatch";
+
+export interface IntegrationState {
+  integrationId: string;
+  tenantId: string;
+  provider: IntegrationProvider;
+  status: "active" | "suspended" | "expired";
+  settings: Record<string, unknown>;
+  updatedAt: number;
+}
+
 /** Server success envelope (server.ts:119). */
 export interface ApiEnvelope<T> {
   status: "success";

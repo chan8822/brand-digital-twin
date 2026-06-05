@@ -33,6 +33,23 @@ export function getTenantId(): string | null {
   return window.sessionStorage.getItem("bt_tenant_id");
 }
 
+/**
+ * URL that kicks off the OAuth flow for a platform (A2 — `GET /connect/:platform`
+ * 302-redirects to the provider's consent screen).
+ *
+ * INTEGRATION NOTE: this is a top-level browser navigation, which cannot carry
+ * the `Authorization: Bearer` header. The engine's connect endpoint is
+ * auth-gated, so production wiring needs one of: (a) a cookie/session for the
+ * redirect, or (b) a short-lived signed token passed as a query param. Flagged
+ * in the tracker — for now the helper appends the token as `?t=` so the demo
+ * navigation is shaped correctly.
+ */
+export function connectUrl(platform: string): string {
+  const token = getAccessToken();
+  const q = token ? `?t=${encodeURIComponent(token)}` : "";
+  return `${API_BASE}/api/v1/connect/${platform}${q}`;
+}
+
 export async function apiFetch<T>(
   path: string,
   opts: RequestInit & { tenantId?: string } = {},
