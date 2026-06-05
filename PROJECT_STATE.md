@@ -59,14 +59,16 @@ barrier is effort + the psychological ask of admitting the old number flattered.
 **Real & working:** POAS truth engine · multi-tenant isolation (DB-enforced) ·
 governance + trust ledger · Shopify/Woo/Magento orders · Google Ads + Meta spend
 · real Google Ads write path · runway→spend throttle · MCC+GMC enumeration ·
-cold-start margin discovery (orders-based) · daily POAS scheduler · ROAS+POAS
-dual report · 5 semantic autonomy tiers + per-tier caps · idempotency store ·
-settling-window verification · diagnostic sweep (2 of 5 checks) ·
-**healing engine `diagnoseRootCause()` + recommendation cards (`67af268`, spec-conformant:
-side split, dollar-weighted ranking, incrementality flag, `CampaignCostBreakdown`)**.
+daily POAS scheduler · ROAS+POAS dual report · 5 semantic autonomy tiers + per-tier
+caps · idempotency store · settling-window verification ·
+healing engine `diagnoseRootCause()` + recommendation cards (spec-conformant:
+side split, dollar-weighted ranking, incrementality flag, `CampaignCostBreakdown`) ·
+**all 5 sweep checks** (`scanStockouts` · `scanConversionTracking` · `scanCheckoutEvents` ·
+`scanROIEfficiency` · `scanBudgetCappedWinners`, merged + sorted by severity→dollarImpact) ·
+**zero-order cold-start** (`getVariants()` catalog fallback, `MarginDiscoveryResult` union,
+`needs_cogs` route — all per `SWEEP_COLDSTART_SPEC` — landed `d7bb573`).
 
-**In flight (spec written, build underway):**
-- 3 sweep checks + zero-order cold-start (`SWEEP_COLDSTART_SPEC`)
+**In flight:** nothing — Phase 1 build complete except bank connections.
 
 **Not yet verified against spec:** baseline-context cross-channel guards (§7 of
 HEALING_ENGINE_SPEC) and confidence/edge-case gates (§8) — confirm on next sync.
