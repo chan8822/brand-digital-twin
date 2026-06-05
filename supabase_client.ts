@@ -283,7 +283,7 @@ export interface VariantEntry {
   tenant_id: string;
   sku: string;
   price: number;
-  cost: number;
+  cost: number | null;
   title: string;
   ingested_at: string;
 }

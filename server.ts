@@ -13,6 +13,7 @@ import {eventBus} from './event_bus';
 import {GoogleAdsAdapter} from './google_ads_adapter';
 import {authMiddleware, DecodedJwt, signJwt, verifyJwt, signOauthState, verifyOauthState} from './auth';
 import {generateAuthUrl, handleOauthCallback} from './oauth_flows';
+import {ProfitReadinessCalculator} from './profit_readiness';
 import {validateActionRequest, validateContext} from './validation';
 import {TokenBucket, RateLimitingAdapterWrapper} from './rate_limiter';
 import {
@@ -655,6 +656,27 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
               status: 'error',
               error: {
                 code: 'OAUTH_INITIATION_FAILED',
+                message: err.message || String(err),
+              },
+            }),
+          );
+        }
+        return;
+      }
+
+      // 1.8 GET /api/v1/profit-readiness (Retrieve current tenant profit readiness score)
+      if (path === '/api/v1/profit-readiness' && req.method === 'GET') {
+        const calculator = new ProfitReadinessCalculator(db);
+        try {
+          const result = await calculator.calculate(tenantId);
+          sendSuccessResponse(res, result);
+        } catch (err: any) {
+          res.writeHead(500, {'Content-Type': 'application/json'});
+          res.end(
+            JSON.stringify({
+              status: 'error',
+              error: {
+                code: 'PROFIT_READINESS_CALCULATION_FAILED',
                 message: err.message || String(err),
               },
             }),

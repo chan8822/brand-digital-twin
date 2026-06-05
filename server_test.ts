@@ -670,4 +670,73 @@ describe('Native HTTP & SSE Server Integration Test', () => {
       expect(data.error.code).toBe('OAUTH_CALLBACK_FAILED');
     });
   });
+
+  describe('Profit Readiness API Integration', () => {
+    it('should reject GET /api/v1/profit-readiness with 401 if unauthenticated', async () => {
+      const res = await requestRaw('/api/v1/profit-readiness', 'GET');
+      expect(res.statusCode).toBe(401);
+    });
+
+    it('should return correct profit readiness metrics and status for authorized tenant', async () => {
+      const readinessTenant = 'readiness-tenant';
+      const readinessToken = signJwt(
+        {
+          userId: 'test-user-readiness',
+          orgId: readinessTenant,
+          role: 'media_buyer',
+          exp: Math.floor(Date.now() / 1000) + 3600,
+        },
+        config.auth.jwtSecret,
+      );
+
+      // 1. Populate credentials for shopify & google
+      await db.saveCredential({
+        tenant_id: readinessTenant,
+        platform: 'shopify',
+        credential_key: 'oauth_token',
+        encrypted_value: 'val',
+        refresh_token: null,
+        expires_at: null,
+        updated_at: new Date().toISOString(),
+      });
+      await db.saveCredential({
+        tenant_id: readinessTenant,
+        platform: 'google',
+        credential_key: 'oauth_token',
+        encrypted_value: 'val',
+        refresh_token: null,
+        expires_at: null,
+        updated_at: new Date().toISOString(),
+      });
+
+      // 2. Populate variants: 2 variants, 1 has cogs (50% coverage)
+      await db.saveVariant({
+        variant_id: 'v-nike-1',
+        sku: 'sku-nike-1',
+        title: 'Nike Air Max 1',
+        price: 150,
+        cost: 60,
+        tenant_id: readinessTenant,
+        ingested_at: new Date().toISOString(),
+      });
+      await db.saveVariant({
+        variant_id: 'v-nike-2',
+        sku: 'sku-nike-2',
+        title: 'Nike Air Max 2',
+        price: 160,
+        cost: null, // missing cogs
+        tenant_id: readinessTenant,
+        ingested_at: new Date().toISOString(),
+      });
+
+      // 3. Make the API request
+      const res = await getJson('/api/v1/profit-readiness', {
+        Authorization: `Bearer ${readinessToken}`,
+      });
+      expect(res.status).toBe('success');
+      expect(res.data.score).toBe(40); // 15 (shopify) + 15 (google) + 10 (50% COGS) = 40
+      expect(res.data.factors.cogsCoverage).toBe(50);
+      expect(res.data.status).toBe('directional_only');
+    });
+  });
 });

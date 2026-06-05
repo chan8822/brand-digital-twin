@@ -472,6 +472,14 @@ ts_library(
 )
 
 ts_library(
+    name = "profit_readiness",
+    srcs = ["profit_readiness.ts"],
+    deps = [
+        ":supabase_client",
+    ],
+)
+
+ts_library(
     name = "server",
     srcs = ["server.ts"],
     deps = [
@@ -484,6 +492,7 @@ ts_library(
         ":governance_engine",
         ":identity_resolver",
         ":oauth_flows",
+        ":profit_readiness",
         ":rate_limiter",
         ":supabase_client",
         ":unified_brain",
@@ -522,6 +531,7 @@ ts_library(
         "user_auth_test.ts",
         "auth_test.ts",
         "oauth_flows_test.ts",
+        "profit_readiness_test.ts",
     ],
     deps = [
         ":auth",
@@ -555,6 +565,7 @@ ts_library(
         ":orchestrator",
         ":platform_adapter",
         ":poas_calculator",
+        ":profit_readiness",
         ":bank_adapter",
         ":plaid_adapter",
         ":poas_scheduler",
@@ -689,6 +700,11 @@ jasmine_node_test(
 
 jasmine_node_test(
     name = "oauth_flows_test",
+    srcs = [":brand_twin_tests"],
+)
+
+jasmine_node_test(
+    name = "profit_readiness_test",
     srcs = [":brand_twin_tests"],
 )
 
