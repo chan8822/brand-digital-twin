@@ -6,7 +6,7 @@
  * The campaigns are deliberately chosen to show the core story: high ROAS that
  * hides a thin or negative POAS — the gap the product exists to expose.
  */
-import type { RecommendationCard } from "./types";
+import type { RecommendationCard, SweepFinding } from "./types";
 
 export const MOCK_RECOMMENDATIONS: RecommendationCard[] = [
   {
@@ -74,5 +74,54 @@ export const MOCK_RECOMMENDATIONS: RecommendationCard[] = [
     osActs: [],
     userApproves: [],
     adsCantFix: [],
+  },
+];
+
+/** Mock diagnostic sweep — one finding per scanner, spanning all 3 severities. */
+export const MOCK_SWEEP: SweepFinding[] = [
+  {
+    code: "no_conv_tracking_meta_014",
+    severity: "CRITICAL",
+    check: "conversion_tracking",
+    entityId: "meta-014",
+    title: "Conversion tracking missing on Advantage+ Prospecting",
+    detail: "0 conversions recorded against 1,240 clicks in 7d — pixel likely not firing.",
+    dollarImpact: 8400,
+  },
+  {
+    code: "stockout_sku_4471",
+    severity: "CRITICAL",
+    check: "inventory_level",
+    entityId: null,
+    title: "Bestseller SKU-4471 predicted stockout in 31h",
+    detail: "Active spend driving demand for an item about to go out of stock.",
+    dollarImpact: 5200,
+  },
+  {
+    code: "checkout_dropoff_shopify",
+    severity: "WARNING",
+    check: "checkout_events",
+    entityId: null,
+    title: "Checkout completion down 18% week-over-week",
+    detail: "add_to_cart steady but purchase events fell — possible checkout friction.",
+    dollarImpact: 3100,
+  },
+  {
+    code: "roi_inefficient_g_ads_001",
+    severity: "WARNING",
+    check: "unprofitable_spend",
+    entityId: "g-ads-001",
+    title: "Brand Defense spending below break-even POAS",
+    detail: "POAS 0.42× — every $1 of spend returns $0.42 of contribution margin.",
+    dollarImpact: 2600,
+  },
+  {
+    code: "budget_capped_meta_022",
+    severity: "OPPORTUNITY",
+    check: "budget_capped_winner",
+    entityId: "meta-022",
+    title: "Retargeting is budget-capped at POAS 3.4×",
+    detail: "Profitable campaign hitting its daily cap — headroom to scale spend.",
+    dollarImpact: 4700,
   },
 ];

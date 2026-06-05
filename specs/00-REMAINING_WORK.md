@@ -72,8 +72,9 @@ COGS + billing. **A stranger still can't connect a platform or click anything.**
 | # | Item | Size | File(s) |
 |---|------|------|---------|
 | A3.1 | ✅ **DONE** — Next.js `app/` scaffold imported and configured (Tailwind, TanStack Query, types, API client, DualMetricCard). | L | `app/` |
-| A3.2 | ◐ **IN PROGRESS** — built: POAS dashboard hero (`DualMetricCard`) + **three-zone healing screen** (`HealingCard` — OS acts / you decide / ads can't fix) + shared `Nav` (worst-first sort, MOCK mode). ~7 screens + SSE client remain | XL | `app/` |
+| A3.2 | ◐ **IN PROGRESS** — built: POAS dashboard (`DualMetricCard`) + three-zone healing (`HealingCard`) + **live sweep** (`SweepFindingRow`, severity→dollar sort) + shared `Nav`, MOCK mode. ~6 screens + SSE client remain | XL | `app/` |
 | A3.3 | ✅ **DONE** — `GET /api/v1/profit-readiness` endpoint + calculator | M | `server.ts`, `profit_readiness.ts` |
+| A3.4 | ☐ `GET /api/v1/sweep` endpoint — expose rich `SweepFinding[]` (today `/risks` returns only `string[]`); UI already built against it | S | `server.ts`, `risk_radar.ts` |
 
 > **Phase A note:** the MCP agent layer (`a6ab7db`) already exposes engine tools
 > as JSON-RPC — A3.2 can call those instead of building all-new HTTP endpoints.

@@ -38,6 +38,8 @@ cp .env.example .env.local
 | Dashboard | `src/app/dashboard/page.tsx` | sorts worst-first by `dollarDrag` |
 | Three-zone healing card | `src/components/HealingCard.tsx` | OS acts / you decide / ads can't fix, with dollar-recovery + caveat |
 | Healing screen | `src/app/healing/page.tsx` | actionable campaigns only, worst-first |
+| Sweep finding row | `src/components/SweepFindingRow.tsx` | severity-led, dollar-at-stake, 1-tap-fix chip |
+| Sweep screen | `src/app/sweep/page.tsx` | severity→dollar sort; needs `GET /api/v1/sweep` |
 | Nav | `src/components/Nav.tsx` | shared top nav across screens |
 
 ## Data contract
@@ -59,8 +61,8 @@ prescriptions (`osActs` / `userApproves` / `adsCantFix`), `confidence`, and a
 Per `A-PHASE_BUILD_SPEC.md §A3`, still to build on this scaffold:
 
 - [x] Three-zone healing cards (`/healing` — `HealingCard.tsx`, OS acts / you decide / ads can't fix)
+- [x] Live sweep (`/sweep` — `SweepFindingRow.tsx`, severity→dollar sort). **Needs `GET /api/v1/sweep`** to expose the rich `SweepFinding[]` (`/risks` only returns `string[]` today)
 - [ ] Connect-your-stack (A2 OAuth buttons) — blocked on A2
-- [ ] Live sweep (`GET /api/v1/risks`)
 - [ ] Autonomy dial + approvals queue
 - [ ] Profit Readiness gauge (`GET /api/v1/profit-readiness` — endpoint TBD)
 - [ ] SSE client for `/api/v1/stream`
