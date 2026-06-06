@@ -34,7 +34,7 @@ import {IdentityResolver} from './identity_resolver';
 import {PersistentAuditSink} from './audit_sink';
 import {RiskRadar} from './risk_radar';
 import {SweepFinding} from './healing_types';
-import {DatabaseErrorSink, PinoLogger} from './observability';
+import {DatabaseErrorSink, MetricsTracker, PinoLogger} from './observability';
 const sha256 = (s: string) =>
   createHash('sha256').update(s.trim().toLowerCase()).digest('hex');
 
@@ -182,6 +182,7 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
   const cb = new CircuitBreaker();
   const tl = new TrustLedger();
   const errorSink = new DatabaseErrorSink(db);
+  const globalMetrics = new MetricsTracker(errorSink);
 
   const server = http.createServer(async (req, res) => {
     let tenantId: string | null = null;
@@ -563,6 +564,16 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
             }),
           );
         }
+        return;
+      }
+
+      // Metrics Endpoint (Public for scraper/tests)
+      if (path === '/metrics' && req.method === 'GET') {
+        sendSuccessResponse(res, {
+          metrics: globalMetrics.getMetrics(),
+          spans: globalMetrics.getSpans(),
+          alerts: globalMetrics.getAlerts(),
+        });
         return;
       }
 
@@ -1229,7 +1240,7 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
           new PersistentAuditSink(requestDb),
           tl,
           cb,
-          undefined,
+          globalMetrics,
           undefined,
           requestDb,
         );
@@ -1456,7 +1467,7 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
           new PersistentAuditSink(requestDb),
           tl,
           cb,
-          undefined,
+          globalMetrics,
           undefined,
           requestDb,
         );
@@ -1575,7 +1586,7 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
           new PersistentAuditSink(requestDb),
           tl,
           cb,
-          undefined,
+          globalMetrics,
           undefined,
           requestDb,
         );

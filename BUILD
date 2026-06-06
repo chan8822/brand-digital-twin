@@ -21,9 +21,17 @@ ts_library(
 )
 
 ts_library(
+    name = "scrubber",
+    srcs = ["scrubber.ts"],
+    deps = ["//third_party/javascript/typings/node"],
+)
+
+ts_library(
     name = "observability",
     srcs = ["observability.ts"],
-    deps = [],
+    deps = [
+        ":scrubber",
+    ],
 )
 
 ts_library(
@@ -37,6 +45,8 @@ ts_library(
     srcs = ["orchestrator.ts"],
     deps = [
         ":governance_engine",
+        ":governance_types",
+        ":observability",
         ":platform_adapter",
     ],
 )
@@ -143,6 +153,7 @@ ts_library(
     srcs = ["supabase_client.ts"],
     deps = [
         ":agency_os_types",
+        ":config",
         ":errors",
         ":healing_types",
         ":observability",
@@ -221,6 +232,7 @@ ts_library(
         ":bank_adapter",
         ":google_ads_adapter",
         ":governance_engine",
+        ":governance_types",
         ":healing_types",
         ":platform_adapter",
         ":supabase_client",
@@ -336,6 +348,7 @@ ts_library(
         ":google_ads_adapter",
         ":google_merchant_adapter",
         ":governance_engine",
+        ":governance_types",
         ":supabase_client",
     ],
 )
@@ -356,9 +369,36 @@ ts_library(
 )
 
 ts_library(
+    name = "secret_provider",
+    srcs = ["secret_provider.ts"],
+    deps = [],
+)
+
+ts_library(
+    name = "env_secret_provider",
+    srcs = ["env_secret_provider.ts"],
+    deps = [
+        ":secret_provider",
+        "//third_party/javascript/typings/node",
+    ],
+)
+
+ts_library(
+    name = "managed_secret_provider",
+    srcs = ["managed_secret_provider.ts"],
+    deps = [
+        ":secret_provider",
+        "//third_party/javascript/typings/node",
+    ],
+)
+
+ts_library(
     name = "config",
     srcs = ["config.ts"],
-    deps = ["//third_party/javascript/typings/node"],
+    deps = [
+        ":secret_provider",
+        "//third_party/javascript/typings/node",
+    ],
 )
 
 ts_library(
@@ -428,6 +468,7 @@ ts_library(
     deps = [
         ":agency_os_types",
         ":governance_engine",
+        ":observability",
         ":platform_adapter",
         ":poas_calculator",
         ":supabase_client",
@@ -448,6 +489,7 @@ ts_library(
     srcs = ["audit_sink.ts"],
     deps = [
         ":governance_types",
+        ":observability",
         ":supabase_client",
     ],
 )
@@ -487,18 +529,22 @@ ts_library(
         ":audit_sink",
         ":auth",
         ":config",
+        ":env_secret_provider",
         ":errors",
         ":event_bus",
         ":google_ads_adapter",
         ":governance_engine",
+        ":governance_types",
         ":healing_types",
         ":identity_resolver",
+        ":managed_secret_provider",
         ":oauth_flows",
         ":observability",
         ":poas_calculator",
         ":profit_readiness",
         ":rate_limiter",
         ":risk_radar",
+        ":secret_provider",
         ":supabase_client",
         ":unified_brain",
         ":user_auth",
@@ -515,39 +561,46 @@ ts_library(
         "advanced_operations_test.ts",
         "agency_ops_test.ts",
         "agency_os_test.ts",
+        "auth_test.ts",
         "credential_vault_test.ts",
         "easysaas_test.ts",
+        "event_bus_test.ts",
+        "gdpr_legal_test.ts",
+        "governance_adversarial_test.ts",
         "integrations_test.ts",
+        "oauth_flows_test.ts",
         "omnichannel_test.ts",
         "onboarding_hierarchy_test.ts",
         "onboarding_simulator_test.ts",
+        "onboarding_wizard_test.ts",
         "phase1_test.ts",
         "phase1b_test.ts",
         "phase2_test.ts",
         "phase3_test.ts",
         "phase4_test.ts",
-        "gdpr_legal_test.ts",
         "plaid_adapter_test.ts",
+        "rate_limiter_test.ts",
         "poas_scheduler_test.ts",
+        "profit_readiness_test.ts",
+        "secret_provider_test.ts",
         "server_test.ts",
         "shopify_adapter_test.ts",
         "stakeholder_portal_test.ts",
         "supabase_client_test.ts",
         "user_auth_test.ts",
-        "auth_test.ts",
-        "oauth_flows_test.ts",
-        "profit_readiness_test.ts",
     ],
     deps = [
-        ":auth",
         ":account_health",
         ":agency_os",
         ":agency_os_types",
         ":attribution_engine",
+        ":auth",
+        ":bank_adapter",
         ":config",
         ":coverage_monitor",
         ":credential_vault",
         ":easysaas_orchestration",
+        ":env_secret_provider",
         ":errors",
         ":event_bus",
         ":forecasting",
@@ -556,27 +609,29 @@ ts_library(
         ":google_merchant_adapter",
         ":governance_engine",
         ":governance_types",
-        ":oauth_flows",
+        ":healing_types",
         ":incident_response",
         ":ingestion_engine",
         ":magento_adapter",
+        ":managed_secret_provider",
         ":meta_ads_adapter",
         ":multi_agent_governance",
+        ":oauth_flows",
         ":observability",
         ":onboarding_simulator",
         ":onboarding_wizard",
         ":opa_policy",
         ":operational_hubs",
         ":orchestrator",
+        ":plaid_adapter",
         ":platform_adapter",
         ":poas_calculator",
-        ":profit_readiness",
-        ":bank_adapter",
-        ":plaid_adapter",
         ":poas_scheduler",
+        ":profit_readiness",
         ":rate_limiter",
         ":rbi_aa_adapter",
         ":risk_radar",
+        ":secret_provider",
         ":server",
         ":shopify_adapter",
         ":simulation",
@@ -674,6 +729,11 @@ jasmine_node_test(
 )
 
 jasmine_node_test(
+    name = "secret_provider_test",
+    srcs = [":brand_twin_tests"],
+)
+
+jasmine_node_test(
     name = "supabase_client_test",
     srcs = [":brand_twin_tests"],
 )
@@ -723,11 +783,18 @@ ts_library(
     testonly = True,
     srcs = [
         "tests/e2e/claim_concurrency_test.ts",
+        "tests/e2e/specs/beta_telemetry_e2e_test.ts",
+        "tests/e2e/specs/cross_feature_e2e_test.ts",
         "tests/e2e/specs/data_rights_e2e_test.ts",
+        "tests/e2e/specs/invite_allowlist_e2e_test.ts",
         "tests/e2e/specs/job_claiming_e2e_test.ts",
         "tests/e2e/specs/legal_consent_e2e_test.ts",
+        "tests/e2e/specs/load_concurrency_e2e_test.ts",
         "tests/e2e/specs/public_abuse_e2e_test.ts",
         "tests/e2e/specs/ready_health_e2e_test.ts",
+        "tests/e2e/specs/real_world_workloads_e2e_test.ts",
+        "tests/e2e/specs/secrets_e2e_test.ts",
+        "tests/e2e/specs/security_redaction_e2e_test.ts",
     ],
     deps = [
         ":auth",
@@ -736,12 +803,15 @@ ts_library(
         ":event_bus",
         ":google_ads_adapter",
         ":governance_engine",
+        ":managed_secret_provider",
         ":observability",
         ":orchestrator",
         ":platform_adapter",
         ":poas_calculator",
         ":poas_scheduler",
         ":rate_limiter",
+        ":scrubber",
+        ":secret_provider",
         ":server",
         ":supabase_client",
         ":unified_brain",
@@ -769,4 +839,43 @@ ts_library(
 jasmine_node_test(
     name = "observability_test",
     srcs = [":observability_test_lib"],
+)
+
+jasmine_node_test(
+    name = "onboarding_wizard_test",
+    srcs = [":brand_twin_tests"],
+)
+
+jasmine_node_test(
+    name = "event_bus_test",
+    srcs = [":brand_twin_tests"],
+)
+
+jasmine_node_test(
+    name = "governance_adversarial_test",
+    srcs = [":brand_twin_tests"],
+)
+
+ts_library(
+    name = "load_test_lib",
+    testonly = True,
+    srcs = [
+        "tests/e2e/specs/real_load_test.ts",
+    ],
+    deps = [
+        ":auth",
+        ":config",
+        ":event_bus",
+        ":server",
+        ":supabase_client",
+        ":user_auth",
+        "//third_party/javascript/typings/jasmine",
+        "//third_party/javascript/typings/node",
+    ],
+)
+
+jasmine_node_test(
+    name = "load_test",
+    srcs = [":load_test_lib"],
+    tags = ["manual"],
 )

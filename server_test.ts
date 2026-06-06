@@ -892,6 +892,17 @@ describe('Native HTTP & SSE Server Integration Test', () => {
         expect(forbiddenRes.error).toBeDefined();
         expect(forbiddenRes.error.code).toBe('FORBIDDEN');
       });
+
+      it('should return metrics and spans on GET /metrics', async () => {
+        const res = await getJson('/metrics');
+        expect(res.status).toBe('success');
+        expect(res.data.metrics).toBeDefined();
+        expect(res.data.spans).toBeDefined();
+        expect(res.data.alerts).toBeDefined();
+        expect(Array.isArray(res.data.metrics)).toBe(true);
+        expect(Array.isArray(res.data.spans)).toBe(true);
+        expect(Array.isArray(res.data.alerts)).toBe(true);
+      });
     });
 
     describe('Auth Ticket Authentication (A2.5)', () => {
