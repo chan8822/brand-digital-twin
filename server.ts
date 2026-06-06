@@ -1666,6 +1666,7 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
           checkout,
           geo,
           merchant,
+          skuRedist,
         ] = await Promise.all([
           radar.scanStockouts(ctx),
           radar.scanROIEfficiency(ctx),
@@ -1675,6 +1676,7 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
           radar.scanCheckoutEvents(ctx),
           radar.scanLandingPageGEO(ctx),
           merchantFindingsPromise,
+          radar.scanSKUBudgetRedistribution(ctx),
         ]);
 
         const sweep: SweepFinding[] = [
@@ -1686,6 +1688,7 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
           ...checkout,
           ...geo,
           ...merchant,
+          ...skuRedist,
         ];
 
         const severityRank: Record<string, number> = {

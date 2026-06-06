@@ -682,6 +682,7 @@ ts_library(
         "secret_provider_test.ts",
         "server_test.ts",
         "shopify_adapter_test.ts",
+        "sku_redistribution_test.ts",
         "stakeholder_portal_test.ts",
         "supabase_client_test.ts",
         "user_auth_test.ts",
@@ -931,6 +932,11 @@ jasmine_node_test(
 
 jasmine_node_test(
     name = "geo_seo_diagnostics_test",
+    srcs = [":brand_twin_tests"],
+)
+
+jasmine_node_test(
+    name = "sku_redistribution_test",
     srcs = [":brand_twin_tests"],
 )
 

@@ -29,6 +29,9 @@ export interface VariantInventory {
   lowStockThreshold?: number;
   roi?: number;
   bundleId?: string;
+  price?: number;
+  cogs?: number;
+  currentSpend?: number;
 }
 
 export class RiskRadar {
@@ -422,6 +425,106 @@ export class RiskRadar {
         });
       }
     }
+    return findings;
+  }
+
+  async scanSKUBudgetRedistribution(ctx: Context): Promise<SweepFinding[]> {
+    const findings: SweepFinding[] = [];
+    const links = this.db && this.tenantId ? await this.db.getProductAdLinks(this.tenantId) : [];
+
+    for (const item of this.inventories) {
+      if (item.price === undefined || item.cogs === undefined) {
+        continue;
+      }
+
+      const margin = item.price - item.cogs;
+      const marginPct = margin / item.price;
+      const itemLinks = links.filter((l) => l.variant_id === item.variantId);
+      const targets =
+        itemLinks.length > 0
+          ? itemLinks.map((l) => ({
+              entity: 'campaign' as const,
+              targetId: l.ads_campaign_id,
+            }))
+          : item.promotedCampaignIds.map((id) => ({
+              entity: 'campaign' as const,
+              targetId: id,
+            }));
+
+      // Case A: Low-margin SKU draining ad budget
+      if (marginPct < 0.30) {
+        const spend = item.currentSpend ?? 0;
+        const roi = item.roi ?? 1.0;
+        if (spend > 150 && roi < 2.0) {
+          for (const tgt of targets) {
+            const req: ActionRequest = {
+              idempotencyKey: `radar_sku_redist_down_${item.variantId}_${tgt.targetId}`,
+              op: 'scale_budget',
+              entity: 'campaign',
+              targetId: tgt.targetId,
+              payload: {
+                scaleFactor: 0.7,
+                reason: `Low-margin SKU ${item.sku} (margin ${(marginPct * 100).toFixed(0)}%) consuming high spend ($${spend}) with low ROI (${roi}). Scaling down budget.`,
+              },
+              confidence: 0.95,
+            };
+            const outcome = await this.governance.govern(this.googleAdapter, req, ctx);
+            const isExecuted = outcome.status === 'executed';
+            findings.push({
+              code: isExecuted
+                ? `scaled_down_low_margin_${item.sku}_${tgt.targetId}`
+                : `queued_scale_down_low_margin_${item.sku}_${tgt.targetId}`,
+              severity: 'WARNING',
+              check: 'unprofitable_spend',
+              entityId: tgt.targetId,
+              title: `Low-margin spend reduction for SKU ${item.sku}`,
+              detail: `SKU ${item.sku} has low margin (${(marginPct * 100).toFixed(0)}%) and low ROI (${roi}). Scaling down budget to preserve margin.`,
+              dollarImpact: spend * 0.3,
+              suggestedAction: req,
+            });
+          }
+        }
+      }
+
+      // Case B: High-margin winner SKU with room to scale
+      if (marginPct >= 0.50) {
+        const spend = item.currentSpend ?? 0;
+        const roi = item.roi ?? 3.5;
+        const qty = item.qty;
+        const threshold = item.lowStockThreshold ?? 5;
+
+        if (qty > threshold && spend < 50 && roi >= 3.0) {
+          for (const tgt of targets) {
+            const req: ActionRequest = {
+              idempotencyKey: `radar_sku_redist_up_${item.variantId}_${tgt.targetId}`,
+              op: 'scale_budget',
+              entity: 'campaign',
+              targetId: tgt.targetId,
+              payload: {
+                scaleFactor: 1.25,
+                reason: `High-margin SKU ${item.sku} (margin ${(marginPct * 100).toFixed(0)}%) has strong ROI (${roi}) but low spend ($${spend}). Scaling up budget.`,
+              },
+              confidence: 0.95,
+            };
+            const outcome = await this.governance.govern(this.googleAdapter, req, ctx);
+            const isExecuted = outcome.status === 'executed';
+            findings.push({
+              code: isExecuted
+                ? `scaled_up_high_margin_${item.sku}_${tgt.targetId}`
+                : `queued_scale_up_high_margin_${item.sku}_${tgt.targetId}`,
+              severity: 'OPPORTUNITY',
+              check: 'budget_capped_winner',
+              entityId: tgt.targetId,
+              title: `High-margin winner scaling for SKU ${item.sku}`,
+              detail: `SKU ${item.sku} is a highly profitable high-margin item with healthy stock (${qty}). Scaling budget up to drive sales.`,
+              dollarImpact: 0,
+              suggestedAction: req,
+            });
+          }
+        }
+      }
+    }
+
     return findings;
   }
 
