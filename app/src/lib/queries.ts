@@ -6,18 +6,25 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, USE_MOCK } from "./api";
 import {
   MOCK_APPROVALS,
+  MOCK_COGS_COVERAGE,
+  MOCK_COGS_GAPS,
   MOCK_INTEGRATIONS,
   MOCK_READINESS,
   MOCK_RECOMMENDATIONS,
+  MOCK_SUBSCRIPTION,
   MOCK_SWEEP,
   MOCK_TRUST_TIER,
 } from "./mock";
 import type {
   ApprovalRequest,
+  CogsCoverage,
+  CogsGap,
+  DismissReason,
   IntegrationState,
   ProfitReadiness,
   RecommendationCard,
   SemanticTrustTier,
+  Subscription,
   SweepFinding,
 } from "./types";
 
@@ -134,5 +141,130 @@ export function useAutonomy() {
       return data.tier;
     },
     staleTime: 60_000,
+  });
+}
+
+/* ── Phase C1: COGS ───────────────────────────────────────────────────────── */
+
+export function useCogsCoverage() {
+  return useQuery({
+    queryKey: ["cogs-coverage"],
+    queryFn: async (): Promise<CogsCoverage> => {
+      if (USE_MOCK) {
+        await new Promise((r) => setTimeout(r, 300));
+        return MOCK_COGS_COVERAGE;
+      }
+      // Needs `GET /api/v1/cogs/coverage` (C-ENDPOINT_GAPS_SPEC.md C1.a).
+      return apiFetch<CogsCoverage>("/api/v1/cogs/coverage");
+    },
+    staleTime: 60_000,
+  });
+}
+
+export function useCogsGaps() {
+  return useQuery({
+    queryKey: ["cogs-gaps"],
+    queryFn: async (): Promise<CogsGap[]> => {
+      if (USE_MOCK) {
+        await new Promise((r) => setTimeout(r, 350));
+        return MOCK_COGS_GAPS;
+      }
+      // Needs `GET /api/v1/cogs/gaps` — top missing-cost SKUs by spend (C1.b).
+      const data = await apiFetch<{ gaps: CogsGap[] }>("/api/v1/cogs/gaps");
+      return data.gaps;
+    },
+    staleTime: 60_000,
+  });
+}
+
+export function useSaveCogs() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (
+      entries: { sku: string; unitCost: number }[],
+    ): Promise<void> => {
+      if (USE_MOCK) {
+        await new Promise((r) => setTimeout(r, 400));
+        return;
+      }
+      // Needs `POST /api/v1/cogs` { entries } — persists manual costs (provenance='manual', C1.c).
+      await apiFetch<unknown>("/api/v1/cogs", {
+        method: "POST",
+        body: JSON.stringify({ entries }),
+      });
+    },
+    onSuccess: () => {
+      // New cost data shifts coverage and the readiness gate.
+      qc.invalidateQueries({ queryKey: ["cogs-coverage"] });
+      qc.invalidateQueries({ queryKey: ["cogs-gaps"] });
+      qc.invalidateQueries({ queryKey: ["profit-readiness"] });
+    },
+  });
+}
+
+/* ── Phase C2: billing ────────────────────────────────────────────────────── */
+
+export function useSubscription() {
+  return useQuery({
+    queryKey: ["subscription"],
+    queryFn: async (): Promise<Subscription> => {
+      if (USE_MOCK) {
+        await new Promise((r) => setTimeout(r, 300));
+        return MOCK_SUBSCRIPTION;
+      }
+      // Needs `GET /api/v1/billing/subscription` (C2.a).
+      return apiFetch<Subscription>("/api/v1/billing/subscription");
+    },
+    staleTime: 60_000,
+  });
+}
+
+export function useSuggestAmount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      amount: number;
+      note?: string;
+    }): Promise<void> => {
+      if (USE_MOCK) {
+        await new Promise((r) => setTimeout(r, 450));
+        return;
+      }
+      // Needs `POST /api/v1/billing/suggest` { amount, note } → pending_review;
+      // account stays live during review (C2.b).
+      await apiFetch<unknown>("/api/v1/billing/suggest", {
+        method: "POST",
+        body: JSON.stringify(input),
+      });
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["subscription"] }),
+  });
+}
+
+/* ── P2.1: dismiss telemetry ──────────────────────────────────────────────── */
+
+export function useDismissRecommendation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      campaignId: string;
+      reason: DismissReason;
+      note?: string;
+    }): Promise<void> => {
+      if (USE_MOCK) {
+        await new Promise((r) => setTimeout(r, 250));
+        return;
+      }
+      // Needs `POST /api/v1/recommendations/:id/dismiss` { reason, note }
+      // → one `recommendation_events` row (P2.1).
+      await apiFetch<unknown>(
+        `/api/v1/recommendations/${input.campaignId}/dismiss`,
+        {
+          method: "POST",
+          body: JSON.stringify({ reason: input.reason, note: input.note }),
+        },
+      );
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["recommendations"] }),
   });
 }

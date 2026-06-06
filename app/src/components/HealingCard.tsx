@@ -10,10 +10,18 @@
  * Data: RecommendationCard (healing_types.ts), verified @ 44ca4ba. Every field
  * shown here is produced by `analyzeProfitability()` — nothing is invented in UI.
  */
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { clsx } from "clsx";
-import type { Prescription, RecommendationCard, Side } from "@/lib/types";
+import {
+  DISMISS_REASON_LABELS,
+  type DismissReason,
+  type Prescription,
+  type RecommendationCard,
+  type Side,
+} from "@/lib/types";
 import { ROOT_CAUSE_LABELS, SIDE_LABELS } from "@/lib/labels";
+import { useDismissRecommendation } from "@/lib/queries";
 
 function money(n: number) {
   return `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
@@ -96,6 +104,7 @@ function Zone({
 
 export function HealingCard({ card }: { card: RecommendationCard }) {
   const {
+    campaignId,
     campaignName,
     poas,
     roas,
@@ -109,10 +118,16 @@ export function HealingCard({ card }: { card: RecommendationCard }) {
     adsCantFix,
   } = card;
 
+  const dismiss = useDismissRecommendation();
+  const [picking, setPicking] = useState(false);
+  const [reason, setReason] = useState<DismissReason | null>(null);
+  const [note, setNote] = useState("");
+  const dismissed = dismiss.isSuccess;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
+      animate={{ opacity: dismissed ? 0.5 : 1, y: 0 }}
       transition={{ duration: 0.35, ease: "easeOut" }}
       className="rounded-xl border border-border bg-surface p-5"
     >
@@ -188,6 +203,83 @@ export function HealingCard({ card }: { card: RecommendationCard }) {
       <p className="mt-5 border-t border-border pt-3 text-[11px] italic text-text-muted">
         {caveat}
       </p>
+
+      {/* Dismiss with reason (P2.1) — the richest "did they act?" signal. The
+          reason is the point: we learn why a brand walks away from the truth. */}
+      <div className="mt-3 border-t border-border pt-3">
+        {dismissed ? (
+          <p className="text-[11px] text-text-muted">
+            Dismissed — thanks, that tells us more than silence.
+          </p>
+        ) : !picking ? (
+          <button
+            type="button"
+            onClick={() => setPicking(true)}
+            className="text-[11px] text-text-muted underline-offset-2 transition-colors hover:text-text-primary hover:underline"
+          >
+            Dismiss this
+          </button>
+        ) : (
+          <div>
+            <p className="mb-2 text-[11px] font-medium text-text-primary">
+              Why are you dismissing this?
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {(Object.keys(DISMISS_REASON_LABELS) as DismissReason[]).map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setReason(r)}
+                  className={clsx(
+                    "rounded-full border px-2.5 py-1 text-[11px] transition-colors",
+                    reason === r
+                      ? "border-accent/40 bg-accent/10 text-accent"
+                      : "border-border text-text-muted hover:text-text-primary",
+                  )}
+                >
+                  {DISMISS_REASON_LABELS[r]}
+                </button>
+              ))}
+            </div>
+            {reason === "other" && (
+              <input
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="Tell us more"
+                className="mt-2 w-full rounded-md border border-border bg-bg/60 px-3 py-1.5 text-xs text-text-primary outline-none placeholder:text-muted focus:border-accent"
+              />
+            )}
+            <div className="mt-3 flex items-center gap-2">
+              <button
+                type="button"
+                disabled={!reason || dismiss.isPending}
+                onClick={() =>
+                  reason &&
+                  dismiss.mutate({
+                    campaignId,
+                    reason,
+                    note: note.trim() || undefined,
+                  })
+                }
+                className="rounded-md bg-accent px-3 py-1.5 text-[11px] font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {dismiss.isPending ? "Saving…" : "Confirm dismiss"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPicking(false);
+                  setReason(null);
+                  setNote("");
+                }}
+                className="text-[11px] text-text-muted transition-colors hover:text-text-primary"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </motion.div>
   );
 }

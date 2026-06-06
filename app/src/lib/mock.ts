@@ -8,10 +8,13 @@
  */
 import type {
   ApprovalRequest,
+  CogsCoverage,
+  CogsGap,
   IntegrationState,
   ProfitReadiness,
   RecommendationCard,
   SemanticTrustTier,
+  Subscription,
   SweepFinding,
 } from "./types";
 
@@ -206,3 +209,40 @@ export const MOCK_APPROVALS: ApprovalRequest[] = [
     createdAt: now - 1000 * 60 * 60 * 3,
   },
 ];
+
+/* ── Phase C1: COGS ───────────────────────────────────────────────────────── */
+
+/** Coverage by ad spend: 58% real + 16% estimated = 74% covered; 6 SKUs open. */
+export const MOCK_COGS_COVERAGE: CogsCoverage = {
+  coveragePct: 74,
+  realPct: 58,
+  estimatedPct: 16,
+  missingCostSkus: 6,
+  basis: "ad_spend",
+};
+
+/**
+ * Top spend SKUs the engine still can't cost confidently — the Pareto ask.
+ * Ordered by ad spend (biggest blind spot first). Mix of fully-missing
+ * (`manual`, unitCost null) and category-estimated (flagged) costs.
+ */
+export const MOCK_COGS_GAPS: CogsGap[] = [
+  { sku: "SKU-4471", productName: "Hydra Glow Serum 30ml", adSpend: 9200, sellingPrice: 48, unitCost: null, provenance: "manual", estimatedCogs: false },
+  { sku: "SKU-1180", productName: "Daily Mineral SPF 50", adSpend: 7400, sellingPrice: 32, unitCost: 11.5, provenance: "category_estimate", estimatedCogs: true },
+  { sku: "SKU-2093", productName: "Overnight Repair Mask", adSpend: 5100, sellingPrice: 54, unitCost: null, provenance: "manual", estimatedCogs: false },
+  { sku: "SKU-3310", productName: "Gentle Foaming Cleanser", adSpend: 3850, sellingPrice: 24, unitCost: 7.2, provenance: "category_estimate", estimatedCogs: true },
+  { sku: "SKU-0788", productName: "Vitamin C Booster Drops", adSpend: 2600, sellingPrice: 39, unitCost: null, provenance: "manual", estimatedCogs: false },
+  { sku: "SKU-5567", productName: "Ceramide Barrier Cream", adSpend: 1900, sellingPrice: 44, unitCost: null, provenance: "manual", estimatedCogs: false },
+];
+
+/* ── Phase C2: billing ────────────────────────────────────────────────────── */
+
+/** A brand mid-trial at day 14 — the nudge day, one day before suggest-an-amount. */
+export const MOCK_SUBSCRIPTION: Subscription = {
+  orgId: "org-demo",
+  status: "trial",
+  currency: "USD",
+  period: "monthly",
+  trialDay: 14,
+  trialLengthDays: 15,
+};

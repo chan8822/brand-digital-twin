@@ -187,9 +187,113 @@ export interface IntegrationState {
   updatedAt: number;
 }
 
+/* ── Phase C1: COGS aggregator ─────────────────────────────────────────────
+ * Cost data is what makes POAS trustworthy. The engine auto-fills what it can
+ * (silent sweep + accounting sync + category estimate) and asks the user only
+ * for the top-spend SKUs still missing (Pareto). Coverage gates advice.
+ * Intended engine shapes per C-PHASE_BUILD_SPEC.md / PROFIT_DATA_MODEL.md.
+ */
+
+/** Accounting sources that conform to the engine `CostSource` interface. All
+ *  reuse the A2 OAuth + CredentialVault plumbing — no new auth surface. */
+export type CostSourceProvider = "tally" | "zoho" | "quickbooks" | "xero";
+
+/** How a SKU's unit cost was obtained (P2.2 provenance). `silent_sweep` /
+ *  `accounting_sync` are automated; if everything is `manual` the auto-fetch
+ *  isn't working — which is itself the H2 finding. */
+export type CogsProvenance =
+  | "silent_sweep"
+  | "accounting_sync"
+  | "invoice_parse"
+  | "manual"
+  | "category_estimate";
+
+/** One SKU's cost line in the Pareto entry grid. `unitCost` is null when
+ *  unknown; `estimatedCogs` mirrors the engine flag that demotes healing
+ *  confidence to `medium` (risk_radar.ts:673). */
+export interface CogsGap {
+  sku: string;
+  productName: string;
+  /** ad spend attributed to this SKU — drives Pareto ordering (top spend first) */
+  adSpend: number;
+  sellingPrice: number;
+  unitCost: number | null;
+  provenance: CogsProvenance;
+  estimatedCogs: boolean;
+}
+
+/** Coverage is the share of *ad spend* (not SKU count) backed by real or
+ *  estimated cost — the basis the Profit Readiness gate uses. */
+export interface CogsCoverage {
+  coveragePct: number; // 0–100, by spend
+  realPct: number; // backed by real (non-estimated) cost
+  estimatedPct: number; // backed by category-average estimate
+  missingCostSkus: number;
+  basis: "ad_spend";
+}
+
+/* ── Phase C2: billing + suggest-an-amount ─────────────────────────────────
+ * The subscription state machine and the bespoke "name your price" conversion.
+ * The account stays live through `pending_review` — no cutoff during review.
+ */
+
+/** Subscription state machine (C-PHASE_BUILD_SPEC.md):
+ *  trial → suggest_amount → pending_review → active → past_due → suspended. */
+export type BillingStatus =
+  | "trial"
+  | "suggest_amount"
+  | "pending_review"
+  | "active"
+  | "past_due"
+  | "suspended";
+
+export interface Subscription {
+  orgId: string;
+  status: BillingStatus;
+  /** present once an amount is named (suggest_amount onward) */
+  amount?: number;
+  currency: string; // 'USD' | 'INR'
+  period: "monthly" | "month";
+  trialDay: number; // 0-based day into the trial
+  trialLengthDays: number;
+  nextChargeAt?: number;
+  note?: string;
+}
+
+/** Soft anchors shown for reference only (Decision #10) — never preselected. */
+export const PRICE_ANCHORS = [299, 799, 2500] as const;
+
+/* ── P2.1: action / ignore telemetry ───────────────────────────────────────
+ * Why a brand dismissed a recommendation — the richest H1 signal. Captured on
+ * the dismiss control and persisted to `recommendation_events` (engine).
+ */
+export type DismissReason =
+  | "dont_believe"
+  | "cant_act"
+  | "disagree"
+  | "too_hard"
+  | "other";
+
+export const DISMISS_REASON_LABELS: Record<DismissReason, string> = {
+  dont_believe: "I don't believe the number",
+  cant_act: "I can't act on this",
+  disagree: "I disagree with the fix",
+  too_hard: "Too hard / too much effort",
+  other: "Other",
+};
+
 /** Server success envelope (server.ts:119). */
 export interface ApiEnvelope<T> {
   status: "success";
   data: T;
   timestamp: string;
+}
+
+export interface ApiErrorEnvelope {
+  status: "error";
+  error: {
+    code: string;
+    message: string;
+    [key: string]: any;
+  };
 }

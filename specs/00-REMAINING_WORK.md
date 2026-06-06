@@ -1,175 +1,168 @@
-# [PRIORITY 00 · INDEX] Remaining Work — Precise Implementation Tracker
+# Remaining Work — Single Consolidated Plan
 
-> Single source of truth for what's left to ship the public product. Verified
-> against upstream `brand-digital-twin` @ `44ca4ba`. Every item is either DONE
-> (in code), or a concrete buildable unit with its spec reference and a size.
+> **This is the one file to read.** It supersedes the scattered `P0-EXECUTION`,
+> `P1-EXECUTION`, `P1-PUNCHLIST`, `P2/P3/P4-EXECUTION` docs — those remain as
+> detailed references, but status lives **here**.
 >
-> **Sizes:** S ≈ ≤0.5 day · M ≈ 1–2 days · L ≈ 3–5 days · XL ≈ 1–2 weeks.
-> Sizes are per build-unit, assuming the in-house decision and existing primitives.
+> Verified against upstream `chandansinghr-ship-it/brand-digital-twin` @ `b472992`
+> (fetched 2026-06-06). Engine work lands in that repo; UI work lands in
+> `brand-twin/app/` (this repo).
 >
-> **Legend:** ✅ done · ◐ partial · ☐ to build.
+> **Legend:** ✅ done · 🟡 partial · ☐ to build
+> **Sizes:** S ≤0.5d · M 1–2d · L 3–5d · XL 1–2wk
 
 ---
 
-## Summary — what remains (@ `44ca4ba`)
+## Where we are
 
-| Area | Done | Left | Note |
-|------|------|------|------|
-| Phase 1 tail (engine) | 2 | 0 | ✅ complete |
-| Phase A — usable by a stranger | 14 | ~6 | ✅ A1, A2, and A3 code items are complete; only A0 external approvals/waiting clocks remain |
-| Phase B — lawful & trustworthy | 13 | ~5 | B1 done, B3 mostly done, B2 partial |
-| Phase C — self-serve value + money | 0 | 15 | not started |
-| **Totals** | **~29** | **~26** | of 55 |
+**P0, P1, and Phase B are fully done.** The engine, UI, hardening, observability, DB
+safety, secrets, security review, load test, staging scripts, legal routes, credential
+revocation, and cookie consent all landed by `b472992`. C2 billing endpoints are live.
 
-The engine + the identity/data-rights/legal spine + all API endpoints wiring the Next.js UI are **done**. What's left for Phase A is external OAuth app reviews / waiting clocks (A0). A stranger can now walk through the entire loop.
+| Phase | State | One-line |
+|-------|-------|----------|
+| **P0** — flip UI mock→live | ✅ **DONE** | all 4 endpoints + sort + autonomy-409 synced in `f10e351` |
+| **P1** — hardening & ops | ✅ **DONE** | P1.3 staging scripts + P1.7 real load test landed in `eb9c272` / `70bc7e8` |
+| **P2** — private beta (3 brands) | 🟡 **in progress** | onboarding data being gathered; P2.1 dismiss telemetry UI shipped |
+| **P3B** — lawful | ✅ **DONE** | B1.4 + B2.3 + B2.4 landed in `b472992`/`3469815`; ported to brand-twin/app/ |
+| **P3C** — self-serve paid | 🟡 C2 engine live · **C1 engine next** | C2.a/b billing endpoints live (`19f80cc`); COGS engine + C1 endpoints remain |
+| **P4** — GA | ☐ blocked on A0 | external approval clocks — start now, gate launch only |
 
----
-
-## PHASE 1 TAIL (engine) — 2 items
-
-| # | Item | Size | Spec | File(s) |
-|---|------|------|------|---------|
-| 1.1 | ✅ **DONE** (`0edfe80`) — atomic job claim via `claimNextOverdueJob(now, ownerId)` lock-owner loop | S | `PHASE_B §B5` | `supabase_client.ts`, `poas_scheduler.ts`, `schema.sql` |
-| 1.2 | ✅ **DONE** (`409e558`) — bank connections decoupled via `BankAdapter` + `plaid_adapter.ts` (global); `rbi_aa_adapter.ts` (India) | L | gap doc | `bank_adapter.ts`, `plaid_adapter.ts`, `rbi_aa_adapter.ts` |
-
-> **Progress (verified @ `07cbfe3`):** Phase 1 tail + Phase A1 + Phase A2 complete.
-> The backend identity + data-rights + legal spine of A1/B1/B2 has landed.
-> The product UI scaffold (A3.1) and Profit Readiness endpoint (A3.3) are done.
-> What remains is A3.2 (building the 8 frontend screens + SSE client) and COGS/billing.
+**The frontier is now the Phase C1 *engine*** (COGS adapters + readiness gate +
+C1.a/b/c endpoints). C2 billing endpoints are live and the UI auto-flips to live
+when `NEXT_PUBLIC_API_URL` is set. The P2.1 dismiss UI is built; the engine needs
+`recommendation_events` table + dismiss endpoint.
 
 ---
 
-## PHASE A — Usable by a stranger (16 items)  → `A-PHASE_BUILD_SPEC.md`
+## P0 ✅ All seams closed (`cec5437`)
 
-### A0 — External clocks (not code; start first) — 5 items
-| # | Item | Size |
-|---|------|------|
-| A0.1 | Google Ads API Standard Access / OAuth verification application | S (weeks wait) |
-| A0.2 | Meta App Review (`ads_read`, `ads_management`) | S (weeks wait) |
-| A0.3 | Shopify Partner app + listing | S (weeks wait) |
-| A0.4 | Google OAuth consent-screen verification | S (weeks wait) |
-| A0.5 | Legal engagement for ToS/Privacy/DPA (feeds B2) | S (weeks wait) |
+| Endpoint | Status |
+|----------|--------|
+| `GET /api/v1/integrations` | ✅ |
+| `GET /api/v1/sweep` (sorted CRITICAL→WARNING→OPPORTUNITY, dollarImpact desc) | ✅ |
+| `GET/POST /api/v1/autonomy` (POST rejects raise-above-earned with 409) | ✅ |
+| `GET /api/v1/auth/ticket` (single-use HMAC, burned on use) | ✅ |
+| UI ticket-auth for OAuth redirect + SSE (`brand-twin/app/`) | ✅ |
 
-### A1 — In-house auth (5 items) — extend `auth.ts`
-| # | Item | Size | File(s) |
-|---|------|------|---------|
-| A1.1 | ✅ **DONE** — `user_auth.ts`: scrypt hashing + signup/verify/login/refresh-rotation (revoked-token reuse detection) + password reset. | M | `user_auth.ts` |
-| A1.2 | ✅ **DONE** — Tables: `users`, `refresh_tokens`, `orgs`, `org_members` | S | `schema.sql` |
-| A1.3 | ✅ **DONE** — Endpoints `/auth/signup /verify /login /refresh`, `/me`, `/orgs`, `/orgs/:id/brands` | M | `server.ts` |
-| A1.4 | ✅ **DONE** — Rate-limit `/auth/login` + `/signup` via `rate_limiter.ts` (checkAuthRateLimit wired) | S | `rate_limiter.ts` |
-| A1.5 | ✅ **DONE** — New orgs auto-start trust tier OBSERVE (brand creation calls trust ledger setTier + saveTrustTier) | S | governance wiring |
-
-### A2 — OAuth connect ✅ **DONE** (`a09e913`) — reuse `credential_vault.ts`
-| # | Item | Size | File(s) |
-|---|------|------|---------|
-| A2.1 | ✅ Signed `state` (`signOauthState`/`verifyOauthState`) | S | `auth.ts` |
-| A2.2 | ✅ `/connect/:platform` (302→consent) + `/connect/callback/:platform` for Google/Meta/Shopify | L | `server.ts`, `oauth_flows.ts` |
-| A2.3 | ✅ Reconnect-on-refresh-failure (`integration.status='suspended'`) | S | `credential_vault.ts` |
-| A2.4 | ✅ **DONE** — `GET /api/v1/integrations` — expose `getIntegrationStates()` so the connect UI can show what's linked | S | `server.ts` |
-| A2.5 | ✅ **DONE** — Auth-on-redirect for OAuth initiation — supports short-lived signed token on `GET /api/v1/connect/:platform?t=` | S | `server.ts`, `app/lib/api.ts` |
-
-### A3 — Product UI (3 items) — the big one
-| # | Item | Size | File(s) |
-|---|------|------|---------|
-| A3.1 | ✅ **DONE** — Next.js `app/` scaffold + auth-gated root routing (root routes by auth state, logout in nav) | L | `app/` |
-| A3.2 | ◐ **NEARLY DONE** — built: **auth (login/signup/verify/reset)** + connect-your-stack + POAS dashboard + readiness gauge + live sweep + three-zone healing + autonomy/approvals + shared `Nav`, MOCK mode. **Full loop signup→connect→insight walkable.** Only SSE live-updates + per-route auth guard remain | XL | `app/` |
-| A3.3 | ✅ **DONE** — endpoint (`dd9045a`) + `ReadinessGauge` UI on dashboard, wired to live `/profit-readiness` | M | `server.ts`, `profit_readiness.ts`, `app/` |
-| A3.4 | ✅ **DONE** — `GET /api/v1/sweep` endpoint — expose rich `SweepFinding[]` computed by scanners | S | `server.ts`, `risk_radar.ts` |
-| A3.5 | ✅ **DONE** — `GET/POST /api/v1/autonomy` — read/set current trust tier (global override) | S | `server.ts`, `governance_engine.ts` |
-
-> **Phase A note:** the MCP agent layer (`a6ab7db`) already exposes engine tools
-> as JSON-RPC — A3.2 can call those instead of building all-new HTTP endpoints.
+**To activate:** set `NEXT_PUBLIC_API_URL` → the engine origin in
+`brand-twin/app/.env.local`. `USE_MOCK` flips false automatically.
 
 ---
 
-## PHASE B — Lawful & trustworthy (18 items)  → `B-PHASE_BUILD_SPEC.md`
+## P1 ✅ Hardening complete (`cec5437`)
 
-### B1 — Data rights (6)
-| # | Item | Size | File(s) |
-|---|------|------|---------|
-| B1.1 | ✅ **DONE** (`5ffc440`) — `hard_delete_account` + `account_export` jobs executed in scheduler | M | `poas_scheduler.ts` |
-| B1.2 | ✅ **DONE** — `hardDeleteTenantData()` cascades all tenant tables | S | `supabase_client.ts:2213` |
-| B1.3 | ✅ **DONE** — 30-day soft-grace on `DELETE /account` | S | `server.ts:646` |
-| B1.4 | ☐ Credential-vault secret revocation on delete (confirm wired into cascade) | S | `credential_vault.ts` |
-| B1.5 | ✅ **DONE** — `anonymizeLogs()` PII anonymisation | S | `supabase_client.ts:2265` |
-| B1.6 | ✅ **DONE** — `DELETE /account`, `POST /account/export` (+ signed download) | S | `server.ts` |
-
-### B2 — Legal surfaces (4)
-| # | Item | Size |
-|---|------|------|
-| B2.1 | ✅ **DONE** (`3469815`) — `/legal/tos`, `/legal/privacy`, `/legal/dpa` pages serve legal copy in the SPA (B2.1) | M |
-| B2.2 | ✅ **DONE** — `legal_acceptances` captured on signup (`user_auth.ts:94`) + consent-mode v2 redaction | S |
-| B2.3 | ✅ **DONE** (`3469815`) — Version-bump re-prompt in SPA via global React Query query/mutation cache interception | S |
-| B2.4 | ✅ **DONE** (`3469815`) — Cookie consent banner, essential-only default mounted in root layout | S |
-
-### B3 — Production ops (8)
-| # | Item | Size | File(s) |
-|---|------|------|---------|
-| B3.1 | ✅ **DONE** — `error_events` sink + swappable Sentry-compatible webhook | M | `observability.ts` |
-| B3.2 | ✅ **DONE** — Metrics/timings + alert rules (queue lag, adapter errors) | M | `observability.ts` |
-| B3.3 | ✅ **DONE** — `/ready` + `/readyz` readiness probe | S | `server.ts:442` |
-| B3.4 | ✅ **DONE** — `build.yaml` CI/CD spec exists; staging environment configuration and deploy/rollback scripts implemented | L | infra |
-| B3.5 | ✅ **DONE** — Versioned migrations + automated backup + restore drill | M | infra, `schema.sql` |
-| B3.6 | ✅ **DONE** — Prod secret manager (off `.env`) | M | infra, `config.ts` |
-| B3.7 | `incident_response.ts` runbook + severity model | M | `incident_response.ts` |
-| B3.8 | In-app support + help center | M | `app/` |
+| # | Item | Evidence |
+|---|------|----------|
+| P1.1 | Atomic job claim | `claimNextOverdueJob` + `FOR UPDATE SKIP LOCKED` + concurrency test |
+| P1.2 | Observability | `MetricsTracker` alert rules + `DatabaseErrorSink` redaction (`observability.ts`, `migrations/0002`) |
+| P1.3 | Staging + rollback | `scripts/deploy.sh`, `scripts/rollback.sh`, `scripts/rollback_recent_actions.js`; governance engine rollback wired (`eb9c272`) |
+| P1.4 | DB safety | Versioned migrations (`0001_init`, `0002`) + backup export + tested restore drill |
+| P1.5 | Secrets | `SecretProvider`/`EnvSecretProvider`/`ManagedSecretProvider` (VaultClient), boot-validated |
+| P1.6 | Security review | npm-audit CI gate + token-leak scrubber + OAuth callback-state validation + adversarial tests |
+| P1.7 | Load test (exit gate) | `tests/e2e/specs/real_load_test.ts` (252 lines) + `/metrics` endpoint (`70bc7e8`) |
 
 ---
 
-## PHASE C — Self-serve value + money (15 items)  → `C-PHASE_BUILD_SPEC.md`
+## P2 — Private Beta (3 real brands)  🟡 *in progress — the trust gate*
 
-### C1 — COGS aggregator (8)
-| # | Item | Size | File(s) |
-|---|------|------|---------|
-| C1.1 | `CostSource` interface; conform `tally_adapter.ts` | S | `tally_adapter.ts` |
-| C1.2 | `zoho_adapter.ts` (OAuth via A2) | M | new |
-| C1.3 | `quickbooks_adapter.ts` | M | new |
-| C1.4 | `xero_adapter.ts` | M | new |
-| C1.5 | Silent COGS sweep on connect → auto-fill | M | `onboarding_wizard.ts` |
-| C1.6 | Category-average estimator → `estimatedCogs` tag | M | `poas_calculator.ts` |
-| C1.7 | Pareto COGS entry UI (top spend SKUs) | M | `app/` |
-| C1.8 | Readiness gate: low coverage → directional only | M | `risk_radar.ts` |
+No public signup. Onboard 3 in-bag brands by hand (real Google Ads + Shopify OAuth).
+*Spec: `VALIDATION_PLAN.md` · key files: `onboarding_simulator.ts`, `poas_scheduler.ts`*
 
-### C2 — Billing + suggest-an-amount (7)
-| # | Item | Size | File(s) |
-|---|------|------|---------|
-| C2.1 | `subscriptions` table + state machine | M | `schema.sql`, new `billing.ts` |
-| C2.2 | Trial lifecycle jobs (day-14 nudge, day-15 flip, recurring, dunning) | M | `pending_jobs`, `billing.ts` |
-| C2.3 | Day-14 nudge composed from stored findings | S | `billing.ts` |
-| C2.4 | Day-15 suggest-an-amount screen | M | `app/` |
-| C2.5 | Ops review queue → approve → first charge | M | `app/`, `billing.ts` |
-| C2.6 | `PaymentProcessor` iface + Razorpay + card impls (tokenised) | L | new `payment_processor.ts` |
-| C2.7 | In-house receipt/invoice generation | S | `billing.ts` |
+**Instrumentation (so H1–H3 are measured, not eyeballed):**
+- ✅ **P2.1 dismiss-with-reason UI** — `HealingCard.tsx` reason enum
+  (`dont_believe | cant_act | disagree | too_hard | other`) → `useDismissRecommendation`.
+  Engine: `POST /recommendations/:id/dismiss` + `recommendation_events` table
+  (`C-ENDPOINT_GAPS_SPEC.md` P2.1).
+- ☐ Engine emits `shown`/`approved`/`executed`/`reversed` events for the derived
+  metrics (time-to-first-action, CRITICAL action-rate, reversal rate).
+- ☐ P2.2 COGS provenance tag (shipped in `CogsGap.provenance`) persisted per variant.
+- ☐ P2.3 holdout support (geo/time split → incremental vs attributed POAS).
+- ☐ P2.4 doors-closed: public signup behind invite/allowlist (off by default).
+
+**Exit gate — must pass before any public exposure:**
+- [ ] Each brand produces real POAS + live sweep + healing cards
+- [ ] ≥1 healing recommendation per brand acted on with **measured POAS lift**
+- [ ] Zero cross-tenant data leaks (verified in logs + DB queries)
+- [ ] Full 7-stage onboarding telemetry trace per brand
+- [ ] No false "ads can't fix" calls that were actually ad-fixable (manual audit)
 
 ---
 
-## Critical path (what unblocks what)
+## P3 — Lawful & Paid
+
+### Phase B — Lawful  ✅ *DONE (`b472992`)*
+
+| # | Item | State | Evidence |
+|---|------|-------|----------|
+| B1 | Data rights: hard-delete cascade + signed export + PII anonymization | ✅ | `supabase_client.ts`, `poas_scheduler.ts` |
+| B1.4 | Credential-vault secret revocation wired into delete cascade | ✅ | `credential_vault.ts` (`b472992`) |
+| B2.1 | `/legal/tos` `/privacy` `/dpa` routes + pages | ✅ | engine `server.ts:467+`; UI pages in `brand-twin/app/src/app/legal/` |
+| B2.2 | Acceptance log at signup + Consent Mode v2 redaction | ✅ | `user_auth.ts`, `server.ts:232` |
+| B2.3 | Version-bump re-prompt on ToS change | ✅ | `providers.tsx` 403-handler + `auth.ts` `acceptLegalDoc` (`3469815`, ported) |
+| B2.4 | Cookie consent banner, essential-only default | ✅ | `CookieConsentBanner.tsx` + `layout.tsx` (`3469815`, ported) |
+| **B4** | **Abuse: per-tenant quotas + new-account spend caps** | ☐ M | `rate_limiter.ts`, `user_auth.ts` |
+| B3.7 | `incident_response.ts` runbook + severity model | ☐ M | `incident_response.ts` |
+| B3.8 | In-app support + help center | ☐ M | `brand-twin/app/` |
+
+> B4, B3.7, B3.8 are non-blocking for beta. B4 is required before any public signup.
+
+### Phase C — Self-serve value + money  🟡 *C2 engine live; C1 engine next*
+
+UI built in `brand-twin/app/` (Costs `/costs`, Billing `/billing`), mock-gated and
+wired to six specced endpoints (`C-ENDPOINT_GAPS_SPEC.md`). C2 billing endpoints
+landed at `19f80cc` (`subscriptions` table + `GET /billing/subscription` + `POST
+/billing/suggest`). C1 COGS endpoints remain greenfield.
+
+**C1 — COGS aggregator:**
+- ✅ Pareto COGS entry UI + coverage gate — `costs/page.tsx`, `CogsEntryRow.tsx`
+- ☐ `CostSource` interface; conform `tally_adapter.ts` *(S)*
+- ☐ `zoho_adapter.ts` · `quickbooks_adapter.ts` · `xero_adapter.ts` — OAuth via A2 *(M each)*
+- ☐ Silent COGS sweep on connect → auto-fill (`onboarding_wizard.ts`) *(M)*
+- ☐ Category-average estimator → `estimatedCogs` tag (`poas_calculator.ts`) *(M)*
+- ☐ Readiness gate: low coverage → directional-only advice (`risk_radar.ts`) *(M)*
+- ☐ Endpoints C1.a/b/c (`GET /cogs/coverage`, `GET /cogs/gaps`, `POST /cogs`)
+
+**C2 — Billing + suggest-an-amount:**
+- ✅ Suggest-an-amount screen + trial strip + state panels + value recap — `billing/page.tsx`
+- ✅ `subscriptions` table + `GET /billing/subscription` + `POST /billing/suggest` (`19f80cc`)
+- ☐ Trial lifecycle jobs: day-14 nudge, day-15 flip, recurring, dunning *(M)*
+- ☐ Ops review queue → approve → first charge — `billing.ts` (+ admin UI) *(M)*
+- ☐ `PaymentProcessor` iface + Razorpay + tokenised card — `payment_processor.ts` *(L)*
+- ☐ In-house receipt/invoice generation — `billing.ts` *(S)*
+
+---
+
+## P4 — GA  ☐ *blocked on A0 external clocks*
+
+**Start these today — they run in background and can't be compressed:**
+- [ ] Google Ads Standard Access approved
+- [ ] Meta `ads_read`/`ads_management` App Review approved
+- [ ] Google OAuth consent screen verified (sensitive scopes)
+- [ ] Shopify app listed / distributable
+- [ ] Legal docs signed off by counsel (feeds B2.1)
+
+**GA definition of done:**
+- [ ] Stranger signs up → creates brand → connects Google Ads + Shopify via OAuth → sees live sweep, real POAS, healing cards
+- [ ] New accounts at OBSERVE; no autonomous spend until earned
+- [ ] No raw tokens logged/returned; state-forgery tests green
+- [ ] Billing live; first self-serve paid conversion completed
+- [ ] Rollback plan + incident runbook rehearsed
+
+---
+
+## Critical path
 
 ```
-A0 (external clocks) ─ start day 1, runs in background ──────────────►
-A1 auth ──► A2 OAuth ──► C1 COGS connectors (reuse A2 OAuth)
-   │            │
-   └──► A3 UI ◄─┘ (calls MCP tools + new endpoints)
-            │
-B1–B3 (lawful/ops) ── parallel, gate going public
-            │
-C2 billing ◄── needs A1 (orgs) + A3 (screens)
-            ▼
-       PUBLIC LAUNCH
+A0 external clocks ─────────────────────────────────────────────► gate P4 only (start NOW)
+
+P2 beta ──► C1 COGS engine (adapters + 3 endpoints) ──► C2 lifecycle jobs + payment rail ──► P4 GA
+(in progress)  (remaining greenfield)                    (C2.a/b live; jobs+Razorpay next)
 ```
 
-**Longest poles:** A0 approvals (external weeks) and A3.2 (the 9-screen UI, XL).
-Start A0 immediately; start A1→A3 in parallel; B and C follow.
-
----
-
-## The honest number (@ `6915016`)
-
-- **~21 of 55 units done.** Phase 1 complete; A1 + A2 complete; A3.1 scaffold + A3.3 readiness done.
-- **~34 units left**, roughly **5–6 weeks for one focused full-stack dev**.
-- **Biggest remaining Phase A chunk:** the product UI screens (A3.2) is nearly complete (only SSE live updates + auth guard remain).
-- **Gaps closed:** password reset (A1.1), explicit brand initialization -> OBSERVE (A1.5/B4), credential-vault refresh suspension (A2.3).
-- **Flagged gaps to build:** GET /api/v1/integrations (A2.4), short-lived signed tokens for OAuth GET /connect/:platform (A2.5), GET /api/v1/sweep (A3.4), GET/POST /api/v1/autonomy (A3.5).
-
-Build order from here: **A0 clocks (in flight) -> A3.2 (UI screens wiring) -> B3/B4 -> C.**
-Each phase spec has the granular checklists + tests + definition-of-done.
+**Next three moves:**
+1. **Start A0 applications today** — external review queues, weeks of wait, gate P4 only.
+2. **Phase C1 engine** — `CostSource` interface + C1.a/b/c endpoints flip the Costs
+   screen live; behind them sit the COGS adapters, estimator, and readiness gate.
+3. **P2.1 engine** — `recommendation_events` table + `POST /recommendations/:id/dismiss`
+   so dismiss telemetry is measured, not lost (the UI is already wired).

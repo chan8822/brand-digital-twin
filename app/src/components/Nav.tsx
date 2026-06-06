@@ -10,7 +10,9 @@ const LINKS = [
   { href: "/dashboard", label: "POAS" },
   { href: "/sweep", label: "Sweep" },
   { href: "/healing", label: "Healing" },
+  { href: "/costs", label: "Costs" },
   { href: "/autonomy", label: "Autonomy" },
+  { href: "/billing", label: "Billing" },
 ];
 
 export function Nav() {
