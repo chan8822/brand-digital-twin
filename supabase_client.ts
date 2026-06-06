@@ -350,6 +350,18 @@ export interface ErrorEventEntry {
   trace_id: string | null;
   created_at: string;
 }
+export interface SubscriptionEntry {
+  org_id: string;
+  status: 'trial' | 'suggest_amount' | 'pending_review' | 'active' | 'past_due' | 'suspended';
+  amount: number | null;
+  currency: string;
+  period: string; // 'month'
+  trial_day: number;
+  trial_length_days: number;
+  next_charge_at: string | null;
+  note: string | null;
+  updated_at: string;
+}
 
 interface MockDbContainer {
   mockTrust: TrustEntry[];
@@ -398,6 +410,7 @@ interface MockDbContainer {
   mockLegalAcceptances: LegalAcceptanceEntry[];
   mockSchemaMigrations: SchemaMigrationEntry[];
   mockRollbacks: Record<string, any>;
+  mockSubscriptions: SubscriptionEntry[];
 }
 
 class GlobalMockDb {
@@ -447,6 +460,7 @@ class GlobalMockDb {
   static mockSchemaMigrations: SchemaMigrationEntry[] = [];
   static mockErrorEvents: ErrorEventEntry[] = [];
   static mockRollbacks: Record<string, any> = {};
+  static mockSubscriptions: SubscriptionEntry[] = [];
 }
 
 /**
@@ -502,6 +516,7 @@ export class SupabaseClient {
     mockLegalAcceptances: [],
     mockSchemaMigrations: [],
     mockRollbacks: {},
+    mockSubscriptions: [],
   };
 
   static resetGlobalMockDb() {
@@ -518,6 +533,7 @@ export class SupabaseClient {
     GlobalMockDb.mockIdentityLinks = [];
     GlobalMockDb.mockRefunds = [];
     GlobalMockDb.mockFulfillmentCosts = [];
+    GlobalMockDb.mockSubscriptions = [];
     GlobalMockDb.mockTouchpoints = [];
     GlobalMockDb.mockTeamMembers = [];
     GlobalMockDb.mockClients = [];
@@ -601,6 +617,7 @@ export class SupabaseClient {
       mockLegalAcceptances: [],
       mockSchemaMigrations: [],
       mockRollbacks: {},
+      mockSubscriptions: [],
     };
   }
 
@@ -734,6 +751,8 @@ export class SupabaseClient {
 
   private get mockSchemaMigrations(): SchemaMigrationEntry[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockSchemaMigrations : this.localMockDb.mockSchemaMigrations; }
   private set mockSchemaMigrations(v: SchemaMigrationEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockSchemaMigrations = v; else this.localMockDb.mockSchemaMigrations = v; }
+  private get mockSubscriptions(): SubscriptionEntry[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockSubscriptions : this.localMockDb.mockSubscriptions; }
+  private set mockSubscriptions(v: SubscriptionEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockSubscriptions = v; else this.localMockDb.mockSubscriptions = v; }
 
   private get mockErrorEvents(): ErrorEventEntry[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockErrorEvents : this.localMockDb.mockErrorEvents; }
   private set mockErrorEvents(v: ErrorEventEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockErrorEvents = v; else this.localMockDb.mockErrorEvents = v; }
@@ -789,6 +808,7 @@ export class SupabaseClient {
     mockSchemaMigrations: SchemaMigrationEntry[];
     mockErrorEvents: ErrorEventEntry[];
     mockRollbacks: Record<string, any>;
+    mockSubscriptions: SubscriptionEntry[];
   } | null = null;
 
   private readonly logger: PinoLogger;
@@ -918,6 +938,7 @@ export class SupabaseClient {
       mockGovernanceEvents: this.mockGovernanceEvents,
       mockOrders: this.mockOrders,
       mockOrderLines: this.mockOrderLines,
+      mockSubscriptions: this.mockSubscriptions,
       mockCampaigns: this.mockCampaigns,
       mockSpendFacts: this.mockSpendFacts,
       mockCustomers: this.mockCustomers,
@@ -1007,6 +1028,7 @@ export class SupabaseClient {
       GlobalMockDb.mockLegalAcceptances = snapshot.mockLegalAcceptances || [];
       GlobalMockDb.mockSchemaMigrations = snapshot.mockSchemaMigrations || [];
       GlobalMockDb.mockRollbacks = snapshot.mockRollbacks || {};
+      GlobalMockDb.mockSubscriptions = snapshot.mockSubscriptions || [];
     } else {
       this.localMockDb.mockTrust = snapshot.mockTrust || [];
       this.localMockDb.mockErrorEvents = snapshot.mockErrorEvents || [];
@@ -1052,6 +1074,7 @@ export class SupabaseClient {
       this.localMockDb.mockLegalAcceptances = snapshot.mockLegalAcceptances || [];
       this.localMockDb.mockSchemaMigrations = snapshot.mockSchemaMigrations || [];
       this.localMockDb.mockRollbacks = snapshot.mockRollbacks || {};
+      this.localMockDb.mockSubscriptions = snapshot.mockSubscriptions || [];
     }
   }
 
@@ -2451,6 +2474,51 @@ export class SupabaseClient {
     }
   }
 
+  async getSubscription(orgId: string): Promise<SubscriptionEntry | null> {
+    if (this.mockMode) {
+      return this.mockSubscriptions.find(s => s.org_id === orgId) || null;
+    }
+    const url = `${this.supabaseUrl}/rest/v1/subscriptions?org_id=eq.${encodeURIComponent(orgId)}&select=*`;
+    const response = await fetch(url, {
+      headers: {
+        'apikey': this.supabaseKey,
+        'Authorization': `Bearer ${this.supabaseKey}`,
+      }
+    });
+    if (response.status === 404) return null;
+    if (!response.ok) {
+      throw new Error(`Failed to fetch subscription: ${response.statusText}`);
+    }
+    const data = await response.json() as SubscriptionEntry[];
+    return data[0] || null;
+  }
+
+  async saveSubscription(sub: SubscriptionEntry): Promise<void> {
+    if (this.mockMode) {
+      const idx = this.mockSubscriptions.findIndex(s => s.org_id === sub.org_id);
+      if (idx >= 0) {
+        this.mockSubscriptions[idx] = sub;
+      } else {
+        this.mockSubscriptions.push(sub);
+      }
+      return;
+    }
+    const url = `${this.supabaseUrl}/rest/v1/subscriptions?org_id=eq.${encodeURIComponent(sub.org_id)}`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'apikey': this.supabaseKey,
+        'Authorization': `Bearer ${this.supabaseKey}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates',
+      },
+      body: JSON.stringify(sub)
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to save subscription: ${response.statusText}`);
+    }
+  }
+
   async getUserByEmail(email: string): Promise<UserEntry | null> {
     if (this.mockMode) {
       return this.mockUsers.find(u => u.email === email) || null;
@@ -2821,6 +2889,7 @@ export class SupabaseClient {
       mockSchemaMigrations: JSON.parse(JSON.stringify(this.mockSchemaMigrations)) as SchemaMigrationEntry[],
       mockErrorEvents: JSON.parse(JSON.stringify(this.mockErrorEvents)) as ErrorEventEntry[],
       mockRollbacks: JSON.parse(JSON.stringify(this.mockRollbacks)) as Record<string, any>,
+      mockSubscriptions: JSON.parse(JSON.stringify(this.mockSubscriptions)) as SubscriptionEntry[],
     };
     this.logger.info('Transaction boundary started');
   }
@@ -2880,6 +2949,7 @@ export class SupabaseClient {
       this.mockSchemaMigrations = this.snapshots.mockSchemaMigrations;
       this.mockErrorEvents = this.snapshots.mockErrorEvents;
       this.mockRollbacks = this.snapshots.mockRollbacks;
+      this.mockSubscriptions = this.snapshots.mockSubscriptions;
       this.snapshots = null;
     }
     this.logger.info('Transaction boundary rolled back');

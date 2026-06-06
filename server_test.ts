@@ -1054,6 +1054,51 @@ describe('Native HTTP & SSE Server Integration Test', () => {
         expect(errors[0].context.method).toBe('GET');
       });
     });
+
+    describe('Billing & Suggest-An-Amount (C2)', () => {
+      beforeEach(() => {
+        db.resetLocalMockDb();
+      });
+
+      it('should return default trial subscription on first GET', async () => {
+        const res = await getJson('/api/v1/billing/subscription');
+        expect(res.status).toBe('success');
+        expect(res.data.status).toBe('trial');
+        expect(res.data.orgId).toBe('test-tenant');
+        expect(res.data.trialDay).toBe(5);
+        expect(res.data.trialLengthDays).toBe(14);
+      });
+
+      it('should transition to pending_review on suggest amount submission', async () => {
+        const body = { amount: 799, note: 'Valuable insights' };
+        const headers = { Authorization: `Bearer ${testToken}` };
+        const res = await postJson('/api/v1/billing/suggest', body, headers);
+        
+        expect(res.status).toBe('success');
+        expect(res.data.status).toBe('pending_review');
+        expect(res.data.amount).toBe(799);
+        expect(res.data.note).toBe('Valuable insights');
+
+        // Verify next GET returns the pending_review state
+        const getRes = await getJson('/api/v1/billing/subscription');
+        expect(getRes.status).toBe('success');
+        expect(getRes.data.status).toBe('pending_review');
+        expect(getRes.data.amount).toBe(799);
+      });
+
+      it('should reject invalid amount values on suggest', async () => {
+        const body = { amount: -50 };
+        const headers = { Authorization: `Bearer ${testToken}` };
+        const res = await postJson('/api/v1/billing/suggest', body, headers);
+        
+        expect(res.status).toBe('error');
+        expect(res.error).toBeDefined();
+
+        const stringBody = { amount: 'not-a-number' };
+        const res2 = await postJson('/api/v1/billing/suggest', stringBody, headers);
+        expect(res2.status).toBe('error');
+      });
+    });
   });
 });
 

@@ -761,6 +761,58 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
         }
       }
 
+      // Billing subscription and suggest amount endpoints (C2)
+      if (path === '/api/v1/billing/subscription' && req.method === 'GET') {
+        let sub = await db.getSubscription(decodedToken.orgId);
+        if (!sub) {
+          sub = {
+            org_id: decodedToken.orgId,
+            status: 'trial',
+            amount: null,
+            currency: 'USD',
+            period: 'month',
+            trial_day: 5,
+            trial_length_days: 14,
+            next_charge_at: null,
+            note: null,
+            updated_at: new Date().toISOString(),
+          };
+          await db.saveSubscription(sub);
+        }
+        sendSuccessResponse(res, sub);
+        return;
+      }
+
+      if (path === '/api/v1/billing/suggest' && req.method === 'POST') {
+        const body = await parseRequestBody(req);
+        const {amount, note} = body;
+        if (typeof amount !== 'number' || amount <= 0) {
+          throw new ValidationError('Amount must be a positive number');
+        }
+        let sub = await db.getSubscription(decodedToken.orgId);
+        if (!sub) {
+          sub = {
+            org_id: decodedToken.orgId,
+            status: 'trial',
+            amount: null,
+            currency: 'USD',
+            period: 'month',
+            trial_day: 5,
+            trial_length_days: 14,
+            next_charge_at: null,
+            note: null,
+            updated_at: new Date().toISOString(),
+          };
+        }
+        sub.status = 'pending_review';
+        sub.amount = amount;
+        sub.note = note || null;
+        sub.updated_at = new Date().toISOString();
+        await db.saveSubscription(sub);
+        sendSuccessResponse(res, sub);
+        return;
+      }
+
       // Jobs management routes (for E2E verification)
       if (path === '/api/v1/jobs/claim' && req.method === 'POST') {
         const body = await parseRequestBody(req);
