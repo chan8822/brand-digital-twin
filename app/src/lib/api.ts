@@ -103,8 +103,14 @@ export async function apiFetch<T>(
   });
 
   if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new ApiError(res.status, body.error ?? res.statusText);
+    const body = (await res.json().catch(() => ({}))) as {
+      error?: string | { code: string; message: string };
+    };
+    const errMsg =
+      body.error && typeof body.error === "object"
+        ? body.error.code
+        : (body.error ?? res.statusText);
+    throw new ApiError(res.status, errMsg);
   }
 
   const envelope = (await res.json()) as ApiEnvelope<T>;

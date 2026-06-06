@@ -20,6 +20,8 @@ export async function signup(
   email: string,
   password: string,
   orgName: string,
+  policyAccepted?: boolean,
+  acceptedVersion?: string,
 ): Promise<SignupResult> {
   if (USE_MOCK) {
     await wait();
@@ -27,7 +29,16 @@ export async function signup(
   }
   const data = await apiFetch<{ userId: string; verificationToken: string }>(
     "/api/v1/auth/signup",
-    { method: "POST", body: JSON.stringify({ email, password, orgName }) },
+    {
+      method: "POST",
+      body: JSON.stringify({
+        email,
+        password,
+        orgName,
+        policyAccepted,
+        acceptedVersion,
+      }),
+    },
   );
   return { userId: data.userId, verificationToken: data.verificationToken };
 }
@@ -81,6 +92,32 @@ export async function confirmReset(
   await apiFetch<unknown>("/api/v1/auth/reset/confirm", {
     method: "POST",
     body: JSON.stringify({ token, newPassword }),
+  });
+}
+
+export interface LegalDoc {
+  title: string;
+  version: string;
+  content: string;
+}
+
+export async function fetchLegalDoc(docType: "tos" | "privacy" | "dpa"): Promise<LegalDoc> {
+  if (USE_MOCK) {
+    await wait();
+    return {
+      title: docType === "tos" ? "Terms of Service" : docType === "privacy" ? "Privacy Policy" : "Data Processing Addendum",
+      version: "v1.0",
+      content: `Standard ${docType.toUpperCase()} content for Brand Digital Twin OS... (Demo Mock)`
+    };
+  }
+  return apiFetch<LegalDoc>(`/api/v1/legal/${docType}`);
+}
+
+export async function acceptLegalDoc(version: string): Promise<void> {
+  if (USE_MOCK) return wait();
+  await apiFetch<unknown>("/api/v1/legal/accept", {
+    method: "POST",
+    body: JSON.stringify({ version }),
   });
 }
 
