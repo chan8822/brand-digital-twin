@@ -441,11 +441,10 @@ export const MOCK_BRAND_READINESS: ProfitReadiness[] = [
 ];
 
 export const MOCK_BRAND_INTEGRATIONS: IntegrationState[][] = [
-  // Brand 0 — Glow & Co: Shopify + Meta connected; Google Ads not yet
+  // Brand 0 — Glow & Co: Shopify + Meta connected; Google Ads not yet connected (absent = unconnected)
   [
     { integrationId: "int-gc-s", tenantId: "org-glowco", provider: "shopify", status: "active", settings: { shop: "glow-and-co.myshopify.com" }, updatedAt: Date.now() - 1000 * 60 * 60 * 12 },
     { integrationId: "int-gc-m", tenantId: "org-glowco", provider: "meta_ads", status: "active", settings: { accountId: "act_884421" }, updatedAt: Date.now() - 1000 * 60 * 60 * 12 },
-    { integrationId: "int-gc-g", tenantId: "org-glowco", provider: "google_ads", status: "pending", settings: {}, updatedAt: Date.now() - 1000 * 60 * 30 },
   ],
   // Brand 1 — Nutra Boost: all 3 connected
   [
