@@ -29,27 +29,6 @@ Nothing in here is part of the Tanmatra application. It is kept on the
 | `PUBLIC_LAUNCH_GAP.md`, `VALIDATION_PLAN.md`, `ROLLOUT_PLAN.md`, `RECRUITMENT_LP.md`, `RELEVANT_REPOS.md`, `LANDING_PAGE_DRAFT.md` | Launch, validation, GTM |
 | `app/` | Runnable Next.js product-UI scaffold (A3) — copy into `brand-digital-twin` when wiring live |
 
-## Production-readiness execution plan (P0 → P4)
-
-The gated path from headless engine to public, self-serve, paid product. Start at
-`PROD_READINESS_PLAN.md` (the master), then each phase has an execution doc with
-ordered tickets + exit gate. Status is the diff against live upstream
-(`brand-digital-twin` @ `fb03ddd`).
-
-| Phase | Docs | Status |
-|-------|------|--------|
-| **Master** | `PROD_READINESS_PLAN.md` | 5 gated phases, invariants, critical path |
-| **P0** — close the seams | `P0-EXECUTION.md` | ✅ all 4 endpoints landed upstream + tested |
-| **P1** — hardening & ops | `P1-EXECUTION.md`, `P1-PUNCHLIST.md`, `P1.2-OBSERVABILITY_SPEC.md`, `P1.4-DB_SAFETY_SPEC.md`, `P1.5-SECRET_MANAGEMENT_SPEC.md`, `P1.6-SECURITY_REVIEW_SPEC.md`, `P1.7-LOAD_TEST_SPEC.md` | 🟡 floor done (atomic claim, /ready, validateEnv, CI); ops items open |
-| **P2** — private beta | `P2-EXECUTION.md` (+ `VALIDATION_PLAN.md`) | 🔴 instrumentation + doors-closed enforcement to build |
-| **P3** — lawful & paid | `P3-EXECUTION.md` (+ `B-`/`C-PHASE_BUILD_SPEC.md`) | 🟡 B1/B2 done; B4/C1/C2 open |
-| **P4** — GA | `P4-EXECUTION.md` (+ `A0-PLATFORM_APPROVALS.md`) | 🔴 gated on A0 external clocks |
-
-**Order:** P0 → P1 → P2 → P3 → P4, each behind a hard exit gate. Two invariants
-never relax: new accounts start at **OBSERVE**; **no raw tokens/PAN** ever logged
-or stored. The single longest pole is the **A0 approval clocks** (3–8 wks) — they
-gate only P4 but should be in-flight now, since all build work fits their window.
-
 ## Why it lives in the Tanmatra repo
 
 The write scope for this session is limited to `chan8822/wellness-foods`, so the
