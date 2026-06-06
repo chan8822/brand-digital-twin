@@ -247,6 +247,7 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
         const eventName = body.eventName;
         const clientId = body.clientId;
         const gclid = body.gclid;
+        const fbclid = body.fbclid;
         const customerData = body.customerData || {};
         const consent = body.consent || {
           adStorage: 'granted',
@@ -258,6 +259,7 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
         let resolvedEmail = customerData.email;
         let resolvedPhone = customerData.phone;
         let resolvedGclid = gclid;
+        let resolvedFbclid = fbclid;
 
         if (consent.adUserData === 'denied') {
           resolvedEmail = undefined;
@@ -265,6 +267,7 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
         }
         if (consent.adStorage === 'denied') {
           resolvedGclid = undefined;
+          resolvedFbclid = undefined;
         }
 
         const requestDb = db.clone();
@@ -329,11 +332,17 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
           }
         }
 
+        const campaignIdValue = resolvedGclid
+          ? (resolvedGclid.startsWith('gclid-') ? `camp-${resolvedGclid}` : `camp-gclid-${resolvedGclid}`)
+          : resolvedFbclid
+          ? (resolvedFbclid.startsWith('fbclid-') ? `camp-${resolvedFbclid}` : `camp-fbclid-${resolvedFbclid}`)
+          : null;
+
         const touchpointId = `tp-${Date.now()}-${Math.random().toString(36).substring(7)}`;
         await requestDb.saveTouchpoint({
           touchpoint_id: touchpointId,
           customer_id: resolution.customerId,
-          campaign_id: resolvedGclid ? `camp-${resolvedGclid}` : null,
+          campaign_id: campaignIdValue,
           order_id: body.orderId || null,
           occurred_at: new Date().toISOString(),
           type: eventName,

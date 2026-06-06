@@ -995,4 +995,57 @@ export class GoogleAdsAdapter implements PlatformAdapter {
       throw err;
     }
   }
+
+  async uploadConversionAdjustments(
+    customerId: string,
+    adjustments: any[],
+  ): Promise<{ successCount: number; failCount: number }> {
+    this.logger.info('Uploading conversion adjustments to Google Ads', {
+      customerId,
+      adjustmentsCount: adjustments.length,
+    });
+
+    if (this.token.startsWith('mock')) {
+      this.logger.debug('Mock Google Ads uploadConversionAdjustments intercepted');
+      return { successCount: adjustments.length, failCount: 0 };
+    }
+
+    const cleanCustId = customerId.replace(/-/g, '');
+    const endpoint = `https://googleads.googleapis.com/${API_VERSION}/customers/${cleanCustId}:uploadConversionAdjustments`;
+
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'developer-token': this.developerToken,
+          'Authorization': `Bearer ${this.token}`,
+        },
+        body: JSON.stringify({
+          conversionAdjustments: adjustments,
+          partialFailure: true,
+        }),
+      });
+
+      if (!res.ok) {
+        this.logger.error('Google Ads upload conversion adjustments failed', {
+          status: res.status,
+          statusText: res.statusText,
+        });
+        throw new Error(`Google Ads upload error: ${res.statusText}`);
+      }
+
+      const json = (await res.json()) as any;
+      const partialFailureError = json.partialFailureError;
+      if (partialFailureError) {
+        this.logger.warn('Google Ads upload had partial failures', { partialFailureError });
+        return { successCount: 0, failCount: adjustments.length };
+      }
+
+      return { successCount: adjustments.length, failCount: 0 };
+    } catch (err: any) {
+      this.logger.error('Google Ads upload exception', { error: err?.message || String(err) });
+      throw err;
+    }
+  }
 }

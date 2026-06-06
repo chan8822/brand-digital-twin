@@ -547,6 +547,16 @@ ts_library(
 )
 
 ts_library(
+    name = "offline_conversions_sync",
+    srcs = ["offline_conversions_sync.ts"],
+    deps = [
+        ":google_ads_adapter",
+        ":meta_ads_adapter",
+        ":supabase_client",
+    ],
+)
+
+ts_library(
     name = "poas_scheduler",
     srcs = ["poas_scheduler.ts"],
     deps = [
@@ -557,7 +567,9 @@ ts_library(
         ":google_ads_adapter",
         ":governance_engine",
         ":governance_types",
+        ":meta_ads_adapter",
         ":observability",
+        ":offline_conversions_sync",
         ":payment_processor",
         ":platform_adapter",
         ":poas_calculator",
@@ -681,6 +693,7 @@ ts_library(
         "rate_limiter_test.ts",
         "secret_provider_test.ts",
         "server_test.ts",
+        "offline_conversions_sync_test.ts",
         "shopify_adapter_test.ts",
         "sku_redistribution_test.ts",
         "stakeholder_portal_test.ts",
@@ -718,6 +731,7 @@ ts_library(
         ":multi_agent_governance",
         ":oauth_flows",
         ":observability",
+        ":offline_conversions_sync",
         ":onboarding_simulator",
         ":onboarding_wizard",
         ":opa_policy",
@@ -937,6 +951,11 @@ jasmine_node_test(
 
 jasmine_node_test(
     name = "sku_redistribution_test",
+    srcs = [":brand_twin_tests"],
+)
+
+jasmine_node_test(
+    name = "offline_conversions_sync_test",
     srcs = [":brand_twin_tests"],
 )
 

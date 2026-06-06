@@ -358,4 +358,52 @@ export class MetaAdsAdapter implements PlatformAdapter {
   getSimulatedCampaign(id: string) {
     return this.simulatedCampaigns.get(id);
   }
+
+  async uploadOfflineEvents(
+    pixelId: string,
+    events: any[],
+  ): Promise<{ successCount: number; failCount: number }> {
+    this.logger.info('Uploading offline conversions to Meta Graph API', {
+      pixelId,
+      eventsCount: events.length,
+    });
+
+    if (this.accessToken === 'mock_access_token') {
+      this.logger.debug('Mock Meta API uploadOfflineEvents intercepted');
+      return { successCount: events.length, failCount: 0 };
+    }
+
+    const endpoint = `https://graph.facebook.com/${API_VERSION}/${pixelId}/events`;
+    const payload = {
+      data: events,
+    };
+
+    try {
+      const urlParams = new URLSearchParams({
+        access_token: this.accessToken,
+      });
+      const res = await fetch(`${endpoint}?${urlParams.toString()}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        this.logger.error('Meta offline conversions upload failed', {
+          status: res.status,
+          statusText: res.statusText,
+        });
+        throw new Error(`Meta API error: ${res.statusText}`);
+      }
+
+      return { successCount: events.length, failCount: 0 };
+    } catch (err: any) {
+      this.logger.error('Meta offline conversions upload exception', {
+        error: err?.message || String(err),
+      });
+      throw err;
+    }
+  }
 }

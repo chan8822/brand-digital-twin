@@ -259,6 +259,8 @@ export interface TouchpointEntry {
   tenant_id: string;
   source_system: string;
   ingested_at: string;
+  google_synced_at?: string | null;
+  meta_synced_at?: string | null;
 }
 
 export interface CredentialEntry {

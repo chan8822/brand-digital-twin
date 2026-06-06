@@ -7,6 +7,8 @@ import {PinoLogger} from './observability';
 import {PaymentProcessor, MockPaymentProcessor} from './payment_processor';
 import {BankAdapter} from './bank_adapter';
 import {GoogleAdsAdapter} from './google_ads_adapter';
+import {MetaAdsAdapter} from './meta_ads_adapter';
+import {OfflineConversionsSync} from './offline_conversions_sync';
 import {PlatformAdapter} from './platform_adapter';
 import {PoasCalculator} from './poas_calculator';
 import {RiskRadar} from './risk_radar';
@@ -281,6 +283,29 @@ export class PoasScheduler {
           };
           await tenantDb.saveBrandSignal(signal);
         }
+      }
+    }
+
+    // Sync offline conversions (gross profit restatements) to ad platforms
+    const googleAdapter = this.adapters.get('google') as GoogleAdsAdapter;
+    const metaAdapter = this.adapters.get('meta') as MetaAdsAdapter;
+
+    if (googleAdapter && metaAdapter) {
+      const credentials = await tenantDb.getCredentials(tenantId).catch(() => []);
+      const metaPixelCred = credentials.find(c => c.platform === 'meta_pixel');
+      const metaPixelId = metaPixelCred?.credential_key || 'mock-pixel-id';
+
+      const sync = new OfflineConversionsSync(tenantDb);
+      try {
+        const res = await sync.syncConversions(tenantId, googleAdapter, metaAdapter, metaPixelId);
+        this.logger.info(`Conversions offline sync completed for tenant ${tenantId}`, {
+          googleSuccess: res.googleSuccessCount,
+          metaSuccess: res.metaSuccessCount,
+        });
+      } catch (err: any) {
+        this.logger.error(`Conversions offline sync failed for tenant ${tenantId}:`, {
+          error: err.message || String(err),
+        });
       }
     }
   }
