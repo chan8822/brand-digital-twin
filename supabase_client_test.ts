@@ -8,6 +8,7 @@ describe('SupabaseClient Database & Security Suite', () => {
   let db: SupabaseClient;
 
   beforeEach(() => {
+    SupabaseClient.useSharedMockDb = false;
     db = new SupabaseClient('https://mock.supabase.co', 'mock-key', true);
   });
 

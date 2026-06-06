@@ -74,7 +74,24 @@ export class RealtimeEventBus extends EventEmitter {
         clearInterval(this.queueTimer!);
         this.queueTimer = undefined;
       }
-    }, 100); // Process queues every 100ms
+    }, 100);
+  }
+
+  override emit(eventName: string | symbol, ...args: any[]): boolean {
+    const listeners = this.rawListeners(eventName);
+    if (listeners.length === 0) {
+      return false;
+    }
+    for (const listener of listeners) {
+      try {
+        if (typeof listener === 'function') {
+          listener.apply(this, args);
+        }
+      } catch (err: any) {
+        console.error(`Error in listener for event ${String(eventName)}:`, err);
+      }
+    }
+    return true;
   }
 
   emitPhaseUpdate(

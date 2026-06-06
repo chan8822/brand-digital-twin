@@ -109,8 +109,6 @@ export class OpaPolicyEngine {
         'pause',
         'activate',
         'scale_budget',
-        'update_feed',
-        'create',
       ];
       if (allowedOps.includes(input.op)) {
         return true;
@@ -118,16 +116,18 @@ export class OpaPolicyEngine {
     }
 
     // Rule 2 & 3: Check for matching valid waivers
-    for (const waiver of input.waivers) {
-      if (
-        waiver.expiresAtMs > input.current_time_ms &&
-        waiver.allowedOps.includes(input.op)
-      ) {
-        if (waiver.overrideRole === 'CFO') {
-          return true; // CFO covers high risk
-        }
-        if (waiver.overrideRole === 'Media Buyer' && input.cost < 5000) {
-          return true; // Media buyer covers up to $5000
+    if (input.cost > input.earned_tier_cap) {
+      for (const waiver of input.waivers) {
+        if (
+          waiver.expiresAtMs > input.current_time_ms &&
+          waiver.allowedOps.includes(input.op)
+        ) {
+          if (waiver.overrideRole === 'CFO') {
+            return true; // CFO covers high risk
+          }
+          if (waiver.overrideRole === 'Media Buyer' && input.cost < 5000) {
+            return true; // Media buyer covers up to $5000
+          }
         }
       }
     }

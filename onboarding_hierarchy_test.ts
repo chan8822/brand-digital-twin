@@ -25,6 +25,7 @@ describe('Account Hierarchy Onboarding & Linking integration', () => {
   const tenantId = 'tenant-brand-twin';
 
   beforeEach(async () => {
+    SupabaseClient.useSharedMockDb = false;
     db = new SupabaseClient('https://mock.supabase.co', 'mock-key', true);
     db.setTenantContext(tenantId);
 
@@ -46,6 +47,11 @@ describe('Account Hierarchy Onboarding & Linking integration', () => {
       undefined,
       db,
     );
+    governance.registerWhitelist(tenantId, {
+      op: 'create',
+      entity: 'campaign',
+      maxCost: 100000,
+    });
 
     // Seed governance trust score for Google Ads so it has permission to execute immediately
     await db.saveTrustTier(tenantId, 'pause', 4);

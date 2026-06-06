@@ -436,6 +436,11 @@ describe('Advanced Risk & Observability Features', () => {
       trustLedger.tiers['tenant-1:scale_budget'] = 3;
       trustLedger.tiers['tenant-1:update_feed'] = 3;
       trustLedger.tiers['tenant-1:pause'] = 3;
+      engine.registerWhitelist('tenant-1', {
+        op: 'update_feed',
+        entity: 'campaign',
+        maxCost: 1000,
+      });
     });
 
     it('should scale budget by 50% for low-stock warning threshold', async () => {

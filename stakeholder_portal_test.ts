@@ -24,6 +24,7 @@ describe('Multi-Stakeholder Ecosystem Portal & OS Tests', () => {
   const tenantId = 'test-tenant-123';
 
   beforeEach(() => {
+    SupabaseClient.useSharedMockDb = false;
     db = new SupabaseClient('https://mock-url.supabase.co', 'mock-key', true);
     onboardingOrchestrator = new EcosystemOnboardingOrchestrator(db);
     dashboardEngine = new UnifiedDashboardEngine(db);

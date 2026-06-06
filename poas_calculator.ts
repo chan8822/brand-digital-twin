@@ -35,10 +35,11 @@ export class PoasCalculator {
     // 4. Group order lines by order_id and calculate line-level gross metrics
     const orderLinesByOrder = new Map<string, any[]>();
     for (const ol of orderLines) {
-      const grossRevenue = (ol.unit_price - ol.line_discount) * ol.qty;
+      const discount = ol.line_discount ?? 0;
+      const grossRevenue = (ol.unit_price - discount) * ol.qty;
       const unitCost = ol.unit_cost ?? 0;
-      const grossMargin = (ol.unit_price - ol.line_discount - unitCost) * ol.qty;
-      const discountAmount = ol.line_discount * ol.qty;
+      const grossMargin = (ol.unit_price - discount - unitCost) * ol.qty;
+      const discountAmount = discount * ol.qty;
       const cogs = unitCost * ol.qty;
 
       const lines = orderLinesByOrder.get(ol.order_id) ?? [];
@@ -68,12 +69,20 @@ export class PoasCalculator {
       let orderRefund = 0;
       let estimatedCogs = false;
 
+      const positiveLines = lines.filter((l) => l.grossRevenue > 0);
+      const sumPositiveGrossRevenue = positiveLines.reduce((sum, l) => sum + l.grossRevenue, 0);
+
       for (const line of lines) {
         const refunded = refundMap.get(line.lineId) ?? 0;
-        const allocatedFulfillment =
-          orderGrossRevenue > 0
-            ? (line.grossRevenue / orderGrossRevenue) * totalFulfillment
-            : 0;
+        let allocatedFulfillment = 0;
+        if (sumPositiveGrossRevenue > 0) {
+          allocatedFulfillment =
+            line.grossRevenue > 0
+              ? (line.grossRevenue / sumPositiveGrossRevenue) * totalFulfillment
+              : 0;
+        } else if (lines.length > 0) {
+          allocatedFulfillment = totalFulfillment / lines.length;
+        }
 
         const lineContribution = line.grossMargin - refunded - allocatedFulfillment;
         orderContribution += lineContribution;
@@ -245,7 +254,9 @@ export class PoasCalculator {
 
     // Sort by POAS ascending, then spend descending
     return reports.sort((a, b) => {
-      if (a.poas === null && b.poas === null) return 0;
+      if (a.poas === null && b.poas === null) {
+        return b.spend - a.spend;
+      }
       if (a.poas === null) return -1; // null poas (organic) sits at the top
       if (b.poas === null) return 1;
       if (a.poas !== b.poas) return a.poas - b.poas;

@@ -25,7 +25,7 @@ describe('Job Claiming Concurrency Tests', () => {
 
     // Setup Tenant context
     const email = 'concurrencyworker@example.com';
-    const pw = 'Pw123!';
+    const pw = 'Password123!';
     const { user, verificationToken } = await signup(db, email, pw, 'ConcurrencyOrg', jwtSecret, true);
     await verifyEmail(db, verificationToken, jwtSecret);
     const loginRes = await login(db, email, pw, jwtSecret);

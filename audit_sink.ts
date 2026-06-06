@@ -1,4 +1,5 @@
 import {AuditSink} from './governance_types';
+import {redactSensitiveData} from './observability';
 import {SupabaseClient} from './supabase_client';
 
 /**
@@ -11,15 +12,16 @@ export class PersistentAuditSink implements AuditSink {
    * Securely logs an activity or decision to the database.
    */
   async record(row: Record<string, unknown>): Promise<void> {
+    const redactedRow = redactSensitiveData(row);
     await this.db.saveGovernanceEvent({
-      action_id: String(row['action_id'] || ''),
-      tenant_id: String(row['tenant_id'] || ''),
-      actor: String(row['actor'] || 'system'),
-      action_type: String(row['action_type'] || ''),
-      target_entity: String(row['target_entity'] || ''),
-      status: String(row['status'] || ''),
-      reason: String(row['reason'] || ''),
-      created_at: String(row['created_at'] || new Date().toISOString()),
+      action_id: String(redactedRow['action_id'] || ''),
+      tenant_id: String(redactedRow['tenant_id'] || ''),
+      actor: String(redactedRow['actor'] || 'system'),
+      action_type: String(redactedRow['action_type'] || ''),
+      target_entity: String(redactedRow['target_entity'] || ''),
+      status: String(redactedRow['status'] || ''),
+      reason: String(redactedRow['reason'] || ''),
+      created_at: String(redactedRow['created_at'] || new Date().toISOString()),
     });
   }
 }

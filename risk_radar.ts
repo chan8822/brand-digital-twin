@@ -1,5 +1,6 @@
 import {GoogleAdsAdapter} from './google_ads_adapter';
-import {Context, GovernanceEngine} from './governance_engine';
+import {GovernanceEngine} from './governance_engine';
+import {Context} from './governance_types';
 import {ActionRequest} from './platform_adapter';
 import {SupabaseClient} from './supabase_client';
 import {BankAdapter} from './bank_adapter';

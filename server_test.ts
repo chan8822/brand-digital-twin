@@ -56,7 +56,13 @@ describe('Native HTTP & SSE Server Integration Test', () => {
   };
 
   beforeAll(async () => {
+    SupabaseClient.useSharedMockDb = false;
     db = new SupabaseClient();
+    // Seed allowlist for tests since it defaults to enabled
+    await db.addToAllowlist('*@google.com');
+    await db.addToAllowlist('allowed@brandtwin.io');
+    await db.addToAllowlist('admin@example.com');
+    await db.addToAllowlist('*@example.com');
     // Pre-populate mock database structures for testing
     await db.saveClient({
       clientId: 'client-nike',
@@ -813,6 +819,10 @@ describe('Native HTTP & SSE Server Integration Test', () => {
     });
 
     describe('API Wiring and Launch Gaps', () => {
+      beforeEach(() => {
+        db.resetLocalMockDb();
+      });
+
       it('should retrieve integration states for tenant', async () => {
         const res = await getJson('/api/v1/integrations');
         expect(res.status).toBe('success');
@@ -906,6 +916,7 @@ describe('Native HTTP & SSE Server Integration Test', () => {
       });
 
       it('should successfully execute campaign action and manually rollback (reverse) it', async () => {
+        await db.saveTrustTier('test-tenant', 'pause', 3);
         const executeSpy = spyOn(GoogleAdsAdapter.prototype, 'execute').and.callThrough();
         const rollbackSpy = spyOn(GoogleAdsAdapter.prototype, 'rollback').and.callThrough();
 
@@ -941,7 +952,9 @@ describe('Native HTTP & SSE Server Integration Test', () => {
           {actionRequest, context: validContextTemplate},
           {Authorization: `Bearer ${testToken}`},
         );
-
+        console.log('executeRes data:', executeRes.data);
+        const apps = await db.getApprovals('test-tenant');
+        console.log('approvals in DB (rollback test):', apps);
         expect(executeRes.status).toBe('success');
         expect(executeRes.data.status).toBe('executed');
         expect(executeSpy).toHaveBeenCalled();
@@ -1098,6 +1111,133 @@ describe('Native HTTP & SSE Server Integration Test', () => {
         const res2 = await postJson('/api/v1/billing/suggest', stringBody, headers);
         expect(res2.status).toBe('error');
       });
+    });
+  });
+
+  describe('Tenant Spend Limits (1.4)', () => {
+    beforeEach(async () => {
+      db.resetLocalMockDb();
+      await db.saveTrustTier('test-tenant', 'update_budget', 3);
+    });
+
+    it('should return default limits on GET if not set', async () => {
+      const headers = { Authorization: `Bearer ${testToken}` };
+      const res = await getJson('/api/v1/tenant-limits', headers);
+      expect(res.status).toBe('success');
+      expect(res.data.maxDailyLimit).toBe(1000.00);
+      expect(res.data.maxPerActionLimit).toBe(500.00);
+    });
+
+    it('should save custom limits on POST and retrieve them on GET', async () => {
+      const headers = { Authorization: `Bearer ${testToken}` };
+      const body = { maxDailyLimit: 2000.00, maxPerActionLimit: 800.00 };
+      const postRes = await postJson('/api/v1/tenant-limits', body, headers);
+      expect(postRes.status).toBe('success');
+      expect(postRes.data.limits.maxDailyLimit).toBe(2000.00);
+      expect(postRes.data.limits.maxPerActionLimit).toBe(800.00);
+
+      const getRes = await getJson('/api/v1/tenant-limits', headers);
+      expect(getRes.status).toBe('success');
+      expect(getRes.data.maxDailyLimit).toBe(2000.00);
+      expect(getRes.data.maxPerActionLimit).toBe(800.00);
+    });
+
+    it('should reject invalid limits on POST', async () => {
+      const headers = { Authorization: `Bearer ${testToken}` };
+      const body = { maxDailyLimit: 2000.00 }; // missing maxPerActionLimit
+      const res = await postJson('/api/v1/tenant-limits', body, headers);
+      expect(res.status).toBe('error');
+
+      const body2 = { maxPerActionLimit: 800.00 }; // missing maxDailyLimit
+      const res2 = await postJson('/api/v1/tenant-limits', body2, headers);
+      expect(res2.status).toBe('error');
+    });
+
+    it('should enforce single action limit and queue if exceeded', async () => {
+      const headers = { Authorization: `Bearer ${testToken}` };
+      // 1. Set custom limits: single action limit is 500.00
+      const limitBody = { maxDailyLimit: 2000.00, maxPerActionLimit: 500.00 };
+      await postJson('/api/v1/tenant-limits', limitBody, headers);
+
+      // 2. Try to update campaign c1 budget to 1600 (original is 1000, cost = 600)
+      const actionRequest = {
+        idempotencyKey: 'test-limits-single-action',
+        op: 'update_budget',
+        entity: 'campaign',
+        targetId: 'c1',
+        payload: {
+          budget: 1600.00
+        }
+      };
+
+      const res = await postJson(
+        '/api/v1/actions',
+        { actionRequest, context: validContextTemplate },
+        headers
+      );
+
+      expect(res.status).toBe('success');
+      expect(res.data.status).toBe('queued'); // should be queued
+
+      // Verify that an approval request was created
+      const approvals = await db.getApprovals('test-tenant');
+      const app = approvals.find((a) => a.approvalId === 'app_test-limits-single-action');
+      expect(app).toBeDefined();
+      expect(app?.reason).toContain('exceeds tenant single-action limit');
+    });
+
+    it('should enforce daily cumulative limit and queue if exceeded', async () => {
+      const headers = { Authorization: `Bearer ${testToken}` };
+      // 1. Set custom limits: daily limit is 1000.00, single action is 800.00
+      const limitBody = { maxDailyLimit: 1000.00, maxPerActionLimit: 800.00 };
+      await postJson('/api/v1/tenant-limits', limitBody, headers);
+
+      // 2. Execute first action: update campaign 888 budget to 900 (cost = 400) -> should auto-execute
+      const action1 = {
+        idempotencyKey: 'test-limits-daily-1',
+        op: 'update_budget',
+        entity: 'campaign',
+        targetId: '888',
+        payload: {
+          budget: 900.00
+        }
+      };
+
+      const res1 = await postJson(
+        '/api/v1/actions',
+        { actionRequest: action1, context: validContextTemplate },
+        headers
+      );
+      console.log('res1 data:', res1.data);
+      const apps1 = await db.getApprovals('test-tenant');
+      console.log('approvals in DB (daily limit test):', apps1);
+      expect(res1.status).toBe('success');
+      expect(res1.data.status).toBe('executed');
+
+      // 3. Try to execute second action: update campaign c1 budget to 1700 (cost = 700) -> should queue because total daily spend would be 1100.00 > 1000.00
+      const action2 = {
+        idempotencyKey: 'test-limits-daily-2',
+        op: 'update_budget',
+        entity: 'campaign',
+        targetId: 'c1',
+        payload: {
+          budget: 1700.00
+        }
+      };
+
+      const res2 = await postJson(
+        '/api/v1/actions',
+        { actionRequest: action2, context: validContextTemplate },
+        headers
+      );
+      expect(res2.status).toBe('success');
+      expect(res2.data.status).toBe('queued');
+
+      // Verify that second approval request was created with appropriate reason
+      const approvals = await db.getApprovals('test-tenant');
+      const app = approvals.find((a) => a.approvalId === 'app_test-limits-daily-2');
+      expect(app).toBeDefined();
+      expect(app?.reason).toContain('would push daily spend');
     });
   });
 });

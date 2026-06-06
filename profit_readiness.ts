@@ -32,7 +32,7 @@ export class ProfitReadinessCalculator {
     const variants = await this.db.getVariants(tenantId);
     const totalVariants = variants.length;
     const variantsWithCogs = variants.filter(
-      (v) => v.cost_cogs !== null && v.cost_cogs !== undefined && Number(v.cost_cogs) > 0,
+      (v) => v.cost !== null && v.cost !== undefined && Number(v.cost) > 0,
     ).length;
     const cogsCoverage = totalVariants > 0 ? Math.round((variantsWithCogs / totalVariants) * 100) : 0;
 

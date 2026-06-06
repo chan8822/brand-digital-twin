@@ -11,7 +11,8 @@ import {
 } from './supabase_client';
 import {GoogleAdsAdapter} from './google_ads_adapter';
 import {GoogleMerchantAdapter} from './google_merchant_adapter';
-import {Context, GovernanceEngine} from './governance_engine';
+import {GovernanceEngine} from './governance_engine';
+import {Context} from './governance_types';
 
 export interface OnboardingParams {
   tenantId: string;
@@ -266,7 +267,25 @@ export class OnboardingWizard {
     const orderLines = await this.db.getOrderLines(tenantId);
     const variants = await this.db.getVariants(tenantId);
 
-    const hasOrderCogs = orderLines.some((ol) => ol.unit_cost !== null && ol.unit_cost !== undefined && ol.unit_cost > 0);
+    const variantMap = new Map<string, number | null>();
+    for (const v of variants) {
+      if (v.variant_id) {
+        variantMap.set(v.variant_id, v.cost !== undefined ? v.cost : null);
+      }
+    }
+
+    const hasOrderCogs = orderLines.some((ol) => {
+      if (ol.unit_cost !== null && ol.unit_cost !== undefined && ol.unit_cost > 0) {
+        return true;
+      }
+      if (ol.variant_id) {
+        const vCost = variantMap.get(ol.variant_id);
+        if (vCost !== null && vCost !== undefined && vCost > 0) {
+          return true;
+        }
+      }
+      return false;
+    });
     const hasCatalogCogs = variants.some((v) => v.cost !== null && v.cost !== undefined && v.cost > 0);
 
     if (!hasOrderCogs && !hasCatalogCogs) {
@@ -280,7 +299,17 @@ export class OnboardingWizard {
     if (orderLines.length > 0) {
       for (const ol of orderLines) {
         if (!ol.sku || !ol.variant_id) continue;
-        const margin = ol.unit_price - (ol.unit_cost ?? 0);
+        let cost = ol.unit_cost;
+        if (cost === null || cost === undefined) {
+          const variantCost = variantMap.get(ol.variant_id);
+          if (variantCost !== undefined && variantCost !== null) {
+            cost = variantCost;
+          }
+        }
+        if (cost === null || cost === undefined) {
+          continue;
+        }
+        const margin = ol.unit_price - cost;
         const marginPct = ol.unit_price > 0 ? margin / ol.unit_price : 0;
         skuMargins.set(ol.sku, {
           sku: ol.sku,
@@ -293,7 +322,10 @@ export class OnboardingWizard {
     if (skuMargins.size === 0) {
       marginBasis = 'catalog';
       for (const v of variants) {
-        const margin = v.price - (v.cost ?? 0);
+        if (v.cost === null || v.cost === undefined) {
+          continue;
+        }
+        const margin = v.price - v.cost;
         const marginPct = v.price > 0 ? margin / v.price : 0;
         skuMargins.set(v.sku, {
           sku: v.sku,

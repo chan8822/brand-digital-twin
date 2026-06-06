@@ -18,45 +18,8 @@ export interface Metric {
   timestamp: string;
 }
 
-export function redactSensitiveData(val: any): any {
-  if (val === null || val === undefined) return val;
-
-  if (Array.isArray(val)) {
-    return val.map(redactSensitiveData);
-  }
-
-  if (typeof val === 'object') {
-    const redacted: Record<string, any> = {};
-    for (const key of Object.keys(val)) {
-      const lowerKey = key.toLowerCase();
-      if (
-        lowerKey.includes('auth') ||
-        lowerKey.includes('secret') ||
-        lowerKey.includes('key') ||
-        lowerKey.includes('token') ||
-        lowerKey.includes('bearer') ||
-        lowerKey.includes('password') ||
-        lowerKey.includes('refresh')
-      ) {
-        redacted[key] = '[REDACTED]';
-      } else {
-        redacted[key] = redactSensitiveData(val[key]);
-      }
-    }
-    return redacted;
-  }
-
-  if (typeof val === 'string') {
-    if (/^[a-zA-Z0-9\-_]+\.[a-zA-Z0-9\-_]+\.[a-zA-Z0-9\-_]+$/.test(val)) {
-      return '[REDACTED]';
-    }
-    if (/^\d{13,19}$/.test(val.replace(/[-\s]/g, ''))) {
-      return '[REDACTED]';
-    }
-  }
-
-  return val;
-}
+import {redactSensitiveData} from './scrubber';
+export {redactSensitiveData};
 
 export interface ErrorEvent {
   tenant_id: string | null;
@@ -79,13 +42,14 @@ export class DatabaseErrorSink implements ErrorSink {
   constructor(private readonly db: ErrorDbClient) {}
 
   async recordError(event: ErrorEvent): Promise<void> {
+    const redactedMessage = redactSensitiveData(event.message);
     const redactedContext = redactSensitiveData(event.context);
     await this.db.saveErrorEvent({
       event_id: `err_${Math.random().toString(36).substring(7)}`,
       tenant_id: event.tenant_id,
       severity: event.severity,
       source: event.source,
-      message: event.message,
+      message: redactedMessage,
       context: redactedContext,
       trace_id: event.trace_id || null,
       created_at: new Date().toISOString(),
@@ -97,6 +61,7 @@ export class WebhookErrorSink implements ErrorSink {
   constructor(private readonly webhookUrl: string) {}
 
   async recordError(event: ErrorEvent): Promise<void> {
+    const redactedMessage = redactSensitiveData(event.message);
     const redactedContext = redactSensitiveData(event.context);
     try {
       await fetch(this.webhookUrl, {
@@ -104,6 +69,7 @@ export class WebhookErrorSink implements ErrorSink {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...event,
+          message: redactedMessage,
           context: redactedContext,
           timestamp: new Date().toISOString(),
         }),
@@ -255,11 +221,14 @@ export class PinoLogger {
   ) {
     if (level < this.minLevel) return;
 
+    const redactedMsg = redactSensitiveData(msg);
+    const redactedContext = redactSensitiveData(context);
+
     const entry = JSON.stringify({
       level,
       time: Date.now(),
-      msg,
-      ...context,
+      msg: redactedMsg,
+      ...redactedContext,
     });
 
     this.loggedEntries.push(entry);

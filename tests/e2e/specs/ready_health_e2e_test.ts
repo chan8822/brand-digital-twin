@@ -77,7 +77,7 @@ describe('Ready & Health Check E2E Tests', () => {
     beforeEach(async () => {
       // 1. Setup Tenant A
       const emailA = 'tenantA@example.com';
-      const pwA = 'Pw123!';
+      const pwA = 'Password123!';
       const orgNameA = 'TenantAOrg';
 
       let userA = await db.getUserByEmail(emailA);
@@ -109,7 +109,7 @@ describe('Ready & Health Check E2E Tests', () => {
 
       // 2. Setup Tenant B
       const emailB = 'tenantB@example.com';
-      const pwB = 'Pw123!';
+      const pwB = 'Password123!';
       const orgNameB = 'TenantBOrg';
 
       let userB = await db.getUserByEmail(emailB);

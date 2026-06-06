@@ -159,6 +159,51 @@ describe('Governance Adversarial Tests', () => {
       );
       expect(allowed).toBe(false);
     });
+
+    it('should deny update_feed and create operations under Rule 1', async () => {
+      const allowedUpdateFeed = await opa.evaluate(
+        {op: 'update_feed', entity: 'campaign', idempotencyKey: 'k1', confidence: 1.0, targetId: 't-1', payload: {}},
+        {valid: true, projectedCost: 50, warnings: [], request: {} as any},
+        ctx,
+        2,
+      );
+      expect(allowedUpdateFeed).toBe(false);
+
+      const allowedCreate = await opa.evaluate(
+        {op: 'create', entity: 'campaign', idempotencyKey: 'k2', confidence: 1.0, targetId: 't-2', payload: {}},
+        {valid: true, projectedCost: 50, warnings: [], request: {} as any},
+        ctx,
+        2,
+      );
+      expect(allowedCreate).toBe(false);
+    });
+
+    it('should deny waiver approval if cost does not exceed earned_tier_cap', async () => {
+      ctx.activeWaivers = [
+        {
+          overrideRole: 'CFO',
+          expiresAtMs: Date.now() + 60000,
+          allowedOps: ['update_feed'],
+          reason: 'test',
+        },
+      ];
+
+      const allowedWithinCap = await opa.evaluate(
+        {op: 'update_feed', entity: 'campaign', idempotencyKey: 'k_within', confidence: 1.0, targetId: 't-1', payload: {}},
+        {valid: true, projectedCost: 50, warnings: [], request: {} as any},
+        ctx,
+        2,
+      );
+      expect(allowedWithinCap).toBe(false);
+
+      const allowedExceedingCap = await opa.evaluate(
+        {op: 'update_feed', entity: 'campaign', idempotencyKey: 'k_exceeding', confidence: 1.0, targetId: 't-2', payload: {}},
+        {valid: true, projectedCost: 600, warnings: [], request: {} as any},
+        ctx,
+        2,
+      );
+      expect(allowedExceedingCap).toBe(true);
+    });
   });
 
   describe('RiskRadar.diagnoseRootCause Logic', () => {

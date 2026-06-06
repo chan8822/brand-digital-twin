@@ -328,4 +328,276 @@ describe('Phase 1a Ingestion and POAS calculation', () => {
     expect(reports[0].campaignId).toBe('camp-google-1');
     expect(reports[1].campaignId).toBe('camp-meta-1');
   });
+
+  describe('Direct Unit Tests', () => {
+    let db: SupabaseClient;
+    let calculator: PoasCalculator;
+    const tenantId = 'tenant_unit_1';
+
+    beforeEach(() => {
+      db = new SupabaseClient(undefined, undefined, true);
+      db.setTenantContext(tenantId);
+      calculator = new PoasCalculator(db);
+    });
+
+    it('verifies margin, COGS, discounts, refunds, and correct fulfillment allocation with returns', async () => {
+      // Seed order: Line 1: unit_price=100, line_discount=10, qty=1, unit_cost=40 (grossMargin=50)
+      // Line 2 (return): unit_price=50, line_discount=0, qty=-1, unit_cost=20 (grossMargin=-30)
+      // Total order gross revenue = 90 - 50 = 40.
+      // Total fulfillment cost = 20 (shipping=15, marketplace=5).
+      // Line 1 should be allocated all 20 of fulfillment because Line 2 is return (<= 0).
+      // Line 1 contribution: 50 (grossMargin) - 20 (allocated) = 30.
+      // Line 2 contribution: -30 (grossMargin).
+      // Overall contribution: 30 - 30 = 0.
+      
+      await db.saveOrder({
+        order_id: 'ord-1',
+        customer_id: 'cust-1',
+        placed_at: '2026-06-01T12:00:00Z',
+        gross_revenue: 40.0,
+        total_discounts: 10.0,
+        tenant_id: tenantId,
+      } as any);
+
+      await db.saveOrderLine({
+        order_line_id: 'line-1',
+        order_id: 'ord-1',
+        variant_id: 'v1',
+        sku: 'SKU-1',
+        qty: 1,
+        unit_price: 100.0,
+        line_discount: 10.0,
+        unit_cost: 40.0,
+        tenant_id: tenantId,
+      } as any);
+
+      await db.saveOrderLine({
+        order_line_id: 'line-2',
+        order_id: 'ord-1',
+        variant_id: 'v2',
+        sku: 'SKU-2',
+        qty: -1,
+        unit_price: 50.0,
+        line_discount: 0,
+        unit_cost: 20.0,
+        tenant_id: tenantId,
+      } as any);
+
+      await db.saveFulfillmentCost({
+        order_id: 'ord-1',
+        shipping_cost: 15.0,
+        marketplace_fee: 5.0,
+        tenant_id: tenantId,
+      } as any);
+
+      await db.saveCampaign({
+        campaign_id: 'camp-1',
+        name: 'Camp 1',
+        platform: 'google',
+        status: 'active',
+        tenant_id: tenantId,
+      } as any);
+
+      await db.saveSpendFact({
+        campaign_id: 'camp-1',
+        platform: 'google',
+        day: '2026-06-01',
+        amount: 10.0,
+        tenant_id: tenantId,
+      } as any);
+
+      await db.saveTouchpoint({
+        touchpoint_id: 'tp-1',
+        customer_id: 'cust-1',
+        campaign_id: 'camp-1',
+        occurred_at: '2026-06-01T11:00:00Z',
+        type: 'click',
+        tenant_id: tenantId,
+      } as any);
+
+      const reports = await calculator.calculate(tenantId);
+      const rep = reports.find(r => r.campaignId === 'camp-1')!;
+      expect(rep).toBeDefined();
+      // Total margin = Line 1 margin (100 - 10 - 40 - 20 = 30) + Line 2 margin (-50 - (-20) = -30) = 0.
+      expect(rep.contributionMargin).toBe(0.0);
+      expect(rep.poas).toBe(0.0);
+    });
+
+    it('verifies 30-day attribution window boundaries', async () => {
+      // Touchpoint exactly 30 days ago (should attribute)
+      // Order at 2026-06-30T12:00:00Z
+      // TP 1: camp-in-window, occurred at 2026-05-31T12:00:00Z (exactly 30 days ago)
+      // TP 2: camp-out-window, occurred at 2026-05-31T11:59:59Z (30 days and 1 second ago)
+      
+      await db.saveOrder({
+        order_id: 'ord-in',
+        customer_id: 'cust-in',
+        placed_at: '2026-06-30T12:00:00Z',
+        gross_revenue: 100.0,
+        tenant_id: tenantId,
+      } as any);
+
+      await db.saveOrderLine({
+        order_line_id: 'line-in',
+        order_id: 'ord-in',
+        qty: 1,
+        unit_price: 100.0,
+        unit_cost: 50.0,
+        tenant_id: tenantId,
+      } as any);
+
+      await db.saveTouchpoint({
+        touchpoint_id: 'tp-in',
+        customer_id: 'cust-in',
+        campaign_id: 'camp-in',
+        occurred_at: '2026-05-31T12:00:00Z', // 30 days ago
+        type: 'click',
+        tenant_id: tenantId,
+      } as any);
+
+      // Order out of window
+      await db.saveOrder({
+        order_id: 'ord-out',
+        customer_id: 'cust-out',
+        placed_at: '2026-06-30T12:00:00Z',
+        gross_revenue: 100.0,
+        tenant_id: tenantId,
+      } as any);
+
+      await db.saveOrderLine({
+        order_line_id: 'line-out',
+        order_id: 'ord-out',
+        qty: 1,
+        unit_price: 100.0,
+        unit_cost: 50.0,
+        tenant_id: tenantId,
+      } as any);
+
+      await db.saveTouchpoint({
+        touchpoint_id: 'tp-out',
+        customer_id: 'cust-out',
+        campaign_id: 'camp-out',
+        occurred_at: '2026-05-31T11:59:59Z', // 30 days + 1 second ago
+        type: 'click',
+        tenant_id: tenantId,
+      } as any);
+
+      await db.saveCampaign({ campaign_id: 'camp-in', name: 'In', platform: 'google', status: 'active', tenant_id: tenantId } as any);
+      await db.saveCampaign({ campaign_id: 'camp-out', name: 'Out', platform: 'google', status: 'active', tenant_id: tenantId } as any);
+
+      const reports = await calculator.calculate(tenantId);
+      
+      const repIn = reports.find(r => r.campaignId === 'camp-in')!;
+      expect(repIn.orders).toBe(1);
+
+      const repOut = reports.find(r => r.campaignId === 'camp-out')!;
+      expect(repOut.orders).toBe(0);
+
+      // The out of window order should fallback to ORGANIC
+      const organic = reports.find(r => r.campaignId === 'ORGANIC')!;
+      expect(organic).toBeDefined();
+      expect(organic.orders).toBe(1);
+    });
+
+    it('verifies last-touch attribution logic sorting order', async () => {
+      // Order placed 2026-06-10T12:00:00Z
+      // TP 1: camp-old, occurred 2026-06-05T12:00:00Z
+      // TP 2: camp-new, occurred 2026-06-09T12:00:00Z
+      // Should attribute to camp-new
+      
+      await db.saveOrder({
+        order_id: 'ord-last-touch',
+        customer_id: 'cust-last',
+        placed_at: '2026-06-10T12:00:00Z',
+        gross_revenue: 100.0,
+        tenant_id: tenantId,
+      } as any);
+
+      await db.saveOrderLine({
+        order_line_id: 'line-last',
+        order_id: 'ord-last-touch',
+        qty: 1,
+        unit_price: 100.0,
+        unit_cost: 50.0,
+        tenant_id: tenantId,
+      } as any);
+
+      await db.saveTouchpoint({
+        touchpoint_id: 'tp-old',
+        customer_id: 'cust-last',
+        campaign_id: 'camp-old',
+        occurred_at: '2026-06-05T12:00:00Z',
+        type: 'click',
+        tenant_id: tenantId,
+      } as any);
+
+      await db.saveTouchpoint({
+        touchpoint_id: 'tp-new',
+        customer_id: 'cust-last',
+        campaign_id: 'camp-new',
+        occurred_at: '2026-06-09T12:00:00Z', // closer to order
+        type: 'click',
+        tenant_id: tenantId,
+      } as any);
+
+      await db.saveCampaign({ campaign_id: 'camp-old', name: 'Old', platform: 'google', status: 'active', tenant_id: tenantId } as any);
+      await db.saveCampaign({ campaign_id: 'camp-new', name: 'New', platform: 'google', status: 'active', tenant_id: tenantId } as any);
+
+      const reports = await calculator.calculate(tenantId);
+      const repNew = reports.find(r => r.campaignId === 'camp-new')!;
+      expect(repNew.orders).toBe(1);
+
+      const repOld = reports.find(r => r.campaignId === 'camp-old')!;
+      expect(repOld.orders).toBe(0);
+    });
+
+    it('verifies organic pseudo-campaign exclusion when margin and revenue are 0', async () => {
+      // Order fully attributed, no organic orders, no organic touchpoints
+      await db.saveOrder({
+        order_id: 'ord-org-excl',
+        customer_id: 'cust-org',
+        placed_at: '2026-06-10T12:00:00Z',
+        gross_revenue: 100.0,
+        tenant_id: tenantId,
+      } as any);
+
+      await db.saveOrderLine({
+        order_line_id: 'line-org',
+        order_id: 'ord-org-excl',
+        qty: 1,
+        unit_price: 100.0,
+        unit_cost: 50.0,
+        tenant_id: tenantId,
+      } as any);
+
+      await db.saveTouchpoint({
+        touchpoint_id: 'tp-org',
+        customer_id: 'cust-org',
+        campaign_id: 'camp-only',
+        occurred_at: '2026-06-09T12:00:00Z',
+        type: 'click',
+        tenant_id: tenantId,
+      } as any);
+
+      await db.saveCampaign({ campaign_id: 'camp-only', name: 'Only', platform: 'google', status: 'active', tenant_id: tenantId } as any);
+
+      const reports = await calculator.calculate(tenantId);
+      const organic = reports.find(r => r.campaignId === 'ORGANIC');
+      expect(organic).toBeUndefined(); // Should be excluded since margin & revenue are 0
+    });
+
+    it('verifies report sorting hierarchy with null POAS', async () => {
+      await db.saveCampaign({ campaign_id: 'camp-null-1', name: 'Null 1', platform: 'google', status: 'active', tenant_id: tenantId } as any);
+      await db.saveCampaign({ campaign_id: 'camp-null-2', name: 'Null 2', platform: 'google', status: 'active', tenant_id: tenantId } as any);
+
+      await db.saveSpendFact({ campaign_id: 'camp-null-1', platform: 'google', day: '2026-06-01', amount: 100.0, tenant_id: tenantId } as any);
+      await db.saveSpendFact({ campaign_id: 'camp-null-2', platform: 'google', day: '2026-06-01', amount: 200.0, tenant_id: tenantId } as any);
+
+      const reports = await calculator.calculate(tenantId);
+      
+      const idx1 = reports.findIndex(r => r.campaignId === 'camp-null-1');
+      const idx2 = reports.findIndex(r => r.campaignId === 'camp-null-2');
+      expect(idx2).toBeLessThan(idx1);
+    });
+  });
 });

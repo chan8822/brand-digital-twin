@@ -26,7 +26,7 @@ import {
   TrustLedger,
 } from './governance_engine';
 import {Waiver, Context} from './governance_types';
-import {SupabaseClient, OrgEntry, PendingJobEntry, LegalAcceptanceEntry} from './supabase_client';
+import {SupabaseClient, OrgEntry, PendingJobEntry, LegalAcceptanceEntry, RecommendationEventEntry, TenantLimits} from './supabase_client';
 import {signup, verifyEmail, login, rotateRefreshToken, requestPasswordReset, confirmPasswordReset} from './user_auth';
 import * as crypto from 'crypto';
 import {UnifiedIntelligenceBrain} from './unified_brain';
@@ -1124,6 +1124,26 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
       // 3. RECOMMENDATIONS
       if (path === '/api/v1/recommendations' && req.method === 'GET') {
         const recs = await brain.analyzeProfitability(tenantId);
+
+        // Emit 'shown' telemetry events asynchronously
+        const requestDb = db.clone();
+        requestDb.setTenantContext(decodedToken.orgId);
+        for (const rec of recs) {
+          const event: RecommendationEventEntry = {
+            event_id: `evt_show_${rec.campaignId}_${crypto.randomUUID()}`,
+            recommendation_id: rec.campaignId,
+            tenant_id: tenantId,
+            action: 'shown',
+            reason: null,
+            finding_code: rec.dominantCause,
+            dollar_impact: rec.dollarDrag,
+            created_at: new Date().toISOString(),
+          };
+          void requestDb.saveRecommendationEvent(event).catch((err) => {
+            console.error(`Failed to save 'shown' telemetry for ${rec.campaignId}:`, err);
+          });
+        }
+
         sendSuccessResponse(res, {recommendations: recs});
         return;
       }
@@ -1259,6 +1279,58 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
         requestDb.setTenantContext(decodedToken.orgId);
         const events = await requestDb.getOnboardingEvents(decodedToken.orgId);
         sendSuccessResponse(res, {events});
+        return;
+      }
+
+      // Get Tenant Spend Limits
+      if (path === '/api/v1/tenant-limits' && req.method === 'GET') {
+        const requestDb = db.clone();
+        requestDb.setTenantContext(decodedToken.orgId);
+        try {
+          const limits = await requestDb.getTenantLimits(decodedToken.orgId);
+          if (!limits) {
+            const defaultLimits = {
+              tenant_id: decodedToken.orgId,
+              max_daily_limit: 1000.00,
+              max_per_action_limit: 500.00,
+            };
+            sendSuccessResponse(res, defaultLimits);
+          } else {
+            sendSuccessResponse(res, limits);
+          }
+        } catch (err: any) {
+          res.writeHead(500, {'Content-Type': 'application/json'});
+          res.end(JSON.stringify({error: `Failed to fetch limits: ${err.message}`}));
+        }
+        return;
+      }
+
+      // Save Tenant Spend Limits
+      if (path === '/api/v1/tenant-limits' && req.method === 'POST') {
+        const body = await parseRequestBody(req);
+        if (body.maxDailyLimit === undefined || body.maxPerActionLimit === undefined) {
+          res.writeHead(400, {'Content-Type': 'application/json'});
+          res.end(JSON.stringify({status: 'error', error: 'Missing maxDailyLimit or maxPerActionLimit'}));
+          return;
+        }
+
+        const requestDb = db.clone();
+        requestDb.setTenantContext(decodedToken.orgId);
+
+        const limits: TenantLimits = {
+          tenant_id: decodedToken.orgId,
+          max_daily_limit: Number(body.maxDailyLimit),
+          max_per_action_limit: Number(body.maxPerActionLimit),
+          updated_at: new Date().toISOString(),
+        };
+
+        try {
+          await requestDb.saveTenantLimits(limits);
+          sendSuccessResponse(res, {status: 'success', limits});
+        } catch (err: any) {
+          res.writeHead(500, {'Content-Type': 'application/json'});
+          res.end(JSON.stringify({error: `Failed to save limits: ${err.message}`}));
+        }
         return;
       }
 
@@ -1598,6 +1670,19 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
           approval.status = 'approved';
           approval.completedAt = Date.now();
           await requestDb.saveApproval(approval);
+
+          // Emit 'approved' telemetry event
+          const event: RecommendationEventEntry = {
+            event_id: `evt_approve_${approval.actionRequest.targetId}_${crypto.randomUUID()}`,
+            recommendation_id: approval.actionRequest.targetId,
+            tenant_id: decodedToken.orgId,
+            action: 'approved',
+            reason: null,
+            created_at: new Date().toISOString(),
+          };
+          void requestDb.saveRecommendationEvent(event).catch((err) => {
+            console.error(`Failed to save 'approved' telemetry for ${approval.actionRequest.targetId}:`, err);
+          });
         }
 
         sendSuccessResponse(res, outcome);

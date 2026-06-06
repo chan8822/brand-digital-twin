@@ -112,7 +112,7 @@ describe('Data Rights E2E Tests', () => {
 
     beforeEach(async () => {
       const email = 'datarights@example.com';
-      const pw = 'Pw123!';
+      const pw = 'Password123!';
       const orgName = 'DataRightsOrg';
 
       const existingUser = await db.getUserByEmail(email);

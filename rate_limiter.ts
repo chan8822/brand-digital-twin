@@ -23,6 +23,9 @@ export class TokenBucket {
     public readonly maxTokens: number,
     public readonly refillRatePerSec: number,
   ) {
+    if (maxTokens <= 0 || refillRatePerSec < 0) {
+      throw new Error('Invalid bucket size or refill rate');
+    }
     this.tokens = maxTokens;
     this.lastRefillMs = Date.now();
   }
@@ -129,7 +132,9 @@ export class RateLimitingAdapterWrapper implements PlatformAdapter {
         if (isRateLimit && attempts <= this.maxRetries) {
           this.retriedCalls++;
           const backoff = this.initialBackoffMs * Math.pow(2, attempts - 1);
-          await new Promise((resolve) => setTimeout(resolve, backoff));
+          await new Promise<void>((resolve) => {
+            setTimeout(resolve, backoff);
+          });
           continue;
         }
         throw err;

@@ -66,23 +66,58 @@ describe('UserAuth Systems', () => {
 
     it('should reject signup for duplicate emails', async () => {
       const email = 'dup@example.com';
-      await signup(db, email, 'pw123', 'Org', jwtSecret);
+      await signup(db, email, 'Password123!', 'Org', jwtSecret);
 
-      await expectAsync(signup(db, email, 'pw456', 'Org2', jwtSecret)).toBeRejectedWithError(
+      await expectAsync(signup(db, email, 'Password456!', 'Org2', jwtSecret)).toBeRejectedWithError(
         AuthError,
         'User already exists',
       );
+    });
+
+    it('should prevent duplicate email verification', async () => {
+      const email = 'dupverify@example.com';
+      const {verificationToken} = await signup(db, email, 'Password123!', 'OrgName', jwtSecret);
+
+      const v1 = await verifyEmail(db, verificationToken, jwtSecret);
+      expect(v1).toBeTrue();
+
+      const v2 = await verifyEmail(db, verificationToken, jwtSecret);
+      expect(v2).toBeFalse();
+    });
+
+    it('should reject signup for malformed emails', async () => {
+      await expectAsync(
+        signup(db, 'invalid-email', 'Password123!', 'Org', jwtSecret)
+      ).toBeRejectedWithError(AuthError, 'Invalid email format');
+
+      await expectAsync(
+        signup(db, 'no-domain@', 'Password123!', 'Org', jwtSecret)
+      ).toBeRejectedWithError(AuthError, 'Invalid email format');
+
+      await expectAsync(
+        signup(db, '@no-user.com', 'Password123!', 'Org', jwtSecret)
+      ).toBeRejectedWithError(AuthError, 'Invalid email format');
+    });
+
+    it('should reject signup for weak/short passwords', async () => {
+      await expectAsync(
+        signup(db, 'valid@example.com', 'short', 'Org', jwtSecret)
+      ).toBeRejectedWithError(AuthError, 'Password must be at least 8 characters long');
+
+      await expectAsync(
+        signup(db, 'valid@example.com', '', 'Org', jwtSecret)
+      ).toBeRejectedWithError(AuthError, 'Password must be at least 8 characters long');
     });
   });
 
   describe('Refresh Token Rotation & Security', () => {
     it('should rotate refresh tokens and revoke old ones', async () => {
       const email = 'refresh@example.com';
-      const pw = 'pw123!';
+      const pw = 'Password123!';
       const {user, verificationToken} = await signup(db, email, pw, 'Org', jwtSecret);
       await verifyEmail(db, verificationToken, jwtSecret);
 
-      const {accessToken, refreshToken} = await login(db, email, pw, jwtSecret);
+      const {refreshToken} = await login(db, email, pw, jwtSecret);
 
       // Rotate once
       const rotation1 = await rotateRefreshToken(db, refreshToken, jwtSecret);

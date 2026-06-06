@@ -295,16 +295,27 @@ export interface VariantEntry {
 
 export interface RecommendationEventEntry {
   event_id: string;
-  recommendation_id: string;
+  recommendation_id?: string;
   tenant_id: string;
   action: 'shown' | 'approved' | 'executed' | 'dismissed' | 'reversed';
   reason: string | null;
+  finding_code?: string;
+  severity?: string;
+  dollar_impact?: number;
+  note?: string;
   created_at: string;
 }
 
 export interface InviteAllowlistEntry {
   allowed_pattern: string;
   added_at: string;
+}
+
+export interface TenantLimits {
+  tenant_id: string;
+  max_daily_limit: number;
+  max_per_action_limit: number;
+  updated_at?: string;
 }
 
 export interface PendingJobEntry {
@@ -403,6 +414,7 @@ interface MockDbContainer {
   mockOnboardingEvents: OnboardingEventEntry[];
   mockRecommendationEvents: RecommendationEventEntry[];
   mockInviteAllowlist: InviteAllowlistEntry[];
+  mockTenantLimits: TenantLimits[];
   mockUsers: UserEntry[];
   mockRefreshTokens: RefreshTokenEntry[];
   mockOrgs: OrgEntry[];
@@ -452,6 +464,7 @@ class GlobalMockDb {
   static mockOnboardingEvents: OnboardingEventEntry[] = [];
   static mockRecommendationEvents: RecommendationEventEntry[] = [];
   static mockInviteAllowlist: InviteAllowlistEntry[] = [];
+  static mockTenantLimits: TenantLimits[] = [];
   static mockUsers: UserEntry[] = [];
   static mockRefreshTokens: RefreshTokenEntry[] = [];
   static mockOrgs: OrgEntry[] = [];
@@ -509,6 +522,7 @@ export class SupabaseClient {
     mockOnboardingEvents: [],
     mockRecommendationEvents: [],
     mockInviteAllowlist: [],
+    mockTenantLimits: [],
     mockUsers: [],
     mockRefreshTokens: [],
     mockOrgs: [],
@@ -559,6 +573,7 @@ export class SupabaseClient {
     GlobalMockDb.mockOnboardingEvents = [];
     GlobalMockDb.mockRecommendationEvents = [];
     GlobalMockDb.mockInviteAllowlist = [];
+    GlobalMockDb.mockTenantLimits = [];
     GlobalMockDb.mockUsers = [];
     GlobalMockDb.mockRefreshTokens = [];
     GlobalMockDb.mockOrgs = [];
@@ -610,6 +625,7 @@ export class SupabaseClient {
       mockOnboardingEvents: [],
       mockRecommendationEvents: [],
       mockInviteAllowlist: [],
+      mockTenantLimits: [],
       mockUsers: [],
       mockRefreshTokens: [],
       mockOrgs: [],
@@ -735,6 +751,9 @@ export class SupabaseClient {
   private get mockInviteAllowlist(): InviteAllowlistEntry[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockInviteAllowlist : this.localMockDb.mockInviteAllowlist; }
   private set mockInviteAllowlist(v: InviteAllowlistEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockInviteAllowlist = v; else this.localMockDb.mockInviteAllowlist = v; }
 
+  private get mockTenantLimits(): TenantLimits[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockTenantLimits : this.localMockDb.mockTenantLimits; }
+  private set mockTenantLimits(v: TenantLimits[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockTenantLimits = v; else this.localMockDb.mockTenantLimits = v; }
+
   private get mockUsers(): UserEntry[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockUsers : this.localMockDb.mockUsers; }
   private set mockUsers(v: UserEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockUsers = v; else this.localMockDb.mockUsers = v; }
 
@@ -798,6 +817,7 @@ export class SupabaseClient {
     mockOnboardingEvents: OnboardingEventEntry[];
     mockRecommendationEvents: RecommendationEventEntry[];
     mockInviteAllowlist: InviteAllowlistEntry[];
+    mockTenantLimits: TenantLimits[];
     mockBaselineContexts: Array<{tenant_id: string; context: BaselineContext}>;
     mockCategoryBenchmarks: Array<{tenant_id: string; benchmarks: CategoryBenchmarks}>;
     mockUsers: UserEntry[];
@@ -1090,6 +1110,7 @@ export class SupabaseClient {
       this.logger,
     );
     copy.mockTrust = this.mockTrust;
+    copy.mockErrorEvents = this.mockErrorEvents;
     copy.mockAuditLogs = this.mockAuditLogs;
     copy.mockLocks = this.mockLocks;
     copy.mockCredentials = this.mockCredentials;
@@ -1128,6 +1149,8 @@ export class SupabaseClient {
     copy.mockOrgs = this.mockOrgs;
     copy.mockOrgMembers = this.mockOrgMembers;
     copy.mockLegalAcceptances = this.mockLegalAcceptances;
+    copy.mockTenantLimits = this.mockTenantLimits;
+    copy.mockSubscriptions = this.mockSubscriptions;
     copy.mockRollbacks = this.mockRollbacks;
     return copy;
   }
@@ -2836,6 +2859,21 @@ export class SupabaseClient {
       } else {
         this.mockRecommendationEvents.push(event);
       }
+      return;
+    }
+    const url = `${this.supabaseUrl}/rest/v1/recommendation_events?event_id=eq.${encodeURIComponent(event.event_id)}`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'apikey': this.supabaseKey,
+        'Authorization': `Bearer ${this.supabaseKey}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates',
+      },
+      body: JSON.stringify(event)
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to save recommendation event: ${response.statusText}`);
     }
   }
 
@@ -2844,7 +2882,78 @@ export class SupabaseClient {
     if (this.mockMode) {
       return this.mockRecommendationEvents.filter((e) => e.tenant_id === tenant);
     }
-    return [];
+    const url = `${this.supabaseUrl}/rest/v1/recommendation_events?tenant_id=eq.${encodeURIComponent(tenant)}&order=created_at.desc`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'apikey': this.supabaseKey,
+        'Authorization': `Bearer ${this.supabaseKey}`,
+      }
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to fetch recommendation events: ${response.statusText}`);
+    }
+    return response.json();
+  }
+
+  // --- TENANT LIMITS ---
+  async getTenantLimits(tenantId: string): Promise<TenantLimits | null> {
+    this.assertRls(tenantId);
+    if (this.mockMode) {
+      const existing = this.mockTenantLimits.find((x) => x.tenant_id === tenantId);
+      if (!existing) {
+        const defaultLimits = {
+          tenant_id: tenantId,
+          max_daily_limit: 1000.00,
+          max_per_action_limit: 500.00,
+          updated_at: new Date().toISOString(),
+        };
+        this.mockTenantLimits.push(defaultLimits);
+        return defaultLimits;
+      }
+      return existing;
+    }
+    const url = `${this.supabaseUrl}/rest/v1/tenant_limits?tenant_id=eq.${encodeURIComponent(tenantId)}&select=*`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'apikey': this.supabaseKey,
+        'Authorization': `Bearer ${this.supabaseKey}`,
+      }
+    });
+    if (!response.ok) {
+      if (response.status === 404) return null;
+      throw new Error(`Failed to fetch tenant limits: ${response.statusText}`);
+    }
+    const data = await response.json();
+    return data[0] || null;
+  }
+
+  async saveTenantLimits(limits: TenantLimits): Promise<void> {
+    this.assertRls(limits.tenant_id);
+    if (this.mockMode) {
+      const idx = this.mockTenantLimits.findIndex((x) => x.tenant_id === limits.tenant_id);
+      if (idx !== -1) {
+        this.mockTenantLimits[idx] = limits;
+      } else {
+        this.mockTenantLimits.push(limits);
+      }
+      return;
+    }
+    const url = `${this.supabaseUrl}/rest/v1/tenant_limits`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'apikey': this.supabaseKey,
+        'Authorization': `Bearer ${this.supabaseKey}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates',
+      },
+      body: JSON.stringify(limits),
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to save tenant limits: ${response.statusText}`);
+    }
   }
 
   // --- INVITE ALLOWLIST ---
@@ -2940,6 +3049,7 @@ export class SupabaseClient {
       mockOnboardingEvents: JSON.parse(JSON.stringify(this.mockOnboardingEvents)) as OnboardingEventEntry[],
       mockRecommendationEvents: JSON.parse(JSON.stringify(this.mockRecommendationEvents)) as RecommendationEventEntry[],
       mockInviteAllowlist: JSON.parse(JSON.stringify(this.mockInviteAllowlist)) as InviteAllowlistEntry[],
+      mockTenantLimits: JSON.parse(JSON.stringify(this.mockTenantLimits)) as TenantLimits[],
       mockBaselineContexts: JSON.parse(JSON.stringify(this.mockBaselineContexts)) as Array<{tenant_id: string; context: BaselineContext}>,
       mockCategoryBenchmarks: JSON.parse(JSON.stringify(this.mockCategoryBenchmarks)) as Array<{tenant_id: string; benchmarks: CategoryBenchmarks}>,
       mockUsers: JSON.parse(JSON.stringify(this.mockUsers)) as UserEntry[],
@@ -3000,6 +3110,7 @@ export class SupabaseClient {
       this.mockOnboardingEvents = this.snapshots.mockOnboardingEvents;
       this.mockRecommendationEvents = this.snapshots.mockRecommendationEvents;
       this.mockInviteAllowlist = this.snapshots.mockInviteAllowlist;
+      this.mockTenantLimits = this.snapshots.mockTenantLimits;
       this.mockBaselineContexts = this.snapshots.mockBaselineContexts;
       this.mockCategoryBenchmarks = this.snapshots.mockCategoryBenchmarks;
       this.mockUsers = this.snapshots.mockUsers;

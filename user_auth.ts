@@ -84,6 +84,15 @@ export async function signup(
     }
   }
 
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    throw new AuthError('Invalid email format');
+  }
+
+  if (!password || password.length < 8) {
+    throw new AuthError('Password must be at least 8 characters long');
+  }
+
   const existing = await db.getUserByEmail(email);
   if (existing) {
     throw new AuthError('User already exists');

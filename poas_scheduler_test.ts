@@ -1,5 +1,6 @@
 import {PoasScheduler} from './poas_scheduler';
 import {SupabaseClient} from './supabase_client';
+import {PoasCalculator} from './poas_calculator';
 
 describe('PoasScheduler', () => {
   let db: SupabaseClient;
@@ -281,5 +282,32 @@ describe('PoasScheduler', () => {
       expect(job.status).toBe('pending');
       expect(Date.parse(job.run_at)).toBeGreaterThan(Date.now() + 23 * 3600 * 1000);
     }
+  });
+
+  it('should reschedule the daily job even when executePoasDaily throws a transient error (Test Case 4.1)', async () => {
+    // 1. Stub calculate to throw a DB Connection Exception
+    const calculateSpy = spyOn(PoasCalculator.prototype, 'calculate').and.callFake(async () => {
+      throw new Error('Database Connection Lost');
+    });
+
+    // 2. Register tenant to create initial daily job
+    await scheduler.registerTenant(tenantId);
+    let jobs = await db.getPendingJobs(tenantId);
+    expect(jobs.length).toBe(1);
+    const originalJobId = jobs[0].job_id;
+
+    // 3. Run the scheduler execution
+    await scheduler.pollAndExecute();
+
+    // 4. Verify original job is now marked 'failed'
+    const failedJobs = (db as any).mockPendingJobs.filter((j: any) => j.job_id === originalJobId);
+    expect(failedJobs.length).toBe(1);
+    expect(failedJobs[0].status).toBe('failed');
+
+    // 5. Critical: Verify a new poas_daily job is scheduled in the pending jobs database
+    const newJobs = (db as any).mockPendingJobs.filter((j: any) => j.job_id !== originalJobId && j.type === 'poas_daily');
+    expect(newJobs.length).toBe(1);
+    expect(newJobs[0].status).toBe('pending');
+    expect(Date.parse(newJobs[0].run_at)).toBeGreaterThan(Date.now() + 23 * 3600 * 1000);
   });
 });

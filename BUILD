@@ -186,6 +186,7 @@ ts_library(
         ":opa_policy",
         ":platform_adapter",
         ":supabase_client",
+        "//third_party/javascript/typings/node",
     ],
 )
 

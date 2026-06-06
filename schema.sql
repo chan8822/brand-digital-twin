@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS brand_twin.variants(
   price NUMERIC,
   cost_cogs NUMERIC,  -- the profit anchor
   currency STRING,
+  provenance STRING,
   tenant_id STRING NOT NULL,
   source_system STRING,
   source_id STRING,  -- platform-native id (e.g. Shopify variant gid)
@@ -419,6 +420,20 @@ CREATE TABLE IF NOT EXISTS brand_twin.brand_twin_trust(
   tier INT64 NOT NULL,
   updated_at TIMESTAMP,
   PRIMARY KEY(tenant, op)
+);
+
+CREATE TABLE IF NOT EXISTS brand_twin.recommendation_events(
+  event_id STRING NOT NULL,
+  tenant_id STRING NOT NULL,
+  recommendation_id STRING NOT NULL,
+  action STRING NOT NULL,         -- 'shown' | 'approved' | 'executed' | 'dismissed' | 'reversed'
+  reason STRING,                  -- required for 'dismissed'
+  created_at TIMESTAMP)
+  CLUSTER BY tenant_id, recommendation_id;
+
+CREATE TABLE IF NOT EXISTS brand_twin.invite_allowlist(
+  email STRING NOT NULL,
+  PRIMARY KEY(email)
 );
 
 

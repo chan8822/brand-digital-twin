@@ -4,6 +4,7 @@
 
 import {ApprovalRequest} from './agency_os_types';
 import {AdapterError, ValidationError} from './errors';
+import * as crypto from 'crypto';
 import {eventBus} from './event_bus';
 import {
   AuditSink,
@@ -29,7 +30,7 @@ import {
   PlatformAdapter,
   RollbackHandle,
 } from './platform_adapter';
-import {OrderEntry, PendingJobEntry, SupabaseClient} from './supabase_client';
+import {OrderEntry, PendingJobEntry, SupabaseClient, RecommendationEventEntry, TenantLimits} from './supabase_client';
 
 /**
  * System keeping track of earned-trust tiers based on successful and failed executions.
@@ -515,6 +516,21 @@ export class GovernanceEngine {
       'created_at': new Date().toISOString(),
     });
 
+    // Emit 'executed' telemetry event
+    const telemetryEvent: RecommendationEventEntry = {
+      event_id: `evt_exec_${req.targetId}_${crypto.randomUUID()}`,
+      recommendation_id: req.targetId,
+      tenant_id: ctx.tenant.tenantId,
+      action: 'executed',
+      reason: null,
+      created_at: new Date().toISOString(),
+    };
+    void this.supabase.saveRecommendationEvent(telemetryEvent).catch((err: any) => {
+      this.logger.error(`Failed to save 'executed' telemetry for ${req.targetId}:`, {
+        error: err.message || String(err),
+      });
+    });
+
     if (result.rollback) {
       await this.supabase.saveRollbackHandle(req.idempotencyKey, result.rollback);
     }
@@ -766,12 +782,62 @@ export class GovernanceEngine {
 
     // Enforce blast-radius hard limits, unless waiver is active
     const policy = ctx.tenant.policy;
-    if (plan.projectedCost > policy.maxDailyDollarsRisk && !hasWaiver) {
-      return {
-        kind: 'QUEUE',
-        reason: 'projected cost exceeds daily dollars risk limit',
-        approver: policy.escalationRole,
-      };
+    if (!hasWaiver) {
+      try {
+        const limits = await this.supabase.getTenantLimits(tenantId);
+        if (limits) {
+          // Check per-action limit
+          if (plan.projectedCost > limits.max_per_action_limit) {
+            return {
+              kind: 'QUEUE',
+              reason: `projected cost ($${plan.projectedCost.toFixed(2)}) exceeds tenant single-action limit ($${limits.max_per_action_limit.toFixed(2)})`,
+              approver: policy.escalationRole,
+            };
+          }
+
+          // Check daily limit
+          const auditLogs = await this.supabase.getAuditLogs(tenantId);
+          const oneDayAgo = Date.now() - 24 * 3600 * 1000;
+          const dailySpend = auditLogs
+            .filter((log) => {
+              const isExecution =
+                log.decision === 'AUTO_EXECUTE' ||
+                log.decision === 'executed' ||
+                log.decision === 'EXECUTE' ||
+                log.decision === 'shadow_executed';
+              const isRecent = new Date(log.timestamp).getTime() > oneDayAgo;
+              return isExecution && isRecent;
+            })
+            .reduce((sum, log) => sum + (log.cost || 0), 0);
+
+          if (dailySpend + plan.projectedCost > limits.max_daily_limit) {
+            return {
+              kind: 'QUEUE',
+              reason: `projected cost ($${plan.projectedCost.toFixed(2)}) would push daily spend ($${dailySpend.toFixed(2)}) past tenant limit ($${limits.max_daily_limit.toFixed(2)})`,
+              approver: policy.escalationRole,
+            };
+          }
+        } else {
+          // Fallback to legacy policy maxDailyDollarsRisk if DB limits not found
+          if (plan.projectedCost > policy.maxDailyDollarsRisk) {
+            return {
+              kind: 'QUEUE',
+              reason: 'projected cost exceeds daily dollars risk limit (legacy fallback)',
+              approver: policy.escalationRole,
+            };
+          }
+        }
+      } catch (err) {
+        this.logger.error('Failed to enforce spend limits, falling back to legacy policy', {err, tenantId});
+        // Fallback to legacy policy maxDailyDollarsRisk
+        if (plan.projectedCost > policy.maxDailyDollarsRisk) {
+          return {
+            kind: 'QUEUE',
+            reason: 'projected cost exceeds daily dollars risk limit (error fallback)',
+            approver: policy.escalationRole,
+          };
+        }
+      }
     }
 
     if (req.confidence < policy.minConfidence && !hasWaiver) {

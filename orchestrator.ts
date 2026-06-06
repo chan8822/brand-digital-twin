@@ -1,10 +1,12 @@
-import {Context, GovernanceEngine} from './governance_engine';
+import {GovernanceEngine} from './governance_engine';
+import {Context} from './governance_types';
 import {
   ActionRequest,
   ActionResult,
   PlatformAdapter,
   RollbackHandle,
 } from './platform_adapter';
+import {PinoLogger} from './observability';
 
 export interface BundleNode {
   id: string;
@@ -48,6 +50,7 @@ export class ConflictRegistry {
 // --- Orchestrator ---
 export class Orchestrator {
   private conflictRegistry = new ConflictRegistry();
+  private readonly logger = new PinoLogger(30, false);
 
   constructor(private governance: GovernanceEngine) {}
 
@@ -191,12 +194,14 @@ export class Orchestrator {
         if (item.adapter.rollback) {
           try {
             await item.adapter.rollback(item.handle);
-          } catch (err) {
+          } catch (err: any) {
             // Log rollback failure, but continue rolling back the rest
-            console.error(`Rollback failed for node ${item.nodeId}:`, err);
+            this.logger.error(`Rollback failed for node ${item.nodeId}:`, {
+              error: err.message || String(err),
+            });
           }
         } else {
-          console.warn(`Rollback not supported by adapter '${item.adapter.platform}' for node ${item.nodeId}`);
+          this.logger.warn(`Rollback not supported by adapter '${item.adapter.platform}' for node ${item.nodeId}`);
         }
       }
 

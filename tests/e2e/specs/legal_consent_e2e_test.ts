@@ -90,7 +90,7 @@ describe('Legal Consent E2E Tests', () => {
 
     beforeEach(async () => {
       const email = 'consent@example.com';
-      const pw = 'Pw123!';
+      const pw = 'Password123!';
       const orgName = 'ConsentOrg';
 
       const existingUser = await db.getUserByEmail(email);

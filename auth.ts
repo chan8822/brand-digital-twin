@@ -15,12 +15,27 @@ export interface DecodedJwt {
   role: string;
   exp: number;
   purpose?: string;
+  platform?: string;
 }
 
 /**
  * Verifies a JWT signature using native crypto HS256 algorithm and parses the payload.
  */
 export function verifyJwt(token: string, secret: string): DecodedJwt {
+  const secrets = secret.split(',');
+  let lastError: any;
+
+  for (const s of secrets) {
+    try {
+      return verifySingleJwt(token, s);
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError;
+}
+
+function verifySingleJwt(token: string, secret: string): DecodedJwt {
   const parts = token.split(".");
   if (parts.length !== 3) {
     throw new AuthError("Invalid token format");
@@ -55,7 +70,7 @@ export function verifyJwt(token: string, secret: string): DecodedJwt {
     const payloadStr = Buffer.from(payloadB64, "base64url").toString("utf8");
     const payload = JSON.parse(payloadStr) as DecodedJwt;
 
-    // Check expiration (required claim)
+    // Check expiration
     if (!payload.exp) {
       throw new AuthError("Missing exp claim in token");
     }
@@ -72,6 +87,7 @@ export function verifyJwt(token: string, secret: string): DecodedJwt {
     throw new AuthError(`Token verification failed: ${msg}`);
   }
 }
+
 
 /**
  * Extracts and verifies the JWT from Authorization header.
@@ -127,3 +143,44 @@ export function signJwt(
 
   return `${headerB64}.${payloadB64}.${signature}`;
 }
+
+/**
+ * Generates a signed OAuth state token to prevent CSRF.
+ */
+export function signOauthState(
+  tenantId: string,
+  userId: string,
+  platform: string,
+  secret: string,
+): string {
+  return signJwt(
+    {
+      orgId: tenantId,
+      userId,
+      role: 'user',
+      purpose: 'oauth_state',
+      platform,
+    },
+    secret,
+    10 * 60 * 1000, // 10 minutes
+  );
+}
+
+/**
+ * Verifies the signed OAuth state token and returns the payload.
+ */
+export function verifyOauthState(
+  stateToken: string,
+  secret: string,
+): { tenantId: string; userId: string; platform: string } {
+  const payload = verifyJwt(stateToken, secret);
+  if (payload.purpose !== 'oauth_state' || !payload.platform) {
+    throw new AuthError('Invalid OAuth state purpose or missing platform');
+  }
+  return {
+    tenantId: payload.orgId,
+    userId: payload.userId,
+    platform: payload.platform,
+  };
+}
+
