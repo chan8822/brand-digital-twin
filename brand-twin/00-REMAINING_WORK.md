@@ -4,7 +4,7 @@
 > `P1-EXECUTION`, `P1-PUNCHLIST`, `P2/P3/P4-EXECUTION` docs — those remain as
 > detailed references, but status lives **here**.
 >
-> Verified against upstream `chandansinghr-ship-it/brand-digital-twin` @ `cec5437`
+> Verified against upstream `chandansinghr-ship-it/brand-digital-twin` @ `b472992`
 > (fetched 2026-06-06). Engine work lands in that repo; UI work lands in
 > `brand-twin/app/` (this repo).
 >
@@ -15,28 +15,27 @@
 
 ## Where we are
 
-**P0 and P1 are fully done.** The engine, UI, hardening, observability, DB
-safety, secrets, security review, load test, and staging scripts all landed
-upstream by `cec5437`. A stranger can walk the full loop in MOCK mode today.
+**P0, P1, and Phase B are fully done.** The engine, UI, hardening, observability, DB
+safety, secrets, security review, load test, staging scripts, legal routes, credential
+revocation, and cookie consent all landed by `b472992`. C2 billing endpoints are live.
 
 | Phase | State | One-line |
 |-------|-------|----------|
 | **P0** — flip UI mock→live | ✅ **DONE** | all 4 endpoints + sort + autonomy-409 synced in `f10e351` |
 | **P1** — hardening & ops | ✅ **DONE** | P1.3 staging scripts + P1.7 real load test landed in `eb9c272` / `70bc7e8` |
 | **P2** — private beta (3 brands) | 🟡 **in progress** | onboarding data being gathered; P2.1 dismiss telemetry UI shipped |
-| **P3** — lawful & paid | 🟡 B mostly done · **C UI shipped, engine next** | Costs + Billing screens built mock-gated; COGS/billing engine remains |
+| **P3B** — lawful | ✅ **DONE** | B1.4 + B2.3 + B2.4 landed in `b472992`/`3469815`; ported to brand-twin/app/ |
+| **P3C** — self-serve paid | 🟡 C2 engine live · **C1 engine next** | C2.a/b billing endpoints live (`19f80cc`); COGS engine + C1 endpoints remain |
 | **P4** — GA | ☐ blocked on A0 | external approval clocks — start now, gate launch only |
 
-**The frontier is now the Phase C *engine*** (COGS adapters + billing state
-machine + payment rail). The Phase C **UI** (Costs, Billing) and the **P2.1
-dismiss control** are built and mock-gated in `brand-twin/app/` — six endpoints
-(`C-ENDPOINT_GAPS_SPEC.md`) flip them live. Typecheck/lint/`next build` green.
+**The frontier is now the Phase C1 *engine*** (COGS adapters + readiness gate +
+C1.a/b/c endpoints). C2 billing endpoints are live and the UI auto-flips to live
+when `NEXT_PUBLIC_API_URL` is set. The P2.1 dismiss UI is built; the engine needs
+`recommendation_events` table + dismiss endpoint.
 
 ---
 
 ## P0 ✅ All seams closed (`cec5437`)
-
-All four endpoints live and spec-compliant:
 
 | Endpoint | Status |
 |----------|--------|
@@ -92,26 +91,28 @@ No public signup. Onboard 3 in-bag brands by hand (real Google Ads + Shopify OAu
 
 ## P3 — Lawful & Paid
 
-### Phase B — Lawful  🟡 *mostly landed; small gaps*
+### Phase B — Lawful  ✅ *DONE (`b472992`)*
 
-| # | Item | State | File |
-|---|------|-------|------|
+| # | Item | State | Evidence |
+|---|------|-------|----------|
 | B1 | Data rights: hard-delete cascade + signed export + PII anonymization | ✅ | `supabase_client.ts`, `poas_scheduler.ts` |
-| B1.4 | Confirm credential-vault secret revocation wired into delete cascade | ☐ verify | `credential_vault.ts` |
-| B2.1 | `/legal/tos` `/privacy` `/dpa` routes exist — **need real counsel copy (A0.5)** | 🟡 | `server.ts:467+` |
+| B1.4 | Credential-vault secret revocation wired into delete cascade | ✅ | `credential_vault.ts` (`b472992`) |
+| B2.1 | `/legal/tos` `/privacy` `/dpa` routes + pages | ✅ | engine `server.ts:467+`; UI pages in `brand-twin/app/src/app/legal/` |
 | B2.2 | Acceptance log at signup + Consent Mode v2 redaction | ✅ | `user_auth.ts`, `server.ts:232` |
-| B2.3 | Version-bump re-prompt on ToS change | ☐ S | `user_auth.ts` |
-| B2.4 | Cookie consent banner, essential-only default | ☐ S | `brand-twin/app/` |
+| B2.3 | Version-bump re-prompt on ToS change | ✅ | `providers.tsx` 403-handler + `auth.ts` `acceptLegalDoc` (`3469815`, ported) |
+| B2.4 | Cookie consent banner, essential-only default | ✅ | `CookieConsentBanner.tsx` + `layout.tsx` (`3469815`, ported) |
 | **B4** | **Abuse: per-tenant quotas + new-account spend caps** | ☐ M | `rate_limiter.ts`, `user_auth.ts` |
 | B3.7 | `incident_response.ts` runbook + severity model | ☐ M | `incident_response.ts` |
 | B3.8 | In-app support + help center | ☐ M | `brand-twin/app/` |
 
-### Phase C — Self-serve value + money  🟡 *UI shipped (mock-gated); engine next*
+> B4, B3.7, B3.8 are non-blocking for beta. B4 is required before any public signup.
 
-UI built this sweep in `brand-twin/app/` (Costs `/costs`, Billing `/billing`),
-mock-gated and wired to six specced endpoints (`C-ENDPOINT_GAPS_SPEC.md`). The
-engine remains greenfield @ `cec5437` (no `billing.ts`, `payment_processor.ts`,
-accounting adapters, `subscriptions` table, or `CostSource` interface).
+### Phase C — Self-serve value + money  🟡 *C2 engine live; C1 engine next*
+
+UI built in `brand-twin/app/` (Costs `/costs`, Billing `/billing`), mock-gated and
+wired to six specced endpoints (`C-ENDPOINT_GAPS_SPEC.md`). C2 billing endpoints
+landed at `19f80cc` (`subscriptions` table + `GET /billing/subscription` + `POST
+/billing/suggest`). C1 COGS endpoints remain greenfield.
 
 **C1 — COGS aggregator:**
 - ✅ Pareto COGS entry UI + coverage gate — `costs/page.tsx`, `CogsEntryRow.tsx`
@@ -124,12 +125,11 @@ accounting adapters, `subscriptions` table, or `CostSource` interface).
 
 **C2 — Billing + suggest-an-amount:**
 - ✅ Suggest-an-amount screen + trial strip + state panels + value recap — `billing/page.tsx`
-- ☐ `subscriptions` table + state machine — new `billing.ts` + migration *(M)*
+- ✅ `subscriptions` table + `GET /billing/subscription` + `POST /billing/suggest` (`19f80cc`)
 - ☐ Trial lifecycle jobs: day-14 nudge, day-15 flip, recurring, dunning *(M)*
 - ☐ Ops review queue → approve → first charge — `billing.ts` (+ admin UI) *(M)*
 - ☐ `PaymentProcessor` iface + Razorpay + tokenised card — `payment_processor.ts` *(L)*
 - ☐ In-house receipt/invoice generation — `billing.ts` *(S)*
-- ☐ Endpoints C2.a/b (`GET /billing/subscription`, `POST /billing/suggest`)
 
 ---
 
@@ -156,14 +156,13 @@ accounting adapters, `subscriptions` table, or `CostSource` interface).
 ```
 A0 external clocks ─────────────────────────────────────────────► gate P4 only (start NOW)
 
-P2 beta ──► P3: B-gaps (small) ──► Phase C engine (COGS adapters + billing) ──► P4 GA
-(in progress)  (parallel w/ C)      (UI done; wire the 6 endpoints + engine lifts)
+P2 beta ──► C1 COGS engine (adapters + 3 endpoints) ──► C2 lifecycle jobs + payment rail ──► P4 GA
+(in progress)  (remaining greenfield)                    (C2.a/b live; jobs+Razorpay next)
 ```
 
 **Next three moves:**
 1. **Start A0 applications today** — external review queues, weeks of wait, gate P4 only.
-2. **Phase C engine** — the six endpoints in `C-ENDPOINT_GAPS_SPEC.md` flip the
-   already-built Costs + Billing screens live; behind them sit the COGS adapters,
-   billing state machine, and payment rail (the remaining greenfield).
-3. **P2 beta** — onboard the 3 brands; P2.1 dismiss telemetry UI is ready, add the
-   engine `recommendation_events` sink so H1 is measured, not eyeballed.
+2. **Phase C1 engine** — `CostSource` interface + C1.a/b/c endpoints flip the Costs
+   screen live; behind them sit the COGS adapters, estimator, and readiness gate.
+3. **P2.1 engine** — `recommendation_events` table + `POST /recommendations/:id/dismiss`
+   so dismiss telemetry is measured, not lost (the UI is already wired).

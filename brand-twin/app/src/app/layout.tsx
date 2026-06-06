@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "./providers";
+import { CookieConsentBanner } from "@/components/CookieConsentBanner";
 
 export const metadata: Metadata = {
   title: "Brand Digital Twin OS",
@@ -15,7 +16,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen bg-bg text-text-primary antialiased">
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <CookieConsentBanner />
+        </Providers>
       </body>
     </html>
   );

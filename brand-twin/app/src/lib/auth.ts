@@ -84,6 +84,32 @@ export async function confirmReset(
   });
 }
 
+export interface LegalDoc {
+  title: string;
+  version: string;
+  content: string;
+}
+
+export async function fetchLegalDoc(docType: "tos" | "privacy" | "dpa"): Promise<LegalDoc> {
+  if (USE_MOCK) {
+    await wait();
+    return {
+      title: docType === "tos" ? "Terms of Service" : docType === "privacy" ? "Privacy Policy" : "Data Processing Addendum",
+      version: "v1.0",
+      content: `Standard ${docType.toUpperCase()} content for Brand Digital Twin OS... (Demo)`,
+    };
+  }
+  return apiFetch<LegalDoc>(`/api/v1/legal/${docType}`);
+}
+
+export async function acceptLegalDoc(version: string): Promise<void> {
+  if (USE_MOCK) return wait();
+  await apiFetch<unknown>("/api/v1/legal/accept", {
+    method: "POST",
+    body: JSON.stringify({ version }),
+  });
+}
+
 function wait(ms = 350) {
   return new Promise<void>((r) => setTimeout(r, ms));
 }

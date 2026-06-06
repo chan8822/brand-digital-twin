@@ -253,7 +253,7 @@ export interface Subscription {
   /** present once an amount is named (suggest_amount onward) */
   amount?: number;
   currency: string; // 'USD' | 'INR'
-  period: "monthly";
+  period: "monthly" | "month";
   trialDay: number; // 0-based day into the trial
   trialLengthDays: number;
   nextChargeAt?: number;
