@@ -97,10 +97,10 @@ The engine + the identity/data-rights/legal spine + all API endpoints wiring the
 ### B2 — Legal surfaces (4)
 | # | Item | Size |
 |---|------|------|
-| B2.1 | ◐ **PARTIAL** (`5ffc440`) — `/legal/tos` + `/legal/privacy` routes serve placeholder content; DPA/cookie pages + real legal copy still needed (A0.5) | M |
+| B2.1 | ✅ **DONE** (`3469815`) — `/legal/tos`, `/legal/privacy`, `/legal/dpa` pages serve legal copy in the SPA (B2.1) | M |
 | B2.2 | ✅ **DONE** — `legal_acceptances` captured on signup (`user_auth.ts:94`) + consent-mode v2 redaction | S |
-| B2.3 | ☐ Version-bump re-prompt | S |
-| B2.4 | ☐ Cookie consent banner, essential-only default | S |
+| B2.3 | ✅ **DONE** (`3469815`) — Version-bump re-prompt in SPA via global React Query query/mutation cache interception | S |
+| B2.4 | ✅ **DONE** (`3469815`) — Cookie consent banner, essential-only default mounted in root layout | S |
 
 ### B3 — Production ops (8)
 | # | Item | Size | File(s) |
