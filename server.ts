@@ -14,6 +14,7 @@ import {ManagedSecretProvider, VaultClient} from './managed_secret_provider';
 import {sendErrorResponse, ValidationError, RateLimitError, PayloadTooLargeError, AuthError, GovernanceError} from './errors';
 import {eventBus} from './event_bus';
 import {GoogleAdsAdapter} from './google_ads_adapter';
+import {GoogleMerchantAdapter} from './google_merchant_adapter';
 import {authMiddleware, DecodedJwt, signJwt, verifyJwt, signOauthState, verifyOauthState} from './auth';
 import {generateAuthUrl, handleOauthCallback} from './oauth_flows';
 import {ProfitReadinessCalculator} from './profit_readiness';
@@ -1642,6 +1643,19 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
         const poasCalc = new PoasCalculator(requestDb);
         const poasReports = await poasCalc.calculate(tenantId).catch(() => []);
 
+        const credentials = await requestDb.getCredentials(tenantId).catch(() => []);
+        const gmcCreds = credentials.filter(c => c.platform === 'google_merchant');
+
+        let merchantFindingsPromise: Promise<SweepFinding[]> = Promise.resolve([]);
+        if (gmcCreds.length > 0) {
+          const merchantAdapter = new GoogleMerchantAdapter(
+            gmcCreds[0].credential_key, // merchantId
+            tenantId,
+            'mock-token',
+          );
+          merchantFindingsPromise = radar.scanMerchantFeedHygiene(ctx, merchantAdapter, gmcCreds[0].credential_key);
+        }
+
         // Run scans concurrently
         const [
           stockouts,
@@ -1650,6 +1664,8 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
           conv,
           winners,
           checkout,
+          geo,
+          merchant,
         ] = await Promise.all([
           radar.scanStockouts(ctx),
           radar.scanROIEfficiency(ctx),
@@ -1657,6 +1673,8 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
           radar.scanConversionTracking(ctx),
           radar.scanBudgetCappedWinners(ctx, poasReports),
           radar.scanCheckoutEvents(ctx),
+          radar.scanLandingPageGEO(ctx),
+          merchantFindingsPromise,
         ]);
 
         const sweep: SweepFinding[] = [
@@ -1666,6 +1684,8 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
           ...conv,
           ...winners,
           ...checkout,
+          ...geo,
+          ...merchant,
         ];
 
         const severityRank: Record<string, number> = {

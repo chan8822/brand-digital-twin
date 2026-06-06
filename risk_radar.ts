@@ -4,6 +4,8 @@ import {Context} from './governance_types';
 import {ActionRequest} from './platform_adapter';
 import {SupabaseClient} from './supabase_client';
 import {BankAdapter} from './bank_adapter';
+import {GoogleMerchantAdapter} from './google_merchant_adapter';
+import {GeoSeoAuditor} from './geo_seo_auditor';
 import {
   RootCause,
   Side,
@@ -351,7 +353,77 @@ export class RiskRadar {
     return findings;
   }
 
+  async scanLandingPageGEO(ctx: Context): Promise<SweepFinding[]> {
+    const findings: SweepFinding[] = [];
+    const campaigns = this.db && this.tenantId ? await this.db.getCampaigns(this.tenantId) : [];
+    const auditor = new GeoSeoAuditor();
 
+    for (const c of campaigns) {
+      const urls = await this.googleAdapter.getCampaignLandingPages(c.campaign_id).catch(() => []);
+      for (const url of urls) {
+        const audit = await auditor.auditLandingPage(url);
+        if (audit.issues.length > 0) {
+          findings.push({
+            code: `geo_seo_issue_${c.campaign_id}_${url.replace(/[^a-zA-Z0-9]/g, '_')}`,
+            severity: 'WARNING',
+            check: 'conversion_tracking',
+            entityId: c.campaign_id,
+            title: `AI search readiness warnings for ${c.name}`,
+            detail: `Landing page ${url} has optimization issues: ${audit.issues.join(' ')}`,
+            dollarImpact: 0,
+            suggestedAction: {
+              idempotencyKey: `geo_seo_fix_${c.campaign_id}_${Date.now()}`,
+              op: 'update_feed',
+              entity: 'campaign',
+              targetId: c.campaign_id,
+              payload: {
+                reason: `Fix alt tags and JSON-LD schema on ${url} to optimize for AI retrieval (GEO)`,
+              },
+              confidence: 0.9,
+            },
+          });
+        }
+      }
+    }
+    return findings;
+  }
+
+  async scanMerchantFeedHygiene(
+    ctx: Context,
+    merchantAdapter: GoogleMerchantAdapter,
+    merchantId: string,
+  ): Promise<SweepFinding[]> {
+    const findings: SweepFinding[] = [];
+    const products = await merchantAdapter.getProductFeed(merchantId).catch(() => []);
+    const auditor = new GeoSeoAuditor();
+    const auditResults = auditor.auditMerchantFeed(products, 'USD');
+
+    for (const r of auditResults) {
+      if (r.issues.length > 0) {
+        findings.push({
+          code: `gmc_feed_issue_${merchantId}_${r.productId}`,
+          severity: 'CRITICAL',
+          check: 'inventory_level',
+          entityId: r.productId,
+          title: `GMC Feed issue for ${r.title}`,
+          detail: `Product ${r.productId} has feed issues: ${r.issues.join(' ')}`,
+          dollarImpact: 0,
+          suggestedAction: {
+            idempotencyKey: `gmc_feed_fix_${merchantId}_${r.productId}_${Date.now()}`,
+            op: 'update_feed',
+            entity: 'campaign',
+            targetId: merchantId,
+            payload: {
+              productId: r.productId,
+              reason: `Update Merchant feed attributes: ${r.issues.join(', ')}`,
+            },
+            confidence: 0.95,
+          },
+        });
+      }
+    }
+    return findings;
+  }
 
   static diagnoseRootCause(input: DiagnosisInput): RootCauseDiagnosis {
     const {report, breakdown, clicks, orders, context, benchmarks} = input;

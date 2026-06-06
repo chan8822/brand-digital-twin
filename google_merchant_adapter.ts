@@ -121,4 +121,76 @@ export class GoogleMerchantAdapter {
       throw err;
     }
   }
+
+  async getProductFeed(merchantId: string): Promise<any[]> {
+    this.logger.info('Fetching GMC product feed', {merchantId});
+
+    if (!this.token || this.merchantId.startsWith('mock') || merchantId.startsWith('mock') || this.token.startsWith('mock')) {
+      return [
+        {
+          id: 'prod-a',
+          title: 'Premium Organic Energy Bar',
+          brand: 'NutraBoost',
+          gtin: '123456789012',
+          price: {value: '29.99', currency: 'USD'},
+          shipping: [{country: 'US', price: {value: '5.00', currency: 'USD'}}],
+          googleProductCategory: 'Food > Energy Bars',
+          link: 'https://nutraboost.com/products/energy-bar',
+        },
+        {
+          id: 'prod-b',
+          title: 'Hydration Electrolyte Powder',
+          brand: 'NutraBoost',
+          price: {value: '19.99', currency: 'USD'},
+          shipping: [{country: 'US', price: {value: '3.00', currency: 'USD'}}],
+          googleProductCategory: 'Food > Supplements',
+          link: 'https://nutraboost.com/products/hydration-powder',
+          // Missing GTIN
+        },
+        {
+          id: 'prod-c',
+          title: 'Daily Vitamin Pack',
+          brand: 'NutraBoost',
+          gtin: '987654321098',
+          price: {value: '39.99', currency: 'USD'},
+          shipping: [], // Missing shipping rules
+          googleProductCategory: 'Health > Vitamins',
+          link: 'https://nutraboost.com/products/vitamin-pack',
+        },
+        {
+          id: 'prod-d',
+          title: 'Organic Green Tea Extract',
+          brand: 'NutraBoost',
+          gtin: '555666777888',
+          price: {value: '15.00', currency: 'EUR'}, // Currency mismatch with target market USD
+          shipping: [{country: 'US', price: {value: '4.00', currency: 'USD'}}],
+          googleProductCategory: 'Food > Beverages',
+          link: 'https://nutraboost.com/products/green-tea',
+        },
+      ];
+    }
+
+    try {
+      const endpoint = `https://shoppingcontent.googleapis.com/content/v2.1/${merchantId}/products`;
+      const res = await fetch(endpoint, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.token}`,
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error(`GMC Content API products request failed: ${res.statusText}`);
+      }
+
+      const json = (await res.json()) as any;
+      return json.resources || [];
+    } catch (err: any) {
+      this.logger.error('GMC product feed fetch failed', {
+        error: err?.message || String(err),
+      });
+      throw err;
+    }
+  }
 }

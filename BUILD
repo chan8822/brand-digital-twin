@@ -97,6 +97,14 @@ ts_library(
 )
 
 ts_library(
+    name = "geo_seo_auditor",
+    srcs = ["geo_seo_auditor.ts"],
+    deps = [
+        ":observability",
+    ],
+)
+
+ts_library(
     name = "google_merchant_adapter",
     srcs = ["google_merchant_adapter.ts"],
     deps = [
@@ -302,7 +310,9 @@ ts_library(
     srcs = ["risk_radar.ts"],
     deps = [
         ":bank_adapter",
+        ":geo_seo_auditor",
         ":google_ads_adapter",
+        ":google_merchant_adapter",
         ":governance_engine",
         ":governance_types",
         ":healing_types",
@@ -616,6 +626,7 @@ ts_library(
         ":errors",
         ":event_bus",
         ":google_ads_adapter",
+        ":google_merchant_adapter",
         ":governance_engine",
         ":governance_types",
         ":healing_types",
@@ -651,6 +662,7 @@ ts_library(
         "easysaas_test.ts",
         "event_bus_test.ts",
         "gdpr_legal_test.ts",
+        "geo_seo_diagnostics_test.ts",
         "governance_adversarial_test.ts",
         "integrations_test.ts",
         "oauth_flows_test.ts",
@@ -690,6 +702,7 @@ ts_library(
         ":errors",
         ":event_bus",
         ":forecasting",
+        ":geo_seo_auditor",
         ":google_ads_adapter",
         ":google_express",
         ":google_merchant_adapter",
@@ -913,6 +926,11 @@ jasmine_node_test(
 
 jasmine_node_test(
     name = "accounting_adapters_test",
+    srcs = [":brand_twin_tests"],
+)
+
+jasmine_node_test(
+    name = "geo_seo_diagnostics_test",
     srcs = [":brand_twin_tests"],
 )
 

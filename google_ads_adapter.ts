@@ -961,4 +961,38 @@ export class GoogleAdsAdapter implements PlatformAdapter {
   getSimulatedAdGroup(id: string) {
     return this.simulatedAdGroups.get(id);
   }
+
+  async getCampaignLandingPages(campaignId: string): Promise<string[]> {
+    this.logger.info('Fetching campaign landing pages', {campaignId});
+
+    if (this.token.startsWith('mock')) {
+      if (campaignId === 'c1' || campaignId === 'c-1') {
+        return ['https://nutraboost.com/products/energy-bar'];
+      }
+      return ['https://nutraboost.com/products/hydration-powder'];
+    }
+
+    try {
+      const query = `
+        SELECT ad_group_ad.ad.final_urls
+        FROM ad_group_ad
+        WHERE campaign.id = '${campaignId}'
+      `;
+      const results = await this.search(query);
+      const urls: string[] = [];
+      for (const row of results) {
+        const adUrls = row.adGroupAd?.ad?.finalUrls || [];
+        for (const u of adUrls) {
+          if (u) urls.push(u);
+        }
+      }
+      return Array.from(new Set(urls));
+    } catch (err: any) {
+      this.logger.error('Failed to fetch campaign landing pages from API', {
+        campaignId,
+        error: err?.message || String(err),
+      });
+      throw err;
+    }
+  }
 }
