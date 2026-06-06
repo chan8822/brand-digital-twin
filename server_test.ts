@@ -11,6 +11,7 @@ import {config} from './config';
 import {eventBus} from './event_bus';
 import {resetRateLimiters, startServer} from './server';
 import {SupabaseClient} from './supabase_client';
+import {GoogleAdsAdapter} from './google_ads_adapter';
 
 function signJwt(payload: any, secret: string): string {
   const header = { alg: 'HS256', typ: 'JWT' };
@@ -902,6 +903,63 @@ describe('Native HTTP & SSE Server Integration Test', () => {
         expect(Array.isArray(res.data.metrics)).toBe(true);
         expect(Array.isArray(res.data.spans)).toBe(true);
         expect(Array.isArray(res.data.alerts)).toBe(true);
+      });
+
+      it('should successfully execute campaign action and manually rollback (reverse) it', async () => {
+        const executeSpy = spyOn(GoogleAdsAdapter.prototype, 'execute').and.callThrough();
+        const rollbackSpy = spyOn(GoogleAdsAdapter.prototype, 'rollback').and.callThrough();
+
+        await db.saveCampaign({
+          campaign_id: 'nike-rollback-1',
+          platform: 'google',
+          name: 'Nike Rollback Test Campaign',
+          objective: 'sales',
+          status: 'ENABLED',
+          surface: 'google_search_network',
+          tenant_id: 'test-tenant',
+          source_system: 'google',
+          source_id: 'nike-rollback-1',
+          source_version: '1.0',
+          ingested_at: new Date().toISOString(),
+        });
+
+        const actionRequest = {
+          idempotencyKey: 'action-rollback-test',
+          op: 'pause_campaign',
+          entity: 'campaign',
+          targetId: 'nike-rollback-1',
+          payload: {
+            verifyMetrics: {
+              preExecutionROAS: 2.5,
+              postExecutionROAS: 2.6,
+            },
+          },
+        };
+
+        const executeRes = await postJson(
+          '/api/v1/actions',
+          {actionRequest, context: validContextTemplate},
+          {Authorization: `Bearer ${testToken}`},
+        );
+
+        expect(executeRes.status).toBe('success');
+        expect(executeRes.data.status).toBe('executed');
+        expect(executeSpy).toHaveBeenCalled();
+
+        const reverseRes = await postJson(
+          `/api/v1/actions/action-rollback-test/reverse`,
+          { reason: 'Test manual override' },
+          { Authorization: `Bearer ${testToken}` },
+        );
+
+        expect(reverseRes.status).toBe('success');
+        expect(reverseRes.data.status).toBe('reversed');
+        expect(rollbackSpy).toHaveBeenCalled();
+
+        const events = await db.getGovernanceEvents('test-tenant');
+        const rollbackEvents = events.filter((e) => e.action_id === 'action-rollback-test' && e.status === 'rolled_back');
+        expect(rollbackEvents.length).toBe(1);
+        expect(rollbackEvents[0].actor).toBe('human:admin');
       });
     });
 

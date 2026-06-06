@@ -2,66 +2,62 @@
 // Enforces blast-radius caps, confidence thresholds, active kill switches,
 // circuit breakers, and the trust ledger's earned-trust tier progression.
 
+import {ApprovalRequest} from './agency_os_types';
 import {AdapterError, ValidationError} from './errors';
 import {eventBus} from './event_bus';
-import {MetricsTracker, PinoLogger, Span, DatabaseErrorSink} from './observability';
+import {
+  AuditSink,
+  Context,
+  Disposition,
+  DispositionKind,
+  Role,
+  SEMANTIC_TIERS,
+  Tenant,
+  TenantPolicy,
+  TrustOutcome,
+  Waiver,
+  WhitelistRule,
+} from './governance_types';
+export type {AuditSink, Context, Role, Tenant, Waiver, WhitelistRule};
+import {DatabaseErrorSink, MetricsTracker, PinoLogger} from './observability';
 import {OpaPolicyEngine} from './opa_policy';
 import {
   ActionPlan,
   ActionRequest,
   ActionResult,
+  Capability,
   PlatformAdapter,
   RollbackHandle,
 } from './platform_adapter';
-import {SupabaseClient, PendingJobEntry} from './supabase_client';
-import {ApprovalRequest} from './agency_os_types';
+import {OrderEntry, PendingJobEntry, SupabaseClient} from './supabase_client';
 
-import {
-  AuditSink,
-  Context,
-  Disposition,
-  DispositionKind,
-  Role,
-  Tenant,
-  TenantPolicy,
-  TrustOutcome,
-  Waiver,
-  WhitelistRule,
-  SEMANTIC_TIERS,
-  SemanticTrustTier,
-} from './governance_types';
-
-export type {
-  AuditSink,
-  Context,
-  Disposition,
-  DispositionKind,
-  Role,
-  Tenant,
-  TenantPolicy,
-  TrustOutcome,
-  Waiver,
-  WhitelistRule,
-};
-
-// --- Trust Ledger System ---
+/**
+ * System keeping track of earned-trust tiers based on successful and failed executions.
+ */
 export class TrustLedger {
-  private earnedTiers: Map<string, number> = new Map(); // key = "tenantId:actionType" -> tier (0..4)
-  private history: Map<string, TrustOutcome[]> = new Map();
-  private lastDowngradeTime: Map<string, number> = new Map(); // key -> timestampMs
+  private readonly earnedTiers: Map<string, number> = new Map(); // key = "tenantId:actionType" -> tier (0..4)
+  private readonly history: Map<string, TrustOutcome[]> = new Map();
+  private readonly lastDowngradeTime: Map<string, number> = new Map(); // key -> timestampMs
 
-  constructor() {}
-
+  /**
+   * Retrieves the trust tier for a tenant-action pair.
+   */
   getTier(tenantId: string, actionType: string): number {
     const key = `${tenantId}:${actionType}`;
     return this.earnedTiers.get(key) ?? 0; // Starts at Tier 0 (observe/recommend)
   }
 
+  /**
+   * Directly sets the trust tier for a tenant-action pair.
+   */
   setTier(tenantId: string, actionType: string, tier: number) {
     const key = `${tenantId}:${actionType}`;
     this.earnedTiers.set(key, tier);
   }
 
+  /**
+   * Records execution outcomes to adjust earned trust scores and tiers.
+   */
   recordOutcome(
     tenantId: string,
     actionType: string,
@@ -121,58 +117,77 @@ export class TrustLedger {
       progressionScore += decayWeight * riskWeight;
     }
 
-    if (progressionScore >= 1.5 && currentTier < 4) {
+    if (progressionScore >= 1.5 - 1e-5 && currentTier < 4) {
       this.setTier(tenantId, actionType, currentTier + 1);
       this.history.set(key, []); // Reset outcomes to start next progression level
     }
   }
 }
 
-// --- Circuit Breaker System ---
+/**
+ * Circuit breaker system to pause execution on failing platform adapters.
+ */
 export class CircuitBreaker {
-  private trippedPlatforms: Set<string> = new Set();
+  private readonly trippedPlatforms: Set<string> = new Set();
 
+  /**
+   * Trips the circuit breaker for a given platform.
+   */
   trip(platform: string) {
     this.trippedPlatforms.add(platform);
   }
 
+  /**
+   * Resets the circuit breaker for a given platform.
+   */
   reset(platform: string) {
     this.trippedPlatforms.delete(platform);
   }
 
+  /**
+   * Checks if the circuit breaker is currently tripped for a given platform.
+   */
   isTripped(platform: string): boolean {
     return this.trippedPlatforms.has(platform);
   }
 }
 
-// --- Main Governance Engine ---
+/**
+ * Main governance policy engine. Enforces checks, limits, OPA policies, and trust tiers.
+ */
 export class GovernanceEngine {
   private killSwitchActive = false;
 
-  private waivers: Map<string, Waiver[]> = new Map();
-  private whitelists: Map<string, WhitelistRule[]> = new Map();
+  private readonly waivers: Map<string, Waiver[]> = new Map();
+  private readonly whitelists: Map<string, WhitelistRule[]> = new Map();
 
+  /**
+   * Registers a temporary override waiver for a tenant.
+   */
   registerWaiver(tenantId: string, waiver: Waiver) {
     const list = this.waivers.get(tenantId) ?? [];
     list.push(waiver);
     this.waivers.set(tenantId, list);
   }
 
+  /**
+   * Registers a whitelist rule for a tenant.
+   */
   registerWhitelist(tenantId: string, rule: WhitelistRule) {
     const list = this.whitelists.get(tenantId) ?? [];
     list.push(rule);
     this.whitelists.set(tenantId, list);
   }
 
-  public readonly logger = new PinoLogger();
+  readonly logger = new PinoLogger();
 
   constructor(
-    private audit: AuditSink,
-    private trustLedger: TrustLedger,
-    private circuitBreaker: CircuitBreaker,
-    private metrics: MetricsTracker = new MetricsTracker(),
-    public readonly opa = new OpaPolicyEngine(),
-    public readonly supabase = new SupabaseClient(),
+    private readonly audit: AuditSink,
+    private readonly trustLedger: TrustLedger,
+    private readonly circuitBreaker: CircuitBreaker,
+    private readonly metrics: MetricsTracker = new MetricsTracker(),
+    readonly opa = new OpaPolicyEngine(),
+    readonly supabase = new SupabaseClient(),
   ) {
     this.metrics.setErrorSink(new DatabaseErrorSink(this.supabase));
   }
@@ -214,9 +229,9 @@ export class GovernanceEngine {
           existingAudit.decision === 'shadow_executed'
         ) {
           this.logger.info('Idempotency trigger: Replayed action request detected', {
-            actionId: req.idempotencyKey,
-            tenantId: ctx.tenant.tenantId,
-            loggedDecision: existingAudit.decision,
+            'actionId': req.idempotencyKey,
+            'tenantId': ctx.tenant.tenantId,
+            'loggedDecision': existingAudit.decision,
           });
           spanStatus = 'success';
           return {
@@ -291,22 +306,22 @@ export class GovernanceEngine {
     );
 
     this.logger.info('Decision resolved', {
-      actionId: req.idempotencyKey,
-      tenantId: ctx.tenant.tenantId,
-      op: req.op,
-      decision: disp.kind,
-      reason: disp.reason,
+      'actionId': req.idempotencyKey,
+      'tenantId': ctx.tenant.tenantId,
+      'op': req.op,
+      'decision': disp.kind,
+      'reason': disp.reason,
     });
 
     await this.audit.record({
-      action_id: req.idempotencyKey,
-      tenant_id: ctx.tenant.tenantId,
-      actor: 'agent:media_buyer',
-      action_type: req.op,
-      target_entity: req.entity,
-      status: disp.kind.toLowerCase(),
-      reason: disp.reason,
-      created_at: new Date().toISOString(),
+      'action_id': req.idempotencyKey,
+      'tenant_id': ctx.tenant.tenantId,
+      'actor': 'agent:media_buyer',
+      'action_type': req.op,
+      'target_entity': req.entity,
+      'status': disp.kind.toLowerCase(),
+      'reason': disp.reason,
+      'created_at': new Date().toISOString(),
     });
 
     await this.supabase.logAudit({
@@ -374,23 +389,23 @@ export class GovernanceEngine {
         },
       };
       this.logger.info('Executing in shadow onboarding mode', {
-        actionId: req.idempotencyKey,
-        tenantId: ctx.tenant.tenantId,
+      'actionId': req.idempotencyKey,
+      'tenantId': ctx.tenant.tenantId,
       });
       await this.audit.record({
-        action_id: req.idempotencyKey,
-        tenant_id: ctx.tenant.tenantId,
-        actor: 'agent:media_buyer',
-        action_type: req.op,
-        target_entity: req.entity,
-        status: 'shadow_executed',
-        reason: 'Executed in shadow onboarding mode',
-        created_at: new Date().toISOString(),
+        'action_id': req.idempotencyKey,
+        'tenant_id': ctx.tenant.tenantId,
+        'actor': 'agent:media_buyer',
+        'action_type': req.op,
+        'target_entity': req.entity,
+        'status': 'shadow_executed',
+        'reason': 'Executed in shadow onboarding mode',
+        'created_at': new Date().toISOString(),
       });
     } else {
       this.logger.info('Executing live request', {
-        actionId: req.idempotencyKey,
-        tenantId: ctx.tenant.tenantId,
+        'actionId': req.idempotencyKey,
+        'tenantId': ctx.tenant.tenantId,
       });
       try {
         preMetrics = await this.readCurrentMetrics(
@@ -405,29 +420,29 @@ export class GovernanceEngine {
           'EXECUTE',
           'COMPLETE',
         );
-      } catch (err: any) {
+      } catch (err) {
         const errorMsg = err instanceof Error ? err.message : String(err);
         eventBus.emitPhaseUpdate(
           ctx.tenant.tenantId,
           req.idempotencyKey,
           'EXECUTE',
           'FAILED',
-          {error: errorMsg},
+          {'error': errorMsg},
         );
         this.logger.error('Execution threw exception', {
-          actionId: req.idempotencyKey,
-          tenantId: ctx.tenant.tenantId,
-          error: errorMsg,
+          'actionId': req.idempotencyKey,
+          'tenantId': ctx.tenant.tenantId,
+          'error': errorMsg,
         });
         await this.audit.record({
-          action_id: req.idempotencyKey,
-          tenant_id: ctx.tenant.tenantId,
-          actor: 'agent:media_buyer',
-          action_type: req.op,
-          target_entity: req.entity,
-          status: 'execution_failed',
-          reason: `Exception: ${errorMsg}`,
-          created_at: new Date().toISOString(),
+          'action_id': req.idempotencyKey,
+          'tenant_id': ctx.tenant.tenantId,
+          'actor': 'agent:media_buyer',
+          'action_type': req.op,
+          'target_entity': req.entity,
+          'status': 'execution_failed',
+          'reason': `Exception: ${errorMsg}`,
+          'created_at': new Date().toISOString(),
         });
         const previousTier = earned;
         this.trustLedger.recordOutcome(
@@ -454,19 +469,19 @@ export class GovernanceEngine {
 
     if (!result.ok) {
       this.logger.error('Execution failed', {
-        actionId: req.idempotencyKey,
-        tenantId: ctx.tenant.tenantId,
-        error: result.error,
+        'actionId': req.idempotencyKey,
+        'tenantId': ctx.tenant.tenantId,
+        'error': result.error,
       });
       await this.audit.record({
-        action_id: req.idempotencyKey,
-        tenant_id: ctx.tenant.tenantId,
-        actor: 'agent:media_buyer',
-        action_type: req.op,
-        target_entity: req.entity,
-        status: 'execution_failed',
-        reason: result.error,
-        created_at: new Date().toISOString(),
+        'action_id': req.idempotencyKey,
+        'tenant_id': ctx.tenant.tenantId,
+        'actor': 'agent:media_buyer',
+        'action_type': req.op,
+        'target_entity': req.entity,
+        'status': 'execution_failed',
+        'reason': result.error,
+        'created_at': new Date().toISOString(),
       });
       const previousTier = earned;
       this.trustLedger.recordOutcome(
@@ -491,21 +506,25 @@ export class GovernanceEngine {
     }
 
     await this.audit.record({
-      action_id: req.idempotencyKey,
-      tenant_id: ctx.tenant.tenantId,
-      actor: 'agent:media_buyer',
-      action_type: req.op,
-      target_entity: req.entity,
-      status: 'executed',
-      created_at: new Date().toISOString(),
+      'action_id': req.idempotencyKey,
+      'tenant_id': ctx.tenant.tenantId,
+      'actor': 'agent:media_buyer',
+      'action_type': req.op,
+      'target_entity': req.entity,
+      'status': 'executed',
+      'created_at': new Date().toISOString(),
     });
+
+    if (result.rollback) {
+      await this.supabase.saveRollbackHandle(req.idempotencyKey, result.rollback);
+    }
 
     // 4. Verify Phase
     let verificationOk = true;
     if (!isShadow) {
       if (ctx.verifyWindowMs && ctx.verifyWindowMs > 0) {
         this.logger.info(`Scheduling verification job for action ${req.idempotencyKey} after ${ctx.verifyWindowMs}ms delay`, {
-          actionId: req.idempotencyKey,
+          'actionId': req.idempotencyKey,
         });
         const runAt = new Date(Date.now() + ctx.verifyWindowMs).toISOString();
         const job: PendingJobEntry = {
@@ -549,8 +568,8 @@ export class GovernanceEngine {
     if (!verificationOk && result.rollback) {
       // 5. Rollback Phase on anomaly detection
       this.logger.warn('Verification anomaly detected, initiating rollback', {
-        actionId: req.idempotencyKey,
-        tenantId: ctx.tenant.tenantId,
+        'actionId': req.idempotencyKey,
+        'tenantId': ctx.tenant.tenantId,
       });
       eventBus.emitPhaseUpdate(
         ctx.tenant.tenantId,
@@ -569,14 +588,14 @@ export class GovernanceEngine {
         'COMPLETE',
       );
       await this.audit.record({
-        action_id: req.idempotencyKey,
-        tenant_id: ctx.tenant.tenantId,
-        actor: 'agent:media_buyer',
-        action_type: req.op,
-        target_entity: req.entity,
-        status: 'rolled_back',
-        reason: 'Post-execution verification anomaly detected',
-        created_at: new Date().toISOString(),
+        'action_id': req.idempotencyKey,
+        'tenant_id': ctx.tenant.tenantId,
+        'actor': 'agent:media_buyer',
+        'action_type': req.op,
+        'target_entity': req.entity,
+        'status': 'rolled_back',
+        'reason': 'Post-execution verification anomaly detected',
+        'created_at': new Date().toISOString(),
       });
 
       const previousTier = earned;
@@ -621,9 +640,9 @@ export class GovernanceEngine {
     await this.supabase.saveTrustTier(ctx.tenant.tenantId, req.op, finalTier);
 
     this.logger.info('Action successfully verified', {
-      actionId: req.idempotencyKey,
-      tenantId: ctx.tenant.tenantId,
-      newTrustTier: finalTier,
+      'actionId': req.idempotencyKey,
+      'tenantId': ctx.tenant.tenantId,
+      'newTrustTier': finalTier,
     });
 
     spanStatus = 'success';
@@ -634,7 +653,7 @@ export class GovernanceEngine {
       'COMPLETE',
     );
     return {status: 'executed', result};
-  } catch (err: any) {
+  } catch (err) {
     spanStatus = 'failure';
     spanError = err instanceof Error ? err.message : String(err);
     throw err;
@@ -700,7 +719,7 @@ export class GovernanceEngine {
 
     if (hasWaiver && matchedWaiver) {
       const cap = adapter.capabilities.find(
-        (c: any) => c.entity === req.entity && c.ops.includes(req.op),
+        (c: Capability) => c.entity === req.entity && c.ops.includes(req.op),
       );
       const isIrreversible = cap && !cap.reversible;
       if (!isIrreversible || matchedWaiver.bypassIrreversible === true) {
@@ -773,7 +792,7 @@ export class GovernanceEngine {
 
     // Irreversible actions (sends, live publishes, payments) never auto-execute, unless bypassIrreversible waiver exists
     const cap = adapter.capabilities.find(
-      (c: any) => c.entity === req.entity && c.ops.includes(req.op),
+      (c: Capability) => c.entity === req.entity && c.ops.includes(req.op),
     );
     if (cap && !cap.reversible) {
       const activeWaiverObj = tenantWaivers.find(
@@ -847,7 +866,12 @@ export class GovernanceEngine {
     preMetrics: {roas: number} | null,
     postMetrics: {roas: number},
   ): Promise<boolean> {
-    if ((req.payload as any)?.triggerAnomaly === true) {
+    if (
+      req.payload &&
+      typeof req.payload === 'object' &&
+      'triggerAnomaly' in req.payload &&
+      (req.payload as Record<string, unknown>)['triggerAnomaly'] === true
+    ) {
       return false; // Force anomaly detection for tests/chaos
     }
     if (!preMetrics) return true;
@@ -884,9 +908,10 @@ export class GovernanceEngine {
       const readFn = adapter.read;
       const data = await readFn.call(adapter, since);
       if (data && Array.isArray(data.spend_facts)) {
-        spend = data.spend_facts
-          .filter((sf: any) => sf.campaign_id === campaignId)
-          .reduce((sum: number, sf: any) => sum + (sf.amount as number), 0);
+        const spendFacts = data.spend_facts as Array<Record<string, unknown>>;
+        spend = spendFacts
+          .filter((sf) => sf['campaign_id'] === campaignId)
+          .reduce((sum: number, sf) => sum + (sf['amount'] as number), 0);
       }
     } catch (err) {
       this.logger.error('Failed to read spend metrics from adapter', {
@@ -901,7 +926,7 @@ export class GovernanceEngine {
         // Simple attribution: 10% of revenue to this campaign
         revenue =
           orders.reduce(
-            (sum: number, o: any) => sum + (o.gross_revenue as number),
+            (sum: number, o: OrderEntry) => sum + o.gross_revenue,
             0,
           ) * 0.1;
       } catch (err) {
@@ -963,7 +988,7 @@ export class GovernanceEngine {
 
     if (!verificationOk && payload.rollbackPlan) {
       this.logger.warn('Verification anomaly detected, initiating rollback', {
-        actionId: req.idempotencyKey,
+        'actionId': req.idempotencyKey,
         tenantId,
       });
       eventBus.emitPhaseUpdate(
@@ -972,7 +997,7 @@ export class GovernanceEngine {
         'ROLLBACK',
         'IN_PROGRESS',
       );
-      const rollbackResult = await this.executeGradualRollback(
+      await this.executeGradualRollback(
         adapter,
         payload.rollbackPlan,
       );
@@ -983,14 +1008,14 @@ export class GovernanceEngine {
         'COMPLETE',
       );
       await this.audit.record({
-        action_id: req.idempotencyKey,
-        tenant_id: tenantId,
-        actor: 'agent:media_buyer',
-        action_type: req.op,
-        target_entity: req.entity,
-        status: 'rolled_back',
-        reason: 'Post-execution verification anomaly detected',
-        created_at: new Date().toISOString(),
+        'action_id': req.idempotencyKey,
+        'tenant_id': tenantId,
+        'actor': 'agent:media_buyer',
+        'action_type': req.op,
+        'target_entity': req.entity,
+        'status': 'rolled_back',
+        'reason': 'Post-execution verification anomaly detected',
+        'created_at': new Date().toISOString(),
       });
 
       const previousTier = payload.earned;
@@ -1028,6 +1053,61 @@ export class GovernanceEngine {
       );
       const finalTier = this.trustLedger.getTier(tenantId, req.op);
       await this.supabase.saveTrustTier(tenantId, req.op, finalTier);
+    }
+  }
+
+  async rollbackAction(
+    tenantId: string,
+    actionId: string,
+    adapter: PlatformAdapter,
+  ): Promise<ActionResult> {
+    this.logger.info('Manual rollback request initiated', {tenantId, actionId});
+    const handle = await this.supabase.getRollbackHandle(actionId);
+    if (!handle) {
+      this.logger.warn('No rollback handle found for action', {actionId});
+      return {
+        ok: false,
+        auditRef: 'no_rollback_handle',
+        error: `No rollback handle found for action ${actionId}`,
+      };
+    }
+
+    try {
+      this.logger.info('Executing gradual rollback for action', {actionId});
+      const rollbackResult = await this.executeGradualRollback(adapter, handle);
+      if (rollbackResult.ok) {
+        await this.audit.record({
+          'action_id': actionId,
+          'tenant_id': tenantId,
+          'actor': 'human:admin',
+          'action_type': 'reverse_action',
+          'target_entity': 'action',
+          'status': 'rolled_back',
+          'reason': 'Manual rollback initiated by user',
+          'created_at': new Date().toISOString(),
+        });
+        
+        await this.supabase.logAudit({
+          tenant: tenantId,
+          timestamp: new Date().toISOString(),
+          action_id: `reverse-${actionId}-${Date.now()}`,
+          op: 'reverse_action',
+          entity: 'action',
+          target_id: actionId,
+          cost: 0,
+          decision: 'reversed',
+          reason: 'Manual rollback initiated by user',
+        });
+      }
+      return rollbackResult;
+    } catch (err: any) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      this.logger.error('Manual rollback failed', {actionId, error: errorMsg});
+      return {
+        ok: false,
+        auditRef: 'rollback_failed',
+        error: errorMsg,
+      };
     }
   }
 }

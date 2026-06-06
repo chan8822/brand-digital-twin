@@ -23,6 +23,7 @@ import {createHash} from 'node:crypto';
 import {BaseError} from './errors';
 import {PinoLogger} from './observability';
 import {BaselineContext, CategoryBenchmarks} from './healing_types';
+import {config} from './config';
 
 export interface PlatformAccountEntry {
   account_id: string;
@@ -289,6 +290,21 @@ export interface VariantEntry {
   cost: number | null;
   title: string;
   ingested_at: string;
+  provenance?: string | null;
+}
+
+export interface RecommendationEventEntry {
+  event_id: string;
+  recommendation_id: string;
+  tenant_id: string;
+  action: 'shown' | 'approved' | 'executed' | 'dismissed' | 'reversed';
+  reason: string | null;
+  created_at: string;
+}
+
+export interface InviteAllowlistEntry {
+  allowed_pattern: string;
+  added_at: string;
 }
 
 export interface PendingJobEntry {
@@ -373,12 +389,15 @@ interface MockDbContainer {
   mockVariants: VariantEntry[];
   mockPendingJobs: PendingJobEntry[];
   mockOnboardingEvents: OnboardingEventEntry[];
+  mockRecommendationEvents: RecommendationEventEntry[];
+  mockInviteAllowlist: InviteAllowlistEntry[];
   mockUsers: UserEntry[];
   mockRefreshTokens: RefreshTokenEntry[];
   mockOrgs: OrgEntry[];
   mockOrgMembers: OrgMemberEntry[];
   mockLegalAcceptances: LegalAcceptanceEntry[];
   mockSchemaMigrations: SchemaMigrationEntry[];
+  mockRollbacks: Record<string, any>;
 }
 
 class GlobalMockDb {
@@ -418,6 +437,8 @@ class GlobalMockDb {
   static mockVariants: VariantEntry[] = [];
   static mockPendingJobs: PendingJobEntry[] = [];
   static mockOnboardingEvents: OnboardingEventEntry[] = [];
+  static mockRecommendationEvents: RecommendationEventEntry[] = [];
+  static mockInviteAllowlist: InviteAllowlistEntry[] = [];
   static mockUsers: UserEntry[] = [];
   static mockRefreshTokens: RefreshTokenEntry[] = [];
   static mockOrgs: OrgEntry[] = [];
@@ -425,6 +446,7 @@ class GlobalMockDb {
   static mockLegalAcceptances: LegalAcceptanceEntry[] = [];
   static mockSchemaMigrations: SchemaMigrationEntry[] = [];
   static mockErrorEvents: ErrorEventEntry[] = [];
+  static mockRollbacks: Record<string, any> = {};
 }
 
 /**
@@ -471,12 +493,15 @@ export class SupabaseClient {
     mockVariants: [],
     mockPendingJobs: [],
     mockOnboardingEvents: [],
+    mockRecommendationEvents: [],
+    mockInviteAllowlist: [],
     mockUsers: [],
     mockRefreshTokens: [],
     mockOrgs: [],
     mockOrgMembers: [],
     mockLegalAcceptances: [],
     mockSchemaMigrations: [],
+    mockRollbacks: {},
   };
 
   static resetGlobalMockDb() {
@@ -516,6 +541,8 @@ export class SupabaseClient {
     GlobalMockDb.mockVariants = [];
     GlobalMockDb.mockPendingJobs = [];
     GlobalMockDb.mockOnboardingEvents = [];
+    GlobalMockDb.mockRecommendationEvents = [];
+    GlobalMockDb.mockInviteAllowlist = [];
     GlobalMockDb.mockUsers = [];
     GlobalMockDb.mockRefreshTokens = [];
     GlobalMockDb.mockOrgs = [];
@@ -523,6 +550,7 @@ export class SupabaseClient {
     GlobalMockDb.mockLegalAcceptances = [];
     GlobalMockDb.mockSchemaMigrations = [];
     GlobalMockDb.mockErrorEvents = [];
+    GlobalMockDb.mockRollbacks = {};
   }
   
   resetLocalMockDb() {
@@ -564,12 +592,15 @@ export class SupabaseClient {
       mockVariants: [],
       mockPendingJobs: [],
       mockOnboardingEvents: [],
+      mockRecommendationEvents: [],
+      mockInviteAllowlist: [],
       mockUsers: [],
       mockRefreshTokens: [],
       mockOrgs: [],
       mockOrgMembers: [],
       mockLegalAcceptances: [],
       mockSchemaMigrations: [],
+      mockRollbacks: {},
     };
   }
 
@@ -681,6 +712,12 @@ export class SupabaseClient {
   private get mockOnboardingEvents(): OnboardingEventEntry[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockOnboardingEvents : this.localMockDb.mockOnboardingEvents; }
   private set mockOnboardingEvents(v: OnboardingEventEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockOnboardingEvents = v; else this.localMockDb.mockOnboardingEvents = v; }
 
+  private get mockRecommendationEvents(): RecommendationEventEntry[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockRecommendationEvents : this.localMockDb.mockRecommendationEvents; }
+  private set mockRecommendationEvents(v: RecommendationEventEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockRecommendationEvents = v; else this.localMockDb.mockRecommendationEvents = v; }
+
+  private get mockInviteAllowlist(): InviteAllowlistEntry[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockInviteAllowlist : this.localMockDb.mockInviteAllowlist; }
+  private set mockInviteAllowlist(v: InviteAllowlistEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockInviteAllowlist = v; else this.localMockDb.mockInviteAllowlist = v; }
+
   private get mockUsers(): UserEntry[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockUsers : this.localMockDb.mockUsers; }
   private set mockUsers(v: UserEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockUsers = v; else this.localMockDb.mockUsers = v; }
 
@@ -700,6 +737,9 @@ export class SupabaseClient {
 
   private get mockErrorEvents(): ErrorEventEntry[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockErrorEvents : this.localMockDb.mockErrorEvents; }
   private set mockErrorEvents(v: ErrorEventEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockErrorEvents = v; else this.localMockDb.mockErrorEvents = v; }
+
+  private get mockRollbacks(): Record<string, any> { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockRollbacks : this.localMockDb.mockRollbacks; }
+  private set mockRollbacks(v: Record<string, any>) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockRollbacks = v; else this.localMockDb.mockRollbacks = v; }
 
   private activeTenantId: string | null = null;
   private snapshots: {
@@ -737,6 +777,8 @@ export class SupabaseClient {
     mockVariants: VariantEntry[];
     mockPendingJobs: PendingJobEntry[];
     mockOnboardingEvents: OnboardingEventEntry[];
+    mockRecommendationEvents: RecommendationEventEntry[];
+    mockInviteAllowlist: InviteAllowlistEntry[];
     mockBaselineContexts: Array<{tenant_id: string; context: BaselineContext}>;
     mockCategoryBenchmarks: Array<{tenant_id: string; benchmarks: CategoryBenchmarks}>;
     mockUsers: UserEntry[];
@@ -746,6 +788,7 @@ export class SupabaseClient {
     mockLegalAcceptances: LegalAcceptanceEntry[];
     mockSchemaMigrations: SchemaMigrationEntry[];
     mockErrorEvents: ErrorEventEntry[];
+    mockRollbacks: Record<string, any>;
   } | null = null;
 
   private readonly logger: PinoLogger;
@@ -910,6 +953,7 @@ export class SupabaseClient {
       mockOrgMembers: this.mockOrgMembers,
       mockLegalAcceptances: this.mockLegalAcceptances,
       mockSchemaMigrations: this.mockSchemaMigrations,
+      mockRollbacks: this.mockRollbacks,
     };
     return JSON.stringify(snapshot, null, 2);
   }
@@ -962,6 +1006,7 @@ export class SupabaseClient {
       GlobalMockDb.mockOrgMembers = snapshot.mockOrgMembers || [];
       GlobalMockDb.mockLegalAcceptances = snapshot.mockLegalAcceptances || [];
       GlobalMockDb.mockSchemaMigrations = snapshot.mockSchemaMigrations || [];
+      GlobalMockDb.mockRollbacks = snapshot.mockRollbacks || {};
     } else {
       this.localMockDb.mockTrust = snapshot.mockTrust || [];
       this.localMockDb.mockErrorEvents = snapshot.mockErrorEvents || [];
@@ -1006,6 +1051,7 @@ export class SupabaseClient {
       this.localMockDb.mockOrgMembers = snapshot.mockOrgMembers || [];
       this.localMockDb.mockLegalAcceptances = snapshot.mockLegalAcceptances || [];
       this.localMockDb.mockSchemaMigrations = snapshot.mockSchemaMigrations || [];
+      this.localMockDb.mockRollbacks = snapshot.mockRollbacks || {};
     }
   }
 
@@ -1055,6 +1101,7 @@ export class SupabaseClient {
     copy.mockOrgs = this.mockOrgs;
     copy.mockOrgMembers = this.mockOrgMembers;
     copy.mockLegalAcceptances = this.mockLegalAcceptances;
+    copy.mockRollbacks = this.mockRollbacks;
     return copy;
   }
 
@@ -2596,6 +2643,7 @@ export class SupabaseClient {
       // 5. Delete scheduler / job states
       this.mockPendingJobs = this.mockPendingJobs.filter((pj) => pj.tenant_id !== tenantId);
       this.mockOnboardingEvents = this.mockOnboardingEvents.filter((oe) => oe.tenant_id !== tenantId);
+      this.mockRecommendationEvents = this.mockRecommendationEvents.filter((re) => re.tenant_id !== tenantId);
       this.mockBaselineContexts = this.mockBaselineContexts.filter((bc) => bc.tenant_id !== tenantId);
       this.mockCategoryBenchmarks = this.mockCategoryBenchmarks.filter((cb) => cb.tenant_id !== tenantId);
 
@@ -2649,6 +2697,77 @@ export class SupabaseClient {
     return {};
   }
 
+  // --- RECOMMENDATION TELEMETRY ---
+  async saveRecommendationEvent(event: RecommendationEventEntry): Promise<void> {
+    this.assertRls(event.tenant_id);
+    if (this.mockMode) {
+      const idx = this.mockRecommendationEvents.findIndex((e) => e.event_id === event.event_id);
+      if (idx >= 0) {
+        this.mockRecommendationEvents[idx] = event;
+      } else {
+        this.mockRecommendationEvents.push(event);
+      }
+    }
+  }
+
+  async getRecommendationEvents(tenant: string): Promise<RecommendationEventEntry[]> {
+    this.assertRls(tenant);
+    if (this.mockMode) {
+      return this.mockRecommendationEvents.filter((e) => e.tenant_id === tenant);
+    }
+    return [];
+  }
+
+  // --- INVITE ALLOWLIST ---
+  async isEmailAllowed(email: string): Promise<boolean> {
+    if (!config.auth.inviteAllowlistEnabled) {
+      return true;
+    }
+
+    if (this.mockMode) {
+      // Auto-seed default allowed emails if list is empty
+      const allowed = [
+        '*@google.com',
+        'allowed@brandtwin.io',
+        'admin@example.com',
+      ];
+      if (this.mockInviteAllowlist.length === 0) {
+        this.mockInviteAllowlist = allowed.map((e) => ({ allowed_pattern: e, added_at: new Date().toISOString() }));
+      }
+
+      // Check if email matches any pattern in invite allowlist (case-insensitive, wildcard support)
+      return this.mockInviteAllowlist.some((x) => {
+        const pattern = x.allowed_pattern.toLowerCase();
+        const testEmail = email.toLowerCase();
+        if (pattern.includes('*')) {
+          const regexStr = '^' + pattern.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&').replace(/\\\*/g, '.*') + '$';
+          const regex = new RegExp(regexStr);
+          return regex.test(testEmail);
+        }
+        return pattern === testEmail;
+      });
+    }
+    return false;
+  }
+
+  async addToAllowlist(emailOrPattern: string): Promise<void> {
+    if (this.mockMode) {
+      if (!this.mockInviteAllowlist.some((x) => x.allowed_pattern.toLowerCase() === emailOrPattern.toLowerCase())) {
+        this.mockInviteAllowlist.push({ allowed_pattern: emailOrPattern, added_at: new Date().toISOString() });
+      }
+    }
+  }
+
+  // --- ROLLBACK PERSISTENCE ---
+  async saveRollbackHandle(actionId: string, handle: any): Promise<void> {
+    this.logger.info('Saving rollback handle for action', {actionId});
+    this.mockRollbacks[actionId] = handle;
+  }
+
+  async getRollbackHandle(actionId: string): Promise<any | null> {
+    this.logger.debug('Fetching rollback handle for action', {actionId});
+    return this.mockRollbacks[actionId] || null;
+  }
 
   // --- TRANSACTION SIMULATION ---
   private transactionActive = false;
@@ -2690,6 +2809,8 @@ export class SupabaseClient {
       mockVariants: JSON.parse(JSON.stringify(this.mockVariants)) as VariantEntry[],
       mockPendingJobs: JSON.parse(JSON.stringify(this.mockPendingJobs)) as PendingJobEntry[],
       mockOnboardingEvents: JSON.parse(JSON.stringify(this.mockOnboardingEvents)) as OnboardingEventEntry[],
+      mockRecommendationEvents: JSON.parse(JSON.stringify(this.mockRecommendationEvents)) as RecommendationEventEntry[],
+      mockInviteAllowlist: JSON.parse(JSON.stringify(this.mockInviteAllowlist)) as InviteAllowlistEntry[],
       mockBaselineContexts: JSON.parse(JSON.stringify(this.mockBaselineContexts)) as Array<{tenant_id: string; context: BaselineContext}>,
       mockCategoryBenchmarks: JSON.parse(JSON.stringify(this.mockCategoryBenchmarks)) as Array<{tenant_id: string; benchmarks: CategoryBenchmarks}>,
       mockUsers: JSON.parse(JSON.stringify(this.mockUsers)) as UserEntry[],
@@ -2699,6 +2820,7 @@ export class SupabaseClient {
       mockLegalAcceptances: JSON.parse(JSON.stringify(this.mockLegalAcceptances)) as LegalAcceptanceEntry[],
       mockSchemaMigrations: JSON.parse(JSON.stringify(this.mockSchemaMigrations)) as SchemaMigrationEntry[],
       mockErrorEvents: JSON.parse(JSON.stringify(this.mockErrorEvents)) as ErrorEventEntry[],
+      mockRollbacks: JSON.parse(JSON.stringify(this.mockRollbacks)) as Record<string, any>,
     };
     this.logger.info('Transaction boundary started');
   }
@@ -2746,6 +2868,8 @@ export class SupabaseClient {
       this.mockVariants = this.snapshots.mockVariants;
       this.mockPendingJobs = this.snapshots.mockPendingJobs;
       this.mockOnboardingEvents = this.snapshots.mockOnboardingEvents;
+      this.mockRecommendationEvents = this.snapshots.mockRecommendationEvents;
+      this.mockInviteAllowlist = this.snapshots.mockInviteAllowlist;
       this.mockBaselineContexts = this.snapshots.mockBaselineContexts;
       this.mockCategoryBenchmarks = this.snapshots.mockCategoryBenchmarks;
       this.mockUsers = this.snapshots.mockUsers;
@@ -2755,6 +2879,7 @@ export class SupabaseClient {
       this.mockLegalAcceptances = this.snapshots.mockLegalAcceptances;
       this.mockSchemaMigrations = this.snapshots.mockSchemaMigrations;
       this.mockErrorEvents = this.snapshots.mockErrorEvents;
+      this.mockRollbacks = this.snapshots.mockRollbacks;
       this.snapshots = null;
     }
     this.logger.info('Transaction boundary rolled back');

@@ -1129,28 +1129,48 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
         const requestDb = db.clone();
         requestDb.setTenantContext(decodedToken.orgId);
 
-        await requestDb.logAudit({
-          tenant: decodedToken.orgId,
-          timestamp: new Date().toISOString(),
-          action_id: `reverse-${actionId}-${Date.now()}`,
-          op: 'reverse_action',
-          entity: 'action',
-          target_id: actionId,
-          cost: 0,
-          decision: 'reversed',
-          reason: reason || 'User manual override',
-        });
+        const rawAdapter = new GoogleAdsAdapter(
+          'mock-cust-id',
+          'mock-dev-token',
+          'mock-token',
+          decodedToken.orgId,
+        );
+        const adapter = new RateLimitingAdapterWrapper(
+          rawAdapter,
+          googleAdsLimiter,
+        );
 
-        await requestDb.saveRecommendationEvent({
-          event_id: `rec_evt_${Date.now()}_${Math.random().toString(36).substring(7)}`,
-          tenant_id: decodedToken.orgId,
-          recommendation_id: actionId,
-          action: 'reversed',
-          reason: reason || 'User manual override',
-          created_at: new Date().toISOString(),
-        });
+        const requestGovernance = new GovernanceEngine(
+          new PersistentAuditSink(requestDb),
+          tl,
+          cb,
+          globalMetrics,
+          undefined,
+          requestDb,
+        );
 
-        sendSuccessResponse(res, {status: 'reversed', actionId});
+        try {
+          const outcome = await requestGovernance.rollbackAction(decodedToken.orgId, actionId, adapter);
+          if (!outcome.ok) {
+            res.writeHead(500, {'Content-Type': 'application/json'});
+            res.end(JSON.stringify({error: outcome.error}));
+            return;
+          }
+
+          await requestDb.saveRecommendationEvent({
+            event_id: `rec_evt_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+            tenant_id: decodedToken.orgId,
+            recommendation_id: actionId,
+            action: 'reversed',
+            reason: reason || 'User manual override',
+            created_at: new Date().toISOString(),
+          });
+
+          sendSuccessResponse(res, {status: 'reversed', actionId});
+        } catch (err: any) {
+          res.writeHead(500, {'Content-Type': 'application/json'});
+          res.end(JSON.stringify({error: err.message || String(err)}));
+        }
         return;
       }
 

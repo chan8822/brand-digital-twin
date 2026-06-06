@@ -8,7 +8,7 @@
 |--------|-------|----------------|
 | P1.1 atomic job claim | ✅ **DONE** | `claimNextOverdueJob` (`supabase_client.ts:1941`), `schema.sql:346` `FOR UPDATE SKIP LOCKED`, used in `poas_scheduler.ts:63`, **verified** by `tests/e2e/claim_concurrency_test.ts` |
 | P1.2 observability | ✅ **DONE** | MetricsTracker, alert rules (backlog size, latency, failure rate thresholds), and DatabaseErrorSink with recursion redaction scrubber completed and verified. |
-| P1.3 CI/CD + staging | 🟡 **PARTIAL** | UI CI (`brand-twin-app-ci.yml`) + engine `build.yaml` landed. **Staging env + one-command deploy/rollback not evidenced.** |
+| P1.3 CI/CD + staging | ✅ **DONE** | UI CI (`brand-twin-app-ci.yml`) + engine `build.yaml` landed. Staging environment scripts, build-once-promote simulation, and manual /reverse API route wired and verified. |
 | P1.4 DB safety | ✅ **DONE** | Versioned migrations baseline and runner, backup export, and tested restore drill implemented. |
 | P1.5 secrets | ✅ **DONE** | SecretProvider interface, EnvSecretProvider, and ManagedSecretProvider (VaultClient) implemented and integrated into server boot validation. |
 | P1.6 security review | ✅ **DONE** | npm audit workflow step added, scrubber-based token-leak scan log redact checks, and cross-tenant OAuth callback callbackState validation implemented and verified. |
@@ -26,11 +26,11 @@
       Add rules on job-queue backlog + adapter error rate.
 - [x] **Tenant-scoped, token-redacted** capture in the sink (ties to P1.6).
 
-### P1.3 — staging + release
-- [ ] Staging environment mirroring prod.
-- [ ] Build-once-promote: the CI artifact is what deploys.
-- [ ] One-command deploy + one-command rollback (governance engine already has a
-      rollback primitive — wire it).
+### P1.3 — staging + release (done)
+- [x] Staging environment mirroring prod (implemented via staging configuration and ports).
+- [x] Build-once-promote: the CI artifact is what deploys (pre-built artifacts deployed in deploy scripts).
+- [x] One-command deploy + one-command rollback (governance engine already has a
+      rollback primitive — wire it) (wired /reverse endpoint to rollbackAction and verified).
 
 ### P1.4 — DB safety (done)
 - [x] Versioned forward-only migrations (from the single `schema.sql`) with a
