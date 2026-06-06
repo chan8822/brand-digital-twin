@@ -9,7 +9,10 @@ export interface Span {
   durationMs?: number;
   status: 'success' | 'failure';
   error?: string;
+  tenantId?: string | null;
 }
+
+import {eventBus} from './event_bus';
 
 export interface Metric {
   name: string;
@@ -115,6 +118,7 @@ export class MetricsTracker {
       span.durationMs = span.endTimeMs - span.startTimeMs;
       span.status = status;
       span.error = error;
+      span.tenantId = tenantId;
 
       this.recordMetric({
         name: `${span.operationName}_latency_ms`,
@@ -133,7 +137,7 @@ export class MetricsTracker {
           trace_id: span.traceId,
         }).catch(() => {});
       }
-      this.evaluateRules();
+      this.evaluateRules(tenantId);
     }
   }
 
@@ -142,7 +146,7 @@ export class MetricsTracker {
     this.evaluateRules();
   }
 
-  evaluateRules() {
+  evaluateRules(tenantId?: string | null) {
     const pendingJobsBacklog = this.metrics
       .filter((m) => m.name === 'pending_jobs_backlog_count')
       .sort((a, b) => b.timestamp.localeCompare(a.timestamp))[0];
@@ -161,13 +165,19 @@ export class MetricsTracker {
           `WARNING: Average operation latency across last ${last10Spans.length} requests is ${avgLatency.toFixed(1)}ms, exceeding budget of 5000ms.`
         );
       }
+    }
 
-      const failures = last10Spans.filter((s) => s.status === 'failure').length;
-      const failureRate = failures / last10Spans.length;
-      if (failureRate > 0.1) {
-        this.raiseAlert(
-          `CRITICAL: Operation failure rate is ${(failureRate * 100).toFixed(1)}% (last ${last10Spans.length} requests), exceeding threshold of 10%.`
-        );
+    if (tenantId) {
+      const tenantSpans = this.spans.filter((s) => s.tenantId === tenantId);
+      const last20Spans = tenantSpans.slice(-20);
+      if (last20Spans.length >= 10) {
+        const failures = last20Spans.filter((s) => s.status === 'failure').length;
+        const failureRate = failures / last20Spans.length;
+        if (failureRate > 0.05) {
+          const errMsg = `CRITICAL: Tenant ${tenantId} operation failure rate is ${(failureRate * 100).toFixed(1)}% (last ${last20Spans.length} requests), exceeding threshold of 5%.`;
+          this.raiseAlert(errMsg);
+          eventBus.emit('circuit_breaker_tripped', tenantId);
+        }
       }
     }
   }

@@ -6,6 +6,7 @@ import {
   ErrorDbClient,
   ErrorEvent,
 } from './observability';
+import {eventBus} from './event_bus';
 
 describe('Observability & Durable Error Sink Suite (P1.2a)', () => {
   describe('Central Redaction Scrubber', () => {
@@ -120,23 +121,31 @@ describe('Observability & Durable Error Sink Suite (P1.2a)', () => {
       expect(alerts[0]).toContain('backlog size is 60');
     });
 
-    it('should raise a critical alert when operation failure rate exceeds 10%', () => {
-      // Create 10 spans, 8 success and 2 failures (20% failure rate)
+    it('should raise a critical alert and emit circuit breaker event when tenant failure rate exceeds 5%', () => {
+      const tenantId = 'tenant-breaker-test';
+      let eventEmitted = false;
+      eventBus.on('circuit_breaker_tripped', (id) => {
+        if (id === tenantId) {
+          eventEmitted = true;
+        }
+      });
+
+      // Create 8 success spans
       for (let i = 0; i < 8; i++) {
         const s = tracker.startSpan('compute_poas', 'google_ads');
-        tracker.endSpan(s.spanId, 'success');
+        tracker.endSpan(s.spanId, 'success', undefined, tenantId);
       }
 
-      // 9th and 10th fail
+      // Create 2 failure spans (failure rate = 20%)
       for (let i = 0; i < 2; i++) {
         const s = tracker.startSpan('compute_poas', 'google_ads');
-        tracker.endSpan(s.spanId, 'failure', 'API Timeout');
+        tracker.endSpan(s.spanId, 'failure', 'API Timeout', tenantId);
       }
 
       const alerts = tracker.getAlerts();
-      // Expect alert raised for failure rate exceeding 10%
-      const failureAlerts = alerts.filter(a => a.includes('failure rate is 20.0%'));
+      const failureAlerts = alerts.filter(a => a.includes('exceeding threshold of 5%') && a.includes(tenantId));
       expect(failureAlerts.length).toBeGreaterThan(0);
+      expect(eventEmitted).toBe(true);
     });
 
     it('should raise a warning alert when average operation latency exceeds 5000ms', () => {

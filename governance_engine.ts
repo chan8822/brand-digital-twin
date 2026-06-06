@@ -32,6 +32,7 @@ import {
 } from './platform_adapter';
 import {OrderEntry, PendingJobEntry, SupabaseClient, RecommendationEventEntry, TenantLimits} from './supabase_client';
 import {CogsManager} from './cogs_manager';
+import {CooldownManager} from './cooldown_manager';
 
 /**
  * System keeping track of earned-trust tiers based on successful and failed executions.
@@ -55,6 +56,14 @@ export class TrustLedger {
   setTier(tenantId: string, actionType: string, tier: number) {
     const key = `${tenantId}:${actionType}`;
     this.earnedTiers.set(key, tier);
+  }
+
+  resetTenantTiers(tenantId: string) {
+    for (const key of this.earnedTiers.keys()) {
+      if (key.startsWith(`${tenantId}:`)) {
+        this.earnedTiers.set(key, 0);
+      }
+    }
   }
 
   /**
@@ -183,6 +192,8 @@ export class GovernanceEngine {
 
   readonly logger = new PinoLogger();
 
+  private readonly cooldownManager: CooldownManager;
+
   constructor(
     private readonly audit: AuditSink,
     private readonly trustLedger: TrustLedger,
@@ -190,8 +201,23 @@ export class GovernanceEngine {
     private readonly metrics: MetricsTracker = new MetricsTracker(),
     readonly opa = new OpaPolicyEngine(),
     readonly supabase = new SupabaseClient(),
+    cooldownManager?: CooldownManager,
   ) {
     this.metrics.setErrorSink(new DatabaseErrorSink(this.supabase));
+    this.cooldownManager = cooldownManager || new CooldownManager(this.supabase);
+
+    eventBus.on('circuit_breaker_tripped', async (tenantId: string) => {
+      this.logger.warn(`Circuit Breaker Tripped for tenant ${tenantId}. Downgrading to OBSERVE mode.`, { tenantId });
+      this.trustLedger.resetTenantTiers(tenantId);
+      try {
+        await this.supabase.resetTenantTrustTiers(tenantId);
+      } catch (err: any) {
+        this.logger.error(`Failed to reset trust tiers in DB on circuit breaker trip`, {
+          tenantId,
+          error: err.message || String(err),
+        });
+      }
+    });
   }
 
   async getTrustTier(tenantId: string, op: string): Promise<number> {
@@ -223,6 +249,50 @@ export class GovernanceEngine {
 
     try {
       const existingAudit = await this.supabase.getAuditLog(ctx.tenant.tenantId, req.idempotencyKey);
+      if (existingAudit) {
+        if (
+          existingAudit.decision === 'AUTO_EXECUTE' ||
+          existingAudit.decision === 'executed' ||
+          existingAudit.decision === 'EXECUTE' ||
+          existingAudit.decision === 'shadow_executed'
+        ) {
+          this.logger.info('Idempotency trigger: Replayed action request detected', {
+            'actionId': req.idempotencyKey,
+            'tenantId': ctx.tenant.tenantId,
+            'loggedDecision': existingAudit.decision,
+          });
+          spanStatus = 'success';
+          return {
+            status: 'executed',
+            result: { ok: true, auditRef: `cached-${existingAudit.action_id}` },
+          };
+        }
+      }
+
+      // 0. Cooldown check
+      const allowed = await this.cooldownManager.checkCooldown(ctx.tenant.tenantId, req);
+      if (!allowed) {
+        await this.supabase.logAudit({
+          tenant: ctx.tenant.tenantId,
+          timestamp: new Date().toISOString(),
+          action_id: req.idempotencyKey,
+          op: req.op,
+          entity: req.entity,
+          target_id: req.targetId,
+          cost: 0,
+          decision: 'BLOCK',
+          reason: 'Action blocked by campaign cooldown policy.',
+        });
+        spanStatus = 'success';
+        return {
+          status: 'blocked',
+          result: {
+            ok: false,
+            auditRef: req.idempotencyKey,
+            error: 'Action blocked by campaign cooldown policy.',
+          },
+        };
+      }
       if (existingAudit) {
         if (
           existingAudit.decision === 'AUTO_EXECUTE' ||

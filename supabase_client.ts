@@ -24,6 +24,7 @@ import {BaseError} from './errors';
 import {PinoLogger} from './observability';
 import {BaselineContext, CategoryBenchmarks} from './healing_types';
 import {config} from './config';
+import {redactSensitiveData} from './scrubber';
 
 export interface PlatformAccountEntry {
   account_id: string;
@@ -1351,19 +1352,59 @@ export class SupabaseClient {
     }
   }
 
+  async resetTenantTrustTiers(tenant: string): Promise<void> {
+    this.assertRls(tenant);
+    this.logger.info('Resetting all trust tiers back to 0 (OBSERVE) on circuit breaker trip', {'tenant': tenant});
+    if (this.mockMode) {
+      this.mockTrust = this.mockTrust.map((t) => {
+        if (t.tenant === tenant) {
+          return { ...t, tier: 0, updated_at: new Date().toISOString() };
+        }
+        return t;
+      });
+      return;
+    }
+
+    try {
+      const url = `${this.supabaseUrl}/rest/v1/brand_twin_trust?tenant=eq.${encodeURIComponent(tenant)}`;
+      const response = await fetch(url, {
+        method: 'PATCH',
+        headers: {
+          'apikey': this.supabaseKey,
+          'Authorization': `Bearer ${this.supabaseKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          tier: 0,
+          updated_at: new Date().toISOString(),
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to reset trust tiers: ${response.statusText}`);
+      }
+    } catch (err: any) {
+      this.logger.error('Failed to reset trust tiers in database', {
+        tenant,
+        error: err.message || String(err),
+      });
+      throw err;
+    }
+  }
+
   // --- AUDIT LOG STORAGE ---
 
   async logAudit(entry: AuditLogEntry): Promise<void> {
     this.assertRls(entry.tenant);
+    const sanitizedEntry = redactSensitiveData(entry) as AuditLogEntry;
     this.logger.info('Storing audit log entry', {
-      'tenant': entry.tenant,
-      'op': entry.op,
-      'entity': entry.entity,
-      'targetId': entry.target_id,
+      'tenant': sanitizedEntry.tenant,
+      'op': sanitizedEntry.op,
+      'entity': sanitizedEntry.entity,
+      'targetId': sanitizedEntry.target_id,
     });
     if (this.mockMode) {
       this.mockAuditLogs.push({
-        ...entry,
+        ...sanitizedEntry,
         id: `log-${this.mockAuditLogs.length}`,
       });
       return;
@@ -1379,7 +1420,7 @@ export class SupabaseClient {
           'Authorization': `Bearer ${this.supabaseKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(entry),
+        body: JSON.stringify(sanitizedEntry),
       });
     } catch {
       // Fail-safe
@@ -1389,14 +1430,15 @@ export class SupabaseClient {
   // --- GOVERNANCE ACTIVITY EVENTS ---
   async saveGovernanceEvent(event: GovernanceEventEntry): Promise<void> {
     this.assertRls(event.tenant_id);
+    const sanitizedEvent = redactSensitiveData(event) as GovernanceEventEntry;
     this.logger.info('Storing governance compliance event', {
-      'tenant': event.tenant_id,
-      'actionId': event.action_id,
-      'status': event.status,
+      'tenant': sanitizedEvent.tenant_id,
+      'actionId': sanitizedEvent.action_id,
+      'status': sanitizedEvent.status,
     });
     if (this.mockMode) {
       this.mockGovernanceEvents.push({
-        ...event,
+        ...sanitizedEvent,
         id: `gov-ev-${this.mockGovernanceEvents.length}`,
       });
       return;
@@ -1407,14 +1449,15 @@ export class SupabaseClient {
     if (event.tenant_id) {
       this.assertRls(event.tenant_id);
     }
+    const sanitizedEvent = redactSensitiveData(event) as ErrorEventEntry;
     this.logger.error('Storing error event', {
-      'tenant': event.tenant_id,
-      'severity': event.severity,
-      'source': event.source,
-      'message': event.message,
+      'tenant': sanitizedEvent.tenant_id,
+      'severity': sanitizedEvent.severity,
+      'source': sanitizedEvent.source,
+      'message': sanitizedEvent.message,
     });
     if (this.mockMode) {
-      this.mockErrorEvents.push(event);
+      this.mockErrorEvents.push(sanitizedEvent);
       return;
     }
 
@@ -1427,7 +1470,7 @@ export class SupabaseClient {
         'Content-Type': 'application/json',
         'Prefer': 'return=minimal',
       },
-      body: JSON.stringify(event),
+      body: JSON.stringify(sanitizedEvent),
     });
   }
 
@@ -1529,6 +1572,39 @@ export class SupabaseClient {
       });
     }
     return [];
+  }
+
+  async getRecentExecutions(
+    tenant: string,
+    entity: string,
+    targetId: string,
+    op: string,
+    sinceIso: string
+  ): Promise<AuditLogEntry[]> {
+    this.assertRls(tenant);
+    if (this.mockMode) {
+      return this.mockAuditLogs.filter(
+        (l) =>
+          l.tenant === tenant &&
+          l.entity === entity &&
+          l.target_id === targetId &&
+          l.op === op &&
+          (l.decision === 'executed' || l.decision === 'EXECUTE' || l.decision === 'AUTO_EXECUTE' || l.decision === 'shadow_executed') &&
+          l.timestamp >= sinceIso
+      );
+    } else {
+      const url = `${this.supabaseUrl}/rest/v1/brand_twin_audit_logs?tenant=eq.${encodeURIComponent(tenant)}&entity=eq.${encodeURIComponent(entity)}&target_id=eq.${encodeURIComponent(targetId)}&op=eq.${encodeURIComponent(op)}&decision=in.(executed,EXECUTE,AUTO_EXECUTE,shadow_executed)&timestamp=gte.${encodeURIComponent(sinceIso)}`;
+      const response = await fetch(url, {
+        headers: {
+          'apikey': this.supabaseKey,
+          'Authorization': `Bearer ${this.supabaseKey}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to get recent executions: ${response.statusText}`);
+      }
+      return (await response.json()) as AuditLogEntry[];
+    }
   }
 
   async clearAuditLogs(tenant: string): Promise<void> {
@@ -2495,6 +2571,21 @@ export class SupabaseClient {
       } else {
         this.mockPendingJobs.push(job);
       }
+    } else {
+      const url = `${this.supabaseUrl}/rest/v1/pending_jobs`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'apikey': this.supabaseKey,
+          'Authorization': `Bearer ${this.supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates',
+        },
+        body: JSON.stringify(job),
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to save pending job: ${response.statusText} (${response.status})`);
+      }
     }
   }
 
@@ -2502,8 +2593,19 @@ export class SupabaseClient {
     this.assertRls(tenant);
     if (this.mockMode) {
       return this.mockPendingJobs.filter((j) => j.tenant_id === tenant);
+    } else {
+      const url = `${this.supabaseUrl}/rest/v1/pending_jobs?tenant_id=eq.${encodeURIComponent(tenant)}`;
+      const response = await fetch(url, {
+        headers: {
+          'apikey': this.supabaseKey,
+          'Authorization': `Bearer ${this.supabaseKey}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to get pending jobs: ${response.statusText}`);
+      }
+      return (await response.json()) as PendingJobEntry[];
     }
-    return [];
   }
 
   async getOverdueJobs(currentTimeMs: number): Promise<PendingJobEntry[]> {
@@ -2511,8 +2613,20 @@ export class SupabaseClient {
       return this.mockPendingJobs.filter(
         (j) => j.status === 'pending' && Date.parse(j.run_at) <= currentTimeMs
       );
+    } else {
+      const runAtIso = new Date(currentTimeMs).toISOString();
+      const url = `${this.supabaseUrl}/rest/v1/pending_jobs?status=eq.pending&run_at=lte.${encodeURIComponent(runAtIso)}`;
+      const response = await fetch(url, {
+        headers: {
+          'apikey': this.supabaseKey,
+          'Authorization': `Bearer ${this.supabaseKey}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to get overdue jobs: ${response.statusText}`);
+      }
+      return (await response.json()) as PendingJobEntry[];
     }
-    return [];
   }
 
   async claimNextOverdueJob(currentTimeMs: number, ownerId: string): Promise<PendingJobEntry | null> {
@@ -2533,8 +2647,26 @@ export class SupabaseClient {
         return {...job};
       }
       return null;
+    } else {
+      const url = `${this.supabaseUrl}/rest/v1/rpc/claim_next_pending_job`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'apikey': this.supabaseKey,
+          'Authorization': `Bearer ${this.supabaseKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          current_time_ms: currentTimeMs,
+          owner_id: ownerId,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to claim next overdue job: ${response.statusText} (${response.status})`);
+      }
+      const jobs = (await response.json()) as PendingJobEntry[];
+      return jobs.length > 0 ? jobs[0] : null;
     }
-    return null;
   }
 
   async claimJob(
@@ -2561,8 +2693,31 @@ export class SupabaseClient {
         return true;
       }
       return false;
+    } else {
+      const currentIso = new Date(currentTimeMs).toISOString();
+      const expiresIso = new Date(currentTimeMs + leaseDurationMs).toISOString();
+      const url = `${this.supabaseUrl}/rest/v1/pending_jobs?job_id=eq.${encodeURIComponent(jobId)}&or=(status.eq.pending,status.eq.failed,and(status.eq.processing,expires_at.lte.${encodeURIComponent(currentIso)}))`;
+      
+      const response = await fetch(url, {
+        method: 'PATCH',
+        headers: {
+          'apikey': this.supabaseKey,
+          'Authorization': `Bearer ${this.supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation',
+        },
+        body: JSON.stringify({
+          status: 'processing',
+          locked_by: workerId,
+          expires_at: expiresIso,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to claim job: ${response.statusText}`);
+      }
+      const updatedJobs = (await response.json()) as PendingJobEntry[];
+      return updatedJobs.length > 0;
     }
-    return false;
   }
 
   async heartbeatJob(
@@ -2580,8 +2735,28 @@ export class SupabaseClient {
         return true;
       }
       return false;
+    } else {
+      const expiresIso = new Date(currentTimeMs + leaseDurationMs).toISOString();
+      const url = `${this.supabaseUrl}/rest/v1/pending_jobs?job_id=eq.${encodeURIComponent(jobId)}&status=eq.processing&locked_by=eq.${encodeURIComponent(workerId)}`;
+      
+      const response = await fetch(url, {
+        method: 'PATCH',
+        headers: {
+          'apikey': this.supabaseKey,
+          'Authorization': `Bearer ${this.supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation',
+        },
+        body: JSON.stringify({
+          expires_at: expiresIso,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to heartbeat job: ${response.statusText}`);
+      }
+      const updatedJobs = (await response.json()) as PendingJobEntry[];
+      return updatedJobs.length > 0;
     }
-    return false;
   }
 
   async completeJob(jobId: string, workerId: string): Promise<boolean> {
@@ -2596,8 +2771,29 @@ export class SupabaseClient {
         return true;
       }
       return false;
+    } else {
+      const url = `${this.supabaseUrl}/rest/v1/pending_jobs?job_id=eq.${encodeURIComponent(jobId)}&status=eq.processing&locked_by=eq.${encodeURIComponent(workerId)}`;
+      
+      const response = await fetch(url, {
+        method: 'PATCH',
+        headers: {
+          'apikey': this.supabaseKey,
+          'Authorization': `Bearer ${this.supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation',
+        },
+        body: JSON.stringify({
+          status: 'completed',
+          locked_by: null,
+          expires_at: null,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to complete job: ${response.statusText}`);
+      }
+      const updatedJobs = (await response.json()) as PendingJobEntry[];
+      return updatedJobs.length > 0;
     }
-    return false;
   }
 
   async updateJobStatus(jobId: string, status: PendingJobEntry['status']): Promise<void> {
@@ -2606,12 +2802,38 @@ export class SupabaseClient {
       if (job) {
         job.status = status;
       }
+    } else {
+      const url = `${this.supabaseUrl}/rest/v1/pending_jobs?job_id=eq.${encodeURIComponent(jobId)}`;
+      const response = await fetch(url, {
+        method: 'PATCH',
+        headers: {
+          'apikey': this.supabaseKey,
+          'Authorization': `Bearer ${this.supabaseKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status }),
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to update job status: ${response.statusText}`);
+      }
     }
   }
 
   async deletePendingJob(jobId: string): Promise<void> {
     if (this.mockMode) {
       this.mockPendingJobs = this.mockPendingJobs.filter((j) => j.job_id !== jobId);
+    } else {
+      const url = `${this.supabaseUrl}/rest/v1/pending_jobs?job_id=eq.${encodeURIComponent(jobId)}`;
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+          'apikey': this.supabaseKey,
+          'Authorization': `Bearer ${this.supabaseKey}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to delete pending job: ${response.statusText}`);
+      }
     }
   }
 

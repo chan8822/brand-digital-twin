@@ -414,4 +414,54 @@ describe('SupabaseClient Database & Security Suite', () => {
       expect(retrievedB).toBeNull();
     });
   });
+
+  describe('PII Log Scrubbing & Sanitization (P1.11)', () => {
+    beforeEach(() => {
+      db.resetLocalMockDb();
+    });
+
+    it('should redact sensitive credentials and tokens in audit logs and error events', async () => {
+      // 1. Test audit logs scrubbing
+      await db.logAudit({
+        tenant: 'tenant-a',
+        timestamp: new Date().toISOString(),
+        action_id: 'act-1',
+        op: 'update_budget',
+        entity: 'campaign',
+        target_id: 'c-1',
+        cost: 100,
+        decision: 'EXECUTE',
+        reason: 'Authorized using clientSecret = super-secret-xyz-token',
+      });
+
+      const logs = await db.getAuditLogs('tenant-a');
+      expect(logs.length).toBe(1);
+      expect(logs[0].reason).toContain('[REDACTED]');
+      expect(logs[0].reason).not.toContain('super-secret-xyz-token');
+
+      // 2. Test error events scrubbing
+      await db.saveErrorEvent({
+        event_id: 'err-1',
+        tenant_id: 'tenant-a',
+        severity: 'critical',
+        source: 'campaign_ops',
+        message: 'Failed dispatching with auth key_998877665544',
+        context: {
+          apiKey: 'secret_api_key_value',
+          clientSecret: 'secret_client_val',
+          regularField: 'safe data',
+        },
+        trace_id: 't-1',
+        created_at: new Date().toISOString(),
+      });
+
+      const errors = await db.getErrorEvents('tenant-a');
+      expect(errors.length).toBe(1);
+      expect(errors[0].message).toContain('[REDACTED]');
+      expect(errors[0].message).not.toContain('key_998877665544');
+      expect(errors[0].context.apiKey).toBe('[REDACTED]');
+      expect(errors[0].context.clientSecret).toBe('[REDACTED]');
+      expect(errors[0].context.regularField).toBe('safe data');
+    });
+  });
 });

@@ -122,9 +122,22 @@ export function redactSensitiveData(
     let temp = redactJwtStrings(val);
     // 3. PAN redaction
     temp = redactPanStrings(temp);
+    // 4. Secret keyword assignment/prefix redaction
+    temp = redactSecretKeywordsInString(temp);
 
     return temp;
   }
 
   return val;
+}
+
+export function redactSecretKeywordsInString(val: string): string {
+  const assignRegex = /\b(\w*(?:secret|key|token|password|auth|bearer)\w*)\b\s*[=:]\s*([a-zA-Z0-9_\-]+)/gi;
+  const prefixRegex = /\b\w*(?:secret|key|token|password|auth|bearer)\w*_[a-zA-Z0-9_\-]{6,}\b/gi;
+
+  let temp = val.replace(assignRegex, (match, p1) => {
+    return `${p1} = [REDACTED]`;
+  });
+  temp = temp.replace(prefixRegex, '[REDACTED]');
+  return temp;
 }
