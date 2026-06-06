@@ -12,6 +12,7 @@ export default function SignupPage() {
   const [orgName, setOrgName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [tosAccepted, setTosAccepted] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
 
@@ -69,7 +70,31 @@ export default function SignupPage() {
           onChange={setPassword}
           autoComplete="new-password"
         />
-        <SubmitButton pending={pending} disabled={!orgName || !email || !password}>
+
+        {/* ToS acceptance — required before account creation */}
+        <label className="mt-4 flex items-start gap-2.5">
+          <input
+            type="checkbox"
+            checked={tosAccepted}
+            onChange={(e) => setTosAccepted(e.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-accent"
+          />
+          <span className="text-xs text-text-muted leading-relaxed">
+            I agree to the{" "}
+            <Link href="/legal/tos" className="text-accent hover:underline" target="_blank">
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link href="/legal/privacy" className="text-accent hover:underline" target="_blank">
+              Privacy Policy
+            </Link>
+          </span>
+        </label>
+
+        <SubmitButton
+          pending={pending}
+          disabled={!orgName || !email || !password || !tosAccepted}
+        >
           Create account
         </SubmitButton>
         {USE_MOCK && (
