@@ -778,52 +778,11 @@ jasmine_node_test(
     srcs = [":brand_twin_tests"],
 )
 
-ts_library(
-    name = "e2e_test_lib",
-    testonly = True,
-    srcs = [
-        "tests/e2e/claim_concurrency_test.ts",
-        "tests/e2e/specs/beta_telemetry_e2e_test.ts",
-        "tests/e2e/specs/cross_feature_e2e_test.ts",
-        "tests/e2e/specs/data_rights_e2e_test.ts",
-        "tests/e2e/specs/invite_allowlist_e2e_test.ts",
-        "tests/e2e/specs/job_claiming_e2e_test.ts",
-        "tests/e2e/specs/legal_consent_e2e_test.ts",
-        "tests/e2e/specs/load_concurrency_e2e_test.ts",
-        "tests/e2e/specs/public_abuse_e2e_test.ts",
-        "tests/e2e/specs/ready_health_e2e_test.ts",
-        "tests/e2e/specs/real_world_workloads_e2e_test.ts",
-        "tests/e2e/specs/secrets_e2e_test.ts",
-        "tests/e2e/specs/security_redaction_e2e_test.ts",
-    ],
-    deps = [
-        ":auth",
-        ":config",
-        ":errors",
-        ":event_bus",
-        ":google_ads_adapter",
-        ":governance_engine",
-        ":managed_secret_provider",
-        ":observability",
-        ":orchestrator",
-        ":platform_adapter",
-        ":poas_calculator",
-        ":poas_scheduler",
-        ":rate_limiter",
-        ":scrubber",
-        ":secret_provider",
-        ":server",
-        ":supabase_client",
-        ":unified_brain",
-        ":user_auth",
-        "//third_party/javascript/typings/jasmine",
-        "//third_party/javascript/typings/node",
-    ],
-)
-
 jasmine_node_test(
     name = "e2e_test",
-    srcs = [":e2e_test_lib"],
+    srcs = [
+        "//experimental/brand_twin/github_export/tests/e2e/specs:specs",
+    ],
 )
 
 ts_library(
@@ -856,26 +815,8 @@ jasmine_node_test(
     srcs = [":brand_twin_tests"],
 )
 
-ts_library(
-    name = "load_test_lib",
-    testonly = True,
-    srcs = [
-        "tests/e2e/specs/real_load_test.ts",
-    ],
-    deps = [
-        ":auth",
-        ":config",
-        ":event_bus",
-        ":server",
-        ":supabase_client",
-        ":user_auth",
-        "//third_party/javascript/typings/jasmine",
-        "//third_party/javascript/typings/node",
-    ],
-)
-
 jasmine_node_test(
     name = "load_test",
-    srcs = [":load_test_lib"],
+    srcs = ["//experimental/brand_twin/github_export/tests/e2e/specs:real_load_test_lib"],
     tags = ["manual"],
 )
