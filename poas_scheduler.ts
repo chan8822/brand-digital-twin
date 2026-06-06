@@ -9,6 +9,7 @@ import {BankAdapter} from './bank_adapter';
 import {GoogleAdsAdapter} from './google_ads_adapter';
 import {MetaAdsAdapter} from './meta_ads_adapter';
 import {OfflineConversionsSync} from './offline_conversions_sync';
+import {CrmLeadsSync} from './crm_leads_sync';
 import {PlatformAdapter} from './platform_adapter';
 import {PoasCalculator} from './poas_calculator';
 import {RiskRadar} from './risk_radar';
@@ -304,6 +305,21 @@ export class PoasScheduler {
         });
       } catch (err: any) {
         this.logger.error(`Conversions offline sync failed for tenant ${tenantId}:`, {
+          error: err.message || String(err),
+        });
+      }
+
+      const leadSync = new CrmLeadsSync(tenantDb);
+      try {
+        const res = await leadSync.syncLeads(tenantId, googleAdapter, metaAdapter, metaPixelId);
+        if (res.googleSuccessCount > 0 || res.metaSuccessCount > 0) {
+          this.logger.info(`CRM Leads offline sync completed for tenant ${tenantId}`, {
+            googleSuccess: res.googleSuccessCount,
+            metaSuccess: res.metaSuccessCount,
+          });
+        }
+      } catch (err: any) {
+        this.logger.error(`CRM Leads offline sync failed for tenant ${tenantId}:`, {
           error: err.message || String(err),
         });
       }

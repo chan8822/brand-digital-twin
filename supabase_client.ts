@@ -406,6 +406,19 @@ export interface TenantLiftEntry {
   computed_at: string;
 }
 
+export interface CrmLeadEntry {
+  lead_id: string;
+  tenant_id: string;
+  email: string;
+  gclid?: string | null;
+  fbclid?: string | null;
+  status: string; // 'prospect' | 'sql' | 'closed_won'
+  value: number;
+  google_synced_status?: string | null;
+  meta_synced_status?: string | null;
+  updated_at: string;
+}
+
 interface MockDbContainer {
   mockTrust: TrustEntry[];
   mockErrorEvents: ErrorEventEntry[];
@@ -458,6 +471,7 @@ interface MockDbContainer {
   mockReceipts: ReceiptEntry[];
   mockSupportTickets: SupportTicketEntry[];
   mockTenantLifts: TenantLiftEntry[];
+  mockCrmLeads: CrmLeadEntry[];
 }
 
 class GlobalMockDb {
@@ -512,6 +526,7 @@ class GlobalMockDb {
   static mockReceipts: ReceiptEntry[] = [];
   static mockSupportTickets: SupportTicketEntry[] = [];
   static mockTenantLifts: TenantLiftEntry[] = [];
+  static mockCrmLeads: CrmLeadEntry[] = [];
 }
 
 /**
@@ -572,6 +587,7 @@ export class SupabaseClient {
     mockReceipts: [],
     mockSupportTickets: [],
     mockTenantLifts: [],
+    mockCrmLeads: [],
   };
 
   static resetGlobalMockDb() {
@@ -626,6 +642,7 @@ export class SupabaseClient {
     GlobalMockDb.mockSchemaMigrations = [];
     GlobalMockDb.mockErrorEvents = [];
     GlobalMockDb.mockRollbacks = {};
+    GlobalMockDb.mockCrmLeads = [];
   }
   
   resetLocalMockDb() {
@@ -681,6 +698,7 @@ export class SupabaseClient {
       mockReceipts: [],
       mockSupportTickets: [],
       mockTenantLifts: [],
+      mockCrmLeads: [],
     };
   }
 
@@ -825,6 +843,9 @@ export class SupabaseClient {
   private set mockSupportTickets(v: SupportTicketEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockSupportTickets = v; else this.localMockDb.mockSupportTickets = v; }
   private get mockTenantLifts(): TenantLiftEntry[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockTenantLifts : this.localMockDb.mockTenantLifts; }
   private set mockTenantLifts(v: TenantLiftEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockTenantLifts = v; else this.localMockDb.mockTenantLifts = v; }
+
+  private get mockCrmLeads(): CrmLeadEntry[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockCrmLeads : this.localMockDb.mockCrmLeads; }
+  private set mockCrmLeads(v: CrmLeadEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockCrmLeads = v; else this.localMockDb.mockCrmLeads = v; }
 
   private get mockErrorEvents(): ErrorEventEntry[] { return SupabaseClient.useSharedMockDb ? GlobalMockDb.mockErrorEvents : this.localMockDb.mockErrorEvents; }
   private set mockErrorEvents(v: ErrorEventEntry[]) { if (SupabaseClient.useSharedMockDb) GlobalMockDb.mockErrorEvents = v; else this.localMockDb.mockErrorEvents = v; }
@@ -2281,6 +2302,27 @@ export class SupabaseClient {
         this.mockTouchpoints[idx] = touchpoint;
       } else {
         this.mockTouchpoints.push(touchpoint);
+      }
+    }
+  }
+
+  // --- CRM LEADS ---
+  async getCrmLeads(tenant: string): Promise<CrmLeadEntry[]> {
+    this.assertRls(tenant);
+    if (this.mockMode) {
+      return this.mockCrmLeads.filter((l) => l.tenant_id === tenant);
+    }
+    return [];
+  }
+
+  async saveCrmLead(lead: CrmLeadEntry): Promise<void> {
+    this.assertRls(lead.tenant_id);
+    if (this.mockMode) {
+      const idx = this.mockCrmLeads.findIndex((l) => l.lead_id === lead.lead_id);
+      if (idx >= 0) {
+        this.mockCrmLeads[idx] = lead;
+      } else {
+        this.mockCrmLeads.push(lead);
       }
     }
   }

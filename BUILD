@@ -557,6 +557,16 @@ ts_library(
 )
 
 ts_library(
+    name = "crm_leads_sync",
+    srcs = ["crm_leads_sync.ts"],
+    deps = [
+        ":google_ads_adapter",
+        ":meta_ads_adapter",
+        ":supabase_client",
+    ],
+)
+
+ts_library(
     name = "poas_scheduler",
     srcs = ["poas_scheduler.ts"],
     deps = [
@@ -564,6 +574,7 @@ ts_library(
         ":bank_adapter",
         ":config",
         ":credential_vault",
+        ":crm_leads_sync",
         ":google_ads_adapter",
         ":governance_engine",
         ":governance_types",
@@ -671,6 +682,7 @@ ts_library(
         "auth_test.ts",
         "cooldown_manager_test.ts",
         "credential_vault_test.ts",
+        "crm_leads_sync_test.ts",
         "easysaas_test.ts",
         "event_bus_test.ts",
         "gdpr_legal_test.ts",
@@ -711,6 +723,7 @@ ts_library(
         ":cooldown_manager",
         ":coverage_monitor",
         ":credential_vault",
+        ":crm_leads_sync",
         ":easysaas_orchestration",
         ":env_secret_provider",
         ":errors",
@@ -956,6 +969,11 @@ jasmine_node_test(
 
 jasmine_node_test(
     name = "offline_conversions_sync_test",
+    srcs = [":brand_twin_tests"],
+)
+
+jasmine_node_test(
+    name = "crm_leads_sync_test",
     srcs = [":brand_twin_tests"],
 )
 
