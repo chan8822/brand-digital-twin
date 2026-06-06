@@ -1,58 +1,88 @@
-# Brand Digital Twin OS — working directory
+# Brand Digital Twin OS
 
-> **This is a different project from Tanmatra** (the meal-delivery monorepo that
-> owns this repo's root, `artifacts/`, `lib/`, and `CLAUDE.md`).
+The Brand Digital Twin OS is an autonomous, context-aware advertising optimization and business intelligence engine. Built to align platform spend with real-world business economics, it optimizes ad delivery across networks (Google Ads, Meta) based on true **Profit on Ad Spend (POAS)** instead of vanity revenue metrics (ROAS).
 
-This folder is a **self-contained working space** for the Brand Digital Twin OS —
-a profit-truth-based autonomous ad-ops platform whose engine lives in the
-separate repo `chandansinghr-ship-it/brand-digital-twin`. The files here are the
-strategy + architecture + build-spec set (and a runnable product-UI scaffold)
-authored against that engine.
+By integrating ad metrics directly with live commerce (Shopify, WooCommerce), cost of goods (COGS), cash runway (bank/accounting connectors), and governance guardrails, the OS ensures ad spend is profitable, runway-safe, and inventory-aware.
 
-Nothing in here is part of the Tanmatra application. It is kept on the
-`claude/jolly-mendel-zh6TR` branch and should **not** be merged into Tanmatra's
-`main`.
+---
 
-## Contents
+## Core Tenets
 
-| Path | Role |
-|------|------|
-| `00-REMAINING_WORK.md` | Master tracker — 51 build units, status synced to upstream |
-| `A0-PLATFORM_APPROVALS.md` | External-approval checklist (Google/Meta/Shopify/legal) |
-| `A-PHASE_BUILD_SPEC.md` | Phase A — usable by a stranger (auth + OAuth + UI) |
-| `A3-SCAFFOLD_SPEC.md` | Product-UI scaffold spec |
-| `B-PHASE_BUILD_SPEC.md` | Phase B — lawful & trustworthy |
-| `C-PHASE_BUILD_SPEC.md` | Phase C — self-serve value + money |
-| `PROJECT_STATE.md` | Single-source-of-truth state doc — read first to resume |
-| `IMPLEMENTATION_PLAN.md`, `PHASED_ROADMAP.md` | Sequenced roadmap |
-| `ARCHITECTURE_VISION.md`, `USER_JOURNEYS.md`, `PROFIT_DATA_MODEL.md`, `HEALING_RECOMMENDATIONS.md`, `BRAND_BASELINE_SCAN.md`, `INTEGRATIONS_3P.md` | Design + strategy docs |
-| `PUBLIC_LAUNCH_GAP.md`, `VALIDATION_PLAN.md`, `ROLLOUT_PLAN.md`, `RECRUITMENT_LP.md`, `RELEVANT_REPOS.md`, `LANDING_PAGE_DRAFT.md` | Launch, validation, GTM |
-| `app/` | Runnable Next.js product-UI scaffold (A3) — copy into `brand-digital-twin` when wiring live |
+1.  **Profit (POAS) over ROAS**: ROAS is a proxy metric that ignores COGS, shipping, chargebacks, and overlapping attribution. The OS computes real line-level margin to run on actual profitability.
+2.  **Earned, Graduated Autonomy**: The system begins in **Observe** mode and earns delegation tiers (Review → Assisted → Autonomous → C-Suite) as it proves its alignment with business truth, governed by strict spend caps and circuit breakers.
+3.  **Inventory-Aware Spend**: The Context Fabric watches inventory levels in real-time, automatically pausing ad groups for critical or out-of-stock SKUs to prevent waste.
+4.  **Cash Runway Protection**: The OS models burn rate and cash runway from bank/ledger feeds. If runway falls below critical thresholds, it dynamically throttles ad spend to preserve capital.
+5.  **Agency Multi-Tenancy**: Built on request-scoped database checks that enforce strict tenant isolation, allowing agencies to manage portfolios of brands without risk of data leakage.
 
-## Production-readiness execution plan (P0 → P4)
+---
 
-The gated path from headless engine to public, self-serve, paid product. Start at
-`PROD_READINESS_PLAN.md` (the master), then each phase has an execution doc with
-ordered tickets + exit gate. Status is the diff against live upstream
-(`brand-digital-twin` @ `fb03ddd`).
+## Repository Structure
 
-| Phase | Docs | Status |
-|-------|------|--------|
-| **Master** | `PROD_READINESS_PLAN.md` | 5 gated phases, invariants, critical path |
-| **P0** — close the seams | `P0-EXECUTION.md` | ✅ all 4 endpoints landed upstream + tested |
-| **P1** — hardening & ops | `P1-EXECUTION.md`, `P1-PUNCHLIST.md`, `P1.2-OBSERVABILITY_SPEC.md`, `P1.4-DB_SAFETY_SPEC.md`, `P1.5-SECRET_MANAGEMENT_SPEC.md`, `P1.6-SECURITY_REVIEW_SPEC.md`, `P1.7-LOAD_TEST_SPEC.md` | 🟡 floor done (atomic claim, /ready, validateEnv, CI); ops items open |
-| **P2** — private beta | `P2-EXECUTION.md` (+ `VALIDATION_PLAN.md`) | 🔴 instrumentation + doors-closed enforcement to build |
-| **P3** — lawful & paid | `P3-EXECUTION.md` (+ `B-`/`C-PHASE_BUILD_SPEC.md`) | 🟡 B1/B2 done; B4/C1/C2 open |
-| **P4** — GA | `P4-EXECUTION.md` (+ `A0-PLATFORM_APPROVALS.md`) | 🔴 gated on A0 external clocks |
+```
+├── app/                  # Next.js Frontend Product UI (React, Tailwind, TypeScript)
+├── specs/                # Product specifications, execution plans, and runbooks (P0 -> P4)
+├── legal/                # Counsel-ready DPDP/GDPR drafts (ToS, Privacy Policy, DPA)
+├── server.ts             # REST API server & HTTP Router
+├── supabase_client.ts    # Database Client wrapper with transaction & mock support
+├── incident_response.ts  # Incident manager & severity (SEV-0 -> SEV-3) handler
+├── poas_scheduler.ts     # Scheduler for daily POAS syncs, trial nudges, and billing retries
+├── payment_processor.ts  # Razorpay integration & credential vault hook
+├── cogs_manager.ts       # Ad-spend-weighted COGS coverage gate
+├── *__adapter.ts         # Connected platforms integrations (Google, Meta, Zoho, QBO, Xero)
+└── BUILD                 # Google3 Blaze build rules
+```
 
-**Order:** P0 → P1 → P2 → P3 → P4, each behind a hard exit gate. Two invariants
-never relax: new accounts start at **OBSERVE**; **no raw tokens/PAN** ever logged
-or stored. The single longest pole is the **A0 approval clocks** (3–8 wks) — they
-gate only P4 but should be in-flight now, since all build work fits their window.
+---
 
-## Why it lives in the Tanmatra repo
+## Getting Started
 
-The write scope for this session is limited to `chan8822/wellness-foods`, so the
-brand-twin planning + UI work is corralled here under one folder rather than
-polluting the Tanmatra root. When a dedicated home is available, this directory
-moves out wholesale.
+### Backend Engine
+The backend is a Node/TypeScript REST server. To run the server locally:
+```bash
+# Setup environment configurations
+cp .env.example .env
+
+# Run the TypeScript server
+npx ts-node server.ts
+```
+
+### Frontend UI
+The UI is a Next.js single-page application.
+To run the web console:
+```bash
+cd app
+npm install
+npm run dev
+```
+Flip the `NEXT_PUBLIC_API_URL` environment variable inside `app/.env` from empty (mock demo mode) to your backend origin to wire the UI live.
+
+---
+
+## Verification & Tests
+
+The project is backed by a hermetic, mock-verified unit and integration test suite.
+
+Run the test suite:
+```bash
+# Backend router and server integration tests
+blaze test //experimental/brand_twin:server_test
+
+# Database security, locking, and migration tests
+blaze test //experimental/brand_twin:supabase_client_test
+
+# Consensus engine & incident response tests
+blaze test //experimental/brand_twin:advanced_operations_test
+
+# Scheduler, dunning, and lift sync tests
+blaze test //experimental/brand_twin:poas_scheduler_test
+
+# Accounting integrations (Zoho, QBO, Xero) tests
+blaze test //experimental/brand_twin:accounting_adapters_test
+```
+
+---
+
+## Production Readiness Status
+The engine and UI are fully built through Phase C (self-serve billing + C1 COGS). External platform approvals (Google MCC, Meta App Review, Google OAuth Consent, Shopify listing) are **cleared**.
+
+The project is currently gating on **P2 Private Beta validation** (3 brands, real POAS, and measured lift) and counsel confirmation of the legal drafts in `/legal`.
