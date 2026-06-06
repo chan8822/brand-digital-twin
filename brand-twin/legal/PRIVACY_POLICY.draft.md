@@ -106,7 +106,7 @@ Subject to applicable law you may have the right to access, correct, delete, exp
 (portability), restrict or object to processing, and withdraw consent. The Service
 provides in-product **data export** (a signed export of your data) and **account
 deletion** (a hard-delete cascade that also revokes connected credentials). To exercise
-other rights or appeal a decision, contact `[PRIVACY EMAIL]`. India residents may
+other rights or appeal a decision, contact `admin@trendingmediagroup.in`. India residents may
 contact our Grievance Officer / DPO below; EU/UK residents may also lodge a complaint
 with a supervisory authority.
 
@@ -131,6 +131,6 @@ above.
 
 ## 12. Contact
 
-**Controller:** `Trending Media Service Pvt. Ltd.`, `[REGISTERED ADDRESS]`
-**Privacy / requests:** `[PRIVACY EMAIL]`
-**DPO / Grievance Officer:** `[DPO / GRIEVANCE OFFICER]`
+**Controller:** `Trending Media Service Pvt. Ltd.`, `Aashiana Palace, Karni Nagar, Samta Nagar, Lalgarh, Bikaner, Rajasthan, India`
+**Privacy / requests:** `admin@trendingmediagroup.in`
+**Grievance Officer:** admin@trendingmediagroup.in *(named officer to be designated)*

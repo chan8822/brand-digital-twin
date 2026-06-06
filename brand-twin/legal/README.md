@@ -34,19 +34,20 @@ should be removed so the page and the canonical document never drift.
 |-------|-------|
 | `[LEGAL ENTITY NAME]` | Trending Media Service Pvt. Ltd. |
 | Entity type | Private limited company incorporated under the laws of India |
+| `[CIN]` | U22219RJ2017PTC058021 |
+| GSTIN | 08AAGCT2590M2ZS |
+| `[REGISTERED ADDRESS]` | Aashiana Palace, Karni Nagar, Samta Nagar, Lalgarh, Bikaner, Rajasthan, India |
+| `[CITY]` (court venue) | Bikaner, Rajasthan |
+| `[CONTACT EMAIL]` / `[PRIVACY EMAIL]` | admin@trendingmediagroup.in |
 | `[PRIMARY MARKET]` | India — lead framework is the **DPDP Act, 2023** (GDPR secondary for EU/UK data subjects) |
 | Governing law | The laws of India |
 
-**Still open** — resolve once and apply consistently across all three documents:
+**Still open** — resolve before publish:
 
 | Token | Meaning | Owner |
 |-------|---------|-------|
-| `[CIN]` | Corporate Identification Number | Company |
-| `[REGISTERED ADDRESS]` | Registered office address | Company |
-| `[CITY]` | Court venue city (match the registered office) | Counsel |
-| `[CONTACT EMAIL]` | General legal/support contact | Company |
-| `[PRIVACY EMAIL]` | Privacy requests inbox | Company |
-| `[DPO / GRIEVANCE OFFICER]` | Name + contact for the DPDP Grievance Officer (and GDPR DPO if appointed) | Counsel + Company |
+| `[PIN]` | Postal PIN code to complete the registered-office address | Company |
+| Grievance Officer name | Named individual for the DPDP Grievance Officer (contact email already set to admin@) | Company |
 | `[RETENTION — ACTIVE]` | Retention while account active (e.g. "duration of the subscription") | Counsel |
 | `[RETENTION — POST-TERMINATION]` | Retention after deletion (e.g. "30 days, then hard-deleted") | Counsel |
 | `[SUBPROCESSOR LIST URL]` | Public URL listing subprocessors | Company |

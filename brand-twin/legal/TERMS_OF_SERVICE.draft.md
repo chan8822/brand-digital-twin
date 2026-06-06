@@ -8,8 +8,9 @@
 
 These Terms of Service ("**Terms**") are a binding agreement between you and the
 organization you represent ("**you**", "**Customer**") and `Trending Media Service Pvt. Ltd.`,
-a private limited company incorporated under the laws of India (CIN: `[CIN]`), with
-its registered office at `[REGISTERED ADDRESS]`
+a private limited company incorporated under the laws of India (CIN:
+U22219RJ2017PTC058021; GSTIN: 08AAGCT2590M2ZS), with
+its registered office at `Aashiana Palace, Karni Nagar, Samta Nagar, Lalgarh, Bikaner, Rajasthan, India`
 ("**we**", "**us**", the "**Company**"). They govern your access to and use of the
 Brand Digital Twin platform and related services (the "**Service**"). By creating an
 account, clicking "I agree", or using the Service, you accept these Terms. If you do
@@ -34,7 +35,7 @@ business decisions.
 2.1 You must be at least 18 and authorized to bind the organization you register.
 2.2 You are responsible for the accuracy of registration information, for all
 activity under your account, and for keeping credentials secure. Notify us promptly
-at `[CONTACT EMAIL]` of any unauthorized use.
+at `admin@trendingmediagroup.in` of any unauthorized use.
 2.3 During the beta/private phases, access may be limited to invited or allow-listed
 organizations. We may grant, limit, or revoke access at our discretion during these
 phases.
@@ -163,7 +164,7 @@ change. The current version and effective date are shown on this page.
 ## 13. Governing law and disputes
 
 These Terms are governed by the laws of India, without regard to conflict-of-laws
-rules. Subject to any arbitration clause below, the courts at `[CITY]`, India have
+rules. Subject to any arbitration clause below, the courts at Bikaner, Rajasthan, India have
 exclusive jurisdiction. *(Counsel: confirm the venue city to match the registered
 office, insert/confirm any arbitration clause and seat `[ARBITRATION SEAT]` under the
 Arbitration and Conciliation Act, 1996, and any consumer-protection carve-outs.)*
@@ -173,6 +174,6 @@ Arbitration and Conciliation Act, 1996, and any consumer-protection carve-outs.)
 These Terms, with the Privacy Policy and DPA, are the entire agreement on this subject.
 If a provision is unenforceable, the rest remains in effect. We may assign these Terms
 in connection with a merger or sale; you may not assign without our consent. No waiver
-is implied by delay. Notices to us: `[CONTACT EMAIL]`.
+is implied by delay. Notices to us: `admin@trendingmediagroup.in`.
 
-**Contact:** `Trending Media Service Pvt. Ltd.`, `[REGISTERED ADDRESS]` · `[CONTACT EMAIL]`
+**Contact:** `Trending Media Service Pvt. Ltd.`, `Aashiana Palace, Karni Nagar, Samta Nagar, Lalgarh, Bikaner, Rajasthan, India` · `admin@trendingmediagroup.in`

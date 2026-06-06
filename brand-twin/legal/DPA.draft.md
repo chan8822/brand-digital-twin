@@ -121,5 +121,5 @@ Each party's liability under this DPA is subject to the limitations of liability
 the Terms. This DPA is governed by the laws of India. If any provision conflicts with a
 mandatory requirement of applicable data protection law, that law controls.
 
-**Processor contact:** `Trending Media Service Pvt. Ltd.`, `[REGISTERED ADDRESS]` ·
-`[PRIVACY EMAIL]` · DPO/Grievance Officer: `[DPO / GRIEVANCE OFFICER]`
+**Processor contact:** `Trending Media Service Pvt. Ltd.`, `Aashiana Palace, Karni Nagar, Samta Nagar, Lalgarh, Bikaner, Rajasthan, India` ·
+`admin@trendingmediagroup.in` · Grievance Officer: admin@trendingmediagroup.in *(named officer to be designated)*
