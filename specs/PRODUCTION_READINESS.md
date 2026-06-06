@@ -23,6 +23,9 @@
 | C2 billing engine | ✅ | subscriptions table + lifecycle jobs + Razorpay + receipts + ops queue + support ticket |
 | Phase C UI | ✅ | Costs + Billing + Admin billing queue screens; all hooks wired; P2.1 dismiss UI |
 | B3.8 support widget | ✅ | `SupportWidget.tsx` + `Nav.tsx` button + `useSupportTicket` hook |
+| Marketing LP | ✅ | Live-GA LP at `/`: autonomy-ladder hook + agency channel + Risk Radar save; legal footer |
+| Strategy + CUJs | ✅ | `STRATEGY.md` (Porter/SWOT/phase gates) + `CUJS.md` (7 journeys mapped to routes) |
+| 3-brand demo presets | ✅ | Glow & Co / Nutra Boost / Cleansly brand switcher in connect page mock banner |
 | recommendation_events live | ✅ | migration 0003+0006; live Supabase writes |
 | shown / approved / dismissed / reversed events | ✅ | all tracked |
 | executed events (osActs) | 🟡 | `POST /actions` handler needs one S-fix to emit `recommendation_events` row |

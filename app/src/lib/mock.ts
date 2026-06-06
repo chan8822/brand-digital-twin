@@ -142,6 +142,324 @@ export const MOCK_SWEEP: SweepFinding[] = [
 /** Current trust tier (new public accounts start at OBSERVE). */
 export const MOCK_TRUST_TIER: SemanticTrustTier = "ASSISTED";
 
+// ── 3 beta brand presets for demo mode ────────────────────────────────────────
+// Index 0 = Glow & Co · Index 1 = Nutra Boost · Index 2 = Cleansly
+
+export const MOCK_BRAND_NAMES = ["Glow & Co", "Nutra Boost", "Cleansly"];
+
+export const MOCK_BRAND_RECOMMENDATIONS: RecommendationCard[][] = [
+  // Brand 0 — Glow & Co (beauty/skincare): high ROAS masking thin margins
+  [
+    {
+      campaignId: "gc-meta-001",
+      campaignName: "Serum Set — Meta Prospecting",
+      poas: 0.62,
+      roas: 3.8,
+      dollarDrag: 14200,
+      dominantCause: "COGS_TOO_HIGH",
+      side: "ECONOMICS",
+      confidence: "high",
+      caveat: "COGS from Shopify variant costs; 4 SKU costs still manual entry.",
+      osActs: [],
+      userApproves: [
+        { tier: 2, action: "Pause lowest-margin SKU variants from this campaign audience", estimatedRecovery: 8400 },
+      ],
+      adsCantFix: [
+        { tier: 3, action: "Serum unit cost (₹1,240) leaves < 12% contribution margin at current price", estimatedRecovery: 5800 },
+      ],
+    },
+    {
+      campaignId: "gc-meta-002",
+      campaignName: "Moisturizer — Retargeting 14d",
+      poas: 2.4,
+      roas: 2.9,
+      dollarDrag: 0,
+      dominantCause: "INSUFFICIENT_DATA",
+      side: "UNKNOWN",
+      confidence: "high",
+      caveat: "Healthy — POAS well above break-even. Scale candidate.",
+      osActs: [],
+      userApproves: [],
+      adsCantFix: [],
+    },
+    {
+      campaignId: "gc-meta-003",
+      campaignName: "Vitamin C — Meta Advantage+",
+      poas: 1.08,
+      roas: 2.2,
+      dollarDrag: 3100,
+      dominantCause: "SPEND_INEFFICIENT",
+      side: "ADVERTISING",
+      confidence: "medium",
+      caveat: "Attribution window: 7d click, 1d view.",
+      osActs: [
+        { tier: 1, action: "Narrow audience to lookalike 1–3% to improve signal quality", estimatedRecovery: 3100 },
+      ],
+      userApproves: [],
+      adsCantFix: [],
+    },
+  ],
+  // Brand 1 — Nutra Boost (supplements): most campaigns losing money
+  [
+    {
+      campaignId: "nb-g-001",
+      campaignName: "Protein Bundle — Google Shopping",
+      poas: 0.29,
+      roas: 2.4,
+      dollarDrag: 22100,
+      dominantCause: "COGS_TOO_HIGH",
+      side: "ECONOMICS",
+      confidence: "high",
+      caveat: "COGS verified from QuickBooks: COGS/revenue ratio 72% on bundle.",
+      osActs: [],
+      userApproves: [
+        { tier: 2, action: "Pause and restructure bundle pricing — current margin is contribution-negative", estimatedRecovery: 14000 },
+      ],
+      adsCantFix: [
+        { tier: 3, action: "Bundle cost structure requires a price increase or cost reduction before ads can be profitable", estimatedRecovery: 8100 },
+      ],
+    },
+    {
+      campaignId: "nb-meta-002",
+      campaignName: "Vitamins — Meta Broad",
+      poas: 1.82,
+      roas: 3.1,
+      dollarDrag: 0,
+      dominantCause: "INSUFFICIENT_DATA",
+      side: "UNKNOWN",
+      confidence: "high",
+      caveat: "Only profitable campaign. POAS strong — budget-capped.",
+      osActs: [],
+      userApproves: [],
+      adsCantFix: [],
+    },
+    {
+      campaignId: "nb-g-003",
+      campaignName: "Pre-workout — Google Performance Max",
+      poas: 0.71,
+      roas: 2.6,
+      dollarDrag: 8900,
+      dominantCause: "SPEND_INEFFICIENT",
+      side: "ADVERTISING",
+      confidence: "high",
+      caveat: "PMax asset group exclusions not set — serving on irrelevant terms.",
+      osActs: [
+        { tier: 1, action: "Add 47 negative keywords identified from search-term report", estimatedRecovery: 5200 },
+      ],
+      userApproves: [
+        { tier: 2, action: "Split PMax into brand + non-brand asset groups for cleaner signal", estimatedRecovery: 3700 },
+      ],
+      adsCantFix: [],
+    },
+  ],
+  // Brand 2 — Cleansly (home wellness): healthy overall but winner starved of budget
+  [
+    {
+      campaignId: "cl-g-001",
+      campaignName: "Starter Kit — Google Shopping",
+      poas: 3.18,
+      roas: 3.5,
+      dollarDrag: 0,
+      dominantCause: "INSUFFICIENT_DATA",
+      side: "UNKNOWN",
+      confidence: "high",
+      caveat: "Budget-capped. Scaling this campaign is the single highest-ROI action available.",
+      osActs: [],
+      userApproves: [
+        { tier: 2, action: "Raise daily budget from ₹4,500 to ₹9,000 — POAS 3.2× well above break-even", estimatedRecovery: 11200 },
+      ],
+      adsCantFix: [],
+    },
+    {
+      campaignId: "cl-meta-002",
+      campaignName: "Refills — Meta Retargeting",
+      poas: 1.78,
+      roas: 2.8,
+      dollarDrag: 1400,
+      dominantCause: "DISCOUNT_OVERUSE",
+      side: "ECONOMICS",
+      confidence: "medium",
+      caveat: "Refill discount (15%) eroding margin; POAS would be 2.4× without it.",
+      osActs: [],
+      userApproves: [
+        { tier: 2, action: "Reduce auto-applied refill discount from 15% to 8%", estimatedRecovery: 1400 },
+      ],
+      adsCantFix: [],
+    },
+    {
+      campaignId: "cl-g-003",
+      campaignName: "Bundle — Google Search",
+      poas: 0.91,
+      roas: 1.8,
+      dollarDrag: 4600,
+      dominantCause: "SPEND_INEFFICIENT",
+      side: "ADVERTISING",
+      confidence: "high",
+      caveat: "High impression share on generic terms; low purchase intent.",
+      osActs: [
+        { tier: 1, action: "Shift budget from generic 'home cleaning' terms to branded and category-specific terms", estimatedRecovery: 4600 },
+      ],
+      userApproves: [],
+      adsCantFix: [],
+    },
+  ],
+];
+
+export const MOCK_BRAND_SWEEP: SweepFinding[][] = [
+  // Brand 0 — Glow & Co
+  [
+    {
+      code: "cogs_missing_gc_001",
+      severity: "CRITICAL",
+      check: "unprofitable_spend",
+      entityId: "gc-meta-001",
+      title: "Serum Set losing ₹0.38 for every ₹1 of ad spend",
+      detail: "POAS 0.62× — COGS too high relative to selling price at current traffic cost.",
+      dollarImpact: 14200,
+    },
+    {
+      code: "checkout_dropoff_gc",
+      severity: "WARNING",
+      check: "checkout_events",
+      entityId: null,
+      title: "Mobile checkout completion down 24% vs last month",
+      detail: "Add-to-cart steady; payment step has 38% drop-off on iOS — likely Razorpay render issue.",
+      dollarImpact: 5800,
+    },
+    {
+      code: "budget_capped_gc_002",
+      severity: "OPPORTUNITY",
+      check: "budget_capped_winner",
+      entityId: "gc-meta-002",
+      title: "Moisturizer Retargeting is POAS 2.4× and budget-capped",
+      detail: "Your best performer is capped at ₹3,200/day — immediate opportunity to scale.",
+      dollarImpact: 8100,
+    },
+  ],
+  // Brand 1 — Nutra Boost
+  [
+    {
+      code: "negative_poas_nb_001",
+      severity: "CRITICAL",
+      check: "unprofitable_spend",
+      entityId: "nb-g-001",
+      title: "Protein Bundle is contribution-negative — spending makes it worse",
+      detail: "POAS 0.29×. Every ₹100 of ad spend returns ₹29 of margin. QuickBooks confirms 72% COGS ratio.",
+      dollarImpact: 22100,
+    },
+    {
+      code: "pmax_negatives_nb",
+      severity: "WARNING",
+      check: "conversion_tracking",
+      entityId: "nb-g-003",
+      title: "Performance Max serving on 47 irrelevant search terms",
+      detail: "No asset group exclusions set. Wasted spend on terms with < 0.1% purchase conversion.",
+      dollarImpact: 5200,
+    },
+    {
+      code: "budget_capped_nb_002",
+      severity: "OPPORTUNITY",
+      check: "budget_capped_winner",
+      entityId: "nb-meta-002",
+      title: "Vitamins (POAS 1.8×) is your only profitable campaign and it's capped",
+      detail: "While the bundle destroys value, this campaign is generating real profit — under-funded by 3×.",
+      dollarImpact: 9400,
+    },
+  ],
+  // Brand 2 — Cleansly
+  [
+    {
+      code: "winner_starved_cl_001",
+      severity: "CRITICAL",
+      check: "budget_capped_winner",
+      entityId: "cl-g-001",
+      title: "Best campaign (POAS 3.2×) starved of budget",
+      detail: "Starter Kit Shopping is capped at ₹4,500/day. Doubling budget here is the highest-value action.",
+      dollarImpact: 11200,
+    },
+    {
+      code: "discount_erosion_cl",
+      severity: "WARNING",
+      check: "unprofitable_spend",
+      entityId: "cl-meta-002",
+      title: "Auto-applied refill discount cutting POAS from 2.4× to 1.8×",
+      detail: "Discount is firing on all retargeting conversions — not just at-risk customers.",
+      dollarImpact: 1400,
+    },
+    {
+      code: "generic_terms_cl_003",
+      severity: "WARNING",
+      check: "unprofitable_spend",
+      entityId: "cl-g-003",
+      title: "Bundle campaign spending heavily on low-intent generic terms",
+      detail: "42% of impressions on 'home cleaning' broad match — converting at 0.4% vs 3.2% for branded.",
+      dollarImpact: 4600,
+    },
+  ],
+];
+
+export const MOCK_BRAND_READINESS: ProfitReadiness[] = [
+  // Brand 0 — Glow & Co: 2 platforms, some COGS missing
+  {
+    score: 62,
+    factors: {
+      cogsCoverage: 58,
+      shopifyLinked: true,
+      googleAdsLinked: false,
+      metaAdsLinked: true,
+      bankLinked: false,
+      historicalOrdersLoaded: true,
+    },
+    status: "directional_only",
+  },
+  // Brand 1 — Nutra Boost: all platforms, good COGS via QuickBooks
+  {
+    score: 91,
+    factors: {
+      cogsCoverage: 89,
+      shopifyLinked: true,
+      googleAdsLinked: true,
+      metaAdsLinked: true,
+      bankLinked: false,
+      historicalOrdersLoaded: true,
+    },
+    status: "ready",
+  },
+  // Brand 2 — Cleansly: all platforms, Xero-synced COGS
+  {
+    score: 94,
+    factors: {
+      cogsCoverage: 93,
+      shopifyLinked: true,
+      googleAdsLinked: true,
+      metaAdsLinked: true,
+      bankLinked: true,
+      historicalOrdersLoaded: true,
+    },
+    status: "ready",
+  },
+];
+
+export const MOCK_BRAND_INTEGRATIONS: IntegrationState[][] = [
+  // Brand 0 — Glow & Co: Shopify + Meta connected; Google Ads not yet connected (absent = unconnected)
+  [
+    { integrationId: "int-gc-s", tenantId: "org-glowco", provider: "shopify", status: "active", settings: { shop: "glow-and-co.myshopify.com" }, updatedAt: Date.now() - 1000 * 60 * 60 * 12 },
+    { integrationId: "int-gc-m", tenantId: "org-glowco", provider: "meta_ads", status: "active", settings: { accountId: "act_884421" }, updatedAt: Date.now() - 1000 * 60 * 60 * 12 },
+  ],
+  // Brand 1 — Nutra Boost: all 3 connected
+  [
+    { integrationId: "int-nb-s", tenantId: "org-nutra", provider: "shopify", status: "active", settings: { shop: "nutraboost.myshopify.com" }, updatedAt: Date.now() - 1000 * 60 * 60 * 48 },
+    { integrationId: "int-nb-g", tenantId: "org-nutra", provider: "google_ads", status: "active", settings: { account: "987-654-3210" }, updatedAt: Date.now() - 1000 * 60 * 60 * 48 },
+    { integrationId: "int-nb-m", tenantId: "org-nutra", provider: "meta_ads", status: "active", settings: { accountId: "act_221983" }, updatedAt: Date.now() - 1000 * 60 * 60 * 48 },
+  ],
+  // Brand 2 — Cleansly: all 3 connected
+  [
+    { integrationId: "int-cl-s", tenantId: "org-cleansly", provider: "shopify", status: "active", settings: { shop: "cleansly.myshopify.com" }, updatedAt: Date.now() - 1000 * 60 * 60 * 72 },
+    { integrationId: "int-cl-g", tenantId: "org-cleansly", provider: "google_ads", status: "active", settings: { account: "456-789-0123" }, updatedAt: Date.now() - 1000 * 60 * 60 * 72 },
+    { integrationId: "int-cl-m", tenantId: "org-cleansly", provider: "meta_ads", status: "active", settings: { accountId: "act_556712" }, updatedAt: Date.now() - 1000 * 60 * 60 * 72 },
+  ],
+];
+
 /** Connected integrations — Google + Shopify active, Meta needs reconnect. */
 export const MOCK_INTEGRATIONS: IntegrationState[] = [
   {

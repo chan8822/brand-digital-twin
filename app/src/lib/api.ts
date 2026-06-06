@@ -55,6 +55,17 @@ export function isAuthed(): boolean {
   return USE_MOCK || getAccessToken() !== null;
 }
 
+/** Mock-mode brand switcher — cycles between the 3 beta brand presets (0, 1, 2). */
+export function getMockBrandIndex(): number {
+  if (typeof window === "undefined") return 0;
+  return parseInt(window.sessionStorage.getItem("bt_mock_brand") ?? "0", 10);
+}
+
+export function setMockBrandIndex(i: number): void {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.setItem("bt_mock_brand", String(i));
+}
+
 /**
  * Fetch a short-lived, single-use auth ticket (A2.5). Used to authenticate the
  * two flows that cannot carry an `Authorization: Bearer` header — the OAuth

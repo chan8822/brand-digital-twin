@@ -1,12 +1,14 @@
 "use client";
 
 import { Suspense, useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { verifyEmail } from "@/lib/auth";
+import { USE_MOCK } from "@/lib/api";
 import { AuthShell, FormError } from "@/components/AuthShell";
 
 function VerifyInner() {
+  const router = useRouter();
   const params = useSearchParams();
   const token = params.get("token") ?? "";
   const [state, setState] = useState<"idle" | "verifying" | "done" | "error">(
@@ -20,12 +22,16 @@ function VerifyInner() {
     ran.current = true;
     setState("verifying");
     verifyEmail(token)
-      .then(() => setState("done"))
+      .then(() => {
+        setState("done");
+        // In mock mode skip the redundant login step — go straight to the product.
+        if (USE_MOCK) router.replace("/connect");
+      })
       .catch((err) => {
         setError((err as Error).message);
         setState("error");
       });
-  }, [token]);
+  }, [token, router]);
 
   if (!token) {
     return (

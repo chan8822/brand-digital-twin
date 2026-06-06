@@ -3,18 +3,19 @@
  * NEXT_PUBLIC_API_URL) they resolve from `mock.ts` so the UI renders standalone.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiFetch, USE_MOCK } from "./api";
+import { apiFetch, getMockBrandIndex, USE_MOCK } from "./api";
 import {
   MOCK_APPROVALS,
   MOCK_BILLING_QUEUE,
+  MOCK_BRAND_INTEGRATIONS,
+  MOCK_BRAND_READINESS,
+  MOCK_BRAND_RECOMMENDATIONS,
+  MOCK_BRAND_SWEEP,
   MOCK_COGS_COVERAGE,
   MOCK_COGS_GAPS,
-  MOCK_INTEGRATIONS,
   MOCK_READINESS,
   MOCK_RECEIPTS,
-  MOCK_RECOMMENDATIONS,
   MOCK_SUBSCRIPTION,
-  MOCK_SWEEP,
   MOCK_TENANT_LIMITS,
   MOCK_TRUST_TIER,
 } from "./mock";
@@ -36,12 +37,11 @@ import type {
 
 export function useRecommendations() {
   return useQuery({
-    queryKey: ["recommendations"],
+    queryKey: USE_MOCK ? ["recommendations", getMockBrandIndex()] : ["recommendations"],
     queryFn: async (): Promise<RecommendationCard[]> => {
       if (USE_MOCK) {
-        // Simulate a little latency so loading states are exercised in dev.
         await new Promise((r) => setTimeout(r, 350));
-        return MOCK_RECOMMENDATIONS;
+        return MOCK_BRAND_RECOMMENDATIONS[getMockBrandIndex()] ?? MOCK_BRAND_RECOMMENDATIONS[0];
       }
       const data = await apiFetch<{ recommendations: RecommendationCard[] }>(
         "/api/v1/recommendations",
@@ -54,11 +54,11 @@ export function useRecommendations() {
 
 export function useSweep() {
   return useQuery({
-    queryKey: ["sweep"],
+    queryKey: USE_MOCK ? ["sweep", getMockBrandIndex()] : ["sweep"],
     queryFn: async (): Promise<SweepFinding[]> => {
       if (USE_MOCK) {
         await new Promise((r) => setTimeout(r, 350));
-        return MOCK_SWEEP;
+        return MOCK_BRAND_SWEEP[getMockBrandIndex()] ?? MOCK_BRAND_SWEEP[0];
       }
       // Needs `GET /api/v1/sweep` exposing the rich SweepFinding[] (see types.ts).
       const data = await apiFetch<{ sweep: SweepFinding[] }>("/api/v1/sweep");
@@ -103,11 +103,11 @@ export function useApprove() {
 
 export function useIntegrations() {
   return useQuery({
-    queryKey: ["integrations"],
+    queryKey: USE_MOCK ? ["integrations", getMockBrandIndex()] : ["integrations"],
     queryFn: async (): Promise<IntegrationState[]> => {
       if (USE_MOCK) {
         await new Promise((r) => setTimeout(r, 300));
-        return MOCK_INTEGRATIONS;
+        return MOCK_BRAND_INTEGRATIONS[getMockBrandIndex()] ?? MOCK_BRAND_INTEGRATIONS[0];
       }
       // Needs `GET /api/v1/integrations` exposing getIntegrationStates (A2.4).
       const data = await apiFetch<{ integrations: IntegrationState[] }>(
@@ -121,11 +121,11 @@ export function useIntegrations() {
 
 export function useProfitReadiness() {
   return useQuery({
-    queryKey: ["profit-readiness"],
+    queryKey: USE_MOCK ? ["profit-readiness", getMockBrandIndex()] : ["profit-readiness"],
     queryFn: async (): Promise<ProfitReadiness> => {
       if (USE_MOCK) {
         await new Promise((r) => setTimeout(r, 300));
-        return MOCK_READINESS;
+        return MOCK_BRAND_READINESS[getMockBrandIndex()] ?? MOCK_READINESS;
       }
       // Live endpoint (dd9045a): returns ProfitReadiness directly as `data`.
       return apiFetch<ProfitReadiness>("/api/v1/profit-readiness");

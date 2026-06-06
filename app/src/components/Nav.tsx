@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { clsx } from "clsx";
 import { logout } from "@/lib/auth";
+import { getMockBrandIndex, USE_MOCK } from "@/lib/api";
+import { MOCK_BRAND_NAMES } from "@/lib/mock";
 import { SupportWidget } from "./SupportWidget";
 
 const LINKS = [
@@ -35,6 +37,14 @@ export function Nav() {
           <span className="text-sm font-bold tracking-tight text-accent">
             Brand Digital Twin
           </span>
+          {USE_MOCK && (
+            <Link
+              href="/connect"
+              className="rounded-full border border-accent/25 bg-accent/10 px-2.5 py-0.5 text-xs text-accent transition-colors hover:bg-accent/20"
+            >
+              {MOCK_BRAND_NAMES[getMockBrandIndex()]}
+            </Link>
+          )}
           <div className="flex gap-1">
             {LINKS.map((l) => {
               const active = pathname === l.href || pathname.startsWith(l.href + "/");

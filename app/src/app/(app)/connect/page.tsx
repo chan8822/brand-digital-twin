@@ -5,11 +5,13 @@
  * Kicks off the live OAuth flow (A2, a09e913) per platform and reflects current
  * integration state. The core three for Phase A: Google Ads, Meta, Shopify.
  */
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useIntegrations } from "@/lib/queries";
 import { ConnectCard } from "@/components/ConnectCard";
 import { Nav } from "@/components/Nav";
-import { USE_MOCK } from "@/lib/api";
+import { getMockBrandIndex, setMockBrandIndex, USE_MOCK } from "@/lib/api";
+import { MOCK_BRAND_NAMES } from "@/lib/mock";
 import type { IntegrationProvider, IntegrationState } from "@/lib/types";
 
 const PLATFORMS: {
@@ -39,6 +41,8 @@ const PLATFORMS: {
 ];
 
 export default function ConnectPage() {
+  const qc = useQueryClient();
+  const [brandIdx, setBrandIdx] = useState(USE_MOCK ? getMockBrandIndex() : 0);
   const { data, isLoading } = useIntegrations();
 
   // Index live state by provider; meta_ads_api also maps to the Meta tile.
@@ -74,10 +78,34 @@ export default function ConnectPage() {
         </header>
 
         {USE_MOCK && (
-          <div className="mb-6 rounded-lg border border-accent/20 bg-accent/10 px-4 py-2 text-xs text-accent">
-            Demo data — connect buttons explain the flow. Live mode redirects to
-            real OAuth (A2). Linked state needs{" "}
-            <code className="font-mono">GET /api/v1/integrations</code> (A2.4).
+          <div className="mb-6 rounded-lg border border-accent/20 bg-accent/10 px-4 py-3 text-xs text-accent">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span>
+                Demo mode — viewing as{" "}
+                <strong>{MOCK_BRAND_NAMES[brandIdx]}</strong>. Connect buttons
+                explain the OAuth flow; live mode redirects to real providers.
+              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-text-muted">Switch brand:</span>
+                {MOCK_BRAND_NAMES.map((name, i) => (
+                  <button
+                    key={name}
+                    onClick={() => {
+                      setMockBrandIndex(i);
+                      setBrandIdx(i);
+                      void qc.invalidateQueries();
+                    }}
+                    className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
+                      brandIdx === i
+                        ? "bg-accent text-white"
+                        : "border border-accent/30 text-accent hover:bg-accent/20"
+                    }`}
+                  >
+                    {name}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
