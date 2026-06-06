@@ -288,3 +288,42 @@ export interface ApiEnvelope<T> {
   data: T;
   timestamp: string;
 }
+
+/* ── Admin: billing ops queue ───────────────────────────────────────────────
+ * Admin-only view of subscriptions in `pending_review`. Each row has enough
+ * context to approve without opening a separate screen.
+ */
+export interface BillingQueueEntry {
+  orgId: string;
+  orgName: string;
+  email: string;
+  status: "pending_review";
+  amount: number;
+  currency: string;
+  period: "monthly" | "month";
+  suggestedAt: number;
+  note?: string;
+}
+
+/* ── Billing receipts ───────────────────────────────────────────────────────
+ * One row per successful charge. receiptUrl present when the processor
+ * generated a hosted receipt page.
+ */
+export interface Receipt {
+  receiptId: string;
+  orgId: string;
+  amount: number;
+  currency: string;
+  period: "monthly" | "month";
+  chargedAt: number;
+  receiptUrl?: string;
+}
+
+/* ── Tenant spend limits (B4 / governance) ──────────────────────────────────
+ * Per-tenant caps enforced by governance_engine.ts.
+ * GET/POST /api/v1/tenant-limits
+ */
+export interface TenantLimits {
+  maxDailyLimit: number;
+  maxPerActionLimit: number;
+}

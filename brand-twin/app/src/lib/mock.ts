@@ -8,14 +8,17 @@
  */
 import type {
   ApprovalRequest,
+  BillingQueueEntry,
   CogsCoverage,
   CogsGap,
   IntegrationState,
   ProfitReadiness,
+  Receipt,
   RecommendationCard,
   SemanticTrustTier,
   Subscription,
   SweepFinding,
+  TenantLimits,
 } from "./types";
 
 export const MOCK_RECOMMENDATIONS: RecommendationCard[] = [
@@ -245,4 +248,72 @@ export const MOCK_SUBSCRIPTION: Subscription = {
   period: "monthly",
   trialDay: 14,
   trialLengthDays: 15,
+};
+
+/* ── Admin billing queue ──────────────────────────────────────────────────── */
+
+const queueNow = Date.now();
+export const MOCK_BILLING_QUEUE: BillingQueueEntry[] = [
+  {
+    orgId: "org-glowco",
+    orgName: "Glow & Co",
+    email: "ops@glowandco.com",
+    status: "pending_review",
+    amount: 799,
+    currency: "USD",
+    period: "monthly",
+    suggestedAt: queueNow - 1000 * 60 * 90,
+    note: "Seems reasonable for the lift we're seeing.",
+  },
+  {
+    orgId: "org-nutra",
+    orgName: "Nutra Boost",
+    email: "cmo@nutraboost.in",
+    status: "pending_review",
+    amount: 2500,
+    currency: "USD",
+    period: "monthly",
+    suggestedAt: queueNow - 1000 * 60 * 60 * 3,
+  },
+  {
+    orgId: "org-cleansly",
+    orgName: "Cleansly",
+    email: "hello@cleansly.co",
+    status: "pending_review",
+    amount: 299,
+    currency: "USD",
+    period: "monthly",
+    suggestedAt: queueNow - 1000 * 60 * 60 * 7,
+    note: "We're a small team — happy to pay more if it keeps working.",
+  },
+];
+
+/* ── Billing receipts ─────────────────────────────────────────────────────── */
+
+export const MOCK_RECEIPTS: Receipt[] = [
+  {
+    receiptId: "rcpt-0002",
+    orgId: "org-demo",
+    amount: 299,
+    currency: "USD",
+    period: "monthly",
+    chargedAt: Date.now() - 1000 * 60 * 60 * 24 * 3,
+    receiptUrl: "https://pay.example.com/receipt/rcpt-0002",
+  },
+  {
+    receiptId: "rcpt-0001",
+    orgId: "org-demo",
+    amount: 299,
+    currency: "USD",
+    period: "monthly",
+    chargedAt: Date.now() - 1000 * 60 * 60 * 24 * 33,
+    receiptUrl: "https://pay.example.com/receipt/rcpt-0001",
+  },
+];
+
+/* ── Tenant limits ────────────────────────────────────────────────────────── */
+
+export const MOCK_TENANT_LIMITS: TenantLimits = {
+  maxDailyLimit: 2000,
+  maxPerActionLimit: 500,
 };

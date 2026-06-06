@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { clsx } from "clsx";
 import { logout } from "@/lib/auth";
+import { SupportWidget } from "./SupportWidget";
 
 const LINKS = [
   { href: "/connect", label: "Connect" },
@@ -13,11 +15,13 @@ const LINKS = [
   { href: "/costs", label: "Costs" },
   { href: "/autonomy", label: "Autonomy" },
   { href: "/billing", label: "Billing" },
+  { href: "/admin/billing", label: "Admin" },
 ];
 
 export function Nav() {
   const pathname = usePathname();
   const router = useRouter();
+  const [supportOpen, setSupportOpen] = useState(false);
 
   function onLogout() {
     logout();
@@ -25,38 +29,51 @@ export function Nav() {
   }
 
   return (
-    <nav className="border-b border-border bg-surface/50 backdrop-blur">
-      <div className="mx-auto flex max-w-5xl items-center gap-6 px-6 py-3">
-        <span className="text-sm font-bold tracking-tight text-accent">
-          Brand Digital Twin
-        </span>
-        <div className="flex gap-1">
-          {LINKS.map((l) => {
-            const active = pathname === l.href;
-            return (
-              <Link
-                key={l.href}
-                href={l.href}
-                className={clsx(
-                  "rounded-md px-3 py-1.5 text-sm transition-colors",
-                  active
-                    ? "bg-accent/10 text-accent"
-                    : "text-text-muted hover:text-text-primary",
-                )}
-              >
-                {l.label}
-              </Link>
-            );
-          })}
+    <>
+      <nav className="border-b border-border bg-surface/50 backdrop-blur">
+        <div className="mx-auto flex max-w-5xl items-center gap-6 px-6 py-3">
+          <span className="text-sm font-bold tracking-tight text-accent">
+            Brand Digital Twin
+          </span>
+          <div className="flex gap-1">
+            {LINKS.map((l) => {
+              const active = pathname === l.href || pathname.startsWith(l.href + "/");
+              return (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  className={clsx(
+                    "rounded-md px-3 py-1.5 text-sm transition-colors",
+                    active
+                      ? "bg-accent/10 text-accent"
+                      : "text-text-muted hover:text-text-primary",
+                  )}
+                >
+                  {l.label}
+                </Link>
+              );
+            })}
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSupportOpen(true)}
+              className="rounded-md px-3 py-1.5 text-sm text-text-muted transition-colors hover:text-text-primary"
+            >
+              Support
+            </button>
+            <button
+              type="button"
+              onClick={onLogout}
+              className="rounded-md px-3 py-1.5 text-sm text-text-muted transition-colors hover:text-text-primary"
+            >
+              Log out
+            </button>
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={onLogout}
-          className="ml-auto rounded-md px-3 py-1.5 text-sm text-text-muted transition-colors hover:text-text-primary"
-        >
-          Log out
-        </button>
-      </div>
-    </nav>
+      </nav>
+
+      <SupportWidget open={supportOpen} onClose={() => setSupportOpen(false)} />
+    </>
   );
 }

@@ -6,26 +6,32 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, USE_MOCK } from "./api";
 import {
   MOCK_APPROVALS,
+  MOCK_BILLING_QUEUE,
   MOCK_COGS_COVERAGE,
   MOCK_COGS_GAPS,
   MOCK_INTEGRATIONS,
   MOCK_READINESS,
+  MOCK_RECEIPTS,
   MOCK_RECOMMENDATIONS,
   MOCK_SUBSCRIPTION,
   MOCK_SWEEP,
+  MOCK_TENANT_LIMITS,
   MOCK_TRUST_TIER,
 } from "./mock";
 import type {
   ApprovalRequest,
+  BillingQueueEntry,
   CogsCoverage,
   CogsGap,
   DismissReason,
   IntegrationState,
   ProfitReadiness,
+  Receipt,
   RecommendationCard,
   SemanticTrustTier,
   Subscription,
   SweepFinding,
+  TenantLimits,
 } from "./types";
 
 export function useRecommendations() {
@@ -238,6 +244,113 @@ export function useSuggestAmount() {
       });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["subscription"] }),
+  });
+}
+
+/* ── Admin: billing ops queue ────────────────────────────────────────────── */
+
+export function useAdminBillingQueue() {
+  return useQuery({
+    queryKey: ["admin-billing-queue"],
+    queryFn: async (): Promise<BillingQueueEntry[]> => {
+      if (USE_MOCK) {
+        await new Promise((r) => setTimeout(r, 300));
+        return MOCK_BILLING_QUEUE;
+      }
+      const data = await apiFetch<{ queue: BillingQueueEntry[] }>(
+        "/api/v1/admin/billing/queue",
+      );
+      return data.queue;
+    },
+    staleTime: 30_000,
+  });
+}
+
+export function useApproveBilling() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (orgId: string): Promise<void> => {
+      if (USE_MOCK) {
+        await new Promise((r) => setTimeout(r, 600));
+        return;
+      }
+      await apiFetch<unknown>(`/api/v1/admin/billing/approve/${orgId}`, {
+        method: "POST",
+      });
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-billing-queue"] }),
+  });
+}
+
+/* ── Billing receipts ─────────────────────────────────────────────────────── */
+
+export function useReceipts() {
+  return useQuery({
+    queryKey: ["receipts"],
+    queryFn: async (): Promise<Receipt[]> => {
+      if (USE_MOCK) {
+        await new Promise((r) => setTimeout(r, 300));
+        return MOCK_RECEIPTS;
+      }
+      const data = await apiFetch<{ receipts: Receipt[] }>(
+        "/api/v1/billing/receipts",
+      );
+      return data.receipts;
+    },
+    staleTime: 60_000,
+  });
+}
+
+/* ── Tenant limits (B4 spend caps) ───────────────────────────────────────── */
+
+export function useTenantLimits() {
+  return useQuery({
+    queryKey: ["tenant-limits"],
+    queryFn: async (): Promise<TenantLimits> => {
+      if (USE_MOCK) {
+        await new Promise((r) => setTimeout(r, 250));
+        return MOCK_TENANT_LIMITS;
+      }
+      return apiFetch<TenantLimits>("/api/v1/tenant-limits");
+    },
+    staleTime: 60_000,
+  });
+}
+
+export function useSetTenantLimits() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (limits: TenantLimits): Promise<void> => {
+      if (USE_MOCK) {
+        await new Promise((r) => setTimeout(r, 350));
+        return;
+      }
+      await apiFetch<unknown>("/api/v1/tenant-limits", {
+        method: "POST",
+        body: JSON.stringify(limits),
+      });
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["tenant-limits"] }),
+  });
+}
+
+/* ── Support ticket ───────────────────────────────────────────────────────── */
+
+export function useSupportTicket() {
+  return useMutation({
+    mutationFn: async (input: {
+      subject: string;
+      body: string;
+    }): Promise<void> => {
+      if (USE_MOCK) {
+        await new Promise((r) => setTimeout(r, 500));
+        return;
+      }
+      await apiFetch<unknown>("/api/v1/support/ticket", {
+        method: "POST",
+        body: JSON.stringify(input),
+      });
+    },
   });
 }
 
