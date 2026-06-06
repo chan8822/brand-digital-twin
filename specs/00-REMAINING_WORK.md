@@ -23,7 +23,7 @@ and new React Query hooks all built and passing type-check + build as of 2026-06
 | Phase | State | One-line |
 |-------|-------|----------|
 | **P0** — flip UI mock→live | ✅ **DONE** | all 4 endpoints + sort + autonomy-409 (`f10e351`) |
-| **P1** — hardening & ops | ✅ **DONE** | full suite landed by `cec5437` |
+| **P1** — hardening & ops | 🟡 **partial** | floor done; scheduler database queue and pre-flight check to build |
 | **P2** — private beta (3 brands) | 🟡 **in progress** | onboard 3 real brands; P2.1 UI built; executed event still needs engine S-fix |
 | **P3B** — lawful | ✅ **DONE** | B1.4/B2.3/B2.4 + invite allowlist ON + spend caps + secret providers + SEV model |
 | **P3C** — self-serve paid | ✅ **Engine DONE** · 🟡 **UI complete** | all C1/C2 endpoints + Razorpay live in engine; admin billing queue + receipts UI built |
@@ -50,17 +50,21 @@ Full plan with build order in `PROD-READY-PLAN.md`.
 
 ---
 
-## P1 ✅ Hardening complete (`cec5437`)
+## P1 🟡 Hardening & Safety Safeguards (In Progress)
 
-| # | Item | Evidence |
-|---|------|----------|
-| P1.1 | Atomic job claim | `claimNextOverdueJob` + `FOR UPDATE SKIP LOCKED` + concurrency test |
-| P1.2 | Observability | `MetricsTracker` alert rules + `DatabaseErrorSink` redaction (`observability.ts`, `migrations/0002`) |
-| P1.3 | Staging + rollback | `scripts/deploy.sh`, `scripts/rollback.sh`, `scripts/rollback_recent_actions.js`; governance engine rollback wired (`eb9c272`) |
-| P1.4 | DB safety | Versioned migrations (`0001_init`, `0002`) + backup export + tested restore drill |
-| P1.5 | Secrets | `SecretProvider`/`EnvSecretProvider`/`ManagedSecretProvider` (VaultClient), boot-validated |
-| P1.6 | Security review | npm-audit CI gate + token-leak scrubber + OAuth callback-state validation + adversarial tests |
-| P1.7 | Load test (exit gate) | `tests/e2e/specs/real_load_test.ts` (252 lines) + `/metrics` endpoint (`70bc7e8`) |
+| # | Item | Status | Size | Evidence / Action |
+|---|------|--------|------|-------------------|
+| P1.1 | Atomic job claim | ✅ | S | `claimNextOverdueJob` + `FOR UPDATE SKIP LOCKED` + concurrency test |
+| P1.2 | Observability | ✅ | S | `MetricsTracker` alert rules + `DatabaseErrorSink` redaction (`observability.ts`, `migrations/0002`) |
+| P1.3 | Staging + rollback | ✅ | S | `scripts/deploy.sh`, `scripts/rollback.sh`, `scripts/rollback_recent_actions.js`; governance engine rollback wired (`eb9c272`) |
+| P1.4 | DB safety | ✅ | S | Versioned migrations (`0001_init`, `0002`) + backup export + tested restore drill |
+| P1.5 | Secrets | ✅ | S | `SecretProvider`/`EnvSecretProvider`/`ManagedSecretProvider` (VaultClient), boot-validated |
+| P1.6 | Security review | ✅ | S | npm-audit CI gate + token-leak scrubber + OAuth callback-state validation + adversarial tests |
+| P1.7 | Load test (exit gate) | ✅ | M | `tests/e2e/specs/real_load_test.ts` (252 lines) + `/metrics` endpoint (`70bc7e8`) |
+| P1.8 | Database-backed queue | ☐ | M | Migrate `poas_scheduler.ts` off `setInterval` to `pending_jobs` queue |
+| P1.9 | Pre-flight cooldown limits | ☐ | S | Deploy `CooldownManager` for API rate-limiting and mutation intervals |
+| P1.10| Closed-loop telemetry | ☐ | M | Wire `/metrics` triggers to circuit breaker (failsafe read-only trip) |
+| P1.11| PII log scrubbing | ☐ | S | Sanitization middleware to redact credentials from DatabaseErrorSink |
 
 ---
 
@@ -79,6 +83,7 @@ No public signup. Onboard 3 in-bag brands by hand (real Google Ads + Shopify OAu
 - ☐ P2.2 COGS provenance tag (shipped in `CogsGap.provenance`) persisted per variant.
 - ☐ P2.3 holdout support (geo/time split → incremental vs attributed POAS).
 - ☐ P2.4 doors-closed: public signup behind invite/allowlist (off by default).
+- ☐ P2.5 Founding Cohort: scale hand-held onboarding to 10-15 brands using validation specs.
 
 **Exit gate — must pass before any public exposure:**
 - [ ] Each brand produces real POAS + live sweep + healing cards
@@ -107,25 +112,7 @@ No public signup. Onboard 3 in-bag brands by hand (real Google Ads + Shopify OAu
 
 ### Phase C — Self-serve value + money  ✅ *Engine DONE · UI complete*
 
-All screens built in `brand-twin/app/`, mock-gated, wired to live endpoints.
-Engine `646a2cd` has all C1/C2 endpoints + Razorpay + receipts + support ticket live.
-
-**C1 — COGS aggregator:**
-- ✅ Pareto COGS entry UI + coverage gate — `costs/page.tsx`, `CogsEntryRow.tsx`
-- ✅ `CostSource` interface; `tally_adapter.ts`, `zoho_books_adapter.ts`, `quickbooks_adapter.ts`, `xero_adapter.ts` (`646a2cd`)
-- ✅ Silent COGS sweep on connect → auto-fill (`onboarding_wizard.ts`)
-- ✅ Category-average estimator → `estimatedCogs` tag (`poas_calculator.ts`)
-- ✅ Readiness gate: low coverage → directional-only advice (`risk_radar.ts`)
-- ✅ Endpoints `GET /cogs/coverage`, `GET /cogs/gaps`, `POST /cogs` — hooks `useCogsCoverage`, `useCogsGaps`, `useSaveCogs`
-
-**C2 — Billing + suggest-an-amount:**
-- ✅ Suggest-an-amount screen + trial strip + state panels + value recap — `billing/page.tsx`
-- ✅ `subscriptions` table + `GET /billing/subscription` + `POST /billing/suggest`
-- ✅ `GET/POST /api/v1/tenant-limits` — hooks `useTenantLimits`, `useSetTenantLimits`
-- ✅ Trial lifecycle jobs: day-14 nudge, day-15 flip, recurring, dunning (`poas_scheduler.ts`, `646a2cd`)
-- ✅ Ops review queue + admin UI — `/admin/billing` screen + `useAdminBillingQueue` + `useApproveBilling`
-- ✅ `PaymentProcessor` iface + `RazorpayPaymentProcessor` + tokenised card (never stores PAN, `646a2cd`)
-- ✅ Receipt generation + `GET /billing/receipts` — hook `useReceipts`
+All C1/C2 endpoints + Razorpay live in engine; admin billing queue + receipts UI built.
 
 ---
 
@@ -139,7 +126,7 @@ Engine `646a2cd` has all C1/C2 endpoints + Razorpay + receipts + support ticket 
 - 🟡 Legal docs — **product-specific drafts written** (`brand-twin/legal/`); pending counsel review + blanks fill, then wire into engine `/legal/*`
 
 **GA definition of done:**
-- [ ] Stranger signs up → creates brand → connects Google Ads + Shopify via OAuth → sees live sweep, real POAS, healing cards
+- [ ] Stranger signs up → connects Google Ads + Shopify via OAuth → sees live sweep, real POAS, healing cards
 - [ ] New accounts at OBSERVE; no autonomous spend until earned
 - [ ] No raw tokens logged/returned; state-forgery tests green
 - [ ] Billing live; first self-serve paid conversion completed (trial → suggest → approve → charge)
@@ -147,16 +134,11 @@ Engine `646a2cd` has all C1/C2 endpoints + Razorpay + receipts + support ticket 
 
 ---
 
-## Critical path
+## P5 — Post-GA: Multi-Vertical & AI Expansion
 
-```
-Platform approvals CLEARED (Google Ads · Meta · OAuth · Shopify) ───────────────────►
+Following public launch, the OS roadmap extends to non-commerce verticals and deep-funnel ad sync:
 
-P2 beta (3 brands, real POAS + measured lift) ──► flip NEXT_PUBLIC_API_URL → live ──► P4 GA
-(now the gating work)                              (all endpoints live @ 646a2cd)
-```
-
-**Next three moves:**
-1. **Wire `NEXT_PUBLIC_API_URL`** to the engine origin — `USE_MOCK` flips false; every UI screen goes live. Verify all routes render real data with no mock banners.
-2. **Onboard 3 beta brands** with real Google Ads + Shopify OAuth → real POAS + ≥1 recommendation acted on with **measured lift**. This is the P2 trust gate and now the longest pole.
-3. **Legal copy** — drafts now in `brand-twin/legal/` (ToS, Privacy, DPA). Counsel reviews + fills the blanks register, then the approved text is served from engine `/legal/*` (replacing the placeholder + hard-coded sections in `brand-twin/app/src/app/legal/`). Then ship the `executed`-event engine S-fix for full H1 telemetry.
+1.  **AI Search Ads & Offline Profit Conversion Ingest**: Build daily sync of transaction gross profit to Google/Meta APIs using privacy-safe tokens.
+2.  **SKU-to-Ad Group Budget Redistribution**: Shift budget between product variants dynamically based on POAS margins.
+3.  **Lead Generation (PROAS)**: Develop Salesforce/HubSpot CRM connectors and utilize Google Ads Data Manager (GADM) for offline conversion sync.
+4.  **Brand Awareness (CPLU/BLE)**: Query YouTube brand lift study APIs, compute Cost Per Lifted User, and automate frequency capping.
