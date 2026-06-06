@@ -148,7 +148,7 @@ describe('Advanced Risk & Observability Features', () => {
   let adapter: DummyAdapter;
   let ctx: Context;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     auditSink = new DummyAuditSink();
     trustLedger = new DummyTrustLedger();
     circuitBreaker = new DummyCircuitBreaker();
@@ -175,6 +175,17 @@ describe('Advanced Risk & Observability Features', () => {
       },
       verifyWindowMs: 100,
     };
+
+    // Seed variant to pass COGS coverage check (needs >= 70%)
+    await engine.supabase.saveVariant({
+      variant_id: 'v-dummy',
+      sku: 'sku-dummy',
+      title: 'Dummy Variant',
+      price: 10,
+      cost: 5,
+      tenant_id: 'tenant-1',
+      ingested_at: new Date().toISOString(),
+    });
   });
 
   describe('Observability & Distributed Tracing', () => {
@@ -724,6 +735,17 @@ describe('Advanced Risk & Observability Features', () => {
         metricsTracker,
         new OpaPolicyEngine('http://mock-opa-url', false), // useFallback = false
       );
+
+      // Seed variant to pass COGS coverage check (needs >= 70%)
+      await engineWithOpaFetch.supabase.saveVariant({
+        variant_id: 'v-dummy-opa',
+        sku: 'sku-dummy-opa',
+        title: 'Dummy Variant OPA',
+        price: 10,
+        cost: 5,
+        tenant_id: 'tenant-1',
+        ingested_at: new Date().toISOString(),
+      });
 
       // Spy on global fetch to return invalid OPA payload
       spyOn(globalThis, 'fetch').and.returnValue(

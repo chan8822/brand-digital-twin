@@ -278,6 +278,17 @@ describe('Load, Concurrency and Governance E2E Tests', () => {
       // Enable trust tier level
       await db.saveTrustTier(orgId, 'update_budget', 3);
 
+      // Seed variant to pass COGS coverage check (needs >= 70%)
+      await db.saveVariant({
+        variant_id: 'v-ceiling-dummy',
+        sku: 'sku-ceiling-dummy',
+        title: 'Ceiling Dummy Variant',
+        price: 10,
+        cost: 5,
+        tenant_id: orgId,
+        ingested_at: new Date().toISOString(),
+      });
+
       const loginRes = await login(db, email, pw, jwtSecret);
       const token = loginRes.accessToken;
 

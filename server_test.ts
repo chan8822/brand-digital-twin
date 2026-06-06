@@ -87,6 +87,17 @@ describe('Native HTTP & SSE Server Integration Test', () => {
     });
     await db.saveTrustTier('test-tenant', 'pause', 3);
 
+    // Seed variant to pass COGS coverage check (needs >= 70%)
+    await db.saveVariant({
+      variant_id: 'v-dummy-global',
+      sku: 'sku-dummy-global',
+      title: 'Dummy Variant Global',
+      price: 10,
+      cost: 5,
+      tenant_id: 'test-tenant',
+      ingested_at: new Date().toISOString(),
+    });
+
     server = startServer(PORT, db);
   });
 
@@ -1118,6 +1129,16 @@ describe('Native HTTP & SSE Server Integration Test', () => {
     beforeEach(async () => {
       db.resetLocalMockDb();
       await db.saveTrustTier('test-tenant', 'update_budget', 3);
+      // Seed variant to pass COGS coverage check (needs >= 70%)
+      await db.saveVariant({
+        variant_id: 'v-dummy-limits',
+        sku: 'sku-dummy-limits',
+        title: 'Dummy Variant Limits',
+        price: 10,
+        cost: 5,
+        tenant_id: 'test-tenant',
+        ingested_at: new Date().toISOString(),
+      });
     });
 
     it('should return default limits on GET if not set', async () => {
@@ -1249,5 +1270,273 @@ describe('Native HTTP & SSE Server Integration Test', () => {
       expect(app?.reason).toContain('would push daily spend');
     });
   });
+
+  describe('C1 COGS Endpoints (2.2, 2.3)', () => {
+    const headers = { Authorization: `Bearer ${testToken}` };
+
+    beforeEach(async () => {
+      // Clear database tables we need
+      await db.clearCampaigns('test-tenant');
+      await db.clearVariants('test-tenant');
+      // Clear spend facts and links
+      await db.clearSpendFacts('test-tenant');
+      await db.clearProductAdLinks('test-tenant');
+      await db.clearAuditLogs('test-tenant');
+
+      // Seed variants
+      await db.saveVariant({
+        variant_id: 'v-shirt-1',
+        sku: 'v-shirt-1',
+        title: 'Nike Running Shirt',
+        price: 100,
+        cost: null,
+        tenant_id: 'test-tenant',
+        ingested_at: new Date().toISOString(),
+      });
+      await db.saveVariant({
+        variant_id: 'v-shirt-2',
+        sku: 'v-shirt-2',
+        title: 'Nike Pro Shirt',
+        price: 120,
+        cost: 60,
+        provenance: 'tally',
+        tenant_id: 'test-tenant',
+        ingested_at: new Date().toISOString(),
+      });
+      await db.saveVariant({
+        variant_id: 'v-shoe-1',
+        sku: 'v-shoe-1',
+        title: 'Nike Zoom Pegasus Shoe',
+        price: 200,
+        cost: null,
+        tenant_id: 'test-tenant',
+        ingested_at: new Date().toISOString(),
+      });
+      await db.saveVariant({
+        variant_id: 'v-shoe-2',
+        sku: 'v-shoe-2',
+        title: 'Nike Air Max Shoe',
+        price: 250,
+        cost: 150,
+        provenance: 'tally',
+        tenant_id: 'test-tenant',
+        ingested_at: new Date().toISOString(),
+      });
+
+      // Seed campaigns (must match pre-seeded campaigns in GoogleAdsAdapter)
+      await db.saveCampaign({
+        campaign_id: 'c1',
+        platform: 'google',
+        name: 'Google Search Leads',
+        objective: 'sales',
+        status: 'ENABLED',
+        surface: 'google_search_network',
+        tenant_id: 'test-tenant',
+        source_system: 'google',
+        source_id: 'c1',
+        source_version: '1.0',
+        ingested_at: new Date().toISOString(),
+      });
+      await db.saveCampaign({
+        campaign_id: '888',
+        platform: 'google',
+        name: 'Mock PMax Campaign',
+        objective: 'sales',
+        status: 'ENABLED',
+        surface: 'google_search_network',
+        tenant_id: 'test-tenant',
+        source_system: 'google',
+        source_id: '888',
+        source_version: '1.0',
+        ingested_at: new Date().toISOString(),
+      });
+
+      // Seed spend facts
+      await db.saveSpendFact({
+        campaign_id: 'c1',
+        platform: 'google',
+        day: new Date().toISOString().split('T')[0],
+        amount: 1000.0,
+        currency: 'USD',
+        tenant_id: 'test-tenant',
+        source_system: 'google',
+        ingested_at: new Date().toISOString(),
+      });
+      await db.saveSpendFact({
+        campaign_id: '888',
+        platform: 'google',
+        day: new Date().toISOString().split('T')[0],
+        amount: 2000.0,
+        currency: 'USD',
+        tenant_id: 'test-tenant',
+        source_system: 'google',
+        ingested_at: new Date().toISOString(),
+      });
+
+      // Seed product-ad links
+      await db.saveProductAdLink({
+        tenant_id: 'test-tenant',
+        variant_id: 'v-shirt-1',
+        gmc_offer_id: 'offer-shirt-1',
+        gmc_account_id: 'gmc-1',
+        ads_account_id: 'ads-1',
+        ads_campaign_id: 'c1',
+        ads_ad_group_id: 'ag-apparel',
+        confidence: 1.0,
+        resolved_at: new Date().toISOString(),
+      });
+      await db.saveProductAdLink({
+        tenant_id: 'test-tenant',
+        variant_id: 'v-shirt-2',
+        gmc_offer_id: 'offer-shirt-2',
+        gmc_account_id: 'gmc-1',
+        ads_account_id: 'ads-1',
+        ads_campaign_id: 'c1',
+        ads_ad_group_id: 'ag-apparel',
+        confidence: 1.0,
+        resolved_at: new Date().toISOString(),
+      });
+      await db.saveProductAdLink({
+        tenant_id: 'test-tenant',
+        variant_id: 'v-shoe-1',
+        gmc_offer_id: 'offer-shoe-1',
+        gmc_account_id: 'gmc-1',
+        ads_account_id: 'ads-1',
+        ads_campaign_id: '888',
+        ads_ad_group_id: 'ag-footwear',
+        confidence: 1.0,
+        resolved_at: new Date().toISOString(),
+      });
+      await db.saveProductAdLink({
+        tenant_id: 'test-tenant',
+        variant_id: 'v-shoe-2',
+        gmc_offer_id: 'offer-shoe-2',
+        gmc_account_id: 'gmc-1',
+        ads_account_id: 'ads-1',
+        ads_campaign_id: '888',
+        ads_ad_group_id: 'ag-footwear',
+        confidence: 1.0,
+        resolved_at: new Date().toISOString(),
+      });
+    });
+
+    it('should calculate initial coverage metrics and find gaps', async () => {
+      // 1. Check coverage
+      const coverageRes = await getJson('/api/v1/cogs/coverage', headers);
+      expect(coverageRes.status).toBe('success');
+      expect(coverageRes.data.coveragePct).toBe(50);
+      expect(coverageRes.data.realPct).toBe(50);
+      expect(coverageRes.data.estimatedPct).toBe(0);
+      expect(coverageRes.data.missingCostSkus).toEqual(['v-shoe-1', 'v-shirt-1']);
+      expect(coverageRes.data.basis).toBe('ad_spend');
+
+      // 2. Check gaps
+      const gapsRes = await getJson('/api/v1/cogs/gaps', headers);
+      expect(gapsRes.status).toBe('success');
+      expect(gapsRes.data.gaps).toEqual([
+        {
+          sku: 'v-shoe-1',
+          variantId: 'v-shoe-1',
+          adSpend: 1000,
+          price: 200,
+          title: 'Nike Zoom Pegasus Shoe',
+          estimated: false,
+        },
+        {
+          sku: 'v-shirt-1',
+          variantId: 'v-shirt-1',
+          adSpend: 500,
+          price: 100,
+          title: 'Nike Running Shirt',
+          estimated: false,
+        },
+      ]);
+    });
+
+    it('should block budget changes if coverage is < 70%, then allow them after estimation', async () => {
+      // 1. Coverage is 50% (< 70%). Try to update budget.
+      const action = {
+        idempotencyKey: 'test-cogs-gate-1',
+        op: 'update_budget',
+        entity: 'campaign',
+        targetId: 'c1',
+        payload: { budget: 1010 },
+      };
+
+      const res1 = await postJson(
+        '/api/v1/actions',
+        { actionRequest: action, context: validContextTemplate },
+        headers
+      );
+      
+      expect(res1.status).toBe('success');
+      expect(res1.data.status).toBe('blocked');
+
+      // Verify audit log has the block reason
+      const logs1 = await db.getAuditLogs('test-tenant');
+      const blockLog = logs1.find(l => l.action_id === 'test-cogs-gate-1' && l.decision === 'BLOCK');
+      expect(blockLog).toBeDefined();
+      expect(blockLog?.reason).toContain('Risk Radar Gate');
+      expect(blockLog?.reason).toContain('50%');
+
+      // 2. Trigger category-average estimation to boost coverage to 100%
+      const estimateRes = await postJson('/api/v1/cogs/estimate', {}, headers);
+      expect(estimateRes.status).toBe('success');
+      expect(estimateRes.data.success).toBe(true);
+      expect(estimateRes.data.estimatedCount).toBe(2);
+
+      // Verify coverage is now 100% (50% real, 50% estimated)
+      const coverageRes = await getJson('/api/v1/cogs/coverage', headers);
+      expect(coverageRes.status).toBe('success');
+      expect(coverageRes.data.coveragePct).toBe(100);
+      expect(coverageRes.data.realPct).toBe(50);
+      expect(coverageRes.data.estimatedPct).toBe(50);
+      expect(coverageRes.data.missingCostSkus).toEqual([]);
+
+      // 3. Try budget change again -> should now execute
+      const res2 = await postJson(
+        '/api/v1/actions',
+        { actionRequest: action, context: validContextTemplate },
+        headers
+      );
+      expect(res2.status).toBe('success');
+      expect(res2.data.status).toBe('executed');
+    });
+
+    it('should update variant cost via manual overrides and move spend to real', async () => {
+      // Seed estimated costs (run estimation first)
+      await postJson('/api/v1/cogs/estimate', {}, headers);
+
+      // Perform manual override for v-shirt-1
+      const overrideRes = await postJson(
+        '/api/v1/cogs',
+        {
+          cogs: [
+            { sku: 'v-shirt-1', cost: 55.0 }
+          ]
+        },
+        headers
+      );
+      expect(overrideRes.status).toBe('success');
+      expect(overrideRes.data.success).toBe(true);
+      expect(overrideRes.data.updatedCount).toBe(1);
+
+      // Verify variant is updated in database with manual provenance
+      const variants = await db.getVariants('test-tenant');
+      const vShirt1 = variants.find(v => v.sku === 'v-shirt-1');
+      expect(vShirt1?.cost).toBe(55.0);
+      expect(vShirt1?.provenance).toBe('manual');
+
+      // Verify coverage metrics (v-shirt-1 spend = 500 should now be real!)
+      // Real spend: v-shirt-2 (500) + v-shoe-2 (1000) + v-shirt-1 (500) = 2000 (67% of 3000)
+      // Estimated spend: v-shoe-1 (1000) = 1000 (33% of 3000)
+      const coverageRes = await getJson('/api/v1/cogs/coverage', headers);
+      expect(coverageRes.status).toBe('success');
+      expect(coverageRes.data.realPct).toBe(67);
+      expect(coverageRes.data.estimatedPct).toBe(33);
+      expect(coverageRes.data.coveragePct).toBe(100);
+    });
+  });
 });
+
 

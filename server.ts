@@ -18,6 +18,7 @@ import {authMiddleware, DecodedJwt, signJwt, verifyJwt, signOauthState, verifyOa
 import {generateAuthUrl, handleOauthCallback} from './oauth_flows';
 import {ProfitReadinessCalculator} from './profit_readiness';
 import {PoasCalculator} from './poas_calculator';
+import {CogsManager} from './cogs_manager';
 import {validateActionRequest, validateContext} from './validation';
 import {TokenBucket, RateLimitingAdapterWrapper} from './rate_limiter';
 import {
@@ -918,6 +919,92 @@ export function startServer(port: number, db: SupabaseClient): http.Server {
               status: 'error',
               error: {
                 code: 'PROFIT_READINESS_CALCULATION_FAILED',
+                message: err.message || String(err),
+              },
+            }),
+          );
+        }
+        return;
+      }
+
+      // C1 COGS endpoints (2.2, 2.3)
+      if (path === '/api/v1/cogs/coverage' && req.method === 'GET') {
+        const cogsMgr = new CogsManager(db);
+        try {
+          const result = await cogsMgr.calculateCoverage(tenantId);
+          sendSuccessResponse(res, result);
+        } catch (err: any) {
+          res.writeHead(500, {'Content-Type': 'application/json'});
+          res.end(
+            JSON.stringify({
+              status: 'error',
+              error: {
+                code: 'COGS_COVERAGE_CALCULATION_FAILED',
+                message: err.message || String(err),
+              },
+            }),
+          );
+        }
+        return;
+      }
+
+      if (path === '/api/v1/cogs/gaps' && req.method === 'GET') {
+        const cogsMgr = new CogsManager(db);
+        try {
+          const result = await cogsMgr.getGaps(tenantId);
+          sendSuccessResponse(res, { gaps: result });
+        } catch (err: any) {
+          res.writeHead(500, {'Content-Type': 'application/json'});
+          res.end(
+            JSON.stringify({
+              status: 'error',
+              error: {
+                code: 'COGS_GAPS_RETRIEVAL_FAILED',
+                message: err.message || String(err),
+              },
+            }),
+          );
+        }
+        return;
+      }
+
+      if (path === '/api/v1/cogs' && req.method === 'POST') {
+        const body = await parseRequestBody(req);
+        const { cogs } = body;
+        if (!Array.isArray(cogs)) {
+          throw new ValidationError('cogs payload must be an array of { sku, cost }');
+        }
+        const cogsMgr = new CogsManager(db);
+        try {
+          const count = await cogsMgr.updateCogs(tenantId, cogs);
+          sendSuccessResponse(res, { success: true, updatedCount: count });
+        } catch (err: any) {
+          res.writeHead(500, {'Content-Type': 'application/json'});
+          res.end(
+            JSON.stringify({
+              status: 'error',
+              error: {
+                code: 'COGS_UPDATE_FAILED',
+                message: err.message || String(err),
+              },
+            }),
+          );
+        }
+        return;
+      }
+
+      if (path === '/api/v1/cogs/estimate' && req.method === 'POST') {
+        const cogsMgr = new CogsManager(db);
+        try {
+          const count = await cogsMgr.estimateMissingCogs(tenantId);
+          sendSuccessResponse(res, { success: true, estimatedCount: count });
+        } catch (err: any) {
+          res.writeHead(500, {'Content-Type': 'application/json'});
+          res.end(
+            JSON.stringify({
+              status: 'error',
+              error: {
+                code: 'COGS_ESTIMATION_FAILED',
                 message: err.message || String(err),
               },
             }),

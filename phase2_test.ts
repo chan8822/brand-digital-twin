@@ -45,11 +45,22 @@ describe('Phase 2 Governance & Execution Suite', () => {
   let circuitBreaker: CircuitBreaker;
   let engine: GovernanceEngine;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     auditLogs = [];
     trustLedger = new TrustLedger();
     circuitBreaker = new CircuitBreaker();
     engine = new GovernanceEngine(mockAuditSink, trustLedger, circuitBreaker);
+
+    // Seed variant to pass COGS coverage check (needs >= 70%)
+    await engine.supabase.saveVariant({
+      variant_id: 'v-dummy-p2',
+      sku: 'sku-dummy-p2',
+      title: 'Dummy Variant P2',
+      price: 10,
+      cost: 5,
+      tenant_id: tenantId,
+      ingested_at: new Date().toISOString(),
+    });
   });
 
   it('should auto-execute a budget change when trust and confidence are high', async () => {

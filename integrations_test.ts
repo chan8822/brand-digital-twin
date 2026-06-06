@@ -235,6 +235,16 @@ describe('Integrations (OPA, Supabase, Pino)', () => {
   describe('GovernanceEngine Integration Loop', () => {
     it('should persist decisions to Supabase and log via Pino', async () => {
       const supabase = new SupabaseClient('https://mock-url', 'key', true);
+      // Seed variant to pass COGS coverage check (needs >= 70%)
+      await supabase.saveVariant({
+        variant_id: 'v-dummy-int',
+        sku: 'sku-dummy-int',
+        title: 'Dummy Variant Int',
+        price: 10,
+        cost: 5,
+        tenant_id: 'tenant-1',
+        ingested_at: new Date().toISOString(),
+      });
       const opa = new OpaPolicyEngine('http://mock-url', true);
       const engine = new GovernanceEngine(
         mockAuditSink,

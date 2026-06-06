@@ -1,5 +1,4 @@
-// Phase 3 — Tally ERP Adapter.
-// Simulates extraction of cash ledgers and inventory journals from Tally Prime.
+import {CostSource, CostSourceProvider} from './cost_source';
 
 export interface TallyLedgerBalance {
   ledgerName: string;
@@ -8,7 +7,8 @@ export interface TallyLedgerBalance {
   updatedAt: string;
 }
 
-export class TallyAdapter {
+export class TallyAdapter implements CostSource {
+  readonly provider: CostSourceProvider = 'tally';
   readonly platform = 'tally';
   readonly schemaVersion = 'tally_prime@v2.0';
 
@@ -74,5 +74,10 @@ export class TallyAdapter {
       'variant_abc': 12.5,
       'variant_xyz': 45.0,
     };
+  }
+
+  async getUnitCosts(tenantId: string): Promise<Array<{sku: string; unitCost: number}>> {
+    const costs = await this.getInventoryCosts();
+    return Object.entries(costs).map(([sku, unitCost]) => ({sku, unitCost}));
   }
 }

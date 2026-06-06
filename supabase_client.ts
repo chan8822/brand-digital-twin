@@ -1466,6 +1466,13 @@ export class SupabaseClient {
     return [];
   }
 
+  async clearAuditLogs(tenant: string): Promise<void> {
+    this.assertRls(tenant);
+    if (this.mockMode) {
+      this.mockAuditLogs = this.mockAuditLogs.filter((l) => l.tenant !== tenant);
+    }
+  }
+
   // --- DISTRIBUTED LOCKS ---
 
   async acquireLock(
@@ -2019,6 +2026,13 @@ export class SupabaseClient {
     }
   }
 
+  async clearSpendFacts(tenant: string): Promise<void> {
+    this.assertRls(tenant);
+    if (this.mockMode) {
+      this.mockSpendFacts = this.mockSpendFacts.filter((s) => s.tenant_id !== tenant);
+    }
+  }
+
   // --- CUSTOMERS ---
   async getCustomers(tenant: string): Promise<CustomerEntry[]> {
     this.assertRls(tenant);
@@ -2325,6 +2339,13 @@ export class SupabaseClient {
       return this.mockProductAdLinks.filter((l) => l.tenant_id === tenant);
     }
     return [];
+  }
+
+  async clearProductAdLinks(tenant: string): Promise<void> {
+    this.assertRls(tenant);
+    if (this.mockMode) {
+      this.mockProductAdLinks = this.mockProductAdLinks.filter((l) => l.tenant_id !== tenant);
+    }
   }
 
   // --- PRODUCT CATALOG (VARIANTS) ---

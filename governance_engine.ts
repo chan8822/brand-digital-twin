@@ -31,6 +31,7 @@ import {
   RollbackHandle,
 } from './platform_adapter';
 import {OrderEntry, PendingJobEntry, SupabaseClient, RecommendationEventEntry, TenantLimits} from './supabase_client';
+import {CogsManager} from './cogs_manager';
 
 /**
  * System keeping track of earned-trust tiers based on successful and failed executions.
@@ -742,6 +743,19 @@ export class GovernanceEngine {
         return {
           kind: 'AUTO_EXECUTE',
           reason: waiverReason,
+        };
+      }
+    }
+
+    // Enforce Risk Radar Gate: block budget changes if COGS coverage < 70%
+    const isBudgetChange = req.op === 'update_budget' || req.op === 'scale_budget';
+    if (isBudgetChange && !hasWaiver) {
+      const cogsMgr = new CogsManager(this.supabase);
+      const coverage = await cogsMgr.calculateCoverage(tenantId);
+      if (coverage.coveragePct < 70) {
+        return {
+          kind: 'BLOCK',
+          reason: `Risk Radar Gate: budget changes are blocked because your COGS coverage (${coverage.coveragePct}%) is below the required 70% threshold. Please upload missing product costs.`,
         };
       }
     }
