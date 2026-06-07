@@ -1,23 +1,23 @@
 name: brand-twin-app CI
 
-# Standalone Next.js product UI (brand-twin/app) — NOT in the Tanmatra pnpm
+# Standalone Next.js product UI (app) — NOT in the Tanmatra pnpm
 # workspace, so it needs its own install/typecheck/build gate. Runs only when
-# files under brand-twin/app change.
+# files under app change.
 
 on:
   push:
     branches: [main]
     paths:
-      - "brand-twin/app/**"
+      - "app/**"
       - ".github/workflows/brand-twin-app-ci.yml"
   pull_request:
     paths:
-      - "brand-twin/app/**"
+      - "app/**"
       - ".github/workflows/brand-twin-app-ci.yml"
 
 defaults:
   run:
-    working-directory: brand-twin/app
+    working-directory: app
 
 jobs:
   verify:
@@ -29,7 +29,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: brand-twin/app/package-lock.json
+          cache-dependency-path: app/package-lock.json
 
       - name: Install (locked)
         run: npm ci

@@ -1,4 +1,6 @@
-# CI/CD pipeline spec for Brand Digital Twin OS
+# CI/CD pipeline spec for Brand Digital Twin OS (backend engine).
+# GitHub Actions is the primary CI (.github/workflows/); this Azure Pipelines
+# spec mirrors the same locked-install + strict tsc build gate.
 name: brand-digital-twin-ci
 
 trigger:
@@ -8,7 +10,7 @@ trigger:
       - releases/*
 
 jobs:
-  - job: lint_and_test
+  - job: build_and_test
     pool:
       vmImage: 'ubuntu-latest'
     steps:
@@ -16,7 +18,7 @@ jobs:
         inputs:
           versionSpec: '20.x'
         displayName: 'Install Node.js'
-      
+
       - script: |
           npm ci
         displayName: 'Install Dependencies'
@@ -26,9 +28,9 @@ jobs:
         displayName: 'Dependency Security Audit'
 
       - script: |
-          npm run lint
-        displayName: 'Run Linter'
+          npm run build
+        displayName: 'TypeScript Build (typecheck + emit)'
 
       - script: |
-          blaze test //experimental/brand_twin:all
-        displayName: 'Run Blaze Test Suites'
+          npm test
+        displayName: 'Unit Tests (jasmine)'

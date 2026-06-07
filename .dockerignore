@@ -1,0 +1,11 @@
+node_modules
+dist
+app
+.git
+.github
+*.md
+specs
+legal
+tests
+.env
+.env.*

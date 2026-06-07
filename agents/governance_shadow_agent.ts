@@ -5,9 +5,9 @@
 
 import {IsolationContext} from '../core/isolation_context';
 import {OneMcpServer, McpToolDefinition} from '../core/onemcp_server';
-import {OpaPolicyEngine} from 'google3/experimental/brand_twin/opa_policy';
-import {ActionRequest, ActionPlan} from 'google3/experimental/brand_twin/platform_adapter';
-import {Context, Tenant, Role} from 'google3/experimental/brand_twin/governance_types';
+import {OpaPolicyEngine} from '../opa_policy';
+import {ActionRequest, ActionPlan} from '../platform_adapter';
+import {Context, Tenant, Role} from '../governance_types';
 
 export class GovernanceShadowAgent extends OneMcpServer {
   constructor() {

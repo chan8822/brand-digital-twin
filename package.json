@@ -3,11 +3,16 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "start": "node dist/server.js",
+    "test": "node --import tsx ./node_modules/jasmine/bin/jasmine.js --config=jasmine.json"
   },
   "devDependencies": {
     "@types/jasmine": "^5.1.4",
     "@types/node": "^20.16.0",
+    "jasmine": "^5.4.0",
+    "tsx": "^4.19.0",
     "typescript": "^5.6.0"
   }
 }

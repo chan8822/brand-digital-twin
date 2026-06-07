@@ -5,11 +5,11 @@
 
 import {IsolationContext} from '../core/isolation_context';
 import {OneMcpServer, McpToolDefinition} from '../core/onemcp_server';
-import {RiskRadar} from 'google3/experimental/brand_twin/risk_radar';
-import {GoogleAdsAdapter} from 'google3/experimental/brand_twin/google_ads_adapter';
-import {GovernanceEngine, TrustLedger, CircuitBreaker, Tenant, Role, Context} from 'google3/experimental/brand_twin/governance_engine';
-import {PersistentAuditSink} from 'google3/experimental/brand_twin/audit_sink';
-import {SupabaseClient} from 'google3/experimental/brand_twin/supabase_client';
+import {RiskRadar} from '../risk_radar';
+import {GoogleAdsAdapter} from '../google_ads_adapter';
+import {GovernanceEngine, TrustLedger, CircuitBreaker, Tenant, Role, Context} from '../governance_engine';
+import {PersistentAuditSink} from '../audit_sink';
+import {SupabaseClient} from '../supabase_client';
 
 export class RiskRadarAgent extends OneMcpServer {
   constructor() {

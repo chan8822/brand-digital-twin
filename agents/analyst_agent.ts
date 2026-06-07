@@ -5,9 +5,9 @@
 
 import {IsolationContext} from '../core/isolation_context';
 import {OneMcpServer, McpToolDefinition} from '../core/onemcp_server';
-import {UnifiedIntelligenceBrain} from 'google3/experimental/brand_twin/unified_brain';
-import {PoasCalculator} from 'google3/experimental/brand_twin/poas_calculator';
-import {SupabaseClient} from 'google3/experimental/brand_twin/supabase_client';
+import {UnifiedIntelligenceBrain} from '../unified_brain';
+import {PoasCalculator} from '../poas_calculator';
+import {SupabaseClient} from '../supabase_client';
 
 export class IntelligentAnalystAgent extends OneMcpServer {
   constructor() {

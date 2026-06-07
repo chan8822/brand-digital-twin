@@ -4,7 +4,7 @@ import {RiskRadarAgent} from './agents/risk_radar_agent';
 import {GovernanceShadowAgent} from './agents/governance_shadow_agent';
 import {IsolationContext, TenantIdentity} from './core/isolation_context';
 import {McpToolDefinition, OneMcpServer} from './core/onemcp_server';
-import {SupabaseClient} from 'google3/experimental/brand_twin/supabase_client';
+import {SupabaseClient} from './supabase_client';
 
 
 // Mock sub-agent MCP servers
@@ -344,6 +344,36 @@ describe('Enterprise Agency OS (OneMCP & Bounded Contexts) Tests', () => {
         occurred_at: new Date().toISOString(),
         type: 'purchase',
         source_system: 'sgtm',
+        tenant_id: realTenantId,
+        ingested_at: new Date().toISOString(),
+      });
+
+      // Seed profit-readiness inputs so the tenant resolves to 'ready' and the
+      // brain does not demote OS auto-acts to user-approval. Without this the
+      // card's tier-1 osActs are demoted to userApproves by the readiness gate
+      // in unified_brain.ts (score >= 80 && cogsCoverage >= 70 => ready).
+      for (const platform of ['shopify', 'google', 'meta', 'plaid']) {
+        await db.saveCredential({
+          tenant_id: realTenantId,
+          platform,
+          credential_key: 'oauth_token',
+          encrypted_value: 'val',
+          refresh_token: null,
+          expires_at: null,
+          updated_at: new Date().toISOString(),
+        });
+      }
+
+      // Variant catalog entry with COGS -> 100% coverage (count-based, since no
+      // product ad links are seeded). PoasCalculator uses order-line unit_cost,
+      // not variant cost, so this does not change the campaign diagnosis.
+      await db.saveVariant({
+        variant_id: 'v1',
+        sku: 'BLUE-SHIRT-M',
+        title: 'Blue Shirt M',
+        price: 800,
+        cost: 500,
+        provenance: 'manual',
         tenant_id: realTenantId,
         ingested_at: new Date().toISOString(),
       });

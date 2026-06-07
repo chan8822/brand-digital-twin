@@ -1,0 +1,35 @@
+name: backend CI
+
+# TypeScript backend at the repo root (the engine, not the brand-twin/app UI).
+# Gates on a locked install and a strict tsc build. Skips when only the
+# standalone app/ UI changes (that has its own workflow).
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "app/**"
+  pull_request:
+    paths-ignore:
+      - "app/**"
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install (locked)
+        run: npm ci
+
+      - name: Build (typecheck + emit)
+        run: npm run build
+
+      - name: Test
+        run: npm test
