@@ -171,7 +171,8 @@ export function validateEnv() {
   const isTest =
     process.env['NODE_ENV'] === 'test' ||
     typeof (globalThis as Record<string, unknown>)['jasmine'] !== 'undefined';
-  if (isTest) {
+  const allowMock = process.env['ALLOW_MOCK_CREDENTIALS'] === 'true';
+  if (isTest || allowMock) {
     return;
   }
 
