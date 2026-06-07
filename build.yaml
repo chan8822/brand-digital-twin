@@ -30,3 +30,7 @@ jobs:
       - script: |
           npm run build
         displayName: 'TypeScript Build (typecheck + emit)'
+
+      - script: |
+          npm test
+        displayName: 'Unit Tests (jasmine)'
