@@ -8,10 +8,13 @@
  */
 import type {
   ApprovalRequest,
+  AttributionView,
   BillingQueueEntry,
   CogsCoverage,
   CogsGap,
+  CrmLead,
   IntegrationState,
+  PipelineView,
   ProfitReadiness,
   Receipt,
   RecommendationCard,
@@ -634,4 +637,223 @@ export const MOCK_RECEIPTS: Receipt[] = [
 export const MOCK_TENANT_LIMITS: TenantLimits = {
   maxDailyLimit: 2000,
   maxPerActionLimit: 500,
+};
+
+/* ── Lead pipeline (crm_leads_sync.ts) ───────────────────────────────────── */
+
+const pipelineNow = Date.now();
+const daysAgo = (d: number) => new Date(pipelineNow - d * 864e5).toISOString();
+
+const BASE_LEADS: CrmLead[] = [
+  // Awareness → still a prospect
+  {
+    leadId: "lead-001",
+    email: "priya.sharma@example.com",
+    status: "prospect",
+    source: "meta",
+    campaignName: "Meta Lookalike — Prospecting",
+    value: 1200,
+    updatedAt: daysAgo(1),
+    fbclid: "fb.1.1.AaBbCcDd11223344",
+    googleSyncedStatus: null,
+    metaSyncedStatus: null,
+  },
+  {
+    leadId: "lead-002",
+    email: "james.ohara@example.com",
+    status: "prospect",
+    source: "google",
+    campaignName: "Search — Brand Defense",
+    value: 900,
+    updatedAt: daysAgo(2),
+    gclid: "gclid_xYz99Abc",
+    googleSyncedStatus: null,
+    metaSyncedStatus: null,
+  },
+  // Consideration → SQL
+  {
+    leadId: "lead-003",
+    email: "lena.mueller@example.com",
+    status: "sql",
+    source: "google",
+    campaignName: "Shopping — Bestsellers",
+    value: 3400,
+    updatedAt: daysAgo(5),
+    gclid: "gclid_Qqr123Zzz",
+    googleSyncedStatus: "sql",
+    metaSyncedStatus: null,
+  },
+  {
+    leadId: "lead-004",
+    email: "raul.torres@example.com",
+    status: "sql",
+    source: "meta",
+    campaignName: "Advantage+ — Retargeting",
+    value: 2800,
+    updatedAt: daysAgo(4),
+    fbclid: "fb.1.1.ZzXxYy99887766",
+    googleSyncedStatus: null,
+    metaSyncedStatus: "sql",
+  },
+  // Conversion → closed_won (offline conversion synced)
+  {
+    leadId: "lead-005",
+    email: "ananya.iyer@example.com",
+    status: "closed_won",
+    source: "meta",
+    campaignName: "Meta Lookalike — Prospecting",
+    value: 5600,
+    updatedAt: daysAgo(10),
+    fbclid: "fb.1.1.Pp12Qq34Rr56",
+    googleSyncedStatus: null,
+    metaSyncedStatus: "closed_won",
+  },
+  {
+    leadId: "lead-006",
+    email: "tom.bradley@example.com",
+    status: "closed_won",
+    source: "google",
+    campaignName: "Search — Brand Defense",
+    value: 4100,
+    updatedAt: daysAgo(14),
+    gclid: "gclid_Mn0op5Qrs",
+    googleSyncedStatus: "closed_won",
+    metaSyncedStatus: null,
+  },
+  {
+    leadId: "lead-007",
+    email: "divya.nair@example.com",
+    status: "closed_won",
+    source: "google",
+    campaignName: "Shopping — Bestsellers",
+    value: 7200,
+    updatedAt: daysAgo(18),
+    gclid: "gclid_Ab1Cd2Ef3",
+    googleSyncedStatus: "closed_won",
+    metaSyncedStatus: null,
+  },
+  // sync pending (closed_won but not yet pushed)
+  {
+    leadId: "lead-008",
+    email: "carlos.vega@example.com",
+    status: "closed_won",
+    source: "meta",
+    campaignName: "Advantage+ — Retargeting",
+    value: 3300,
+    updatedAt: daysAgo(1),
+    fbclid: "fb.1.1.Aa11Bb22Cc33",
+    googleSyncedStatus: null,
+    metaSyncedStatus: null, // not yet synced — pending
+  },
+];
+
+function buildPipelineView(leads: CrmLead[]): PipelineView {
+  const prospects = leads.filter((l) => l.status === "prospect").length;
+  const sqls = leads.filter((l) => l.status === "sql").length;
+  const closedWon = leads.filter((l) => l.status === "closed_won");
+  const syncPendingCount = leads.filter(
+    (l) =>
+      (l.gclid && l.googleSyncedStatus !== l.status) ||
+      (l.fbclid && l.metaSyncedStatus !== l.status),
+  ).length;
+  return {
+    leads,
+    summary: {
+      prospects,
+      sqls,
+      closedWon: closedWon.length,
+      totalValue: closedWon.reduce((s, l) => s + l.value, 0),
+      syncPendingCount,
+    },
+  };
+}
+
+export const MOCK_PIPELINE: PipelineView = buildPipelineView(BASE_LEADS);
+
+// Per-brand pipeline variants (same structure, different campaign names)
+export const MOCK_BRAND_PIPELINE: PipelineView[] = [
+  MOCK_PIPELINE,
+  buildPipelineView(
+    BASE_LEADS.map((l) => ({
+      ...l,
+      campaignName: l.campaignName.replace("Bestsellers", "Nutra — Mass Gain"),
+    })),
+  ),
+  buildPipelineView(
+    BASE_LEADS.map((l) => ({
+      ...l,
+      campaignName: l.campaignName.replace("Bestsellers", "Cleansly — Bundle"),
+    })),
+  ),
+];
+
+/* ── Attribution view (attribution_engine.ts) ────────────────────────────── */
+
+// Representative touchpoint journey: Meta Prospecting (awareness) →
+// Google Search (consideration) → Meta Retargeting (consideration) →
+// Google Shopping (conversion). This is the canonical multi-touch path where
+// naive last-touch dramatically under-credits the awareness campaign.
+
+const TOUCHPOINTS = [
+  {
+    platform: "meta",
+    campaignName: "Meta Lookalike — Prospecting",
+    type: "awareness" as const,
+    occurredAt: daysAgo(21),
+  },
+  {
+    platform: "google",
+    campaignName: "Search — Brand Defense",
+    type: "consideration" as const,
+    occurredAt: daysAgo(14),
+  },
+  {
+    platform: "meta",
+    campaignName: "Advantage+ — Retargeting",
+    type: "consideration" as const,
+    occurredAt: daysAgo(7),
+  },
+  {
+    platform: "google",
+    campaignName: "Shopping — Bestsellers",
+    type: "conversion" as const,
+    occurredAt: daysAgo(1),
+  },
+];
+
+const CONV_VALUE = 5600;
+
+export const MOCK_ATTRIBUTION: AttributionView = {
+  conversionValue: CONV_VALUE,
+  touchpoints: TOUCHPOINTS,
+  scenarios: [
+    {
+      model: "linear",
+      label: "Linear",
+      description: "Equal credit to every touchpoint — values awareness and conversion equally.",
+      credits: [
+        { platform: "meta",   share: 0.50, allocatedValue: 2800 }, // 2 Meta touches = 50%
+        { platform: "google", share: 0.50, allocatedValue: 2800 }, // 2 Google touches = 50%
+      ],
+    },
+    {
+      model: "time_decay",
+      label: "Time-decay",
+      description: "Exponential credit toward the purchase (7d half-life) — rewards closers, penalises awareness.",
+      credits: [
+        { platform: "meta",   share: 0.36, allocatedValue: Math.round(CONV_VALUE * 0.36) },
+        { platform: "google", share: 0.64, allocatedValue: Math.round(CONV_VALUE * 0.64) },
+      ],
+    },
+    {
+      model: "position_based",
+      label: "Position-based (U-shape)",
+      description: "40% first touch · 40% last touch · 20% middle — respects both awareness and conversion.",
+      credits: [
+        // first (Meta Prospecting) = 40%; last (Google Shopping) = 40%; middle split 10/10
+        { platform: "meta",   share: 0.50, allocatedValue: 2800 }, // 40% first + 10% middle
+        { platform: "google", share: 0.50, allocatedValue: 2800 }, // 10% middle + 40% last
+      ],
+    },
+  ],
 };

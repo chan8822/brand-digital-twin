@@ -12,6 +12,8 @@ import { SupportWidget } from "./SupportWidget";
 const LINKS = [
   { href: "/connect", label: "Connect" },
   { href: "/dashboard", label: "POAS" },
+  { href: "/pipeline", label: "Pipeline" },
+  { href: "/attribution", label: "Attribution" },
   { href: "/sweep", label: "Sweep" },
   { href: "/healing", label: "Healing" },
   { href: "/costs", label: "Costs" },

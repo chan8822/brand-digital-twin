@@ -6,8 +6,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, getMockBrandIndex, USE_MOCK } from "./api";
 import {
   MOCK_APPROVALS,
+  MOCK_ATTRIBUTION,
   MOCK_BILLING_QUEUE,
   MOCK_BRAND_INTEGRATIONS,
+  MOCK_BRAND_PIPELINE,
   MOCK_BRAND_READINESS,
   MOCK_BRAND_RECOMMENDATIONS,
   MOCK_BRAND_SWEEP,
@@ -21,11 +23,13 @@ import {
 } from "./mock";
 import type {
   ApprovalRequest,
+  AttributionView,
   BillingQueueEntry,
   CogsCoverage,
   CogsGap,
   DismissReason,
   IntegrationState,
+  PipelineView,
   ProfitReadiness,
   Receipt,
   RecommendationCard,
@@ -331,6 +335,38 @@ export function useSetTenantLimits() {
       });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["tenant-limits"] }),
+  });
+}
+
+/* ── Lead pipeline (crm_leads_sync.ts) ───────────────────────────────────── */
+
+export function usePipeline() {
+  return useQuery({
+    queryKey: USE_MOCK ? ["pipeline", getMockBrandIndex()] : ["pipeline"],
+    queryFn: async (): Promise<PipelineView> => {
+      if (USE_MOCK) {
+        await new Promise((r) => setTimeout(r, 350));
+        return MOCK_BRAND_PIPELINE[getMockBrandIndex()] ?? MOCK_BRAND_PIPELINE[0];
+      }
+      return apiFetch<PipelineView>("/api/v1/pipeline");
+    },
+    staleTime: 60_000,
+  });
+}
+
+/* ── Attribution (attribution_engine.ts) ─────────────────────────────────── */
+
+export function useAttribution() {
+  return useQuery({
+    queryKey: USE_MOCK ? ["attribution", getMockBrandIndex()] : ["attribution"],
+    queryFn: async (): Promise<AttributionView> => {
+      if (USE_MOCK) {
+        await new Promise((r) => setTimeout(r, 300));
+        return MOCK_ATTRIBUTION;
+      }
+      return apiFetch<AttributionView>("/api/v1/attribution");
+    },
+    staleTime: 120_000,
   });
 }
 

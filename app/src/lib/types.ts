@@ -327,3 +327,72 @@ export interface TenantLimits {
   maxDailyLimit: number;
   maxPerActionLimit: number;
 }
+
+/* ── Lead pipeline & attribution (crm_leads_sync.ts / attribution_engine.ts) ─
+ * CRM leads track the full journey from first ad click (awareness) through
+ * qualification to closed revenue, with offline-conversion sync back to Google
+ * and Meta so the ad platforms see the real downstream value of each click.
+ */
+
+export type LeadStatus = "prospect" | "sql" | "closed_won" | "lost";
+export type LeadSource = "google" | "meta" | "organic" | "direct";
+
+export interface CrmLead {
+  leadId: string;
+  email: string;
+  status: LeadStatus;
+  source: LeadSource;
+  campaignName: string;
+  value: number;
+  updatedAt: string;
+  gclid?: string | null;
+  fbclid?: string | null;
+  googleSyncedStatus?: string | null;
+  metaSyncedStatus?: string | null;
+}
+
+export interface PipelineSummary {
+  prospects: number;
+  sqls: number;
+  closedWon: number;
+  totalValue: number;
+  syncPendingCount: number;
+}
+
+export interface PipelineView {
+  leads: CrmLead[];
+  summary: PipelineSummary;
+}
+
+/* ── Attribution modelling (attribution_engine.ts) ──────────────────────────
+ * Three fractional-credit models side-by-side reveal which awareness channels
+ * lose credit under last-touch but reclaim it under linear / position-based.
+ */
+
+export type AttributionModel = "linear" | "time_decay" | "position_based";
+
+export interface AttributionTouchpoint {
+  platform: string;
+  campaignName: string;
+  type: "awareness" | "consideration" | "conversion";
+  occurredAt: string;
+}
+
+export interface ChannelCredit {
+  platform: string;
+  share: number;
+  allocatedValue: number;
+}
+
+export interface AttributionScenario {
+  model: AttributionModel;
+  label: string;
+  description: string;
+  credits: ChannelCredit[];
+}
+
+export interface AttributionView {
+  conversionValue: number;
+  touchpoints: AttributionTouchpoint[];
+  scenarios: AttributionScenario[];
+}
