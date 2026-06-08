@@ -79,10 +79,8 @@ export type Severity = "CRITICAL" | "WARNING" | "OPPORTUNITY";
  * risk_radar.ts (scanStockouts / scanROIEfficiency / scanConversionTracking /
  * scanCheckoutEvents / scanBudgetCappedWinners), verified @ 44ca4ba.
  *
- * NOTE: this rich shape is produced internally but is NOT yet exposed by an
- * endpoint — `/api/v1/risks` currently returns `string[]` (detectRisks). A
- * `GET /api/v1/sweep → { sweep: SweepFinding[] }` endpoint is needed to wire
- * this screen to live data (tracked in 00-REMAINING_WORK.md).
+ * NOTE: this rich shape is produced internally. Wire via
+ * `GET /api/v1/sweep → { sweep: SweepFinding[] }` when the endpoint is ready.
  */
 export interface SweepFinding {
   code: string;

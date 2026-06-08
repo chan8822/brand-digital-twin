@@ -63,9 +63,9 @@ export default function SweepPage() {
 
         {USE_MOCK && (
           <div className="mb-6 rounded-lg border border-accent/20 bg-accent/10 px-4 py-2 text-xs text-accent">
-            Demo data — the rich sweep needs a{" "}
-            <code className="font-mono">GET /api/v1/sweep</code> endpoint
-            (tracked in 00-REMAINING_WORK.md).
+            Demo data — set <code className="font-mono">NEXT_PUBLIC_API_URL</code>{" "}
+            to wire live sweep findings via{" "}
+            <code className="font-mono">GET /api/v1/sweep</code>.
           </div>
         )}
 
