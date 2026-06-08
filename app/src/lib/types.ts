@@ -53,6 +53,12 @@ export interface CampaignCostBreakdown {
   fulfillment: number;
   marketplaceFee: number;
   refunds: number;
+  /** Payment processor cut (Stripe / Razorpay / etc.) — rate × grossRevenue */
+  paymentProcessingFee?: number;
+  /** Monthly hosting + CDN + cloud infra amortised per order */
+  infraAllocation?: number;
+  /** SaaS tool subscriptions amortised per order */
+  platformSubscriptionAllocation?: number;
   spend?: number;
   contributionMargin: number;
   estimatedCogs: boolean;

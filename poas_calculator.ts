@@ -1,12 +1,23 @@
 import {SupabaseClient} from './supabase_client';
-import {CampaignCostBreakdown, CampaignPoasReport} from './healing_types';
-
-
+import {CampaignCostBreakdown, CampaignPoasReport, TenantCostConfig} from './healing_types';
 
 export class PoasCalculator {
   constructor(private readonly db: SupabaseClient) {}
 
-  async calculate(tenantId: string): Promise<CampaignPoasReport[]> {
+  async calculate(tenantId: string, costConfig?: TenantCostConfig): Promise<CampaignPoasReport[]> {
+    // Derive per-order overhead allocations from the flat monthly costs.
+    // Payment processing is a revenue-% applied line-by-line; infra and
+    // platform subscriptions are amortised across expected monthly order volume.
+    const paymentRate = costConfig?.paymentProcessingRate ?? 0;
+    const perOrderInfra =
+      costConfig?.monthlyInfraCost && costConfig?.expectedMonthlyOrders
+        ? costConfig.monthlyInfraCost / costConfig.expectedMonthlyOrders
+        : 0;
+    const perOrderPlatformSub =
+      costConfig?.monthlyPlatformSubscriptions && costConfig?.expectedMonthlyOrders
+        ? costConfig.monthlyPlatformSubscriptions / costConfig.expectedMonthlyOrders
+        : 0;
+
     // 1. Load all data from DB for this tenant
     const orders = await this.db.getOrders(tenantId);
     const orderLines = await this.db.getOrderLines(tenantId);
@@ -94,6 +105,10 @@ export class PoasCalculator {
         }
       }
 
+      const paymentProcessingFee = orderGrossRevenue * paymentRate;
+      // Deduct payment processing + overhead from contribution margin
+      const netContribution = orderContribution - paymentProcessingFee - perOrderInfra - perOrderPlatformSub;
+
       orderBreakdownMap.set(order.order_id, {
         grossRevenue: orderGrossRevenue,
         discountAmount: orderDiscount,
@@ -101,7 +116,10 @@ export class PoasCalculator {
         fulfillment: fc.shipping,
         marketplaceFee: fc.marketplace,
         refunds: orderRefund,
-        contributionMargin: orderContribution,
+        paymentProcessingFee,
+        infraAllocation: perOrderInfra,
+        platformSubscriptionAllocation: perOrderPlatformSub,
+        contributionMargin: netContribution,
         estimatedCogs,
       });
     }
@@ -155,6 +173,9 @@ export class PoasCalculator {
         fulfillment: 0,
         marketplaceFee: 0,
         refunds: 0,
+        paymentProcessingFee: 0,
+        infraAllocation: 0,
+        platformSubscriptionAllocation: 0,
         contributionMargin: 0,
         estimatedCogs: false,
       };
@@ -166,6 +187,9 @@ export class PoasCalculator {
         fulfillment: cur.fulfillment + orderBreakdown.fulfillment,
         marketplaceFee: cur.marketplaceFee + orderBreakdown.marketplaceFee,
         refunds: cur.refunds + orderBreakdown.refunds,
+        paymentProcessingFee: (cur.paymentProcessingFee ?? 0) + (orderBreakdown.paymentProcessingFee ?? 0),
+        infraAllocation: (cur.infraAllocation ?? 0) + (orderBreakdown.infraAllocation ?? 0),
+        platformSubscriptionAllocation: (cur.platformSubscriptionAllocation ?? 0) + (orderBreakdown.platformSubscriptionAllocation ?? 0),
         contributionMargin: cur.contributionMargin + orderBreakdown.contributionMargin,
         estimatedCogs: cur.estimatedCogs || orderBreakdown.estimatedCogs,
       });
@@ -204,6 +228,9 @@ export class PoasCalculator {
         fulfillment: 0,
         marketplaceFee: 0,
         refunds: 0,
+        paymentProcessingFee: 0,
+        infraAllocation: 0,
+        platformSubscriptionAllocation: 0,
         contributionMargin: 0,
         estimatedCogs: false,
       };
